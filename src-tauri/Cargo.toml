@@ -1,0 +1,23 @@
+[package]
+name = "domble"
+version = "0.2.0"
+description = "domble - ローカル完結の個人事業主向け会計ソフト"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "domble_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+rusqlite = { version = "0.40", features = ["bundled", "backup"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# 祝日の一覧（内閣府の CSV）を取得するときだけ使う（利用者が「最新の祝日を取得」を押したとき）
+ureq = "2"
