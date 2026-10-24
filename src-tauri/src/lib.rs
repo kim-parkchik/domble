@@ -1,6 +1,7 @@
+mod crypt;
 mod db;
 
-use db::{Databases, ExecResult};
+use db::{Databases, Encrypted, EncryptionStatus, ExecResult, Unlock};
 use serde_json::{Map, Value as Json};
 use tauri::State;
 #[cfg(target_os = "macos")]
@@ -10,9 +11,11 @@ use tauri::{
 };
 
 // ── 帳簿ファイル（SQLite）。中身は db.rs ──
+/// 暗号化した帳簿は secret（パスワードか回復キー）か、この PC に記憶した鍵で開く。
+/// どちらも無ければ "DOMBLE_NEEDS_KEY"、違えば "DOMBLE_WRONG_KEY" で失敗する（画面側がパスワードを聞く）
 #[tauri::command(async)]
-fn db_open(dbs: State<'_, Databases>, path: String, readonly: Option<bool>) -> Result<(), String> {
-    dbs.open(&path, readonly.unwrap_or(false))
+fn db_open(dbs: State<'_, Databases>, path: String, readonly: Option<bool>, secret: Option<String>, remember: Option<bool>) -> Result<EncryptionStatus, String> {
+    dbs.open(&path, readonly.unwrap_or(false), Unlock { secret, remember: remember.unwrap_or(false) })
 }
 
 #[tauri::command(async)]
@@ -28,6 +31,32 @@ fn db_execute(dbs: State<'_, Databases>, path: String, sql: String, params: Vec<
 #[tauri::command(async)]
 fn db_select(dbs: State<'_, Databases>, path: String, sql: String, params: Vec<Json>) -> Result<Vec<Map<String, Json>>, String> {
     dbs.with(&path, |c| db::select(c, &sql, &params))
+}
+
+// ── 暗号化（任意）。中身は db.rs と crypt.rs ──
+#[tauri::command(async)]
+fn db_encryption_status(dbs: State<'_, Databases>, path: String) -> Result<EncryptionStatus, String> {
+    dbs.status(&path)
+}
+
+#[tauri::command(async)]
+fn db_encrypt(dbs: State<'_, Databases>, path: String, password: String, remember: bool) -> Result<Encrypted, String> {
+    dbs.encrypt(&path, &password, remember)
+}
+
+#[tauri::command(async)]
+fn db_change_password(dbs: State<'_, Databases>, path: String, current: String, password: String) -> Result<Encrypted, String> {
+    dbs.change_password(&path, &current, &password)
+}
+
+#[tauri::command(async)]
+fn db_decrypt(dbs: State<'_, Databases>, path: String, current: String) -> Result<(), String> {
+    dbs.decrypt(&path, &current)
+}
+
+#[tauri::command(async)]
+fn db_set_remember(dbs: State<'_, Databases>, path: String, remember: bool) -> Result<EncryptionStatus, String> {
+    dbs.set_remember(&path, remember)
 }
 
 /// macOS のメニュー。既定の「終了」（⌘Q）はウィンドウに知らせずにすぐ終わってしまい、画面側でログアウトを
@@ -91,7 +120,9 @@ pub fn run() {
         .manage(Databases::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![db_open, db_close, db_execute, db_select, fetch_holidays_csv])
+        .invoke_handler(tauri::generate_handler![
+            db_open, db_close, db_execute, db_select, db_encryption_status, db_encrypt, db_change_password, db_decrypt, db_set_remember, fetch_holidays_csv
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

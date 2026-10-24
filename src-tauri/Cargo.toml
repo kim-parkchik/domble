@@ -14,10 +14,31 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-rusqlite = { version = "0.40", features = ["bundled", "backup"] }
+# 暗号化（任意）のため SQLCipher 入りの SQLite を使う。暗号の部品（OpenSSL）も一緒にビルドする
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl", "backup"] }
+# パスワードから暗号化の鍵を作る
+argon2 = "0.5"
+getrandom = "0.2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # 祝日の一覧（内閣府の CSV）を取得するときだけ使う（利用者が「最新の祝日を取得」を押したとき）
 ureq = "2"
+
+# 「この PC に記憶する」：鍵を OS の鍵の保管庫に預ける
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native"] }
+
+# 開発中のビルドでも、パスワードから鍵を作るのに時間がかかりすぎないようにする
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3

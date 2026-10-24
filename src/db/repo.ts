@@ -1594,11 +1594,13 @@ const setUserMemo_ = async (db: Database, id: number, memo: string) => {
  * すでにパスワードがあるときは、今のパスワードが必要（他の人に勝手に変えられないように）
  */
 const setUserPassword_ = async (db: Database, id: number, currentPassword: string, newPassword: string) => {
-  // 自分のパスワードは誰でも変えられる。ほかの人のパスワードは管理者だけ
+  // 自分のパスワードは誰でも変えられる（今のパスワードが要る）。
+  // ほかの人のパスワードは管理者だけ。忘れたときに上書きできるよう、今のパスワードは要らない（再設定）
   if (currentActor !== null && currentActor !== id && !can(currentRole, "users")) throw new Error(permissionMessage(currentRole ?? "viewer"));
+  const adminReset = currentActor !== null && currentActor !== id && can(currentRole, "users");
   const r = await db.select<{ password_hash: string }[]>("SELECT password_hash FROM users WHERE id = ?", [id]);
   if (!r[0]) throw new Error("ユーザーが見つかりません");
-  if (!(await verifyPassword(currentPassword, r[0].password_hash))) throw new Error("今のパスワードが違います");
+  if (!adminReset && !(await verifyPassword(currentPassword, r[0].password_hash))) throw new Error("今のパスワードが違います");
   if (newPassword) {
     const pe = validatePassword(newPassword);
     if (pe) throw new Error(pe);
@@ -1606,8 +1608,31 @@ const setUserPassword_ = async (db: Database, id: number, currentPassword: strin
   await db.execute("UPDATE users SET password_hash = ? WHERE id = ?", [newPassword ? await hashPassword(newPassword) : "", id]);
   await logMaster(db, {
     target_type: "user", target_id: id, action: "change", fiscal_year: await currentYear(db), label: await userName(db, id),
-    old_value: r[0].password_hash ? "パスワードあり" : "パスワードなし", new_value: newPassword ? (r[0].password_hash ? "パスワードを変更" : "パスワードあり") : "パスワードなし",
+    old_value: r[0].password_hash ? "パスワードあり" : "パスワードなし",
+    new_value: (newPassword ? (r[0].password_hash ? "パスワードを変更" : "パスワードあり") : "パスワードなし") + (adminReset ? `（管理者「${await userName(db, currentActor!)}」が再設定）` : ""),
   });
+};
+
+/**
+ * 帳簿ファイルの暗号化をかける・外す・パスワードを変える（db/encryption.ts の処理を run で渡す）。
+ * 暗号化はファイルの置き換えなのでトランザクションの外で、書き込みの待ち行列に並んで行い、終わったら履歴に残す
+ */
+export type EncryptionChange = "on" | "off" | "password";
+const ENCRYPTION_LOG: Record<EncryptionChange, [string, string]> = {
+  on: ["なし", "あり（パスワードを設定）"],
+  off: ["あり", "なし（暗号化をやめた）"],
+  password: ["あり", "あり（パスワードを変更）"],
+};
+const logEncryption_ = async (db: Database, change: EncryptionChange) => {
+  const [old_value, new_value] = ENCRYPTION_LOG[change];
+  await logMaster(db, { target_type: "setting", target_id: 0, action: "change", fiscal_year: await currentYear(db), label: "帳簿ファイルの暗号化", old_value, new_value });
+};
+export const changeEncryption = async <T>(db: Database, change: EncryptionChange, run: () => Promise<T>): Promise<T> => {
+  if (readOnly) throw new Error(READ_ONLY_MESSAGE);
+  if (currentActor !== null && !can(currentRole, "settings")) throw new Error(permissionMessage(currentRole ?? "viewer"));
+  const r = await queuedRead(run);
+  await tx(db, "帳簿ファイルの暗号化の記録", () => logEncryption_(db, change), { perm: "settings" });
+  return r;
 };
 
 /** 使える管理者が残るか（管理者が1人もいなくなると、設定やユーザーを誰も変えられなくなる） */

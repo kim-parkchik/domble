@@ -37,6 +37,8 @@ import { CounterpartiesPage } from "./features/settings/CounterpartiesPage";
 import { BusinessSettingsPage } from "./features/settings/BusinessSettingsPage";
 import { SetupScreen } from "./features/start/SetupScreen";
 import { LoginScreen } from "./features/start/LoginScreen";
+import { UnlockScreen } from "./features/start/UnlockScreen";
+import { NEEDS_KEY, WRONG_KEY, type Unlock } from "./db/encryption";
 import { UsersPage } from "./features/settings/UsersPage";
 import { YearNotice } from "./components/YearNotice";
 import { IntegrityNotice } from "./components/IntegrityNotice";
@@ -117,6 +119,8 @@ export default function App() {
   const toast = useToast();
   const [session, setSession] = useState<Session | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 暗号化した帳簿で、パスワードを聞いているところ */
+  const [locked, setLocked] = useState<{ path: string; error: string } | null>(null);
 
   // 画面の操作で失敗したまま受け止められなかったもの（権限・読み取り専用・締め済みなど）は、
   // 何も起きないように見えないよう、まとめて知らせる
@@ -157,7 +161,7 @@ export default function App() {
     };
   }, []);
 
-  const load = async (path: string, isNew = false) => {
+  const load = async (path: string, isNew = false, unlock: Unlock = {}) => {
     // domble のファイル（帳簿・バックアップ）だけを開く
     if (!isBookFile(path) && !isBackupFile(path)) {
       removeRecentFile(path);
@@ -174,7 +178,8 @@ export default function App() {
       // バックアップは読み取り専用：ファイルのメモリ上の写しを開き、開いたときの記録・整理（書き込み）は何もしない
       const readOnly = isBackupFile(path);
       repo.setReadOnly(readOnly);
-      const { db, triggersBefore } = await openDatabase(path, readOnly);
+      const { db, triggersBefore } = await openDatabase(path, readOnly, unlock);
+      setLocked(null);
       repo.setActor(null);
       let interrupted: string[] = [];
       if (!readOnly) {
@@ -196,12 +201,29 @@ export default function App() {
       pushRecentFile(path);
       setSession({ db, path, settings, accounts, subs, user: null, interrupted, readOnly });
     } catch (e) {
+      // 暗号化した帳簿：パスワードを聞く（違っていたら、聞き直す）
+      if (String(e).includes(NEEDS_KEY)) return setLocked({ path, error: "" });
+      if (String(e).includes(WRONG_KEY)) return setLocked({ path, error: "パスワード（または回復キー）が違います" });
       console.error(e);
+      setLocked(null);
       toast(`帳簿を開けませんでした：${String(e)}`, "error");
     } finally {
       setBusy(false);
     }
   };
+
+  if (!session && locked) {
+    return (
+      <UnlockScreen
+        key={locked.path}
+        path={locked.path}
+        busy={busy}
+        error={locked.error}
+        onUnlock={(secret, remember) => load(locked.path, false, { secret, remember })}
+        onBack={() => setLocked(null)}
+      />
+    );
+  }
 
   if (!session) {
     return (

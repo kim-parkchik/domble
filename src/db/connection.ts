@@ -5,6 +5,7 @@
  * （以前の tauri-plugin-sql は接続プールのため使えなかった）。トランザクションは repo.ts の tx() から使う
  */
 import { invoke } from "@tauri-apps/api/core";
+import type { EncryptionStatus, Unlock } from "./encryption";
 
 export interface QueryResult {
   rowsAffected: number;
@@ -15,10 +16,13 @@ export interface QueryResult {
 export default class Database {
   private constructor(readonly path: string) {}
 
-  /** readonly = true なら、ファイルのメモリ上の写しを開く（元のファイルには書き込まれない。バックアップを見るとき） */
-  static async load(path: string, readonly = false) {
-    await invoke("db_open", { path, readonly });
-    return new Database(path);
+  /**
+   * readonly = true なら、ファイルのメモリ上の写しを開く（元のファイルには書き込まれない。バックアップを見るとき）
+   * 暗号化した帳簿は unlock のパスワード（回復キー）か、この PC に記憶した鍵で開く。無ければ NEEDS_KEY で失敗する
+   */
+  static async load(path: string, readonly = false, unlock: Unlock = {}) {
+    const encryption = await invoke<EncryptionStatus>("db_open", { path, readonly, secret: unlock.secret ?? null, remember: !!unlock.remember });
+    return { db: new Database(path), encryption };
   }
 
   select<T>(sql: string, params: unknown[] = []): Promise<T> {

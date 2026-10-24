@@ -577,6 +577,12 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .user-pick:hover, .user-pick.on { border-color: var(--accent); background: var(--accent-tint); }
 .login-form { display: flex; gap: 8px; width: 100%; margin-top: 10px; }
 .login-form .input { flex: 1; }
+.unlock-form { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 10px; }
+.unlock-form .btn { align-self: flex-end; }
+.recovery-input, .recovery-key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
+.start-title svg { vertical-align: -2px; }
+.recovery-key { display: block; padding: 12px 14px; border: 1px dashed var(--rule-strong); border-radius: 6px; background: var(--paper); font-size: 14px; overflow-wrap: anywhere; user-select: all; }
+.field-row.wrap { flex-wrap: wrap; }
 .show-more { display: flex; justify-content: center; padding: 10px 0 4px; }
 /* 仕訳の CSV 取り込み */
 .import-scroll { max-height: 340px; border: 1px solid var(--rule); border-radius: 4px; }

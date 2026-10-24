@@ -209,6 +209,37 @@ describe("入力期間（repo）", () => {
   });
 });
 
+describe("帳簿ファイルの暗号化（repo）", () => {
+  test("かける・パスワードを変える・外すと履歴に残る。管理者以外と読み取り専用ではできない（処理も動かさない）", async () => {
+    const { db } = strict;
+    let ran = 0;
+    const run = async () => { ran++; return "ok"; };
+    expect(await repo.changeEncryption(db, "on", run)).toBe("ok");
+    await repo.changeEncryption(db, "password", run);
+    await repo.changeEncryption(db, "off", run);
+    const h = await repo.getMasterHistory(db);
+    expect(h.map((x) => [x.label, x.old_value, x.new_value]).reverse()).toEqual([
+      ["帳簿ファイルの暗号化", "なし", "あり（パスワードを設定）"],
+      ["帳簿ファイルの暗号化", "あり", "あり（パスワードを変更）"],
+      ["帳簿ファイルの暗号化", "あり", "なし（暗号化をやめた）"],
+    ]);
+    const editor = await repo.createUser(db, "編集者", "", "editor");
+    repo.setActor(editor, "editor");
+    await expect(repo.changeEncryption(db, "on", run)).rejects.toThrow(/権限/);
+    repo.setActor(null);
+    repo.setReadOnly(true);
+    await expect(repo.changeEncryption(db, "on", run)).rejects.toThrow(/読み取り専用/);
+    repo.setReadOnly(false);
+    expect(ran).toBe(3);
+  });
+
+  test("処理が失敗したら履歴に残さない", async () => {
+    const { db } = strict;
+    await expect(repo.changeEncryption(db, "on", async () => { throw new Error("今のパスワード（または回復キー）が違います"); })).rejects.toThrow(/違います/);
+    expect(await repo.getMasterHistory(db)).toEqual([]);
+  });
+});
+
 describe("仕訳の CSV 取り込み（repo）", () => {
   test("まとめて登録し、厳密モードでは登録の履歴に取り込み元を残す", async () => {
     const { db } = strict;
@@ -666,6 +697,23 @@ describe("権限（repo）", () => {
     await expect(repo.setUserPassword(db, admin.id, "", "x12345")).rejects.toThrow(/入力担当/);
     repo.setActor(admin.id, "admin");
     await repo.setUserPassword(db, admin.id, "", "adminpw");
+    // 管理者でも、自分のパスワードは今のパスワードが要る
+    await expect(repo.setUserPassword(db, admin.id, "wrong", "other1")).rejects.toThrow(/今のパスワード/);
+  });
+
+  test("管理者は、ほかの人の忘れたパスワードを今のパスワードなしで上書き・解除できる。履歴に残る", async () => {
+    const { db } = strict;
+    await repo.ensureUsers(db, "山田");
+    const [admin] = await repo.getUsers(db);
+    const editor = await repo.createUser(db, "鈴木", "forgotten", "editor");
+    repo.setActor(admin.id, "admin");
+    await repo.setUserPassword(db, editor, "", "newpass1");
+    expect(await repo.checkLogin(db, editor, "newpass1")).toBe(true);
+    expect(await repo.checkLogin(db, editor, "forgotten")).toBe(false);
+    await repo.setUserPassword(db, editor, "", ""); // 解除もできる
+    expect(await repo.checkLogin(db, editor, "")).toBe(true);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.label === "鈴木" && x.action === "change");
+    expect(h[0].new_value).toMatch(/管理者「山田」が再設定/);
   });
 
   test("管理者は0人にできない。権限の変更は履歴に残る", async () => {

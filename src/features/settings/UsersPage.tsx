@@ -166,7 +166,9 @@ const UserForm = ({ target, onClose }: { target: User | "new"; onClose: () => vo
 };
 
 const PasswordForm = ({ user, onClose }: { user: User; onClose: () => void }) => {
-  const { db, reloadUsers } = useAppContext();
+  const { db, reloadUsers, currentUser, can } = useAppContext();
+  /** 管理者が、ほかの人のパスワードを上書きする（今のパスワードは要らない） */
+  const adminReset = can("users") && user.id !== currentUser.id;
   const toast = useToast();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -183,7 +185,7 @@ const PasswordForm = ({ user, onClose }: { user: User; onClose: () => void }) =>
     try {
       await repo.setUserPassword(db, user.id, current, remove ? "" : next);
       await reloadUsers();
-      toast(remove ? "パスワードをなくしました" : "パスワードを設定しました");
+      toast(remove ? "パスワードをなくしました" : adminReset ? `${user.name} のパスワードを再設定しました` : "パスワードを設定しました");
       onClose();
     } catch (e) {
       setError(errText(e));
@@ -193,7 +195,12 @@ const PasswordForm = ({ user, onClose }: { user: User; onClose: () => void }) =>
   return (
     <Modal title={`${user.name} のパスワード`} onClose={onClose} width={480}>
       <form className="settings-form" onSubmit={(e) => { e.preventDefault(); submit(false); }}>
-        {user.has_password ? (
+        {adminReset && (
+          <p className="field-note">
+            管理者として、{user.name} のパスワードを新しく設定し直します（今のパスワードは要りません）。パスワードを忘れたときに使ってください。再設定したことは履歴に残ります。
+          </p>
+        )}
+        {user.has_password && !adminReset ? (
           <label className="field">
             <span>今のパスワード</span>
             <input className="input" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoFocus autoComplete="current-password" />
@@ -201,7 +208,7 @@ const PasswordForm = ({ user, onClose }: { user: User; onClose: () => void }) =>
         ) : null}
         <label className="field">
           <span>新しいパスワード（4文字以上）</span>
-          <input className="input" type="password" value={next} onChange={(e) => setNext(e.target.value)} autoFocus={!user.has_password} autoComplete="new-password" />
+          <input className="input" type="password" value={next} onChange={(e) => setNext(e.target.value)} autoFocus={!user.has_password || adminReset} autoComplete="new-password" />
         </label>
         <label className="field">
           <span>新しいパスワード（確認）</span>
@@ -209,7 +216,7 @@ const PasswordForm = ({ user, onClose }: { user: User; onClose: () => void }) =>
         </label>
         {error && <p className="notice" role="alert">{error}</p>}
         <div className="voucher-actions">
-          {user.has_password ? <button type="button" className="btn danger-ghost" onClick={() => submit(true)} disabled={!current}>パスワードをなくす</button> : null}
+          {user.has_password ? <button type="button" className="btn danger-ghost" onClick={() => submit(true)} disabled={!adminReset && !current}>パスワードをなくす</button> : null}
           <div className="spacer" />
           <button type="button" className="btn ghost" onClick={onClose}>やめる</button>
           <button className="btn primary" type="submit">設定する</button>

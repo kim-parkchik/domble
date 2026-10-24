@@ -15,6 +15,7 @@ import { yen } from "../../lib/format";
 import { normalizePostalCode, validateBusinessInfo } from "../../lib/business";
 import { SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
 import { HolidaySection } from "./HolidaySection";
+import { EncryptionSection } from "./EncryptionSection";
 import { CODE } from "../../constants/accounts";
 import type { FilingType, Settings } from "../../lib/types";
 import * as repo from "../../db/repo";
@@ -225,6 +226,7 @@ export const BusinessSettingsPage = () => {
         <ScanSection />
         <HolidaySection />
         <BackupSection />
+        <EncryptionSection />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { copyFile, exists, mkdir, readDir, remove } from "@tauri-apps/plugin-fs";
 import { basename, documentDir, join } from "@tauri-apps/api/path";
 import { COLUMN_MIGRATIONS, SCHEMA } from "./schema";
+import type { EncryptionStatus, Unlock } from "./encryption";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import { backupsToRemove } from "../lib/backup";
 import { APP_DIR_NAME, BACKUP_DIR_NAME, EXT_BACKUP, EXT_MAIN, FILE_FILTER_NAME, SCHEMA_VERSION, isBackupFile, isBookFile } from "../constants/appConfig";
@@ -70,9 +71,14 @@ export const pruneBackups = async (path: string, keep: number) => {
  * 帳簿ファイルを開く（なければ作る）。テーブル作成と科目の初期投入もここで行う
  * triggersBefore：開く前からあったトリガーの名前（消されていないかの確認に使う。repo.checkTriggers）
  * readonly：ファイルのメモリ上の写しを開く（バックアップを見るとき）。古い形式の列の追加などは写しにだけ行い、元のファイルは変えない
+ * unlock：暗号化した帳簿のパスワード（回復キー）。無くて開けなければ NEEDS_KEY で失敗する（パスワードを聞いてやり直す）
  */
-export const openDatabase = async (path: string, readonly = false): Promise<{ db: Database; triggersBefore: string[] }> => {
-  if (!readonly && isBookFile(path)) {
+export const openDatabase = async (
+  path: string, readonly = false, unlock: Unlock = {},
+): Promise<{ db: Database; triggersBefore: string[]; encryption: EncryptionStatus }> => {
+  // 開く前に丸ごと複製しておく（暗号化した帳簿は暗号化されたまま複製される）。
+  // パスワードを聞いて開き直すとき（unlock.secret あり）は、最初に試したときに複製済みなので重ねて作らない
+  if (!readonly && isBookFile(path) && unlock.secret === undefined) {
     try {
       await backup(path);
     } catch (e) {
@@ -80,7 +86,8 @@ export const openDatabase = async (path: string, readonly = false): Promise<{ db
     }
   }
 
-  const db = await Database.load(path, readonly);
+  const { db, encryption } = await Database.load(path, readonly, unlock);
+
   await db.execute("PRAGMA foreign_keys = ON;");
   // テーブル → 列の追加（古いファイル向け） → トリガー の順に作る
   // （トリガーが新しい列を参照するので、列追加より先に作るとエラーになる）
@@ -112,7 +119,7 @@ export const openDatabase = async (path: string, readonly = false): Promise<{ db
     );
   }
 
-  return { db, triggersBefore };
+  return { db, triggersBefore, encryption };
 };
 
 // ── 最近使ったファイル（Webview の localStorage に保存） ──
