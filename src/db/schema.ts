@@ -17,17 +17,25 @@ const CLOSED_MSG = "締め済みの年度は変更できません";
 const dateClosed = (date: string) =>
   `EXISTS (SELECT 1 FROM fiscal_closings c WHERE ${date} BETWEEN c.period_start AND c.period_end)`;
 const entryClosed = (entryId: string) => dateClosed(`(SELECT e.date FROM journal_entries e WHERE e.id = ${entryId})`);
-const yearClosed = (year: string) => `EXISTS (SELECT 1 FROM fiscal_closings c WHERE c.fiscal_year = ${year})`;
+/** 年度が12月まで締めてある（年の締め）。月の締めだけなら、年度ごとのもの（期首残高・家事按分など）は止めない */
+const yearClosed = (year: string) => `EXISTS (SELECT 1 FROM fiscal_closings c WHERE c.fiscal_year = ${year} AND c.period_end = (${year} || '-12-31'))`;
 
 const guard = (name: string, timing: "INSERT" | "UPDATE" | "DELETE", table: string, when: string) =>
   `CREATE TRIGGER IF NOT EXISTS ${name} BEFORE ${timing} ON ${table} WHEN ${when}
    BEGIN SELECT RAISE(ABORT, '${CLOSED_MSG}'); END;`;
 
-/** 年度で区切られるテーブルごとに、INSERT / UPDATE / DELETE を止める */
+/**
+ * 年度で区切られるテーブルごとに、INSERT / UPDATE / DELETE を止める
+ * （月の締めに対応したときに条件を変えたので、名前に _y をつけて作り直した。古い名前は RETIRED_TRIGGERS）
+ */
+const YEAR_GUARD_PREFIXES = [
+  "trg_closed_opening", "trg_closed_homeuse_rates", "trg_closed_homeuse_runs", "trg_closed_master_names",
+  "trg_closed_depreciation_runs", "trg_closed_statement_notes",
+];
 const yearGuards = (prefix: string, table: string, col: string) => [
-  guard(`${prefix}_ins`, "INSERT", table, yearClosed(`NEW.${col}`)),
-  guard(`${prefix}_upd`, "UPDATE", table, `${yearClosed(`OLD.${col}`)} OR ${yearClosed(`NEW.${col}`)}`),
-  guard(`${prefix}_del`, "DELETE", table, yearClosed(`OLD.${col}`)),
+  guard(`${prefix}_y_ins`, "INSERT", table, yearClosed(`NEW.${col}`)),
+  guard(`${prefix}_y_upd`, "UPDATE", table, `${yearClosed(`OLD.${col}`)} OR ${yearClosed(`NEW.${col}`)}`),
+  guard(`${prefix}_y_del`, "DELETE", table, yearClosed(`OLD.${col}`)),
 ];
 
 const CLOSED_TRIGGERS: string[] = [
@@ -48,7 +56,16 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_master_names", "master_names", "from_year"),
 ];
 
+/**
+ * 作り直したために使わなくなったトリガー。開いたときに消す（消されていたかの確認 repo.checkTriggers では数えない）
+ */
+export const RETIRED_TRIGGERS = [
+  "trg_settings_mode_fixed",
+  ...YEAR_GUARD_PREFIXES.flatMap((p) => ["ins", "upd", "del"].map((x) => `${p}_${x}`)),
+];
+
 export const SCHEMA: string[] = [
+  ...RETIRED_TRIGGERS.map((n) => `DROP TRIGGER IF EXISTS ${n};`),
   `CREATE TABLE IF NOT EXISTS settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     business_name TEXT NOT NULL DEFAULT '',
@@ -229,6 +246,11 @@ export const SCHEMA: string[] = [
    * 年度の締め。行がある年度は「締め済み」。解除すると行を消す（厳密モードでは master_history に記録）
    * 期間の開始日・終了日を持つのは、法人の任意の会計期間にも同じ仕組みで対応するため
    */
+  /**
+   * 締め（年度ごとに1行）。period_end までの仕訳は変更できない
+   *  - 月の締め：period_end = その月の末日（例 9月まで → 09-30）
+   *  - 年の締め：period_end = 12月31日。期首残高・家事按分など年度ごとのものも止める
+   */
   `CREATE TABLE IF NOT EXISTS fiscal_closings (
     fiscal_year INTEGER PRIMARY KEY,
     period_start TEXT NOT NULL,
@@ -390,10 +412,14 @@ export const SCHEMA: string[] = [
    BEGIN SELECT RAISE(ABORT, '変更履歴は変更できません'); END;`,
   `CREATE TRIGGER IF NOT EXISTS trg_master_history_no_delete BEFORE DELETE ON master_history
    BEGIN SELECT RAISE(ABORT, '変更履歴は削除できません'); END;`,
-  // 電子帳簿保存法モードは一度決めたら変更できない
-  `CREATE TRIGGER IF NOT EXISTS trg_settings_mode_fixed BEFORE UPDATE OF e_book_mode ON settings
-   WHEN OLD.e_book_mode IS NOT NULL AND (NEW.e_book_mode IS NULL OR NEW.e_book_mode <> OLD.e_book_mode)
+  // 電子帳簿保存法モードは一度決めたら変更できない。例外は「通常 → 厳密」だけ（翌年を始めるときに切り替える。戻せない）
+  `CREATE TRIGGER IF NOT EXISTS trg_settings_mode_one_way BEFORE UPDATE OF e_book_mode ON settings
+   WHEN OLD.e_book_mode IS NOT NULL AND (NEW.e_book_mode IS NULL OR (NEW.e_book_mode <> OLD.e_book_mode AND NOT (OLD.e_book_mode = 'standard' AND NEW.e_book_mode = 'strict')))
    BEGIN SELECT RAISE(ABORT, '電子帳簿保存法モードは変更できません'); END;`,
+  // 対応を始めた年は、一度決めたら変えられない
+  `CREATE TRIGGER IF NOT EXISTS trg_settings_strict_from_fixed BEFORE UPDATE OF strict_from_year ON settings
+   WHEN OLD.strict_from_year IS NOT NULL AND (NEW.strict_from_year IS NULL OR NEW.strict_from_year <> OLD.strict_from_year)
+   BEGIN SELECT RAISE(ABORT, '電子帳簿保存法に対応した年は変更できません'); END;`,
   // 履歴が1件でもある仕訳は物理削除させない（登録途中の失敗の後始末だけは許す）
   `CREATE TRIGGER IF NOT EXISTS trg_entries_no_delete BEFORE DELETE ON journal_entries
    WHEN EXISTS (SELECT 1 FROM entry_history WHERE entry_id = OLD.id)
@@ -453,6 +479,9 @@ export const SCHEMA: string[] = [
  */
 export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "e_book_mode", "TEXT CHECK (e_book_mode IN ('strict','standard'))"],
+  // 通常 → 厳密に切り替えた帳簿：対応を始めた年と切り替えた日時（最初から厳密モードの帳簿は NULL = 全部の年が対応）
+  ["settings", "strict_from_year", "INTEGER"],
+  ["settings", "strict_switched_at", "TEXT"],
   // 事業者の情報：郵便番号・住所・適格請求書発行事業者の登録番号（免税事業者のときは入力できない）
   ["settings", "postal_code", "TEXT NOT NULL DEFAULT ''"],
   ["settings", "address", "TEXT NOT NULL DEFAULT ''"],

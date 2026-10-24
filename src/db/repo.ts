@@ -5,6 +5,7 @@
  * 接続は帳簿ファイルごとに1本（src-tauri/src/db.rs）なので、BEGIN / COMMIT が同じ接続で実行されます。
  */
 import type Database from "./connection";
+import { RETIRED_TRIGGERS } from "./schema";
 import type {
   AccessLogRecord, Account, AccountCategory, Counterparty, User, EBookMode, EntrySnapshot, Evidence, EvidenceAction, EvidenceHistoryRecord, EvidenceKind, EvidenceMeta,
   EvidenceSnapshot, FiscalClosing, HistoryAction, HistoryRecord, JournalEntry, JournalLine,
@@ -12,7 +13,7 @@ import type {
 } from "../lib/types";
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
-import { yearsToAutoClose } from "../lib/closing";
+import { closedLabel, closedMonthOf, monthEnd, yearsToAutoClose } from "../lib/closing";
 import { normalizeInvoiceNo, type CounterpartyInput } from "../lib/counterparty";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
@@ -130,7 +131,8 @@ export const checkInterrupted = async (db: Database) => {
 // ────────────────────────────────────────────
 export const getSettings = async (db: Database): Promise<Settings> => {
   const rows = await db.select<Settings[]>(
-    `SELECT business_name, owner_name, postal_code, address, invoice_no, industry, fiscal_year, filing_type, tax_status, tax_method, e_book_mode
+    `SELECT business_name, owner_name, postal_code, address, invoice_no, industry, fiscal_year, filing_type, tax_status, tax_method, e_book_mode,
+            strict_from_year, strict_switched_at
        FROM settings WHERE id = 1`,
   );
   return rows[0];
@@ -139,6 +141,31 @@ export const getSettings = async (db: Database): Promise<Settings> => {
 /** 電子帳簿保存法モードを決める（一度だけ。変更はトリガーで拒否される） */
 const setEBookMode_ = (db: Database, mode: EBookMode) =>
   db.execute("UPDATE settings SET e_book_mode = ? WHERE id = 1 AND e_book_mode IS NULL", [mode]);
+
+/**
+ * 通常モードの帳簿を、year 年から電子帳簿保存法に対応した保存方式（厳密モード）に切り替えられるか。
+ * 翌年を始めるとき（繰越）にだけ聞く。year 年以降の仕訳がまだ無いときだけ（その年の初めから履歴を残せる）
+ */
+export const canSwitchToStrict = async (db: Database, year: number) => {
+  const s = await getSettings(db);
+  if (s.e_book_mode !== "standard") return false;
+  const r = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM journal_entries WHERE date >= ?", [`${year}-01-01`]);
+  return r[0].n === 0;
+};
+
+/** 通常 → 厳密 に切り替える（戻せない）。今の帳簿の状態を基準点にして記録の連鎖を始め、切り替えたことを履歴に残す */
+const switchToStrict_ = async (db: Database, year: number) => {
+  if (!(await canSwitchToStrict(db, year))) throw new Error(`${year}年の仕訳がすでにあるか、通常モードの帳簿ではないため、切り替えられません`);
+  await db.execute(
+    "UPDATE settings SET e_book_mode = 'strict', strict_from_year = ?, strict_switched_at = DATETIME('now','localtime') WHERE id = 1",
+    [year],
+  );
+  await initChain_(db);
+  await logMaster(db, {
+    target_type: "setting", target_id: 0, action: "change", fiscal_year: year, label: "帳簿の保存方式",
+    old_value: "通常", new_value: `電子帳簿保存法に対応（${year}年から）`,
+  });
+};
 
 const isStrict = async (db: Database) => {
   const r = await db.select<{ e_book_mode: EBookMode | null }[]>("SELECT e_book_mode FROM settings WHERE id = 1");
@@ -172,58 +199,80 @@ export const getMasterHistory = (db: Database) =>
   );
 
 // ────────────────────────────────────────────
-// 年度の締め
-//  締め済みの年度には、仕訳・期首残高・家事按分・年度ごとの科目名を書き込めない。
+// 締め（年度ごとに「何月まで締めたか」。12月までが年の締め）
+//  締めた月までの仕訳は書き込めない。年の締めをした年度は、期首残高・家事按分・年度ごとの科目名なども書き込めない。
 //  ここで先に確認してわかりやすいメッセージを出し、DB のトリガー（schema.ts）でも拒否する
 // ────────────────────────────────────────────
-export const closedMessage = (year: number) => `${year}年は締め済みのため変更できません。事業者設定で締めを解除してください。`;
+export const closedMessage = (year: number) => `${year}年は締め済みのため変更できません。事業者設定で締めを戻してください。`;
+const closedMonthMessage = (year: number, month: number) =>
+  `${year}年は${month}月まで締め済みのため、${month}月以前の仕訳は変更できません。事業者設定で締めを戻してください。`;
 
 export const getClosings = (db: Database) =>
   db.select<FiscalClosing[]>("SELECT fiscal_year, period_start, period_end, closed_at, chain_head FROM fiscal_closings ORDER BY fiscal_year");
 
-/** 年度が締め済みなら止める */
+const closingRow = async (db: Database, year: number) =>
+  (await db.select<FiscalClosing[]>("SELECT fiscal_year, period_start, period_end, closed_at, chain_head FROM fiscal_closings WHERE fiscal_year = ?", [year]))[0];
+
+/** 年度が年の締め（12月まで）をしてあれば止める（期首残高・家事按分など、年度ごとのもの） */
 const assertYearOpen = async (db: Database, year: number) => {
-  const r = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM fiscal_closings WHERE fiscal_year = ?", [year]);
-  if (r[0].n > 0) throw new Error(closedMessage(year));
+  if (closedMonthOf(await closingRow(db, year)) === 12) throw new Error(closedMessage(year));
 };
 
-/** 日付が締め済みの年度に入っていれば止める */
+/** 日付が締めた月に入っていれば止める（仕訳） */
 const assertDateOpen = async (db: Database, date: string) => {
-  const r = await db.select<{ fiscal_year: number }[]>(
-    "SELECT fiscal_year FROM fiscal_closings WHERE ? BETWEEN period_start AND period_end",
+  const r = await db.select<{ fiscal_year: number; period_end: string }[]>(
+    "SELECT fiscal_year, period_end FROM fiscal_closings WHERE ? BETWEEN period_start AND period_end",
     [date],
   );
-  if (r.length > 0) throw new Error(closedMessage(r[0].fiscal_year));
+  if (r.length === 0) return;
+  const m = closedMonthOf(r[0]);
+  throw new Error(m === 12 ? closedMessage(r[0].fiscal_year) : closedMonthMessage(r[0].fiscal_year, m));
 };
 
-/** 年度を締める（すでに締め済みなら何もしない）。note は履歴に残す補足 */
-const closeYear_ = async (db: Database, year: number, note = "") => {
-  const res = await db.execute(
-    "INSERT OR IGNORE INTO fiscal_closings (fiscal_year, period_start, period_end) VALUES (?, ?, ?)",
-    [year, yearStart(year), yearEnd(year)],
+/**
+ * 年度を month 月まで締める（12 なら年の締め）。すでにそこまで締めてあれば何もしない。note は履歴に残す補足
+ * 締めたときの記録の連鎖の先頭を控える（確認コードとして画面に出し、ファイルの外に残してもらう）
+ */
+const closeThrough_ = async (db: Database, year: number, month: number, note = "") => {
+  if (!Number.isInteger(month) || month < 1 || month > 12) throw new Error("締める月は 1〜12 で選んでください");
+  const before = closedMonthOf(await closingRow(db, year));
+  if (before >= month) return;
+  await db.execute(
+    `INSERT INTO fiscal_closings (fiscal_year, period_start, period_end) VALUES (?, ?, ?)
+     ON CONFLICT (fiscal_year) DO UPDATE SET period_end = excluded.period_end, closed_at = DATETIME('now','localtime')`,
+    [year, yearStart(year), monthEnd(year, month)],
   );
-  if (res.rowsAffected === 0) return;
   await logMaster(db, {
     target_type: "closing", target_id: year, action: "close", fiscal_year: year,
-    label: `${year}年`, old_value: "", new_value: note,
+    label: `${year}年`, old_value: closedLabel(before), new_value: closedLabel(month) + (note ? `（${note}）` : ""),
   });
-  // 締めたときの連鎖の先頭を控える（確認コードとして画面に出し、ファイルの外に残してもらう）
   const head = await getChainHead(db);
   if (head) await db.execute("UPDATE fiscal_closings SET chain_head = ? WHERE fiscal_year = ?", [head.row_hash, year]);
 };
 
-/** 締めを解除する。厳密モードでは理由が必須で、履歴に残す */
-const reopenYear_ = async (db: Database, year: number, reason: string) => {
+/** 年の締め（12月まで締める） */
+const closeYear_ = (db: Database, year: number, note = "") => closeThrough_(db, year, 12, note);
+
+/**
+ * 締めを month 月までに戻す（0 なら締めなし）。厳密モードでは理由が必須で、履歴に残す
+ * 年の締めをした年度も、たとえば 10 を選べば 11・12月だけが直せるようになる（1回の操作で済む）
+ */
+const reopenTo_ = async (db: Database, year: number, month: number, reason: string) => {
   const r = reason.trim();
-  const strict = await isStrict(db);
-  if (strict && !r) throw new Error("締めを解除する理由を入れてください");
-  const res = await db.execute("DELETE FROM fiscal_closings WHERE fiscal_year = ?", [year]);
-  if (res.rowsAffected === 0) return;
+  if (!Number.isInteger(month) || month < 0 || month > 11) throw new Error("戻す先の月は 0〜11 で選んでください");
+  if ((await isStrict(db)) && !r) throw new Error("締めを戻す理由を入れてください");
+  const before = closedMonthOf(await closingRow(db, year));
+  if (before <= month) return;
+  if (month === 0) await db.execute("DELETE FROM fiscal_closings WHERE fiscal_year = ?", [year]);
+  else await db.execute("UPDATE fiscal_closings SET period_end = ? WHERE fiscal_year = ?", [monthEnd(year, month), year]);
   await logMaster(db, {
     target_type: "closing", target_id: year, action: "unlock", fiscal_year: year,
-    label: `${year}年`, old_value: "", new_value: r,
+    label: `${year}年`, old_value: closedLabel(before), new_value: `${closedLabel(month)}に戻す${r ? `（理由：${r}）` : ""}`,
   });
 };
+
+/** 締めを全部外す（0月までに戻す） */
+const reopenYear_ = (db: Database, year: number, reason: string) => reopenTo_(db, year, 0, reason);
 
 /**
  * 既存の帳簿で、繰越済みの年度を締め済みにする（帳簿を開いたときに一度だけ）。
@@ -1574,7 +1623,8 @@ export const getIntegrityEvents = (db: Database) =>
 const checkTriggers_ = async (db: Database, before: string[]) => {
   const r = await db.select<{ known_triggers: string }[]>("SELECT known_triggers FROM settings WHERE id = 1");
   const known: string[] = r[0]?.known_triggers ? JSON.parse(r[0].known_triggers) : [];
-  const missing = known.filter((n) => !before.includes(n));
+  // 作り直して使わなくなったトリガーは、ソフトが消したので数えない
+  const missing = known.filter((n) => !before.includes(n) && !RETIRED_TRIGGERS.includes(n));
   if (missing.length > 0) await recordEvent(db, "trigger_missing", `帳簿を開く前に、次のトリガー（書き換え防止の仕組み）が消されていました：${missing.join("、")}`);
   const now = (await db.select<{ name: string }[]>("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name")).map((x) => x.name);
   await db.execute("UPDATE settings SET known_triggers = ? WHERE id = 1", [JSON.stringify(now)]);
@@ -1824,10 +1874,13 @@ export const getAccessLog = (db: Database) =>
     "SELECT a.id, a.user_id, u.name AS user_name, a.action, a.recorded_at FROM access_log a JOIN users u ON u.id = a.user_id ORDER BY a.id DESC",
   );
 
-/** 翌年への繰越：翌年の期首残高を保存し、この年度を締める（1つのトランザクションで） */
-const carryForward_ = async (db: Database, year: number, nextOpening: SubOpeningBalances) => {
+/**
+ * 翌年への繰越：翌年の期首残高を保存する。close = true なら、この年度も締める（1つのトランザクションで）。
+ * 締めずに繰り越せば、前の年を直しながら翌年の入力を始められる（直したら繰越をやり直す。ずれは画面上部で知らせる）
+ */
+const carryForward_ = async (db: Database, year: number, nextOpening: SubOpeningBalances, close = false) => {
   await saveOpening_(db, year + 1, nextOpening, true);
-  await closeYear_(db, year, "繰越処理による締め");
+  if (close) await closeYear_(db, year, "繰越処理による締め");
 };
 
 /** 家事按分の年末振替の仕訳を作る（作り直すときは同じ仕訳を訂正する）。仕訳の登録と記録を1つのトランザクションで */
@@ -1880,6 +1933,8 @@ export const deleteEntry = inTx(deleteEntry_, (id) => `伝票 No.${id} の削除
 export const saveHomeUseRate = inTx(saveHomeUseRate_, (year) => `${year}年の家事按分の設定`, { perm: "master" });
 export const setHomeUseRun = inTx(setHomeUseRun_, (year) => `${year}年の家事按分の振替`, { perm: "entry" });
 export const closeYear = inTx(closeYear_, (year) => `${year}年の締め`, { perm: "settings" });
+export const closeThrough = inTx(closeThrough_, (year, month) => `${year}年${month}月までの締め`, { perm: "settings" });
+export const reopenTo = inTx(reopenTo_, (year, month) => `${year}年の締めを${month}月までに戻す`, { perm: "settings" });
 export const reopenYear = inTx(reopenYear_, (year) => `${year}年の締めの解除`, { perm: "settings" });
 export const initClosings = inTx(initClosings_, () => "繰越済みの年度の締め");
 export const createEvidence = inTx(createEvidence_, (m) => `証憑（${m.txn_date} ${m.counterparty}）の取り込み`, { perm: "entry" });
@@ -1898,6 +1953,7 @@ export const setUserActive = inTx(setUserActive_, (id) => `ユーザー #${id} �
 export const ensureUsers = inTx(ensureUsers_, () => "最初のユーザーの作成");
 export const logAccess = inTx(logAccess_, (id, action) => `ユーザー #${id} の${action === "login" ? "ログイン" : "ログアウト"}`);
 export const carryForward = inTx(carryForward_, (year) => `${year}年から${year + 1}年への繰越`, { perm: "settings" });
+export const switchToStrict = inTx(switchToStrict_, (year) => `${year}年からの電子帳簿保存法への切り替え`, { perm: "settings" });
 export const saveStatementNote = inTx(saveStatementNote_, (year) => `${year}年の決算書の書き込み`, { perm: "master" });
 export const saveAsset = inTx(saveAsset_, (id) => (id === null ? "固定資産の追加" : `固定資産 #${id} の変更`), { perm: "master" });
 export const deleteAsset = inTx(deleteAsset_, (id) => `固定資産 #${id} の削除`, { perm: "master" });

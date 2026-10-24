@@ -69,7 +69,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
     else toast(`「${t.name}」を入れました`);
   };
 
-  // 締め済みの年度の仕訳は、登録・訂正・削除できない（訂正で締め済みの年度へ動かすのも不可）
+  // 締めた月（年の締めならその年度全体）の仕訳は、登録・訂正・削除できない（訂正で締めた月へ動かすのも不可）
   const locked = isDateClosed(date) || (!!entryId && isDateClosed(initialDate));
 
   // 家事按分（入力のたびに分ける科目）：新しく入力するときだけ、登録時に事業分と事業主貸に分ける。
@@ -271,7 +271,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
 
       {locked && (
         <p className="closed-note" role="status">
-          <Lock size={14} /> 締め済みの年度の仕訳は、登録・訂正・削除できません。変更するには、事業者設定で締めを解除してください。
+          <Lock size={14} /> 締めた月の仕訳は、登録・訂正・削除できません。変更するには、事業者設定で締めを戻してください。
         </p>
       )}
 

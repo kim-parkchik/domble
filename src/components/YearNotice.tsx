@@ -1,6 +1,6 @@
 /**
  * 画面上部のお知らせ
- *  - 表示中の年度が締め済み
+ *  - 表示中の年度が締め済み（年の締め）・何月まで締めたか（月の締め）
  *  - 期首残高が前年の繰越額とずれている（前の年度を直したあと、繰越をやり直していない）
  */
 import { Lock, TriangleAlert } from "lucide-react";
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export const YearNotice = ({ goSettings, switchYear }: Props) => {
-  const { year, isClosed, labelOf } = useAppContext();
+  const { year, isClosed, closedMonth, labelOf } = useAppContext();
   const checks = useCarryForwardCheck();
 
   const names = (keys: string[]) => {
@@ -23,14 +23,19 @@ export const YearNotice = ({ goSettings, switchYear }: Props) => {
     return list.length > 3 ? `${list.slice(0, 3).join("、")} ほか${list.length - 3}件` : list.join("、");
   };
 
-  if (!isClosed && checks.length === 0) return null;
+  if (!isClosed && closedMonth === 0 && checks.length === 0) return null;
   return (
     <div className="year-notice">
-      {isClosed && (
+      {isClosed ? (
         <div className="year-notice-row closed">
           <Lock size={15} />
           <span>{year}年は締め済みです。仕訳・期首残高・家事按分は変更できません。</span>
-          <button className="btn ghost sm" onClick={goSettings}>締めの解除（事業者設定）</button>
+          <button className="btn ghost sm" onClick={goSettings}>締めを戻す（事業者設定）</button>
+        </div>
+      ) : closedMonth > 0 && (
+        <div className="year-notice-row month-closed">
+          <Lock size={14} />
+          <span>{year}年は{closedMonth}月まで締め済みです。{closedMonth === 1 ? "1月" : `1〜${closedMonth}月`}の仕訳は変更できません。</span>
         </div>
       )}
       {checks.map((c) => (

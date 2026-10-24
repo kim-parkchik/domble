@@ -128,8 +128,12 @@ export interface Settings {
   industry: string;
   tax_status: TaxStatus;
   tax_method: TaxMethod;
-  /** 帳簿作成時に一度だけ決める。null = 未選択 */
+  /** 帳簿作成時に決める。null = 未選択。通常 → 厳密 だけは、翌年を始めるときに切り替えられる */
   e_book_mode: EBookMode | null;
+  /** 通常 → 厳密に切り替えた帳簿：電子帳簿保存法に対応を始めた年（最初から厳密なら null = 全部の年が対応） */
+  strict_from_year: number | null;
+  /** 切り替えた日時 */
+  strict_switched_at: string | null;
 }
 
 /** 期首残高: account_id → 金額（科目の正常残高側をプラスとする。補助科目の分も合算） */

@@ -8,6 +8,18 @@
 import type { Account, FiscalClosing, OpeningBalances, SubOpeningBalances } from "./types";
 import { carryForwardWithSubs, closingBalances, subClosingBalances, type FlatLine } from "./accounting";
 
+/** 何月まで締めたか（締めていなければ 0、年の締めなら 12） */
+export const closedMonthOf = (c: Pick<FiscalClosing, "period_end"> | undefined) => (c ? Number(c.period_end.slice(5, 7)) : 0);
+
+/** その月の末日（YYYY-MM-DD） */
+export const monthEnd = (year: number, month: number) => {
+  const d = new Date(year, month, 0);
+  return `${year}-${String(month).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** 締めた状態の言い方（「締めなし」「9月まで締め」「年の締め（12月まで）」） */
+export const closedLabel = (month: number) => (month === 0 ? "締めなし" : month === 12 ? "年の締め（12月まで）" : `${month}月まで締め`);
+
 /** その日付を含む締め（無ければ undefined） */
 export const closingOf = (closings: FiscalClosing[], date: string) =>
   closings.find((c) => c.period_start <= date && date <= c.period_end);

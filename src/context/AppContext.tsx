@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type Database from "../db/connection";
 import type { Account, Counterparty, User, FiscalClosing, HomeUseRate, OpeningBalances, Settings, SubAccount, SubOpeningBalances } from "../lib/types";
 import { toAccountMap, yearEnd, yearStart, type AccountMap, type FlatLine } from "../lib/accounting";
-import { closingOf, expectedNextOpening, openingMismatches, type OpeningMismatch } from "../lib/closing";
+import { closedMonthOf, closingOf, expectedNextOpening, openingMismatches, type OpeningMismatch } from "../lib/closing";
 import * as repo from "../db/repo";
 import { can as canRole, type Perm } from "../lib/permissions";
 
@@ -41,11 +41,13 @@ interface AppContextValue {
   reloadCounterparties: () => Promise<void>;
   /** 休みの日（祝日・事業者の休業日）。営業日の数え方に使う */
   daysOff: ReadonlySet<string>;
-  /** 締め済みの年度 */
+  /** 締め（年度ごとに何月まで締めたか） */
   closings: FiscalClosing[];
-  /** 表示中の年度が締め済みか */
+  /** 表示中の年度が年の締め（12月まで）をしてあるか。期首残高・家事按分など年度ごとのものを止める */
   isClosed: boolean;
-  /** その日付が締め済みの年度に入っているか */
+  /** 表示中の年度を何月まで締めたか（0 = 締めなし、12 = 年の締め） */
+  closedMonth: number;
+  /** その日付が締めた月に入っているか（仕訳を止める） */
   isDateClosed: (date: string) => boolean;
   /** 厳密モード（電子帳簿保存法対応）か */
   strict: boolean;
@@ -167,7 +169,8 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       reloadCounterparties,
       closings,
       daysOff,
-      isClosed: closings.some((c) => c.fiscal_year === settings.fiscal_year),
+      isClosed: closedMonthOf(closings.find((c) => c.fiscal_year === settings.fiscal_year)) === 12,
+      closedMonth: closedMonthOf(closings.find((c) => c.fiscal_year === settings.fiscal_year)),
       isDateClosed: (date) => !!closingOf(closings, date),
       dataVersion,
       bump,

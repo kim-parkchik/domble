@@ -4,7 +4,7 @@ import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
   House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Users, UserRound, Repeat,
-  ChevronDown, Copy, FolderOpen, Eye, Boxes,
+  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff,
 } from "lucide-react";
 import { Popover } from "./components/Popover";
 import { copyText } from "./lib/clipboard";
@@ -12,6 +12,7 @@ import { AppProvider, useAppContext } from "./context/AppContext";
 import { openDatabase, pruneBackups, pickExistingFile, pickNewFile, pushRecentFile, removeRecentFile } from "./db/database";
 import { EXT_BACKUP, EXT_MAIN, isBackupFile, isBookFile } from "./constants/appConfig";
 import { ROLE_LABEL, type Perm } from "./lib/permissions";
+import { isBeforeStrict, isYearCompliant } from "./lib/ebook";
 
 /** 画面ごとに、変更に要る権限（無い人には画面上部で知らせる） */
 const PAGE_PERM: Partial<Record<Page, Perm>> = {
@@ -41,11 +42,12 @@ import { LoginScreen } from "./features/start/LoginScreen";
 import { UnlockScreen } from "./features/start/UnlockScreen";
 import { NEEDS_KEY, WRONG_KEY, type Unlock } from "./db/encryption";
 import { UsersPage } from "./features/settings/UsersPage";
+import { EBookPage } from "./features/settings/EBookPage";
 import { YearNotice } from "./components/YearNotice";
 import { IntegrityNotice } from "./components/IntegrityNotice";
 
 export type Page =
-  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "statements" | "opening" | "accounts" | "counterparties" | "users" | "settings";
+  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "statements" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
   { group: "", items: [{ id: "home", label: "ホーム", icon: <House size={17} /> }] },
@@ -82,6 +84,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
       { id: "counterparties", label: "取引先", icon: <Building2 size={17} /> },
       { id: "users", label: "ユーザー", icon: <Users size={17} /> },
       { id: "settings", label: "事業者設定", icon: <SettingsIcon size={17} /> },
+      { id: "ebook", label: "電子帳簿保存法", icon: <ShieldCheck size={17} /> },
     ],
   },
 ];
@@ -375,9 +378,13 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
             <span>{settings.owner_name}</span>
           </div>
         </div>
-        {strict && (
+        {isYearCompliant(settings, year) ? (
           <div className="mode-badge" title="電子帳簿保存法（優良な電子帳簿）に対応した保存方式です">
             <ShieldCheck size={13} /> 電子帳簿保存法 対応
+          </div>
+        ) : (
+          <div className="mode-badge off" title={`${year}年は通常の保存です。訂正・削除の履歴は残っていません`}>
+            <ShieldOff size={13} /> {year}年は電子帳簿保存法の対応外
           </div>
         )}
         {NAV.map((g) => (
@@ -401,7 +408,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
             <label className="year-pick">
               <span className="sr-only">会計年度</span>
               <select value={year} onChange={(e) => switchYear(Number(e.target.value))}>
-                {years.map((y) => <option key={y} value={y}>{y}年</option>)}
+                {years.map((y) => <option key={y} value={y}>{y}年{isBeforeStrict(settings, y) ? "（電帳法の対応外）" : ""}</option>)}
               </select>
             </label>
             <Popover
@@ -428,6 +435,16 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
             </Popover>
           </div>
         </header>
+        {isBeforeStrict(settings, year) && (
+          <div className="year-notice">
+            <div className="year-notice-row off">
+              <ShieldOff size={15} />
+              <span>
+                <b>{year}年は電子帳簿保存法の対応外</b>です。この年は通常の保存で記録していたため、訂正・削除の履歴は残っていません（{settings.strict_from_year}年から対応）。
+              </span>
+            </div>
+          </div>
+        )}
         {readOnly && (
           <div className="year-notice">
             <div className="year-notice-row readonly">
@@ -480,6 +497,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
           {page === "counterparties" && <CounterpartiesPage />}
           {page === "users" && <UsersPage />}
           {page === "settings" && <BusinessSettingsPage />}
+          {page === "ebook" && <EBookPage go={setPage} />}
         </main>
       </div>
     </div>

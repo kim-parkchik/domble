@@ -39,7 +39,7 @@ export const SetupScreen = ({ db, settings, onDone, onBack }: Props) => {
 
   const modePicker = (
     <fieldset className="mode-picker">
-      <legend>帳簿の保存方式<span className="mode-warn">あとから変更できません</span></legend>
+      <legend>帳簿の保存方式<span className="mode-warn">対応 → 通常 には戻せません</span></legend>
       <label className={`mode-card${mode === "strict" ? " on" : ""}`}>
         <input type="radio" name="mode" checked={mode === "strict"} onChange={() => setMode("strict")} />
         <ShieldCheck size={22} />
@@ -53,7 +53,7 @@ export const SetupScreen = ({ db, settings, onDone, onBack }: Props) => {
         <NotebookPen size={22} />
         <div>
           <strong>{MODE_LABEL.standard}</strong>
-          <p>履歴を残しません。削除した仕訳は完全に消え、科目名の変更はすべての年度に反映されます。練習用や、とりあえず試したいとき向けです。</p>
+          <p>履歴を残しません。削除した仕訳は完全に消え、科目名の変更はすべての年度に反映されます。練習用や、とりあえず試したいとき向けです。翌年への繰越のときに、翌年から「電子帳簿保存法に対応」へ切り替えられます。</p>
         </div>
       </label>
     </fieldset>

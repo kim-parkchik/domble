@@ -9,6 +9,7 @@ import { COLUMN_MIGRATIONS, SCHEMA } from "./schema";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import * as repo from "./repo";
 import type { JournalLine } from "../lib/types";
+import { subKey } from "../lib/types";
 import { depreciationLines } from "../lib/depreciation";
 
 const makeDb = (mode: "strict" | "standard") => {
@@ -284,6 +285,102 @@ describe("決算書の書き込み（repo）", () => {
     expect(await repo.getStatementNotes(db, 2025)).toEqual({});
     await repo.closeYear(db, 2025);
     await expect(repo.saveStatementNote(db, 2025, "special", "x")).rejects.toThrow(/締め/);
+  });
+});
+
+describe("通常 → 厳密 の切り替え（repo）", () => {
+  test("翌年の仕訳がまだ無いときだけ切り替えられ、戻せない。連鎖を始め、切り替えたことを履歴に残す", async () => {
+    const { db, raw } = makeDb("standard");
+    await repo.createEntry(db, "2026-03-01", lines.map((l) => ({ ...l, account_id: l.account_id })));
+    expect(await repo.canSwitchToStrict(db, 2026)).toBe(false);
+    expect(await repo.canSwitchToStrict(db, 2027)).toBe(true);
+    await expect(repo.switchToStrict(db, 2026)).rejects.toThrow(/切り替えられません/);
+    await repo.switchToStrict(db, 2027);
+    const s = await repo.getSettings(db);
+    expect([s.e_book_mode, s.strict_from_year, !!s.strict_switched_at]).toEqual(["strict", 2027, true]);
+    expect(await repo.canSwitchToStrict(db, 2028)).toBe(false);
+    expect(() => raw.run("UPDATE settings SET e_book_mode = 'standard'")).toThrow(/変更できません/);
+    expect(() => raw.run("UPDATE settings SET strict_from_year = 2026")).toThrow(/変更できません/);
+    const h = (await repo.getMasterHistory(db)).find((x) => x.label === "帳簿の保存方式")!;
+    expect([h.old_value, h.new_value]).toEqual(["通常", "電子帳簿保存法に対応（2027年から）"]);
+    // 切り替えたあとは履歴が残り、改ざんの確認も通る（切り替える前の仕訳は基準点に入っている）
+    const id = await repo.createEntry(db, "2027-01-05", lines);
+    expect((await repo.getHistory(db, id)).length).toBe(1);
+    expect((await repo.verifyIntegrity(db)).issues.filter((i) => i.level === "error")).toEqual([]);
+  });
+
+  test("作り直して使わなくなったトリガー（古いモード固定）は、消されていたとは数えない", async () => {
+    const { db, raw } = strict;
+    raw.run("UPDATE settings SET known_triggers = ?", [JSON.stringify(["trg_settings_mode_fixed", "trg_entries_no_delete"])]);
+    await repo.checkTriggers(db, ["trg_entries_no_delete"]);
+    expect(await repo.getIntegrityEvents(db)).toEqual([]);
+  });
+
+  test("最初から厳密モードの帳簿は切り替えの対象外", async () => {
+    expect(await repo.canSwitchToStrict(strict.db, 2027)).toBe(false);
+  });
+});
+
+describe("翌年への繰越（repo）", () => {
+  test("既定では締めずに翌年の期首残高だけ作る。締めると選んだときだけ締める", async () => {
+    const { db } = strict;
+    const capital = (await repo.getAccounts(db, 2026)).find((a) => a.name === "元入金")!.id;
+    const opening = { [subKey(capital, null)]: 100_000 };
+    await repo.carryForward(db, 2026, opening);
+    expect(await repo.hasOpening(db, 2027)).toBe(true);
+    expect((await repo.getClosings(db)).map((c) => c.fiscal_year)).toEqual([]);
+    // 締めていないので、2026年はそのまま直せる。直したあと繰越をやり直し、今度は締める
+    await repo.createEntry(db, "2026-12-20", lines);
+    await repo.carryForward(db, 2026, opening, true);
+    expect((await repo.getClosings(db)).map((c) => c.fiscal_year)).toEqual([2026]);
+    await expect(repo.createEntry(db, "2026-12-21", lines)).rejects.toThrow(/締め/);
+  });
+});
+
+describe("月の締め（repo）", () => {
+  test("何月まで締めたかで止める：締めた月の仕訳だけ変えられず、年度ごとのものは年の締めまで変えられる", async () => {
+    const { db, raw } = strict;
+    const sept = await repo.createEntry(db, "2026-09-10", lines);
+    await repo.closeThrough(db, 2026, 9);
+    await expect(repo.createEntry(db, "2026-09-30", lines)).rejects.toThrow(/9月まで締め済み/);
+    await expect(repo.updateEntry(db, sept, "2026-10-01", lines)).rejects.toThrow(/締め/);
+    expect(await repo.createEntry(db, "2026-10-01", lines)).toBeGreaterThan(0);
+    // 期首残高（年度ごとのもの）は、月の締めでは止めない
+    const capital = (await repo.getAccounts(db, 2026)).find((a) => a.name === "元入金")!.id;
+    await repo.saveOpening(db, 2026, { [subKey(capital, null)]: 1000 });
+    // DB のトリガーでも止まる（ソフトを通さない書き込み）
+    expect(() => raw.run("UPDATE journal_entries SET date = '2026-08-01' WHERE id = ?", [sept])).toThrow(/締め済み/);
+    // 戻すのは前へだけ。締めは先へだけ（同じか前の月を選んでも何もしない）
+    await repo.closeThrough(db, 2026, 5);
+    expect((await repo.getClosings(db))[0].period_end).toBe("2026-09-30");
+    await repo.closeYear(db, 2026);
+    await expect(repo.saveOpening(db, 2026, { [subKey(capital, null)]: 2000 })).rejects.toThrow(/締め済み/);
+  });
+
+  test("年の締めから1回で月まで戻せる。厳密モードでは理由が要り、締めと戻しは履歴に残る", async () => {
+    const { db } = strict;
+    await repo.closeYear(db, 2026);
+    await expect(repo.reopenTo(db, 2026, 10, "")).rejects.toThrow(/理由/);
+    await repo.reopenTo(db, 2026, 10, "11月の売上の計上漏れ");
+    expect((await repo.getClosings(db))[0].period_end).toBe("2026-10-31");
+    await expect(repo.createEntry(db, "2026-10-31", lines)).rejects.toThrow(/10月まで/);
+    expect(await repo.createEntry(db, "2026-11-01", lines)).toBeGreaterThan(0);
+    await repo.reopenTo(db, 2026, 0, "全部直す");
+    expect(await repo.getClosings(db)).toEqual([]);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "closing").reverse();
+    expect(h.map((x) => [x.action, x.old_value, x.new_value])).toEqual([
+      ["close", "締めなし", "年の締め（12月まで）"],
+      ["unlock", "年の締め（12月まで）", "10月まで締めに戻す（理由：11月の売上の計上漏れ）"],
+      ["unlock", "10月まで締め", "締めなしに戻す（理由：全部直す）"],
+    ]);
+    expect((await repo.verifyIntegrity(db)).issues.filter((i) => i.level === "error")).toEqual([]);
+  });
+
+  test("通常モードは理由なしで戻せる", async () => {
+    const { db } = makeDb("standard");
+    await repo.closeThrough(db, 2026, 3);
+    await repo.reopenTo(db, 2026, 1, "");
+    expect((await repo.getClosings(db))[0].period_end).toBe("2026-01-31");
   });
 });
 

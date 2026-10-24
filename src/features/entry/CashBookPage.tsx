@@ -122,7 +122,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     setError("");
     // 決算整理だけを見ているときは、年度末の決算整理仕訳として登録する
     const entryDate = adjustmentOnly ? yearEnd(year) : date;
-    if (isDateClosed(entryDate)) return setError("締め済みの年度には登録できません（事業者設定で締めを解除してください）");
+    if (isDateClosed(entryDate)) return setError("締めた月には登録できません（事業者設定で締めを戻してください）");
     if (bookSubs.length > 0 && bookSub === undefined) return setError("上の補助科目を選んでから入力してください（補助科目を使わないときは「補助なし」）");
     if (!counterId) return setError("相手科目を選んでください");
     // 同じ科目どうしは、補助科目が違うときだけ（例：普通預金の A銀行 → B銀行への振替）
@@ -293,7 +293,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                 <td><AmountInput value={dr} onChange={setDr} onKeyDown={nav} aria-label={labels.dr} disabled={(cr ?? 0) > 0} title={(cr ?? 0) > 0 ? `${labels.cr}に入れているので入れられません` : undefined} /></td>
                 <td><AmountInput value={cr} onChange={setCr} onKeyDown={nav} aria-label={labels.cr} disabled={(dr ?? 0) > 0} title={(dr ?? 0) > 0 ? `${labels.dr}に入れているので入れられません` : undefined} /></td>
                 <td>
-                  <button className="btn primary block" onClick={save} disabled={isDateClosed(adjustmentOnly ? yearEnd(year) : date)} title={isDateClosed(adjustmentOnly ? yearEnd(year) : date) ? "締め済みの年度です" : undefined}>
+                  <button className="btn primary block" onClick={save} disabled={isDateClosed(adjustmentOnly ? yearEnd(year) : date)} title={isDateClosed(adjustmentOnly ? yearEnd(year) : date) ? "締めた月です" : undefined}>
                     <CornerDownLeft size={15} /> 登録
                   </button>
                 </td>

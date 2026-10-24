@@ -263,7 +263,8 @@ interface PagedProps<T> {
 
 const MasterHistoryTable = ({ records, limit, onMore }: PagedProps<MasterHistoryRecord>) => {
   const detail = (r: MasterHistoryRecord) => {
-    if (r.target_type === "closing") return r.action === "unlock" ? `理由：${r.new_value}` : r.new_value;
+    // 締め：月の締めに対応してからは「○月まで締め → △月まで締めに戻す（理由：…）」。それより前の記録は理由だけ
+    if (r.target_type === "closing") return r.old_value ? `${r.old_value} → ${r.new_value}` : r.action === "unlock" ? `理由：${r.new_value}` : r.new_value;
     if (r.target_type === "opening") return `${yen(Number(r.old_value))} → ${yen(Number(r.new_value))}`;
     if (r.action === "rename" || r.action === "change") return `${r.old_value} → ${r.new_value}`;
     if (r.action === "create") return r.new_value;

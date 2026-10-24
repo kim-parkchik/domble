@@ -496,6 +496,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .mode-card strong { font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .mode-card p { font-size: 12.5px; color: #4b5663; margin-top: 4px; line-height: 1.7; }
 .rec { font-size: 10.5px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 6px; }
+.mode-badge.off { color: #ffd9a8; background: rgba(255,170,60,.12); border-color: rgba(255,190,110,.45); }
 .mode-badge { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #c9d9ee; background: rgba(255,255,255,.08); border: 1px solid rgba(201,217,238,.25); border-radius: 4px; padding: 4px 8px; margin: 0 4px 4px; }
 .mode-current { font-weight: 700; margin-bottom: 6px; }
 .kind-tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--accent); }
@@ -676,3 +677,31 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .note-input.num { text-align: right; }
 .note-input.wide { display: block; margin-top: 3px; }
 .note-input:disabled { border-color: transparent; background: none; }
+/* 電子帳簿保存法の対応外の年 */
+.year-notice-row.off { background: var(--warn-bg); color: var(--warn-ink); }
+.statement-off { display: inline-block; margin-top: 2px; padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; color: var(--warn-ink); font-size: 11px; font-weight: 700; }
+.mode-years dd.mode-off { color: var(--warn-ink); }
+/* 電子帳簿保存法の画面 */
+.ebook-status { display: flex; gap: 12px; align-items: flex-start; }
+.ebook-status.ok { border-left: 4px solid #2f8f5b; }
+.ebook-status.ok > svg { color: #2f8f5b; }
+.ebook-status.off { border-left: 4px solid #c98a1c; background: var(--warn-bg); }
+.ebook-status.off > svg { color: var(--warn-ink); }
+.ebook-benefits { margin: 0; }
+.ebook-benefits dt { font-weight: 700; font-size: 13.5px; padding-left: 8px; border-left: 3px solid var(--accent); }
+.ebook-benefits dd { margin: 4px 0 14px; line-height: 1.7; font-size: 13px; }
+.ebook-list { list-style: none; padding: 0; margin: 0 0 8px; display: flex; flex-direction: column; gap: 8px; }
+.ebook-list li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); }
+.ebook-list li > svg { flex: none; margin-top: 2px; }
+.ebook-list li.ok > svg { color: #2f8f5b; }
+.ebook-list li.off > svg { color: var(--warn-ink); }
+.ebook-list li input[type=checkbox] { margin-top: 4px; }
+.ebook-list b { font-size: 13.5px; }
+.ebook-list .link-btn { font-size: 12px; margin-left: 6px; }
+.ebook-list p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.year-notice-row.month-closed { background: var(--accent-tint); color: var(--accent-dark); }
+.status-month { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-dark); font-weight: 600; }
+.closing-actions { display: inline-flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+.input.sm { height: 28px; font-size: 12.5px; padding: 0 6px; width: auto; }
+.settings-layout > .span-all { grid-column: 1 / -1; }
+.closing-table td { white-space: nowrap; }

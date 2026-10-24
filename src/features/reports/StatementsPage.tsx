@@ -11,6 +11,7 @@ import { yen } from "../../lib/format";
 import * as repo from "../../db/repo";
 import type { Account, FilingType } from "../../lib/types";
 import { StatementPage2, StatementPage3 } from "./StatementPages";
+import { isYearCompliant } from "../../lib/ebook";
 
 /** 青色申告特別控除の上限（目安） */
 const DEDUCTION_LIMIT: Record<FilingType, number> = { blue65: 650_000, blue55: 550_000, blue10: 100_000, white: 0 };
@@ -30,7 +31,7 @@ const Line = ({ label, value, strong, indent }: { label: string; value: number |
 export const StatementsPage = () => {
   const { year, accounts, settings, closings, strict } = useAppContext();
   // 締めたときの確認コード（厳密モード）。印刷した決算書が、帳簿ファイルの外の控えになる
-  const closedHead = strict ? closings.find((c) => c.fiscal_year === year)?.chain_head : undefined;
+  const closedHead = strict ? closings.find((c) => c.fiscal_year === year && c.period_end === `${year}-12-31`)?.chain_head : undefined;
   const { lines, opening } = useYearData();
   const [tab, setTab] = useState<Tab>("pl");
 
@@ -79,6 +80,7 @@ export const StatementsPage = () => {
             <br />
             {tab === "bs" ? `${year}年12月31日 現在` : `自 ${year}年1月1日　至 ${year}年12月31日`}
             {closedHead && <><br /><span className="statement-anchor">確認コード {repo.anchorCode(closedHead)}</span></>}
+            {!isYearCompliant(settings, year) && <><br /><span className="statement-off">電子帳簿保存法の対応外（通常の保存）</span></>}
           </p>
         </header>
 
