@@ -1,5 +1,6 @@
 /**
- * 決算書（青色申告決算書の 損益計算書・貸借対照表 に近い形）
+ * 決算書（青色申告決算書に近い形）
+ *  1ページ：損益計算書 ／ 2〜3ページ：StatementPages.tsx ／ 4ページ：貸借対照表
  */
 import { useMemo, useState } from "react";
 import { Printer } from "lucide-react";
@@ -9,11 +10,15 @@ import { closingBalances, summarizeBalanceSheet, summarizeIncome } from "../../l
 import { yen } from "../../lib/format";
 import * as repo from "../../db/repo";
 import type { Account, FilingType } from "../../lib/types";
+import { StatementPage2, StatementPage3 } from "./StatementPages";
 
 /** 青色申告特別控除の上限（目安） */
 const DEDUCTION_LIMIT: Record<FilingType, number> = { blue65: 650_000, blue55: 550_000, blue10: 100_000, white: 0 };
 
-type Tab = "pl" | "bs";
+type Tab = "pl" | "p2" | "p3" | "bs";
+
+const TAB_LABEL: Record<Tab, string> = { pl: "損益計算書", p2: "月別売上・給料など", p3: "減価償却・地代家賃など", bs: "貸借対照表" };
+const TAB_TITLE: Record<Tab, string> = { pl: "損益計算書", p2: "月別売上（収入）金額及び仕入金額 ほか", p3: "減価償却費の計算 ほか", bs: "貸借対照表" };
 
 const Line = ({ label, value, strong, indent }: { label: string; value: number | null; strong?: boolean; indent?: boolean }) => (
   <tr className={strong ? "st-strong" : ""}>
@@ -55,8 +60,11 @@ export const StatementsPage = () => {
     <div className="page">
       <PageHeader title="決算書" note={`${year}年1月1日〜${year}年12月31日`}>
         <div className="seg" role="tablist">
-          <button role="tab" aria-selected={tab === "pl"} className={tab === "pl" ? "on" : ""} onClick={() => setTab("pl")}>損益計算書</button>
-          <button role="tab" aria-selected={tab === "bs"} className={tab === "bs" ? "on" : ""} onClick={() => setTab("bs")}>貸借対照表</button>
+          {(Object.keys(TAB_LABEL) as Tab[]).map((t, i) => (
+            <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
+              {i + 1}. {TAB_LABEL[t]}
+            </button>
+          ))}
         </div>
         <button className="btn ghost" onClick={() => window.print()}>
           <Printer size={16} /> 印刷
@@ -65,16 +73,20 @@ export const StatementsPage = () => {
 
       <section className="sheet statement print-area">
         <header className="statement-head">
-          <h2>{tab === "pl" ? "損益計算書" : "貸借対照表"}</h2>
+          <h2 className={tab === "p2" || tab === "p3" ? "st-title-small" : ""}>{TAB_TITLE[tab]}</h2>
           <p>
             {settings.business_name || "（屋号未設定）"}　{settings.owner_name}
             <br />
-            {tab === "pl" ? `自 ${year}年1月1日　至 ${year}年12月31日` : `${year}年12月31日 現在`}
+            {tab === "bs" ? `${year}年12月31日 現在` : `自 ${year}年1月1日　至 ${year}年12月31日`}
             {closedHead && <><br /><span className="statement-anchor">確認コード {repo.anchorCode(closedHead)}</span></>}
           </p>
         </header>
 
-        {tab === "pl" ? (
+        {tab === "p2" ? (
+          <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} />
+        ) : tab === "p3" ? (
+          <StatementPage3 lines={lines} />
+        ) : tab === "pl" ? (
           <div className="pl-grid">
             <table className="ledger st-table">
               <tbody>

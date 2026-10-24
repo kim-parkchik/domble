@@ -250,7 +250,7 @@ export const HistoryPage = () => {
 // ────────────────────────────────────────────
 // 勘定科目・補助科目・期首残高の変更履歴
 // ────────────────────────────────────────────
-const TARGET_LABEL: Record<MasterHistoryRecord["target_type"], string> = { account: "勘定科目", sub: "補助科目", opening: "期首残高", homeuse: "家事按分", closing: "年度の締め", counterparty: "取引先", user: "ユーザー", setting: "設定" };
+const TARGET_LABEL: Record<MasterHistoryRecord["target_type"], string> = { account: "勘定科目", sub: "補助科目", opening: "期首残高", homeuse: "家事按分", closing: "年度の締め", counterparty: "取引先", user: "ユーザー", setting: "設定", asset: "固定資産" };
 const MASTER_ACTION: Record<MasterHistoryRecord["action"], string> = {
   create: "追加", rename: "名前変更", hide: "非表示", show: "再表示", delete: "削除", change: "変更", close: "締め", unlock: "締めの解除",
 };

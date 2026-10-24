@@ -25,8 +25,11 @@ interface Draft {
   basis: string;
 }
 
-/** 按分の対象にしやすい科目（よく按分するもの）。他の経費科目も設定できる */
-const COMMON = ["地代家賃", "水道光熱費", "通信費", "車両費", "損害保険料", "減価償却費"];
+/**
+ * 按分の対象にしやすい科目（よく按分するもの）。他の経費科目も設定できる
+ * 減価償却費は、固定資産台帳で資産ごとに事業専用割合を決めるので、ここには出さない（「ほかの経費科目も表示」では出る）
+ */
+const COMMON = ["地代家賃", "水道光熱費", "通信費", "車両費", "損害保険料"];
 
 export const HomeUsePage = () => {
   const { db, year, accounts, homeUseRates, reloadHomeUse, bump, strict, dataVersion, isClosed } = useAppContext();
@@ -34,6 +37,8 @@ export const HomeUsePage = () => {
   const toast = useToast();
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [runId, setRunId] = useState<number | null>(null);
+  /** 固定資産台帳から作った減価償却の仕訳（資産ごとに分け済みなので、年末の振替の計算に入れない） */
+  const [depRunId, setDepRunId] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
 
@@ -45,6 +50,7 @@ export const HomeUsePage = () => {
 
   useEffect(() => {
     repo.getHomeUseRun(db, year).then(setRunId).catch(console.error);
+    repo.getDepreciationRun(db, year).then(setDepRunId).catch(console.error);
   }, [db, year, dataVersion]);
 
   const expenses = accounts.filter((a) => a.category === "expense");
@@ -75,7 +81,10 @@ export const HomeUsePage = () => {
   };
 
   // ── 年末一括の振替 ──
-  const rows = useMemo(() => yearEndRows(accounts, lines, homeUseRates, runId ?? undefined), [accounts, lines, homeUseRates, runId]);
+  const rows = useMemo(
+    () => yearEndRows(accounts, lines, homeUseRates, [runId, depRunId].filter((x): x is number => x !== null)),
+    [accounts, lines, homeUseRates, runId, depRunId],
+  );
   const privateTotal = rows.reduce((s, r) => s + r.private, 0);
 
   const runYearEnd = async () => {
@@ -163,8 +172,9 @@ export const HomeUsePage = () => {
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> ほかの経費科目も表示
         </label>
         <p className="field-note" style={{ marginTop: 8 }}>
-          100% は按分しない（全額事業）という意味です。「入力のたびに」にした科目は、帳簿入力で支払いを入れると自動で事業分と事業主貸に分かれます。
+          100% は按分しない（全額事業）という意味です。「入力のたびに」にした科目は、帳簿入力・振替伝票・CSV 取り込みで支払いを入れると、自動で事業分と事業主貸に分かれます（振替伝票と CSV 取り込みでは分けないこともできます。訂正のときは分けません）。
           端数は事業分を切り捨てます。
+          減価償却費は、固定資産台帳で資産ごとに事業専用割合を決めます（台帳から作る減価償却の仕訳は分け済みなので、ここでの年末の振替には入りません）。
         </p>
       </section>
 

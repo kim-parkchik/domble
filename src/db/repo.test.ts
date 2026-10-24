@@ -9,6 +9,7 @@ import { COLUMN_MIGRATIONS, SCHEMA } from "./schema";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import * as repo from "./repo";
 import type { JournalLine } from "../lib/types";
+import { depreciationLines } from "../lib/depreciation";
 
 const makeDb = (mode: "strict" | "standard") => {
   const raw = new Sqlite(":memory:");
@@ -206,6 +207,83 @@ describe("入力期間（repo）", () => {
     expect(await repo.getInputPeriodDays(db)).toBe(40);
     const h = await repo.getMasterHistory(db);
     expect(h.map((x) => [x.target_type, x.old_value, x.new_value])).toEqual([["setting", "70日", "40日"]]);
+  });
+});
+
+describe("固定資産台帳・減価償却（repo）", () => {
+  const setup = async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const base: repo.AssetInput = {
+      name: "パソコン", account_id: id("工具器具備品"), acquired_on: "2026-04-10", used_on: "2026-04-10", cost: 240_000, method: "straight",
+      useful_life: 4, business_rate: 80, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
+    };
+    return { db, id, base, ids: { expense: id("減価償却費"), draw: id("事業主貸") } };
+  };
+
+  test("追加・変更・削除は履歴に残る。資産でない科目や上限を超えた少額減価償却資産は登録できない", async () => {
+    const { db, id, base } = await setup();
+    expect(id("一括償却資産")).toBeGreaterThan(0);
+    const a = await repo.saveAsset(db, null, base);
+    await repo.saveAsset(db, a, { ...base, business_rate: 70 });
+    await repo.saveAsset(db, a, { ...base, business_rate: 70 }); // 変わらなければ記録しない
+    await expect(repo.saveAsset(db, null, { ...base, account_id: id("消耗品費") })).rejects.toThrow(/資産の科目/);
+    await expect(repo.saveAsset(db, null, { ...base, method: "small", cost: 300_000 })).rejects.toThrow(/300,000円未満/);
+    expect((await repo.getAssets(db)).map((x) => [x.name, x.business_rate])).toEqual([["パソコン", 70]]);
+    expect(await repo.accountUsage(db, id("工具器具備品"))).toBe(1);
+    await repo.deleteAsset(db, a);
+    expect(await repo.getAssets(db)).toEqual([]);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "asset");
+    expect(h.map((x) => x.action).reverse()).toEqual(["create", "change", "delete"]);
+    expect(h.at(-2)!.new_value).toContain("事業 70%");
+  });
+
+  test("年末の減価償却の仕訳：決算整理仕訳で作り、作り直すときは同じ仕訳を訂正する", async () => {
+    const { db, base, ids, id } = await setup();
+    await repo.saveAsset(db, null, base);
+    const make = async () => repo.saveDepreciationRun(db, 2026, depreciationLines(await repo.getAssets(db), 2026, ids));
+    const e1 = await make();
+    const entry = (await repo.getEntry(db, e1!))!;
+    expect([entry.date, entry.is_adjustment]).toEqual(["2026-12-31", 1]);
+    const ls = entry.lines;
+    expect(ls.map((l) => [l.side, l.account_id, l.amount])).toEqual([
+      ["debit", ids.expense, 36_000], ["credit", id("工具器具備品"), 45_000], ["debit", ids.draw, 9_000],
+    ]);
+    // 割合を変えて作り直す → 同じ仕訳の訂正
+    const [a] = await repo.getAssets(db);
+    await repo.saveAsset(db, a.id, { ...base, business_rate: 100 });
+    expect(await make()).toBe(e1);
+    expect((await repo.getEntry(db, e1!))!.lines.map((l) => l.amount)).toEqual([45_000, 45_000]);
+    // 資産が無くなったら仕訳を削除する
+    await repo.deleteAsset(db, a.id);
+    expect(await make()).toBeNull();
+    expect(await repo.getDepreciationRun(db, 2026)).toBeNull();
+  });
+
+  test("締めた年度の減価償却は作れない。台帳の変更は入力担当にはできない", async () => {
+    const { db, base, ids } = await setup();
+    await repo.saveAsset(db, null, { ...base, used_on: "2025-04-10", acquired_on: "2025-04-10" });
+    await repo.closeYear(db, 2025);
+    await expect(repo.saveDepreciationRun(db, 2025, depreciationLines(await repo.getAssets(db), 2025, ids))).rejects.toThrow(/締め/);
+    const editor = await repo.createUser(db, "入力", "", "editor");
+    repo.setActor(editor, "editor");
+    await expect(repo.saveAsset(db, null, base)).rejects.toThrow(/権限/);
+    expect(await repo.saveDepreciationRun(db, 2026, depreciationLines(await repo.getAssets(db), 2026, ids))).toBeGreaterThan(0);
+  });
+});
+
+describe("決算書の書き込み（repo）", () => {
+  test("年度ごとに保存し、空にすると消える。締めた年度は変えられない", async () => {
+    const { db } = strict;
+    await repo.saveStatementNote(db, 2026, "rent:cp:3:address", "  東京都千代田区  ");
+    await repo.saveStatementNote(db, 2026, "special", "特になし");
+    expect(await repo.getStatementNotes(db, 2026)).toEqual({ "rent:cp:3:address": "東京都千代田区", special: "特になし" });
+    await repo.saveStatementNote(db, 2026, "special", "");
+    expect(await repo.getStatementNotes(db, 2026)).toEqual({ "rent:cp:3:address": "東京都千代田区" });
+    expect(await repo.getStatementNotes(db, 2025)).toEqual({});
+    await repo.closeYear(db, 2025);
+    await expect(repo.saveStatementNote(db, 2025, "special", "x")).rejects.toThrow(/締め/);
   });
 });
 

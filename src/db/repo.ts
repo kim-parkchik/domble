@@ -27,6 +27,7 @@ import {
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
 import { CATEGORY_CODE_RANGE, LOCKED_CODES, normalSideOf } from "../constants/accounts";
+import { METHOD_LABEL, validateAsset, type FixedAsset } from "../lib/depreciation";
 import {
   DEFAULT_BACKUP_GENERATIONS, DEFAULT_INPUT_PERIOD_DAYS, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
 } from "../constants/appConfig";
@@ -348,13 +349,14 @@ const setAccountActive_ = async (db: Database, id: number, active: boolean) => {
   });
 };
 
-/** 科目の使用件数（仕訳・期首残高・家事按分の設定） */
+/** 科目の使用件数（仕訳・期首残高・家事按分の設定・固定資産台帳） */
 export const accountUsage = async (db: Database, id: number) => {
   const r = await db.select<{ n: number }[]>(
     `SELECT (SELECT COUNT(*) FROM journal_lines WHERE account_id = ?)
           + (SELECT COUNT(*) FROM opening_balances WHERE account_id = ?)
-          + (SELECT COUNT(*) FROM home_use_rates WHERE account_id = ?) AS n`,
-    [id, id, id],
+          + (SELECT COUNT(*) FROM home_use_rates WHERE account_id = ?)
+          + (SELECT COUNT(*) FROM fixed_assets WHERE account_id = ?) AS n`,
+    [id, id, id, id],
   );
   return r[0].n;
 };
@@ -888,6 +890,7 @@ const deleteEntry_ = async (db: Database, id: number, reason = "") => {
     await db.execute("DELETE FROM evidence_links WHERE entry_id = ?", [id]);
     // 家事按分の年末振替の仕訳なら、振替の記録も消す（次は作り直しになる）
     await db.execute("DELETE FROM home_use_runs WHERE entry_id = ?", [id]);
+    await db.execute("DELETE FROM depreciation_runs WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_lines WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_entries WHERE id = ?", [id]);
     return;
@@ -976,6 +979,135 @@ const setHomeUseRun_ = (db: Database, year: number, entryId: number) =>
     "INSERT INTO home_use_runs (fiscal_year, entry_id) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET entry_id = excluded.entry_id",
     [year, entryId],
   );
+
+// ────────────────────────────────────────────
+// 固定資産台帳・減価償却（計算は lib/depreciation.ts）
+//  - 台帳の追加・変更・削除は履歴に残す（厳密モード）
+//  - 年末の減価償却の仕訳は年度ごとに1本（depreciation_runs）。作り直すときは同じ仕訳を訂正する
+// ────────────────────────────────────────────
+export type AssetInput = Omit<FixedAsset, "id">;
+
+export const getAssets = (db: Database) =>
+  db.select<FixedAsset[]>(
+    `SELECT id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo
+       FROM fixed_assets ORDER BY used_on, id`,
+  );
+
+const assetText = (a: AssetInput) =>
+  [
+    `取得 ${a.acquired_on}`, `使用開始 ${a.used_on}`, `取得価額 ${a.cost.toLocaleString()}円`,
+    METHOD_LABEL[a.method] + (a.method === "straight" ? ` ${a.useful_life}年` : ""), `事業 ${a.business_rate}%`,
+    a.opening_year !== null ? `${a.opening_year}年期首の未償却残高 ${a.opening_book_value?.toLocaleString()}円` : "",
+    a.disposed_on ? `売却・除却 ${a.disposed_on}` : "",
+    a.memo ? `備考 ${a.memo}` : "",
+  ].filter(Boolean).join("、");
+
+const normalizeAsset = (a: AssetInput): AssetInput => ({
+  ...a,
+  name: a.name.trim(),
+  memo: a.memo.trim(),
+  useful_life: a.method === "straight" ? a.useful_life : 0,
+  disposed_on: a.disposed_on || null,
+});
+
+const assertAsset = async (db: Database, a: AssetInput) => {
+  const settings = await getSettings(db);
+  const e = validateAsset(a, { blue: settings.filing_type !== "white" });
+  if (e) throw new Error(e);
+  const acc = await db.select<{ category: string }[]>("SELECT category FROM accounts WHERE id = ?", [a.account_id]);
+  if (acc[0]?.category !== "asset") throw new Error("資産の科目を選んでください");
+};
+
+/** 追加（id = null）・変更。id を返す */
+const saveAsset_ = async (db: Database, id: number | null, input: AssetInput) => {
+  const a = normalizeAsset(input);
+  await assertAsset(db, a);
+  const values = [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo];
+  const fiscal_year = await currentYear(db);
+  if (id === null) {
+    const r = await db.execute(
+      `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      values,
+    );
+    const newId = Number(r.lastInsertId);
+    await logMaster(db, { target_type: "asset", target_id: newId, action: "create", fiscal_year, label: a.name, old_value: "", new_value: assetText(a) });
+    return newId;
+  }
+  const before = (await getAssets(db)).find((x) => x.id === id);
+  if (!before) throw new Error("固定資産が見つかりません");
+  await db.execute(
+    `UPDATE fixed_assets SET name = ?, account_id = ?, acquired_on = ?, used_on = ?, cost = ?, method = ?, useful_life = ?, business_rate = ?,
+       opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
+    [...values, id],
+  );
+  const [oldText, newText] = [assetText(before), assetText(a)];
+  if (oldText !== newText || before.name !== a.name || before.account_id !== a.account_id) {
+    await logMaster(db, { target_type: "asset", target_id: id, action: "change", fiscal_year, label: a.name, old_value: `${before.name}：${oldText}`, new_value: `${a.name}：${newText}` });
+  }
+  return id;
+};
+
+/** 削除（間違えて登録したとき。売ったり捨てたりしたときは「売却・除却した日」を入れる） */
+const deleteAsset_ = async (db: Database, id: number) => {
+  const before = (await getAssets(db)).find((x) => x.id === id);
+  if (!before) return;
+  await db.execute("DELETE FROM fixed_assets WHERE id = ?", [id]);
+  await logMaster(db, { target_type: "asset", target_id: id, action: "delete", fiscal_year: await currentYear(db), label: before.name, old_value: assetText(before), new_value: "" });
+};
+
+export const getDepreciationRun = async (db: Database, year: number) => {
+  const r = await db.select<{ entry_id: number }[]>(
+    `SELECT r.entry_id FROM depreciation_runs r JOIN journal_entries e ON e.id = r.entry_id
+      WHERE r.fiscal_year = ? AND e.is_deleted = 0`,
+    [year],
+  );
+  return r[0]?.entry_id ?? null;
+};
+
+/**
+ * 年末の減価償却の仕訳を作る（作り直すときは同じ仕訳を訂正する。償却する資産が無くなったら、その仕訳を削除する）。
+ * 12月31日付の決算整理仕訳。仕訳の id を返す（削除したときは null）
+ */
+const saveDepreciationRun_ = async (db: Database, year: number, lines: JournalLine[]) => {
+  await assertYearOpen(db, year);
+  const runId = await getDepreciationRun(db, year);
+  if (lines.length === 0) {
+    if (runId) await deleteEntry_(db, runId, "減価償却の再計算（償却する資産なし）");
+    return null;
+  }
+  if (runId) {
+    await updateEntry_(db, runId, yearEnd(year), lines, "減価償却の再計算", null, true);
+    return runId;
+  }
+  const id = await createEntry_(db, yearEnd(year), lines, null, "", true);
+  await db.execute(
+    "INSERT INTO depreciation_runs (fiscal_year, entry_id) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET entry_id = excluded.entry_id",
+    [year, id],
+  );
+  return id;
+};
+
+// ────────────────────────────────────────────
+// 決算書に手で書き込む欄（帳簿から出せない項目。帳簿そのものではないので履歴には残さない）
+// ────────────────────────────────────────────
+export const getStatementNotes = async (db: Database, year: number) => {
+  const r = await db.select<{ note_key: string; value: string }[]>("SELECT note_key, value FROM statement_notes WHERE fiscal_year = ?", [year]);
+  return Object.fromEntries(r.map((x) => [x.note_key, x.value])) as Record<string, string>;
+};
+
+const saveStatementNote_ = async (db: Database, year: number, key: string, value: string) => {
+  await assertYearOpen(db, year);
+  const v = value.trim().slice(0, 500);
+  if (!v) await db.execute("DELETE FROM statement_notes WHERE fiscal_year = ? AND note_key = ?", [year, key]);
+  else {
+    await db.execute(
+      `INSERT INTO statement_notes (fiscal_year, note_key, value) VALUES (?, ?, ?)
+       ON CONFLICT (fiscal_year, note_key) DO UPDATE SET value = excluded.value`,
+      [year, key, v],
+    );
+  }
+};
 
 // ────────────────────────────────────────────
 // 証憑
@@ -1766,4 +1898,8 @@ export const setUserActive = inTx(setUserActive_, (id) => `ユーザー #${id} �
 export const ensureUsers = inTx(ensureUsers_, () => "最初のユーザーの作成");
 export const logAccess = inTx(logAccess_, (id, action) => `ユーザー #${id} の${action === "login" ? "ログイン" : "ログアウト"}`);
 export const carryForward = inTx(carryForward_, (year) => `${year}年から${year + 1}年への繰越`, { perm: "settings" });
+export const saveStatementNote = inTx(saveStatementNote_, (year) => `${year}年の決算書の書き込み`, { perm: "master" });
+export const saveAsset = inTx(saveAsset_, (id) => (id === null ? "固定資産の追加" : `固定資産 #${id} の変更`), { perm: "master" });
+export const deleteAsset = inTx(deleteAsset_, (id) => `固定資産 #${id} の削除`, { perm: "master" });
+export const saveDepreciationRun = inTx(saveDepreciationRun_, (year) => `${year}年の減価償却`, { perm: "entry" });
 export const saveHomeUseRunEntry = inTx(saveHomeUseRunEntry_, (year) => `${year}年の家事按分の振替`, { perm: "entry" });

@@ -418,6 +418,9 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 /* ---------- 印刷（決算書） ---------- */
 @media print {
   @page { size: A4; margin: 14mm; }
+  .screen-only, .print-skip { display: none !important; }
+  .note-input { border: none !important; background: none !important; padding: 0 !important; }
+  .note-input::placeholder { color: transparent; }
   body { background: #fff; }
   .sidebar, .topbar, .page-head, .toast-stack { display: none !important; }
   .shell { display: block; }
@@ -506,6 +509,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .ledger tr.homeuse-on td:first-child { font-weight: 700; color: var(--accent-dark); }
 .small-btn { height: 28px; padding: 0 10px; font-size: 12.5px; }
 .homeuse-hint { color: #8a5a00; font-weight: 600; }
+.homeuse-split { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 0; padding: 10px 12px; border-radius: 6px; background: var(--warn-bg); font-size: 13px; }
 
 /* ---------- 年度の締め ---------- */
 .year-notice { display: flex; flex-direction: column; gap: 1px; border-bottom: 1px solid var(--rule); }
@@ -639,3 +643,36 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .holiday-add { margin-top: 6px; display: grid; grid-template-columns: 150px 1fr; gap: 8px 10px; }
 .holiday-add-actions { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
 .holiday-status { font-size: 13px; margin: 0 0 10px; }
+/* 固定資産台帳 */
+.asset-table { font-size: 12.5px; table-layout: auto; }
+.asset-table th, .asset-table td { white-space: normal; overflow: visible; text-overflow: clip; }
+.asset-table td.num { white-space: nowrap; }
+.asset-table th { line-height: 1.3; vertical-align: bottom; white-space: nowrap; }
+.asset-table td:nth-child(5) { white-space: nowrap; }
+.asset-table td .hint { display: block; }
+.asset-others { margin-top: 12px; font-size: 13px; }
+.asset-others summary { cursor: pointer; color: var(--muted); }
+.asset-others table { margin-top: 6px; }
+.asset-table td:first-child { min-width: 9em; }
+.asset-table td:nth-child(2) { min-width: 6em; }
+.asset-table td:last-child { white-space: nowrap; }
+/* 決算書 2〜3ページ */
+.st-pages { display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 28px; align-items: start; }
+.st-pages.st-page3 { grid-template-columns: 1fr; }
+.st-h { font-size: 13.5px; font-weight: 700; margin: 18px 0 8px; padding-left: 8px; border-left: 3px solid var(--accent); }
+.st-pages section > .st-h:first-child { margin-top: 0; }
+.st-detail { font-size: 12.5px; table-layout: auto; }
+.st-detail th, .st-detail td { white-space: normal; }
+.st-detail td.num { white-space: nowrap; }
+.st-detail td:first-child { white-space: nowrap; }
+.st-detail .note-input { width: 6.5em; }
+.st-detail .note-input.short { width: 4em; }
+.st-detail .note-input.wide { width: 100%; }
+.st-detail tfoot td { font-weight: 700; border-top: 1px solid var(--rule-strong); }
+.st-dep th { white-space: normal; line-height: 1.3; vertical-align: bottom; font-size: 11px; min-width: 3.6em; }
+.st-dep td { white-space: nowrap; }
+.statement-head h2.st-title-small { font-size: 17px; letter-spacing: .1em; }
+.note-input { width: 100%; min-width: 3.5em; border: 1px dashed var(--rule-strong); border-radius: 4px; background: #fffdf5; padding: 2px 6px; font: inherit; color: var(--ink); }
+.note-input.num { text-align: right; }
+.note-input.wide { display: block; margin-top: 3px; }
+.note-input:disabled { border-color: transparent; background: none; }

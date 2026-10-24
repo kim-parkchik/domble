@@ -152,7 +152,7 @@ describe("家事按分", () => {
       { entry_id: 9, date: "2026-12-31", description: "", row_no: 1, side: "credit", account_id: util, sub_account_id: null, amount: 12_000, memo: "" },
     ];
     const rates = [{ account_id: util, from_year: 2026, rate: 40, method: "yearend" as const, basis: "" }];
-    const [row] = yearEndRows(accounts, ls, rates, 9);
+    const [row] = yearEndRows(accounts, ls, rates, [9]);
     expect(row.total).toBe(20_000);
     expect(row.business).toBe(8_000);
     expect(row.private).toBe(12_000);

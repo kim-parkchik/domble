@@ -15,6 +15,8 @@ import * as repo from "../../db/repo";
 import { useToast } from "../../components/Toast";
 import { applyTemplate, type JournalTemplate } from "../../lib/templates";
 import { TemplatePickModal, TemplateSaveModal } from "./TemplateModals";
+import { entryRateOf, splitLinesByHomeUse } from "../../lib/homeUse";
+import { CODE } from "../../constants/accounts";
 
 interface Props {
   entryId?: number;
@@ -36,7 +38,7 @@ const padRows = (rows: VoucherRow[]) => {
 };
 
 export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterpartyId = null, initialAdjustment = false, onSaved, onDeleted, onCancel }: Props) => {
-  const { db, year, bump, strict, isDateClosed, accounts, subAccounts, counterparties } = useAppContext();
+  const { db, year, bump, strict, isDateClosed, accounts, subAccounts, counterparties, homeUseRates, labelOf } = useAppContext();
   const toast = useToast();
   const [date, setDate] = useState(initialDate);
   const [rows, setRows] = useState<VoucherRow[]>(padRows(initialRows ?? []));
@@ -69,6 +71,12 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
 
   // 締め済みの年度の仕訳は、登録・訂正・削除できない（訂正で締め済みの年度へ動かすのも不可）
   const locked = isDateClosed(date) || (!!entryId && isDateClosed(initialDate));
+
+  // 家事按分（入力のたびに分ける科目）：新しく入力するときだけ、登録時に事業分と事業主貸に分ける。
+  // 訂正のときは分けない（帳簿入力などで分け済みの仕訳を、もう一度分けてしまわないため）
+  const [noSplit, setNoSplit] = useState(false);
+  const drawId = accounts.find((a) => a.code === CODE.OWNER_DRAW)?.id;
+  const homeUse = !entryId && drawId ? splitLinesByHomeUse(rowsToLines(rows), entryRateOf(homeUseRates, accounts), drawId) : null;
 
   const check = checkVoucher(rows);
   const diff = check.debitTotal - check.creditTotal;
@@ -107,7 +115,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
     setErrors([]);
     setSaving(true);
     try {
-      const lines = rowsToLines(rows);
+      const lines = homeUse && !noSplit ? homeUse.lines : rowsToLines(rows);
       if (entryId) await repo.updateEntry(db, entryId, date, lines, reason, counterpartyId, adjustment);
       else await repo.createEntry(db, date, lines, counterpartyId, "", adjustment);
       bump();
@@ -232,6 +240,21 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
           </tfoot>
         </table>
       </div>
+
+      {homeUse && homeUse.splits.length > 0 && (
+        <div className="homeuse-split" role="status">
+          {homeUse.splits.map((x, i) => (
+            <div key={i} className={noSplit ? "muted" : "homeuse-hint"}>
+              家事按分 {labelOf(x.account_id, null)} 事業 {x.rate}%：{yen(x.amount)} → 事業分 {yen(x.business)} ／ 事業主貸 {yen(x.private)}
+              {noSplit ? "（分けません）" : " に分けて登録します"}
+            </div>
+          ))}
+          <label className="check">
+            <input type="checkbox" checked={noSplit} onChange={(e) => setNoSplit(e.target.checked)} />
+            この伝票は按分しない（入力したとおりに登録する）
+          </label>
+        </div>
+      )}
 
       {entryId && strict && (
         <label className="reason-field">

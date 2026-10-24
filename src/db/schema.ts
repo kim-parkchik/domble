@@ -43,6 +43,8 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_opening", "opening_balances", "fiscal_year"),
   ...yearGuards("trg_closed_homeuse_rates", "home_use_rates", "from_year"),
   ...yearGuards("trg_closed_homeuse_runs", "home_use_runs", "fiscal_year"),
+  ...yearGuards("trg_closed_depreciation_runs", "depreciation_runs", "fiscal_year"),
+  ...yearGuards("trg_closed_statement_notes", "statement_notes", "fiscal_year"),
   ...yearGuards("trg_closed_master_names", "master_names", "from_year"),
 ];
 
@@ -168,6 +170,45 @@ export const SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS home_use_runs (
     fiscal_year INTEGER PRIMARY KEY,
     entry_id INTEGER NOT NULL REFERENCES journal_entries(id)
+  );`,
+
+  /**
+   * 固定資産台帳（減価償却する資産）。計算は lib/depreciation.ts
+   * 資産を買った仕訳（工具器具備品 / 普通預金 など）は、ふつうに振替伝票で入れる。台帳は年末の償却の計算に使う
+   */
+  `CREATE TABLE IF NOT EXISTS fixed_assets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    account_id INTEGER NOT NULL REFERENCES accounts(id),
+    acquired_on TEXT NOT NULL,          -- 取得日
+    used_on TEXT NOT NULL,              -- 事業に使い始めた日（償却はこの月から）
+    cost INTEGER NOT NULL CHECK (cost > 0),
+    method TEXT NOT NULL CHECK (method IN ('straight','lump3','small')),
+    useful_life INTEGER NOT NULL DEFAULT 0,
+    business_rate INTEGER NOT NULL DEFAULT 100 CHECK (business_rate BETWEEN 0 AND 100),
+    opening_year INTEGER,               -- domble を使う前から持っている資産：この年の期首の未償却残高から始める
+    opening_book_value INTEGER,
+    disposed_on TEXT,                   -- 売却・除却した日
+    memo TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
+    updated_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
+  );`,
+
+  /** 年末の減価償却で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
+  `CREATE TABLE IF NOT EXISTS depreciation_runs (
+    fiscal_year INTEGER PRIMARY KEY,
+    entry_id INTEGER NOT NULL REFERENCES journal_entries(id)
+  );`,
+
+  /**
+   * 決算書（2〜3ページ）に手で書き込む欄（年齢・従事月数・支払先の住所・賃借物件・特殊事情など）。
+   * 帳簿から出せない項目だけ。note_key は「欄の種類:行:項目」（例 rent:cp:3:address）
+   */
+  `CREATE TABLE IF NOT EXISTS statement_notes (
+    fiscal_year INTEGER NOT NULL,
+    note_key TEXT NOT NULL,
+    value TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (fiscal_year, note_key)
   );`,
 
   /**

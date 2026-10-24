@@ -2,6 +2,7 @@
  * 仕訳の CSV 取り込み
  * ファイルを選ぶ → 中身を確かめて一覧で見せる → 問題が無ければ「取り込む」で全件を1つのトランザクションで登録
  * 形式は仕訳日記帳の CSV 書き出しと同じ（lib/journalImport.ts）
+ * 家事按分（入力のたびに分ける科目）は、仕訳の年度の割合で事業分と事業主貸に分けて取り込む（分けないこともできる）
  */
 import { useState } from "react";
 import { FileUp, Upload } from "lucide-react";
@@ -12,6 +13,9 @@ import { decodeText } from "../../lib/evidence";
 import { importJournalCsv, type ImportResult } from "../../lib/journalImport";
 import { shortDate, yen } from "../../lib/format";
 import * as repo from "../../db/repo";
+import { entryRateOf, splitLinesByHomeUse } from "../../lib/homeUse";
+import { CODE } from "../../constants/accounts";
+import type { HomeUseRate } from "../../lib/types";
 
 /** 画面に出す件数（全件は取り込む） */
 const PREVIEW_ENTRIES = 100;
@@ -23,6 +27,9 @@ export const JournalImportModal = ({ onClose }: { onClose: () => void }) => {
   const [fileName, setFileName] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 仕訳の年度ごとの家事按分の設定 */
+  const [rates, setRates] = useState<Map<number, HomeUseRate[]>>(new Map());
+  const [noSplit, setNoSplit] = useState(false);
 
   const pick = async (f: File | undefined) => {
     setResult(null);
@@ -30,14 +37,17 @@ export const JournalImportModal = ({ onClose }: { onClose: () => void }) => {
     if (!f) return;
     const text = decodeText(new Uint8Array(await f.arrayBuffer()));
     setFileName(f.name);
-    setResult(importJournalCsv(text, { accounts, subs: subAccounts, counterparties, isDateClosed }));
+    const r = importJournalCsv(text, { accounts, subs: subAccounts, counterparties, isDateClosed });
+    const years = [...new Set(r.entries.map((e) => Number(e.date.slice(0, 4))))];
+    setRates(new Map(await Promise.all(years.map(async (y) => [y, await repo.getHomeUseRates(db, y)] as const))));
+    setResult(r);
   };
 
   const run = async () => {
     if (!result || result.issues.length > 0 || result.entries.length === 0) return;
     setBusy(true);
     try {
-      await repo.importEntries(db, result.entries, fileName);
+      await repo.importEntries(db, entries, fileName);
       bump();
       toast(`仕訳を ${result.entries.length.toLocaleString()} 件取り込みました`);
       onClose();
@@ -48,7 +58,13 @@ export const JournalImportModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  const entries = result?.entries ?? [];
+  // 家事按分：仕訳ごとに、その年度の割合で分ける
+  const drawId = accounts.find((a) => a.code === CODE.OWNER_DRAW)?.id;
+  const split = (result?.entries ?? []).map((e) =>
+    drawId ? splitLinesByHomeUse(e.lines, entryRateOf(rates.get(Number(e.date.slice(0, 4))) ?? [], accounts), drawId) : { lines: e.lines, splits: [] },
+  );
+  const splitCount = split.filter((x) => x.splits.length > 0).length;
+  const entries = (result?.entries ?? []).map((e, i) => (noSplit ? e : { ...e, lines: split[i].lines }));
   const issues = result?.issues ?? [];
   const dates = entries.map((e) => e.date).sort();
   const total = entries.reduce((t, e) => t + e.lines.filter((l) => l.side === "debit").reduce((s, l) => s + l.amount, 0), 0);
@@ -98,6 +114,19 @@ export const JournalImportModal = ({ onClose }: { onClose: () => void }) => {
               )}
               {result.skipped > 0 && <span className="muted">　削除済みの {result.skipped} 行は飛ばします</span>}
             </p>
+            {splitCount > 0 && (
+              <div className="homeuse-split" role="status">
+                <span className={noSplit ? "muted" : "homeuse-hint"}>
+                  家事按分：{splitCount.toLocaleString()} 件の仕訳に「入力のたびに分ける」科目があります。
+                  {noSplit ? "分けずに、CSV のとおり取り込みます。" : "事業分と事業主貸に分けて取り込みます（下の一覧は分けたあとの形）。"}
+                </span>
+                <span className="muted small">借方に事業主貸がすでにある仕訳は、分け済みとみなしてそのまま取り込みます。</span>
+                <label className="check">
+                  <input type="checkbox" checked={noSplit} onChange={(e) => setNoSplit(e.target.checked)} />
+                  按分しない（CSV のとおりに取り込む）
+                </label>
+              </div>
+            )}
             {entries.length > 0 && (
               <div className="table-wrap scroll-y import-scroll">
                 <table className="ledger">

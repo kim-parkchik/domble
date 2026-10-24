@@ -36,6 +36,9 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("133", "車両運搬具", "しゃりょううんぱんぐ", "asset", "debit"),
   a("134", "工具器具備品", "こうぐきぐびひん", "asset", "debit"),
   a("135", "土地", "とち", "asset", "debit"),
+  a("136", "構築物", "こうちくぶつ", "asset", "debit"),
+  a("137", "一括償却資産", "いっかつしょうきゃくしさん", "asset", "debit"),
+  a("138", "ソフトウェア", "そふとうぇあ", "asset", "debit"),
   a("140", "敷金", "しききん", "asset", "debit"),
   a("190", "事業主貸", "じぎょうぬしかし", "asset", "debit"),
 
@@ -99,7 +102,20 @@ export const CODE = {
   OWNER_DRAW: "190", // 事業主貸
   OWNER_LOAN: "301", // 事業主借
   CAPITAL: "302",    // 元入金
+  LUMP_ASSET: "137", // 一括償却資産
+  HOUSEHOLD_USE: "402", // 家事消費等
+  MISC_INCOME: "403",   // 雑収入
+  PURCHASES: "502",     // 仕入高
+  DEPRECIATION: "611", // 減価償却費
+  SALARIES: "613",     // 給料賃金
+  INTEREST: "615",     // 利子割引料
+  RENT: "616",         // 地代家賃
+  FEES: "620",         // 支払手数料（税理士・弁護士等の報酬の候補）
+  FAMILY_SALARY: "701", // 専従者給与
 } as const;
+
+/** 固定資産台帳で選ぶ資産の科目（減価償却するもの。土地は償却しないので入れない） */
+export const FIXED_ASSET_CODES = ["130", "131", "132", "133", "134", "136", "137", "138"];
 
 /** 帳簿入力（出納帳）で選べる科目 */
 export const CASHBOOK_CODES = ["101", "102", "103", "104", "111", "202", "204", "190", "301"];
