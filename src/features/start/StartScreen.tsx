@@ -5,7 +5,7 @@ import { APP_NAME } from "../../constants/appConfig";
 // @ts-ignore
 import pkg from "../../../package.json";
 
-/** どんぶりを形づくる横線（x, y, 幅, 高さ）。上のふちが一番長く、下にいくほど短い。いちばん下の短い線が高台 */
+/** ロゴの横線（x, y, 幅, 高さ）。上がいちばん長く、下にいくほど短い */
 export const LOGO_BARS: [number, number, number, number][] = [
   [126, 180, 260, 16],
   [136, 216, 240, 16],
@@ -14,10 +14,7 @@ export const LOGO_BARS: [number, number, number, number][] = [
   [216, 324, 80, 14],
 ];
 
-/**
- * domble のロゴ：帳簿色の角丸に、帳簿の罫線のような白い横線を積んで「どんぶり」の形にしたもの
- * （名前の由来は「どんぶり勘定」。それを帳簿の罫線で、きちんと形にする）
- */
+/** domble のロゴ：帳簿色の角丸に、帳簿の罫線のような白い横線を積んだもの */
 export const Logo = ({ size = 96 }: { size?: number }) => {
   const uid = useId().replace(/:/g, "");
   const grad = `domble-grad-${uid}`;
