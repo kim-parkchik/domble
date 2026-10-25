@@ -2,17 +2,15 @@
  * CSV の書き出し（純粋関数）
  *
  * - Excel で文字化けしないよう BOM をつけ、改行は CRLF
- * - 文字列が = + - @ やタブ・改行で始まると、Excel が数式として実行してしまう（CSV インジェクション）。
- *   その場合は先頭に ' をつけて文字として扱わせる。数値（金額など）はそのまま
- *   → 書き出した摘要などが元の文字列と 1 文字ずれる点は、README の「足りていないところ」に記載
+ * - 摘要などは記録したとおりに書き出す（市販の会計ソフトと同じく、何も足さない）。
+ *   以前は = + - @ で始まる文字列の先頭に ' をつけていた（Excel が数式として実行しないように）が、
+ *   書き出した内容が記録と1文字ずれるため、やめた。取り込み（unguardCell）では、以前の CSV のために ' を外して読む
  */
 export type CsvValue = string | number | null | undefined;
 
-const FORMULA_START = /^[=+\-@\t\r]/;
-
 export const csvCell = (v: CsvValue) => {
   if (v == null) return '""';
-  const s = typeof v === "number" ? String(v) : FORMULA_START.test(v) ? `'${v}` : v;
+  const s = typeof v === "number" ? String(v) : v;
   return `"${s.replace(/"/g, '""')}"`;
 };
 
@@ -57,5 +55,8 @@ export const parseCsv = (text: string): string[][] => {
   return rows;
 };
 
-/** 書き出しのときにつけた ' を外す（csvCell の逆） */
+/**
+ * 以前の書き出しでつけていた ' を外す（= + - @ などの前についた ' だけ）。
+ * いまの書き出しは ' をつけないが、前に書き出した CSV を取り込めるように残している
+ */
 export const unguardCell = (v: string) => (/^'[=+\-@\t\r]/.test(v) ? v.slice(1) : v);

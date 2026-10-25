@@ -7,10 +7,14 @@ test("読み込み：引用符・カンマ・改行・\"\"・BOM・CRLF", () => 
   expect(parseCsv("a,b\r\n")).toEqual([["a", "b"]]);
 });
 
-test("書き出して読み込むと元に戻る（' も外れる）", () => {
+test("書き出して読み込むと元に戻る", () => {
   const rows = [["-返金", "=1+1", "A社 \"特急\"", "改行\nあり", "2026-01-05"]];
   const back = parseCsv(toCsv(["h1", "h2", "h3", "h4", "h5"], rows)).slice(1).map((r) => r.map(unguardCell));
   expect(back).toEqual(rows);
+});
+
+test("以前の書き出しでつけていた ' は、取り込みのときに外す（= + - @ の前の ' だけ）", () => {
+  expect(["'-返金", "'=1+1", "'+1", "'@SUM(A1)"].map(unguardCell)).toEqual(["-返金", "=1+1", "+1", "@SUM(A1)"]);
   expect(unguardCell("'普通の文")).toBe("'普通の文");
 });
 
@@ -20,14 +24,13 @@ test("引用符で囲み、中の \" は二重にする", () => {
   expect(csvCell(null)).toBe('""');
 });
 
-test("数式として実行される文字で始まる文字列は ' をつける。数値はそのまま", () => {
-  expect(csvCell("=HYPERLINK(\"http://x\")")).toBe('"\'=HYPERLINK(""http://x"")"');
-  expect(csvCell("+1")).toBe('"\'+1"');
-  expect(csvCell("-返金")).toBe('"\'-返金"');
-  expect(csvCell("@SUM(A1)")).toBe('"\'@SUM(A1)"');
+test("摘要などは記録したとおりに書き出す（何も足さない）。数値もそのまま", () => {
+  expect(csvCell("=HYPERLINK(\"http://x\")")).toBe('"=HYPERLINK(""http://x"")"');
+  expect(csvCell("+1")).toBe('"+1"');
+  expect(csvCell("-返金")).toBe('"-返金"');
+  expect(csvCell("@SUM(A1)")).toBe('"@SUM(A1)"');
   expect(csvCell(-1200)).toBe('"-1200"');
   expect(csvCell("2026-01-05")).toBe('"2026-01-05"');
-  expect(csvCell("事務用品 =")).toBe('"事務用品 ="');
 });
 
 test("BOM つき・CRLF", () => {
