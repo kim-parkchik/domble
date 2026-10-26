@@ -351,6 +351,21 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .tax-issue-head .spacer { flex: 1; }
 .tax-issue-detail { font-size: 13px; margin: 6px 0 8px; }
 .tax-issue-entries { font-size: 12.5px; }
+.tax-compare tr.on td { background: var(--accent-tint); }
+.tax-compare td, .tax-form-table td { white-space: normal; overflow: visible; text-overflow: clip; }
+.tax-compare .badge { margin-left: 6px; }
+.tax-best { margin-left: 6px; font-size: 11px; color: var(--accent); font-weight: 700; }
+.tax-interim { margin-top: 12px; align-items: flex-end; }
+.tax-interim .field { max-width: 220px; }
+.tax-return-forms { margin-top: 20px; }
+.tax-return-title { display: flex; align-items: center; gap: 8px; }
+.tax-return-title h3 { font-size: 15px; margin: 0; }
+.tax-return-title .spacer { flex: 1; }
+.tax-return-notes { font-size: 12.5px; color: var(--muted); margin: 8px 0; padding-left: 18px; }
+.tax-form-block { margin-top: 16px; break-inside: avoid; }
+.tax-form-block h4 { font-size: 13px; margin: 0 0 6px; }
+.tax-form-table td { font-size: 12.5px; }
+.tax-form-table td.tax-form-no { font-weight: 700; white-space: nowrap; }
 .field-note { font-size: 12px; color: var(--muted); }
 
 /* ---------- 設定 ---------- */
@@ -451,6 +466,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
   .sheet { border: none; padding: 0; }
   .ledger thead th { position: static; }
   .ledger tbody tr:hover td { background: none; }
+  .scroll-y, .sheet-fill { overflow: visible !important; height: auto !important; max-height: none !important; }
 }
 
 /* ---------- 補助科目 ---------- */

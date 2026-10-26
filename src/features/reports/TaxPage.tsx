@@ -2,7 +2,7 @@
  * 消費税：集計表と確認の一覧（計算は lib/taxSummary.ts）
  *  - 集計表：区分（売上・売上の返還・仕入…）× 税区分 × インボイス区分（経過措置は控除できる割合ごと）。行を開くと科目ごとの内訳
  *  - 確認：申告の前に直すもの・確かめるもの。関係する仕訳を開いて直せる
- * 申告書の数字（付表・第一表・第二表）はまだ出さない
+ *  - 申告書：方式の比較と、付表・第二表・第一表の数字（TaxReturnView.tsx）
  */
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Download, TriangleAlert, CircleAlert, Info } from "lucide-react";
@@ -19,8 +19,9 @@ import { toCsv } from "../../lib/csv";
 import { INVOICE_KINDS, TAX_STATUS_OPTIONS, TAX_METHOD_OPTIONS } from "../../constants/tax";
 import { taxCodeDef } from "../../lib/tax";
 import { buildTaxSummary, taxChecks, TAX_KIND_LABEL, type TaxIssue, type TaxSummaryRow } from "../../lib/taxSummary";
+import { TaxReturnView } from "./TaxReturnView";
 
-type View = "summary" | "checks";
+type View = "summary" | "checks" | "return";
 
 const invoiceLabel = (r: TaxSummaryRow) =>
   r.invoice ? `${INVOICE_KINDS.find((k) => k.value === r.invoice)!.short}${r.transitional !== null ? `（${r.transitional}%控除）` : ""}` : "";
@@ -82,24 +83,32 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
     <div className="page">
       <PageHeader
         title="消費税"
-        note={`${year}年：${statusText}。税区分ごとの集計と、申告の前に確かめることを出します（申告書の数字は今後対応します）。`}
+        note={`${year}年：${statusText}。税区分ごとの集計、申告の前に確かめること、申告書の数字を出します。`}
       >
         <button className="btn ghost" onClick={exportCsv} disabled={summary.rows.length === 0}>
           <Download size={16} /> 集計表の CSV
         </button>
       </PageHeader>
 
-      <div className="filters">
+      <div className="filters print-skip">
         <div className="seg" role="tablist">
           <button role="tab" aria-selected={view === "summary"} className={view === "summary" ? "on" : ""} onClick={() => setView("summary")}>集計表</button>
           <button role="tab" aria-selected={view === "checks"} className={view === "checks" ? "on" : ""} onClick={() => setView("checks")}>
             確認{issues.length > 0 && <span className={`count-badge ${errors ? "error" : issues.some((i) => i.level === "warn") ? "warn" : "info"}`}>{issues.length}</span>}
           </button>
+          <button role="tab" aria-selected={view === "return"} className={view === "return" ? "on" : ""} onClick={() => setView("return")} disabled={exempt}>申告書</button>
         </div>
         {exempt && <span className="muted">{year}年は免税事業者です（事業者設定の「消費税」で変えられます）。</span>}
       </div>
 
-      {view === "summary" ? (
+      {view === "return" && !exempt ? (
+        <section className="sheet sheet-fill">
+          <div className="scroll-y">
+            {errors > 0 && <p className="notice print-skip">「確認」に、申告の前に直すものが {errors} 件あります。</p>}
+            <TaxReturnView />
+          </div>
+        </section>
+      ) : view === "summary" ? (
         <section className="sheet sheet-fill">
           <div className="table-wrap scroll-y">
             <table className="ledger tax-summary-table">

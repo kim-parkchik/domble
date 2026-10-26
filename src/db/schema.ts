@@ -55,6 +55,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_statement_notes", "statement_notes", "fiscal_year"),
   ...yearGuards("trg_closed_master_names", "master_names", "from_year"),
   ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
+  ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
 ];
 
 /**
@@ -195,6 +196,13 @@ export const SCHEMA: string[] = [
     method TEXT NOT NULL DEFAULT 'inclusive' CHECK (method IN ('inclusive','exclusive')),
     business_class INTEGER NOT NULL DEFAULT 5 CHECK (business_class BETWEEN 1 AND 6),
     taxable_from TEXT NOT NULL DEFAULT ''
+  );`,
+
+  /** 消費税の中間納付税額（年度ごと。申告した税額。消費税＝国税分と地方消費税＝譲渡割額） */
+  `CREATE TABLE IF NOT EXISTS tax_interims (
+    fiscal_year INTEGER PRIMARY KEY,
+    national INTEGER NOT NULL DEFAULT 0 CHECK (national >= 0),
+    local INTEGER NOT NULL DEFAULT 0 CHECK (local >= 0)
   );`,
 
   /** 年末の按分振替で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */

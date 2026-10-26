@@ -236,7 +236,7 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
   if (ty.status === "standard" && ratio !== null && ratio < 0.95) {
     issues.push({
       level: "warn", title: `課税売上割合が ${(Math.floor(ratio * 10000) / 100).toFixed(2)}%（95% 未満）です`, entryIds: [],
-      detail: "95% 未満のときは、仕入税額を個別対応方式か一括比例配分方式で計算します。domble はまだ対応していないため、申告の前に確かめてください。",
+      detail: "95% 未満のときは、仕入税額を個別対応方式か一括比例配分方式で計算します。申告書の数字は一括比例配分方式で出しています（個別対応方式には未対応）。個別対応方式のほうが有利なこともあるので、申告の前に確かめてください。",
     });
   }
   return issues;

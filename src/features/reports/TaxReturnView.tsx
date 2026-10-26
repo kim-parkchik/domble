@@ -1,0 +1,176 @@
+/**
+ * 消費税の申告書の数字（「消費税」の画面の「申告書」タブ。計算は lib/taxReturn.ts）
+ *  - 方式の比較：その年に使える方式（本則・簡易・2割特例・3割特例）の納付税額を並べる
+ *  - 選んだ方式の付表・第二表・第一表を、欄の番号つきで出す（確定申告書等作成コーナーや e-Tax に書き写す）
+ *  - 中間納付税額は年度ごとに入れる
+ */
+import { useEffect, useMemo, useState } from "react";
+import { Printer, Save } from "lucide-react";
+import { useAppContext, useYearData } from "../../context/AppContext";
+import { useToast } from "../../components/Toast";
+import { yen } from "../../lib/format";
+import { BUSINESS_CLASSES } from "../../constants/tax";
+import { buildTaxBase, computeReturn, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn, type ReturnMethod, type TaxForm } from "../../lib/taxReturn";
+import * as repo from "../../db/repo";
+
+/** 方式ごとの、使うための主な条件 */
+const METHOD_NOTE: Record<ReturnMethod, string> = {
+  standard: "帳簿とインボイスなどの請求書の保存が要ります",
+  simplified: "簡易課税制度選択届出書が要ります（基準期間の課税売上高が5,000万円以下）",
+  twenty: "登録によって課税事業者になった方（基準期間の課税売上高が1,000万円以下など）。届出は不要",
+  thirty: "登録によって課税事業者になった個人事業者（基準期間の課税売上高が1,000万円以下など）。届出は不要",
+};
+
+const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
+
+export const TaxReturnView = () => {
+  const { db, year, taxYears, taxYear, isClosed, can, dataVersion, bump } = useAppContext();
+  const { lines } = useYearData();
+  const toast = useToast();
+  const available = methodsFor(year);
+  const current = (taxYear.status === "exempt" ? null : taxYear.status) as ReturnMethod | null;
+  const [method, setMethod] = useState<ReturnMethod>(current && available.includes(current) ? current : "standard");
+  useEffect(() => {
+    if (current && available.includes(current)) setMethod(current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, year]);
+  const [firstKind, setFirstKind] = useState<"一般用" | "簡易課税用">("一般用");
+
+  // 中間納付税額
+  const [interim, setInterim] = useState({ national: 0, local: 0 });
+  const [draft, setDraft] = useState({ national: "", local: "" });
+  useEffect(() => {
+    repo.getTaxInterim(db, year).then((x) => {
+      setInterim(x);
+      setDraft({ national: String(x.national), local: String(x.local) });
+    }).catch(console.error);
+  }, [db, year, dataVersion]);
+  const saveInterim = async () => {
+    try {
+      await repo.saveTaxInterim(db, year, Number(draft.national || 0), Number(draft.local || 0));
+      bump();
+      toast("中間納付税額を保存しました");
+    } catch (e) {
+      toast(String(e).replace(/^Error: /, ""), "error");
+    }
+  };
+
+  const base = useMemo(() => buildTaxBase(lines, taxYears), [lines, taxYears]);
+  const options = { businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local };
+  const results = useMemo(
+    () => available.map((m) => ({ m, r: computeReturn(m, base, options) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [base, interim, taxYear.business_class, year],
+  );
+  // 2割・3割特例の第一表は、簡易課税の届出があれば簡易課税用、無ければ一般用
+  const shown = method === "twenty" ? twentyReturn(base, options, firstKind)
+    : method === "thirty" ? thirtyReturn(base, options, firstKind)
+      : results.find((x) => x.m === method)?.r ?? computeReturn(method, base, options);
+  const forms = shown.forms;
+  const best = Math.min(...results.map((x) => x.r.total));
+  const admin = can("settings");
+
+  return (
+    <div className="tax-return">
+      <div className="tax-return-head print-skip">
+        <h3 className="sheet-sub">方式の比較（{year}年）</h3>
+        <table className="ledger tax-compare">
+          <thead>
+            <tr><th>方式</th><th className="num">消費税</th><th className="num">地方消費税</th><th className="num">合計（納付・△還付）</th><th>使うための主な条件</th></tr>
+          </thead>
+          <tbody>
+            {results.map(({ m, r }) => (
+              <tr key={m} className={`clickable${m === method ? " on" : ""}`} onClick={() => setMethod(m)}>
+                <td>
+                  {METHOD_LABEL[m]}
+                  {m === current && <span className="badge badge-adjust">この年の設定</span>}
+                  {r.total === best && results.length > 1 && <span className="tax-best">いちばん有利</span>}
+                </td>
+                <td className="num">{signed(r.national)}</td>
+                <td className="num">{signed(r.local)}</td>
+                <td className="num"><b>{signed(r.total)}</b></td>
+                <td className="muted">{m === "simplified" ? `${BUSINESS_CLASSES.find((b) => b.value === taxYear.business_class)?.label}として計算。` : ""}{METHOD_NOTE[m]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="field-note">
+          税込経理・割戻し計算で、中間納付税額を差し引いた額です。課税区分は事業者設定の「消費税」で決めます（ここで選んだ方式は表示だけです）。
+          簡易課税は、事業区分が1種類として計算しています。
+        </p>
+
+        <form className="field-row tax-interim" onSubmit={(e) => { e.preventDefault(); saveInterim(); }}>
+          <label className="field">
+            <span>中間納付税額（消費税）</span>
+            <input className="input num" inputMode="numeric" value={draft.national} onChange={(e) => setDraft((d) => ({ ...d, national: e.target.value.replace(/[^\d]/g, "") }))} disabled={!admin || isClosed} />
+          </label>
+          <label className="field">
+            <span>中間納付譲渡割額（地方消費税）</span>
+            <input className="input num" inputMode="numeric" value={draft.local} onChange={(e) => setDraft((d) => ({ ...d, local: e.target.value.replace(/[^\d]/g, "") }))} disabled={!admin || isClosed} />
+          </label>
+          <div style={{ alignSelf: "flex-end" }}>
+            <button className="btn ghost" type="submit" disabled={!admin || isClosed || (String(interim.national) === draft.national && String(interim.local) === draft.local)}>
+              <Save size={15} /> 保存する
+            </button>
+          </div>
+          <p className="field-note" style={{ alignSelf: "flex-end" }}>納付した額ではなく、中間申告書に書いた「納付すべき税額」の合計です。</p>
+        </form>
+      </div>
+
+      <div className="tax-return-forms print-area">
+        <div className="tax-return-title">
+          <h3>{year}年分 消費税及び地方消費税の申告書の数字（{METHOD_LABEL[method]}）</h3>
+          <span className="spacer" />
+          {(method === "twenty" || method === "thirty") && (
+            <select className="input sm print-skip" value={firstKind} onChange={(e) => setFirstKind(e.target.value as typeof firstKind)} aria-label="第一表の種類" style={{ width: "auto" }}>
+              <option value="一般用">第一表は一般用（簡易課税の届出なし）</option>
+              <option value="簡易課税用">第一表は簡易課税用（簡易課税の届出あり）</option>
+            </select>
+          )}
+          <button className="btn ghost sm print-skip" onClick={() => window.print()}><Printer size={14} /> 印刷</button>
+        </div>
+        {shown.notes.length > 0 && (
+          <ul className="tax-return-notes">{shown.notes.map((n) => <li key={n}>{n}</li>)}</ul>
+        )}
+        {forms.map((f) => <FormTable key={f.id} form={f} />)}
+        <p className="field-note">
+          確定申告書等作成コーナーや e-Tax に書き写すときの数字です。domble は申告書を作ったり送ったりはしません。
+          申告の前に、集計表と「確認」の内容を確かめてください。
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const FormTable = ({ form }: { form: TaxForm }) => (
+  <section className="tax-form-block">
+    <h4>{form.title}</h4>
+    <table className="ledger tax-form-table">
+      <colgroup>
+        <col style={{ width: 52 }} />
+        <col />
+        {form.abc && <><col style={{ width: 130 }} /><col style={{ width: 130 }} /></>}
+        <col style={{ width: 140 }} />
+        <col style={{ width: "22%" }} />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>欄</th><th>項目</th>
+          {form.abc && <><th className="num">6.24% 適用分 A</th><th className="num">7.8% 適用分 B</th></>}
+          <th className="num">{form.abc ? "合計 C" : "金額"}</th><th>備考</th>
+        </tr>
+      </thead>
+      <tbody>
+        {form.rows.map((r, i) => (
+          <tr key={`${r.no}-${i}`}>
+            <td className="tax-form-no">{r.no}</td>
+            <td>{r.label}</td>
+            {form.abc && <><td className="num">{r.a === undefined ? "" : yen(r.a)}</td><td className="num">{r.b === undefined ? "" : yen(r.b)}</td></>}
+            <td className="num"><b>{r.c === null ? "" : signed(r.c)}</b></td>
+            <td className="muted">{r.note ?? ""}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+);

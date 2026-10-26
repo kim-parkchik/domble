@@ -1129,3 +1129,18 @@ describe("消費税（repo）", () => {
     expect((await repo.getEntry(db, e))!.lines.map((l) => l.tax_code)).toEqual(["purchase10", "none", "none"]);
   });
 });
+
+describe("消費税の中間納付税額（repo）", () => {
+  test("年度ごとに保存し、0 にすると消える。変更は履歴に残り、年の締めをした年度は変えられない", async () => {
+    const { db } = strict;
+    expect(await repo.getTaxInterim(db, 2026)).toEqual({ national: 0, local: 0 });
+    await repo.saveTaxInterim(db, 2026, 120_000, 33_800);
+    expect(await repo.getTaxInterim(db, 2026)).toEqual({ national: 120_000, local: 33_800 });
+    await expect(repo.saveTaxInterim(db, 2026, -1, 0)).rejects.toThrow(/0 以上/);
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "2026年の消費税の中間納付税額", new_value: "消費税 120,000 円・地方消費税 33,800 円" });
+    await repo.saveTaxInterim(db, 2026, 0, 0);
+    expect(await repo.getTaxInterim(db, 2026)).toEqual({ national: 0, local: 0 });
+    await repo.closeYear(db, 2026);
+    await expect(repo.saveTaxInterim(db, 2026, 1, 1)).rejects.toThrow(/締め済み/);
+  });
+});
