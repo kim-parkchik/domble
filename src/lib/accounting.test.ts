@@ -4,7 +4,7 @@ import type { Account, JournalLine } from "./types";
 import { subKey } from "./types";
 import {
   buildLedger, carryForwardWithSubs, subClosingBalances, subTrialRow, buildMonthly, buildTrialBalance, carryForward, checkVoucher, closingBalances,
-  linesToRows, openingDifference, rowsToLines, summarizeBalanceSheet, summarizeIncome, toAccountMap, type FlatLine,
+  emptyRow, linesToRows, openingDifference, rowsToLines, summarizeBalanceSheet, summarizeIncome, toAccountMap, type FlatLine,
 } from "./accounting";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
@@ -96,7 +96,12 @@ describe("振替伝票", () => {
     expect(checkVoucher(rows).errors).toEqual([]);
     const ls: JournalLine[] = rowsToLines(rows);
     expect(ls.length).toBe(3);
-    expect(linesToRows(ls)).toEqual(rows.map((r, i) => (i === 1 ? { ...r, memo: "" } : r)));
+    expect(linesToRows(ls)).toEqual(rows.map((r, i) => ({ ...emptyRow(), ...(i === 1 ? { ...r, memo: "" } : r) })));
+    // 税区分・インボイス区分も往復する（入れていない側は null のまま）
+    const taxed = rowsToLines([{ ...rows[0], debitTax: "purchase10", debitInvoice: "transitional" }]);
+    expect(taxed[0]).toMatchObject({ tax_code: "purchase10", invoice_kind: "transitional" });
+    expect(taxed[1].tax_code).toBeUndefined();
+    expect(linesToRows(taxed)[0]).toMatchObject({ debitTax: "purchase10", debitInvoice: "transitional", creditTax: null });
   });
 });
 

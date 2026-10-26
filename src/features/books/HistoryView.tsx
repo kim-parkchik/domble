@@ -3,6 +3,7 @@
  */
 import type { EntrySnapshot, HistoryAction, HistoryRecord } from "../../lib/types";
 import { shortDate, yen } from "../../lib/format";
+import { taxLongLabel, taxShortLabel } from "../../lib/tax";
 
 export const ACTION_LABEL: Record<HistoryAction, string> = { create: "登録", update: "訂正", delete: "削除" };
 
@@ -14,7 +15,10 @@ export const SnapshotTable = ({ snap, compare }: { snap: EntrySnapshot; compare?
   const cr = snap.lines.filter((l) => l.side === "credit");
   const n = Math.max(dr.length, cr.length);
   // 前の版と違う箇所に印をつける
-  const key = (l?: EntrySnapshot["lines"][number]) => (l ? `${l.side}|${lineLabel(l)}|${l.amount}|${l.memo}` : "");
+  const key = (l?: EntrySnapshot["lines"][number]) => (l ? `${l.side}|${lineLabel(l)}|${l.amount}|${l.memo}|${l.tax ?? ""}|${l.invoice ?? ""}` : "");
+  // 税区分（入っている写しだけ）
+  const tax = (l?: EntrySnapshot["lines"][number]) =>
+    l?.tax ? <span className="tax-tag" title={taxLongLabel(l.tax, l.invoice, snap.date)}>{taxShortLabel(l.tax, l.invoice, snap.date)}</span> : null;
   const prev = new Set(compare?.lines.map(key));
   const changed = (l?: EntrySnapshot["lines"][number]) => !!compare && !!l && !prev.has(key(l));
   const dateChanged = !!compare && compare.date !== snap.date;
@@ -25,9 +29,9 @@ export const SnapshotTable = ({ snap, compare }: { snap: EntrySnapshot; compare?
         {Array.from({ length: n }, (_, i) => (
           <tr key={i}>
             <td className={`snap-date${i === 0 && dateChanged ? " changed" : ""}`}>{i === 0 ? shortDate(snap.date) : ""}</td>
-            <td className={changed(dr[i]) ? "changed" : ""}>{dr[i] ? lineLabel(dr[i]) : ""}</td>
+            <td className={changed(dr[i]) ? "changed" : ""}>{dr[i] ? lineLabel(dr[i]) : ""}{tax(dr[i])}</td>
             <td className={`num${changed(dr[i]) ? " changed" : ""}`}>{dr[i] ? yen(dr[i].amount) : ""}</td>
-            <td className={changed(cr[i]) ? "changed" : ""}>{cr[i] ? lineLabel(cr[i]) : ""}</td>
+            <td className={changed(cr[i]) ? "changed" : ""}>{cr[i] ? lineLabel(cr[i]) : ""}{tax(cr[i])}</td>
             <td className={`num${changed(cr[i]) ? " changed" : ""}`}>{cr[i] ? yen(cr[i].amount) : ""}</td>
             <td className="snap-memo">{dr[i]?.memo || cr[i]?.memo || ""}</td>
           </tr>

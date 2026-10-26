@@ -24,6 +24,8 @@ export interface Account {
   is_active: number; // 0 / 1
   /** 初期から入っている科目（削除・区分変更はできない） */
   is_system: number; // 0 / 1
+  /** 税区分の初期値（null = 決まった初期値。constants/tax.ts の ACCOUNT_TAX_DEFAULTS か区分から） */
+  default_tax_code: TaxCode | null;
 }
 
 /** 補助科目（例：普通預金 → ○○銀行、売掛金 → 取引先） */
@@ -45,6 +47,10 @@ export interface JournalLine {
   sub_account_id: number | null;
   amount: number; // 円（整数）
   memo: string;
+  /** 税区分（null = 未設定。免税事業者の期間の仕訳や、消費税に対応する前の仕訳） */
+  tax_code?: TaxCode | null;
+  /** インボイス区分（課税仕入の明細だけ。それ以外は null） */
+  invoice_kind?: InvoiceKind | null;
 }
 
 export interface JournalEntry {
@@ -74,6 +80,9 @@ export interface SnapshotLine {
   sub: string;
   amount: number;
   memo: string;
+  /** 税区分・インボイス区分（入っているときだけ。消費税に対応する前の履歴には無い） */
+  tax?: TaxCode;
+  invoice?: InvoiceKind;
 }
 
 /** 履歴に残す仕訳の写し。科目名は記録時点の名前で保存する */
@@ -107,11 +116,37 @@ export interface VoucherRow {
   creditSubId: number | null;
   creditAmount: number | null;
   memo: string;
+  /** 税区分・インボイス区分。null（または無い）= 科目・取引先から決まる初期値に従う */
+  debitTax?: TaxCode | null;
+  debitInvoice?: InvoiceKind | null;
+  creditTax?: TaxCode | null;
+  creditInvoice?: InvoiceKind | null;
 }
 
 export type FilingType = "blue65" | "blue55" | "blue10" | "white";
-export type TaxStatus = "exempt" | "standard" | "simplified" | "twenty";
+/** 課税区分：免税・本則課税・簡易課税・2割特例・3割特例 */
+export type TaxStatus = "exempt" | "standard" | "simplified" | "twenty" | "thirty";
+/** 経理方式：税込・税抜 */
 export type TaxMethod = "inclusive" | "exclusive";
+/** 明細の税区分（定義は constants/tax.ts の TAX_CODES） */
+export type TaxCode =
+  | "none" | "sales10" | "sales8" | "export" | "sales_nontax"
+  | "purchase10" | "purchase8" | "purchase_nontax" | "baddebt10" | "baddebt8";
+/** インボイス区分：適格請求書あり／経過措置（適格請求書発行事業者以外からの仕入れ）／控除しない */
+export type InvoiceKind = "qualified" | "transitional" | "none";
+
+/**
+ * 消費税の設定（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ）
+ */
+export interface TaxYear {
+  from_year: number;
+  status: TaxStatus;
+  method: TaxMethod;
+  /** 簡易課税の主な事業区分（1〜6） */
+  business_class: number;
+  /** 年の途中から課税事業者になった日（YYYY-MM-DD。空 = その年の初めから） */
+  taxable_from: string;
+}
 /** strict = 電子帳簿保存法（優良な電子帳簿）対応、standard = 通常 */
 export type EBookMode = "strict" | "standard";
 
@@ -121,13 +156,12 @@ export interface Settings {
   /** 郵便番号（123-4567） */
   postal_code: string;
   address: string;
-  /** 適格請求書発行事業者の登録番号（T + 13桁）。免税事業者のときは使わない */
+  /** 適格請求書発行事業者の登録番号（T + 13桁）と登録日（YYYY-MM-DD）。消費税の設定で入れる */
   invoice_no: string;
+  invoice_registered_on: string;
   fiscal_year: number;
   filing_type: FilingType;
   industry: string;
-  tax_status: TaxStatus;
-  tax_method: TaxMethod;
   /** 帳簿作成時に決める。null = 未選択。通常 → 厳密 だけは、翌年を始めるときに切り替えられる */
   e_book_mode: EBookMode | null;
   /** 通常 → 厳密に切り替えた帳簿：電子帳簿保存法に対応を始めた年（最初から厳密なら null = 全部の年が対応） */
@@ -237,6 +271,8 @@ export interface Counterparty {
   kana: string;
   /** 適格請求書発行事業者の登録番号（T + 13桁。無ければ空） */
   invoice_no: string;
+  /** 1 = 適格請求書発行事業者ではない（免税事業者など）。この取引先からの課税仕入は初期値が「経過措置」になる */
+  not_registered: number;
   memo: string;
   is_active: number;
 }

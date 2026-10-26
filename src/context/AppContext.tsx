@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type Database from "../db/connection";
-import type { Account, Counterparty, User, FiscalClosing, HomeUseRate, OpeningBalances, Settings, SubAccount, SubOpeningBalances } from "../lib/types";
+import type { Account, Counterparty, User, FiscalClosing, HomeUseRate, OpeningBalances, Settings, SubAccount, SubOpeningBalances, TaxYear } from "../lib/types";
 import { toAccountMap, yearEnd, yearStart, type AccountMap, type FlatLine } from "../lib/accounting";
 import { closedMonthOf, closingOf, expectedNextOpening, openingMismatches, type OpeningMismatch } from "../lib/closing";
 import * as repo from "../db/repo";
 import { can as canRole, type Perm } from "../lib/permissions";
+import { taxActiveOn, taxYearOf } from "../lib/tax";
 
 interface AppContextValue {
   db: Database;
@@ -39,6 +40,13 @@ interface AppContextValue {
   /** 取引先（全件。非表示のものも含む） */
   counterparties: Counterparty[];
   reloadCounterparties: () => Promise<void>;
+  /** 消費税の設定（年度ごと。from_year の順） */
+  taxYears: TaxYear[];
+  /** 表示中の年度に効いている消費税の設定（inherited = 前の年から引き継ぎ） */
+  taxYear: TaxYear & { inherited: boolean };
+  /** その日の取引に税区分を付けるか（課税事業者の期間か） */
+  isTaxActive: (date: string) => boolean;
+  reloadTaxYears: () => Promise<void>;
   /** 休みの日（祝日・事業者の休業日）。営業日の数え方に使う */
   daysOff: ReadonlySet<string>;
   /** 締め（年度ごとに何月まで締めたか） */
@@ -120,6 +128,12 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
     reloadCounterparties().catch(console.error);
   }, [reloadCounterparties]);
 
+  const [taxYears, setTaxYears] = useState<TaxYear[]>([]);
+  const reloadTaxYears = useCallback(async () => setTaxYears(await repo.getTaxYears(db)), [db]);
+  useEffect(() => {
+    reloadTaxYears().catch(console.error);
+  }, [reloadTaxYears]);
+
   // 祝日・休業日（事業者設定で変えたら bump で読み直す）
   const [daysOff, setDaysOff] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
@@ -167,6 +181,10 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       reloadUsers,
       counterparties,
       reloadCounterparties,
+      taxYears,
+      taxYear: taxYearOf(taxYears, settings.fiscal_year),
+      isTaxActive: (date) => taxActiveOn(taxYears, date),
+      reloadTaxYears,
       closings,
       daysOff,
       isClosed: closedMonthOf(closings.find((c) => c.fiscal_year === settings.fiscal_year)) === 12,
@@ -177,7 +195,7 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       reloadSettings,
       reloadAccounts,
     };
-  }, [db, filePath, readOnly, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
+  }, [db, filePath, readOnly, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, taxYears, reloadTaxYears, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

@@ -43,7 +43,7 @@ describe("家事按分（仕訳の明細）", () => {
   });
 
   test("事業割合 0% は行ごと事業主貸。貸方の経費・分け済みの仕訳は分けない", () => {
-    expect(splitLinesByHomeUse([line(1, "debit", 5, 800, "私用"), line(1, "credit", 1, 800)], rateOf, DRAW).lines[0]).toEqual(line(1, "debit", DRAW, 800, "私用（家事分）"));
+    expect(splitLinesByHomeUse([line(1, "debit", 5, 800, "私用"), line(1, "credit", 1, 800)], rateOf, DRAW).lines[0]).toEqual({ ...line(1, "debit", DRAW, 800, "私用（家事分）"), tax_code: null, invoice_kind: null });
     const refund = [line(1, "debit", 1, 300), line(1, "credit", 2, 300)];
     expect(splitLinesByHomeUse(refund, rateOf, DRAW)).toEqual({ lines: refund, splits: [] });
     const done = [line(1, "debit", 2, 600), line(2, "debit", DRAW, 400), line(1, "credit", 1, 1000)];

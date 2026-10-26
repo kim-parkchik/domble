@@ -85,7 +85,7 @@ export const CounterpartiesPage = () => {
                     <td><input type="checkbox" checked={!!c.is_active} onChange={(e) => toggle(c, e.target.checked)} aria-label={`${c.name}を使う`} /></td>
                     <td>{c.name}</td>
                     <td className="muted">{c.kana}</td>
-                    <td className="mono">{c.invoice_no}</td>
+                    <td className="mono">{c.invoice_no || (c.not_registered ? <span className="muted" title="適格請求書発行事業者ではない（課税仕入の初期値は経過措置）">登録なし</span> : "")}</td>
                     <td className="muted ellipsis" title={c.memo}>{c.memo}</td>
                     <td className="num muted">{usage.get(c.id) ?? ""}</td>
                     <td className="row-actions">
@@ -110,10 +110,12 @@ const CounterpartyForm = ({ target, onClose }: { target: Counterparty | "new"; o
   const toast = useToast();
   const isNew = target === "new";
   const [d, setD] = useState<CounterpartyInput>(
-    isNew ? { name: "", kana: "", invoice_no: "", memo: "" } : { name: target.name, kana: target.kana, invoice_no: target.invoice_no, memo: target.memo },
+    isNew
+      ? { name: "", kana: "", invoice_no: "", not_registered: false, memo: "" }
+      : { name: target.name, kana: target.kana, invoice_no: target.invoice_no, not_registered: !!target.not_registered, memo: target.memo },
   );
   const [error, setError] = useState("");
-  const set = <K extends keyof CounterpartyInput>(k: K, v: string) => setD((x) => ({ ...x, [k]: v }));
+  const set = <K extends keyof CounterpartyInput>(k: K, v: CounterpartyInput[K]) => setD((x) => ({ ...x, [k]: v }));
 
   const submit = async () => {
     const err = validateCounterparty(counterparties, d, isNew ? undefined : target.id);
@@ -146,6 +148,11 @@ const CounterpartyForm = ({ target, onClose }: { target: Counterparty | "new"; o
           <span>適格請求書発行事業者の登録番号（任意）</span>
           <input className="input mono" value={d.invoice_no} onChange={(e) => set("invoice_no", e.target.value)} placeholder="T1234567890123" maxLength={20} />
         </label>
+        <label className="check">
+          <input type="checkbox" checked={!!d.not_registered} disabled={!!d.invoice_no.trim()} onChange={(e) => set("not_registered", e.target.checked)} />
+          適格請求書発行事業者ではない（免税事業者・個人など）
+        </label>
+        <p className="field-note">チェックすると、この取引先からの課税仕入は、インボイス区分の初期値が「経過措置」（令和8年9月までは80%、10月からは70%控除）になります。</p>
         <label className="field">
           <span>メモ（任意）</span>
           <input className="input" value={d.memo} onChange={(e) => set("memo", e.target.value)} maxLength={200} />

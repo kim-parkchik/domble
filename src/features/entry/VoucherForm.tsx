@@ -84,9 +84,13 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
   const update = (i: number, patch: Partial<VoucherRow>) =>
     setRows((rs) => {
       const next = rs.map((r, j) => (j === i ? { ...r, ...patch } : r));
-      // 科目を変えたら補助科目は選び直し
-      if ("debitAccountId" in patch && patch.debitAccountId !== rs[i].debitAccountId) next[i].debitSubId = null;
-      if ("creditAccountId" in patch && patch.creditAccountId !== rs[i].creditAccountId) next[i].creditSubId = null;
+      // 科目を変えたら補助科目は選び直し、税区分はその科目の初期値に戻す
+      if ("debitAccountId" in patch && patch.debitAccountId !== rs[i].debitAccountId) {
+        next[i] = { ...next[i], debitSubId: null, debitTax: null, debitInvoice: null };
+      }
+      if ("creditAccountId" in patch && patch.creditAccountId !== rs[i].creditAccountId) {
+        next[i] = { ...next[i], creditSubId: null, creditTax: null, creditInvoice: null };
+      }
       // 1行だけの仕訳のときは、借方金額を貸方にも写す（貸方が空 or 同額だった場合）
       if ("debitAmount" in patch) {
         const before = rs[i];
@@ -184,10 +188,10 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
             <col style={{ width: 36 }} />
             <col style={{ width: "14%" }} />
             <col style={{ width: "12%" }} />
-            <col style={{ width: 84 }} />
+            <col style={{ width: 136 }} />
             <col style={{ width: "14%" }} />
             <col style={{ width: "12%" }} />
-            <col style={{ width: 84 }} />
+            <col style={{ width: 136 }} />
             <col />
             <col style={{ width: 40 }} />
           </colgroup>
@@ -210,10 +214,20 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
                 <td className="row-no">{i + 1}</td>
                 <td><AccountWithSub accountId={r.debitAccountId} subId={r.debitSubId} onAccount={(v) => update(i, { debitAccountId: v })} onSub={(v) => update(i, { debitSubId: v })} onKeyDown={nav} label={`${i + 1}行目 借方科目`} /></td>
                 <td><AmountInput value={r.debitAmount} onChange={(v) => update(i, { debitAmount: v })} onKeyDown={nav} aria-label={`${i + 1}行目 借方金額`} /></td>
-                <td><TaxSelect label={`${i + 1}行目 借方税区分`} /></td>
+                <td>
+                  <TaxSelect
+                    label={`${i + 1}行目 借方税区分`} value={r.debitTax} invoice={r.debitInvoice} accountId={r.debitAccountId} side="debit"
+                    date={date} counterpartyId={counterpartyId} onChange={(c, inv) => update(i, { debitTax: c, debitInvoice: inv })}
+                  />
+                </td>
                 <td><AccountWithSub accountId={r.creditAccountId} subId={r.creditSubId} onAccount={(v) => update(i, { creditAccountId: v })} onSub={(v) => update(i, { creditSubId: v })} onKeyDown={nav} label={`${i + 1}行目 貸方科目`} /></td>
                 <td><AmountInput value={r.creditAmount} onChange={(v) => update(i, { creditAmount: v })} onKeyDown={nav} aria-label={`${i + 1}行目 貸方金額`} /></td>
-                <td><TaxSelect label={`${i + 1}行目 貸方税区分`} /></td>
+                <td>
+                  <TaxSelect
+                    label={`${i + 1}行目 貸方税区分`} value={r.creditTax} invoice={r.creditInvoice} accountId={r.creditAccountId} side="credit"
+                    date={date} counterpartyId={counterpartyId} onChange={(c, inv) => update(i, { creditTax: c, creditInvoice: inv })}
+                  />
+                </td>
                 <td><MemoInput value={r.memo} onChange={(v) => update(i, { memo: v })} onKeyDown={nav} aria-label={`${i + 1}行目 摘要`} /></td>
                 <td>
                   <button className="icon-btn subtle" tabIndex={-1} onClick={() => removeRow(i)} aria-label={`${i + 1}行目を消す`}>

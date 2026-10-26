@@ -57,7 +57,8 @@ export const splitLinesByHomeUse = (
     splits.push({ account_id: l.account_id, rate, amount: l.amount, business, private: priv });
     const privateMemo = l.memo ? `${l.memo}（家事分）` : "家事分";
     if (business === 0) {
-      out.push({ ...l, account_id: drawId, sub_account_id: null, memo: privateMemo });
+      // 家事分は税区分を引き継がない（保存のときに事業主貸の初期値＝対象外になる）
+      out.push({ ...l, account_id: drawId, sub_account_id: null, memo: privateMemo, tax_code: null, invoice_kind: null });
       continue;
     }
     out.push({ ...l, amount: business });

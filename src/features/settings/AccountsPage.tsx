@@ -15,7 +15,9 @@ import { Modal } from "../../components/Modal";
 import { useToast } from "../../components/Toast";
 import { CATEGORY_CODE_RANGE, CATEGORY_LABEL, LOCKED_CODES } from "../../constants/accounts";
 import { MAX_SUB_ACCOUNTS_PER_ACCOUNT } from "../../constants/appConfig";
-import type { Account, AccountCategory } from "../../lib/types";
+import { TAX_CODES } from "../../constants/tax";
+import { accountTaxCode, builtinTaxCode } from "../../lib/tax";
+import type { Account, AccountCategory, TaxCode } from "../../lib/types";
 import * as repo from "../../db/repo";
 
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as AccountCategory[];
@@ -48,6 +50,15 @@ export const AccountsPage = () => {
   const [editing, setEditing] = useState<Account | "new" | null>(null);
   const [subsFor, setSubsFor] = useState<Account | null>(null);
   const [cat, setCat] = useState<AccountCategory | "all">("all");
+
+  const setTax = async (a: Account, code: TaxCode) => {
+    try {
+      await repo.setAccountTaxCode(db, a.id, code);
+      await reloadAccounts();
+    } catch (e) {
+      toast(`変更できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
 
   const toggle = async (a: Account, active: boolean) => {
     await repo.setAccountActive(db, a.id, active);
@@ -106,17 +117,22 @@ export const AccountsPage = () => {
               <col style={{ width: 56 }} />
               <col style={{ width: 64 }} />
               <col />
+              <col style={{ width: 150 }} />
               <col style={{ width: "22%" }} />
               <col style={{ width: 230 }} />
             </colgroup>
             <thead>
-              <tr><th>使う</th><th>コード</th><th>科目名</th><th>補助科目</th><th /></tr>
+              <tr>
+                <th>使う</th><th>コード</th><th>科目名</th>
+                <th title="課税事業者の期間に、この科目を選んだときに入る税区分。資産の科目は借方（取得したとき）だけに使い、貸方は対象外です">税区分（初期値）</th>
+                <th>補助科目</th><th />
+              </tr>
             </thead>
             <tbody>
               {shownCats.map((c) => (
                 <Fragment key={c}>
                   <tr className="cat-row">
-                    <td colSpan={5}>{CATEGORY_LABEL[c]}<span className="cat-range">コード {CATEGORY_CODE_RANGE[c][0]}〜{CATEGORY_CODE_RANGE[c][1]}</span></td>
+                    <td colSpan={6}>{CATEGORY_LABEL[c]}<span className="cat-range">コード {CATEGORY_CODE_RANGE[c][0]}〜{CATEGORY_CODE_RANGE[c][1]}</span></td>
                   </tr>
                   {accounts.filter((a) => a.category === c).map((a) => {
                     const locked = LOCKED_CODES.includes(a.code);
@@ -135,6 +151,15 @@ export const AccountsPage = () => {
                             </span>
                           )}
                           {!a.is_system && <span className="custom-tag">追加</span>}
+                        </td>
+                        <td>
+                          <select
+                            className={`input tax-select${a.default_tax_code ? "" : " is-default"}`} value={accountTaxCode(a)}
+                            onChange={(e) => setTax(a, e.target.value as TaxCode)} aria-label={`${a.name}の税区分の初期値`}
+                            title={a.default_tax_code ? `変更済み（決まった初期値は「${TAX_CODES.find((t) => t.code === builtinTaxCode(a))!.label}」）` : "決まった初期値"}
+                          >
+                            {TAX_CODES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+                          </select>
                         </td>
                         <td className="muted">{subs.length ? subs.map((s) => s.name).join("、") : ""}</td>
                         <td className="row-actions">

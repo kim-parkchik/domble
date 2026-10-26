@@ -22,8 +22,7 @@ import * as repo from "../../db/repo";
 import { closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
 import { APP_DIR_NAME, BACKUP_DIR_NAME, DEFAULT_INPUT_PERIOD_DAYS, EXT_BACKUP, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS } from "../../constants/appConfig";
-import { TAX_METHOD_OPTIONS, TAX_STATUS_OPTIONS } from "../../constants/tax";
-import type { TaxMethod, TaxStatus } from "../../lib/types";
+import { TaxSection } from "./TaxSection";
 
 export const FILING_LABEL: Record<FilingType, string> = {
   blue65: "青色申告（65万円控除）",
@@ -42,8 +41,6 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra }: {
   const [s, setS] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  /** 免税事業者は登録番号を持てない（適格請求書発行事業者になれるのは課税事業者だけ） */
-  const exempt = s.tax_status === "exempt";
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((x) => ({ ...x, [k]: v }));
 
   return (
@@ -99,36 +96,6 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra }: {
           </select>
         </label>
       </div>
-      <fieldset className="tax-fieldset">
-        <legend>消費税</legend>
-        <div className="field-row">
-          <label className="field">
-            <span>課税区分</span>
-            <select className="input" value={s.tax_status} onChange={(e) => set("tax_status", e.target.value as TaxStatus)}>
-              {TAX_STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value} disabled={!o.enabled}>{o.label}{o.enabled ? "" : "（準備中）"}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>経理方式</span>
-            <select className="input" value={s.tax_method} onChange={(e) => set("tax_method", e.target.value as TaxMethod)} disabled={s.tax_status === "exempt"}>
-              {TAX_METHOD_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value} disabled={!o.enabled}>{o.label}{o.enabled ? "" : "（準備中）"}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label className="field">
-          <span>適格請求書発行事業者の登録番号</span>
-          <input
-            className="input" value={s.invoice_no} onChange={(e) => set("invoice_no", e.target.value)} placeholder="例：T1234567890123"
-            maxLength={20} disabled={exempt} title={exempt ? "免税事業者は登録番号を持てません（課税事業者を選ぶと入力できます）" : undefined}
-          />
-          {exempt && <small className="field-note">免税事業者は適格請求書発行事業者になれないため、入力できません。</small>}
-        </label>
-        <p className="field-note">いまは免税事業者（税込経理）のみ対応しています。課税事業者向けの機能は今後追加します。</p>
-      </fieldset>
       {extra}
       {error && <p className="form-error-inline" role="alert">{error}</p>}
       <div>
@@ -262,6 +229,7 @@ export const BusinessSettingsPage = () => {
           </button>
         </section>
 
+        <TaxSection />
         <ClosingSection />
         <InputPeriodSection />
         <ScanSection />

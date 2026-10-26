@@ -111,3 +111,24 @@ describe("仕訳の CSV 取り込み", () => {
     expect(r.entries[0].lines[0].memo).toBe("-返金");
   });
 });
+
+describe("税区分の列", () => {
+  const TAX_HEADER = ["日付", "借方科目", "借方金額", "借方税区分", "借方インボイス", "貸方科目", "貸方金額", "貸方税区分"];
+  test("税区分・インボイスを読む。空なら初期値（保存のときに埋まる）", () => {
+    const r = importJournalCsv(toCsv(TAX_HEADER, [
+      ["2026-01-05", "消耗品費", 1080, "課税仕入 8%（軽減）", "経過措置", "現金", 1080, "対象外"],
+      ["2026-01-06", "消耗品費", 1100, "", "", "現金", 1100, ""],
+    ]), ctx);
+    expect(r.issues).toEqual([]);
+    expect(r.entries[0].lines.map((l) => [l.tax_code, l.invoice_kind])).toEqual([["purchase8", "transitional"], ["none", undefined]]);
+    expect(r.entries[1].lines.map((l) => l.tax_code)).toEqual([undefined, undefined]);
+  });
+
+  test("読めない税区分・インボイスは問題として返す", () => {
+    const r = importJournalCsv(toCsv(TAX_HEADER, [["2026-01-05", "消耗品費", 1100, "消費税", "あり", "現金", 1100, ""]]), ctx);
+    expect(r.issues.map((i) => i.message)).toEqual([
+      expect.stringMatching(/借方税区分「消費税」/),
+      expect.stringMatching(/借方インボイス「あり」/),
+    ]);
+  });
+});

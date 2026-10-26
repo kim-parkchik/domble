@@ -318,16 +318,19 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .balance-banner.ok { background: var(--accent-tint); color: var(--accent); }
 .balance-banner.ng { background: #fdf1f1; color: var(--cr); }
 
-/* ---------- 消費税（準備中のためグレー表示） ---------- */
+/* ---------- 消費税（免税事業者の期間はグレー表示） ---------- */
 .tax-select:disabled, .input:disabled, select:disabled {
   background: #eef1f4; color: #9aa5b1; border-color: #dde2e8; cursor: not-allowed; opacity: 1;
 }
 .voucher-table .tax-select:disabled, .input-row .tax-select:disabled { background: #f1f4f7; border-color: transparent; }
 .tax-select { font-size: 12px; padding: 0 4px; width: 100%; }
+/* 科目の初期値のまま（自分で選んだものは濃く出す） */
+.tax-select.is-default { color: var(--muted); }
 .ledger th.tax-th { color: #a3adb7; font-weight: 600; }
-.ledger td.tax-cell { color: #a3adb7; font-size: 12px; }
-.tax-fieldset { border: 1px solid var(--rule); border-radius: 4px; padding: 10px 14px 12px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.tax-fieldset legend { font-size: 12px; font-weight: 700; color: var(--muted); padding: 0 6px; }
+.ledger td.tax-cell { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.ledger td.tax-cell.tax-missing { color: var(--cr); }
+.tax-fill { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 8px 12px; background: #fff8e6; border-radius: 4px; font-size: 13px; }
+.tax-tag { font-size: 11px; color: var(--muted); margin-left: 6px; white-space: nowrap; }
 .field-note { font-size: 12px; color: var(--muted); }
 
 /* ---------- 設定 ---------- */

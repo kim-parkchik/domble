@@ -16,6 +16,7 @@ import { groupByEntry, monthEnd, monthStart, yearEnd, yearStart, type FlatLine }
 import { parseAmount, shortDate, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
+import { invoiceCsvLabel, taxLongLabel, taxShortLabel } from "../../lib/tax";
 import * as repo from "../../db/repo";
 
 interface DisplayRow {
@@ -128,15 +129,23 @@ export const JournalListPage = () => {
   const total = rows.filter((r) => !r.deleted).reduce((s, r) => s + (r.dr?.amount ?? 0), 0);
   const entryCount = rows.filter((r) => r.first && !r.deleted).length;
   const name = (l?: FlatLine) => (l ? labelOf(l.account_id, l.sub_account_id) : "");
+  // 税区分（対象外のものは出さない）
+  const tax = (l?: FlatLine) =>
+    l?.tax_code && l.tax_code !== "none"
+      ? <span className="tax-tag" title={taxLongLabel(l.tax_code, l.invoice_kind, l.date)}>{taxShortLabel(l.tax_code, l.invoice_kind, l.date)}</span>
+      : null;
 
   const exportCsv = async () => {
-    const header = ["伝票No", "日付", "借方科目", "借方補助", "借方金額", "貸方科目", "貸方補助", "貸方金額", "摘要", "取引先", "登録番号", "状態", "登録日時", "登録までの日数", "入力期間", "決算整理"];
+    const header = ["伝票No", "日付", "借方科目", "借方補助", "借方金額", "貸方科目", "貸方補助", "貸方金額", "摘要", "取引先", "登録番号", "状態", "登録日時", "登録までの日数", "入力期間", "決算整理",
+      "借方税区分", "借方インボイス", "貸方税区分", "貸方インボイス"];
+    const taxCols = (l?: FlatLine) => [l?.tax_code ? taxLongLabel(l.tax_code, null, l.date) : "", invoiceCsvLabel(l?.tax_code, l?.invoice_kind)];
     const sub = (l?: FlatLine) => (l?.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "");
     const body = rows.map((r) =>
       [r.entryId, r.date, r.dr ? accountMap.get(r.dr.account_id)?.name ?? "" : "", sub(r.dr), r.dr?.amount ?? "",
         r.cr ? accountMap.get(r.cr.account_id)?.name ?? "" : "", sub(r.cr), r.cr?.amount ?? "", r.memo, r.counterparty,
         r.counterparty ? counterparties.find((c) => c.name === r.counterparty)?.invoice_no ?? "" : "", r.deleted ? "削除済み" : "",
-        r.createdAt, r.createdAt ? inputDelayDays(r.date, r.createdAt) : "", r.late ? "過ぎて登録" : "", r.adjustment ? "決算整理" : ""],
+        r.createdAt, r.createdAt ? inputDelayDays(r.date, r.createdAt) : "", r.late ? "過ぎて登録" : "", r.adjustment ? "決算整理" : "",
+        ...taxCols(r.dr), ...taxCols(r.cr)],
     );
     const path = await save({
       defaultPath: `仕訳日記帳_${settings.business_name || "帳簿"}_${year}.csv`,
@@ -226,9 +235,9 @@ export const JournalListPage = () => {
                 >
                   <td>{r.first ? shortDate(r.date) : ""}</td>
                   <td className="num muted">{r.first ? r.entryId : ""}</td>
-                  <td>{name(r.dr)}</td>
+                  <td>{name(r.dr)}{tax(r.dr)}</td>
                   <td className="num">{r.dr ? yen(r.dr.amount) : ""}</td>
-                  <td>{name(r.cr)}</td>
+                  <td>{name(r.cr)}{tax(r.cr)}</td>
                   <td className="num">{r.cr ? yen(r.cr.amount) : ""}</td>
                   <td className="memo">
                     {r.first && r.deleted && <span className="badge badge-delete">削除済み</span>}

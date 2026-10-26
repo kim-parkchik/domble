@@ -17,6 +17,8 @@ export interface CounterpartyInput {
   name: string;
   kana: string;
   invoice_no: string;
+  /** 適格請求書発行事業者ではない（免税事業者など）。この取引先からの課税仕入は初期値が「経過措置」になる */
+  not_registered?: boolean;
   memo: string;
 }
 
@@ -28,6 +30,7 @@ export const validateCounterparty = (list: Counterparty[], d: CounterpartyInput,
   const inv = normalizeInvoiceNo(d.invoice_no);
   if (inv && !isValidInvoiceNo(inv)) return "登録番号は「T」と13桁の数字です（例：T1234567890123）";
   if (inv && list.some((c) => c.id !== editingId && c.invoice_no === inv)) return "同じ登録番号の取引先があります";
+  if (inv && d.not_registered) return "登録番号がある取引先は「適格請求書発行事業者ではない」にできません";
   if (d.memo.length > 200) return "メモは200文字までです";
   return null;
 };

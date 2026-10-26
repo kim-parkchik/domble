@@ -3,10 +3,11 @@
  * どれも「打って Enter」で確定できるよう、テキスト入力ベースで作っています。
  */
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
-import type { Account } from "../lib/types";
+import type { Account, InvoiceKind, Side, TaxCode } from "../lib/types";
 import { parseAmount, parseDateInput, shortDate, toHalfWidth } from "../lib/format";
 import { useAppContext } from "../context/AppContext";
 import { TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
+import { defaultInvoiceKind, defaultTaxCode, isPurchaseCode, taxLongLabel, taxShortLabel } from "../lib/tax";
 import { findCounterparty, normName, validateCounterparty } from "../lib/counterparty";
 import * as repo from "../db/repo";
 
@@ -271,15 +272,58 @@ export const MemoInput = ({ value, onChange, placeholder = "摘要", ...rest }: 
 };
 
 // ────────────────────────────────────────────
-// 税区分（免税事業者のあいだは「対象外」で固定・グレー表示）
+// 税区分（免税事業者の期間は「対象外」で固定・グレー表示）
+//  課税仕入は、インボイス区分（適格・経過措置・控除しない）も同じ欄で選ぶ。
+//  値が null のあいだは、科目・取引先から決まる初期値を出す（保存のときも同じ初期値になる。lib/tax.ts の resolveLineTax）。
+//  Enter での移動では飛ばす（初期値のままのことが多いため。変えるときはクリックか Tab）
 // ────────────────────────────────────────────
 
-export const TaxSelect = ({ label }: { label: string }) => {
-  const { settings } = useAppContext();
-  const locked = settings.tax_status === "exempt";
+const optionValue = (code: TaxCode, invoice: InvoiceKind | null) => (isPurchaseCode(code) ? `${code}|${invoice ?? "qualified"}` : code);
+
+export const TaxSelect = ({ label, value, invoice, onChange, accountId, side, date, counterpartyId }: {
+  label: string;
+  value: TaxCode | null | undefined;
+  invoice: InvoiceKind | null | undefined;
+  onChange: (code: TaxCode | null, invoice: InvoiceKind | null) => void;
+  accountId: number | null;
+  side: Side;
+  /** 取引の日付（課税事業者の期間か、経過措置の割合） */
+  date: string;
+  counterpartyId?: number | null;
+}) => {
+  const { accountMap, counterparties, isTaxActive } = useAppContext();
+  const account = accountId ? accountMap.get(accountId) : undefined;
+  const active = isTaxActive(date);
+  if (!active || !account) {
+    return (
+      <select className="input tax-select" value="none" disabled title={active ? "科目を選ぶと、科目の初期値が入ります" : TAX_DISABLED_NOTE} aria-label={label} tabIndex={-1} onChange={() => {}}>
+        <option value="none">{active ? "" : "対象外"}</option>
+      </select>
+    );
+  }
+  const cp = counterpartyId ? counterparties.find((c) => c.id === counterpartyId) : null;
+  const code = value ?? defaultTaxCode(account, side);
+  const inv = isPurchaseCode(code) ? invoice ?? defaultInvoiceKind(cp) : null;
+  const opt = (c: TaxCode, i: InvoiceKind | null = null) => (
+    <option key={optionValue(c, i)} value={optionValue(c, i)} title={taxLongLabel(c, i, date)}>{taxShortLabel(c, i, date)}</option>
+  );
+  const group = (g: "sales" | "purchase") => TAX_CODES.filter((t) => t.group === g);
   return (
-    <select className="input tax-select" value="none" disabled={locked} title={locked ? TAX_DISABLED_NOTE : undefined} aria-label={label} tabIndex={locked ? -1 : 0} onChange={() => {}}>
-      {TAX_CODES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+    <select
+      className={`input tax-select${value == null ? " is-default" : ""}`}
+      value={optionValue(code, inv)}
+      aria-label={label}
+      title={`${taxLongLabel(code, inv, date)}${value == null ? "（科目の初期値）" : ""}`}
+      onChange={(e) => {
+        const [c, i] = e.target.value.split("|") as [TaxCode, InvoiceKind | undefined];
+        onChange(c, i ?? null);
+      }}
+    >
+      {opt("none")}
+      <optgroup label="売上">{group("sales").map((t) => opt(t.code))}</optgroup>
+      <optgroup label="仕入">
+        {group("purchase").flatMap((t) => (isPurchaseCode(t.code) ? (["qualified", "transitional", "none"] as const).map((i) => opt(t.code, i)) : [opt(t.code)]))}
+      </optgroup>
     </select>
   );
 };

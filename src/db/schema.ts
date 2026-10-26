@@ -54,6 +54,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_depreciation_runs", "depreciation_runs", "fiscal_year"),
   ...yearGuards("trg_closed_statement_notes", "statement_notes", "fiscal_year"),
   ...yearGuards("trg_closed_master_names", "master_names", "from_year"),
+  ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
 ];
 
 /**
@@ -73,7 +74,7 @@ export const SCHEMA: string[] = [
     industry TEXT NOT NULL DEFAULT '',
     fiscal_year INTEGER NOT NULL,
     filing_type TEXT NOT NULL DEFAULT 'blue65',
-    tax_status TEXT NOT NULL DEFAULT 'exempt',   -- 消費税：今は免税のみ
+    tax_status TEXT NOT NULL DEFAULT 'exempt',   -- 使わなくなった列（消費税の設定は年度ごとの tax_years へ）
     tax_method TEXT NOT NULL DEFAULT 'inclusive',
     e_book_mode TEXT CHECK (e_book_mode IN ('strict','standard')),  -- 電子帳簿保存法モード。NULL = 未選択
     schema_version INTEGER NOT NULL DEFAULT 2
@@ -121,7 +122,7 @@ export const SCHEMA: string[] = [
     sub_account_id INTEGER REFERENCES sub_accounts(id),
     amount INTEGER NOT NULL CHECK (amount >= 0),
     memo TEXT NOT NULL DEFAULT '',
-    tax_code TEXT          -- 将来の消費税区分用（今は未使用）
+    tax_code TEXT          -- 税区分（lib/tax.ts。NULL = 未設定：免税事業者の期間の仕訳、消費税に対応する前の仕訳）
   );`,
 
   /** 訂正・削除履歴。snapshot はその時点の仕訳（科目名つき）の JSON */
@@ -181,6 +182,19 @@ export const SCHEMA: string[] = [
     method TEXT NOT NULL CHECK (method IN ('entry','yearend')),
     basis TEXT NOT NULL DEFAULT '',   -- 按分の根拠（例：床面積 20㎡ / 60㎡）
     PRIMARY KEY (account_id, from_year)
+  );`,
+
+  /**
+   * 消費税の設定（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ。計算は lib/tax.ts）
+   * status：exempt（免税）/ standard（本則）/ simplified（簡易）/ twenty（2割特例）/ thirty（3割特例）
+   * taxable_from：年の途中から課税事業者になった日（空 = その年の初めから）
+   */
+  `CREATE TABLE IF NOT EXISTS tax_years (
+    from_year INTEGER PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN ('exempt','standard','simplified','twenty','thirty')),
+    method TEXT NOT NULL DEFAULT 'inclusive' CHECK (method IN ('inclusive','exclusive')),
+    business_class INTEGER NOT NULL DEFAULT 5 CHECK (business_class BETWEEN 1 AND 6),
+    taxable_from TEXT NOT NULL DEFAULT ''
   );`,
 
   /** 年末の按分振替で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
@@ -526,4 +540,10 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "scan_input_method", "TEXT NOT NULL DEFAULT 'early'"],
   // 内閣府から祝日を取得した日時（取得していなければ空）
   ["settings", "holidays_fetched_at", "TEXT NOT NULL DEFAULT ''"],
+  // 消費税：適格請求書発行事業者の登録日、明細のインボイス区分（qualified / transitional / none。課税仕入だけ）、
+  // 科目の税区分の初期値（NULL = 決まった初期値）、適格請求書発行事業者ではない取引先の印
+  ["settings", "invoice_registered_on", "TEXT NOT NULL DEFAULT ''"],
+  ["journal_lines", "invoice_kind", "TEXT"],
+  ["accounts", "default_tax_code", "TEXT"],
+  ["counterparties", "not_registered", "INTEGER NOT NULL DEFAULT 0"],
 ];

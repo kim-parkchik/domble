@@ -914,13 +914,13 @@ describe("権限（repo）", () => {
 });
 
 describe("事業者の情報（repo）", () => {
-  test("郵便番号・登録番号はそろえて保存し、形がおかしければ保存しない", async () => {
+  test("郵便番号はそろえて保存し、形がおかしければ保存しない（登録番号は消費税の設定で別に保存する）", async () => {
     const { db } = makeDb("standard");
     const s = await repo.getSettings(db);
     expect([s.postal_code, s.address, s.invoice_no]).toEqual(["", "", ""]);
-    await repo.saveSettings(db, { ...s, postal_code: "１２３４５６７", address: " 東京都千代田区 ", invoice_no: "t1234-5678-90123" });
+    await repo.saveSettings(db, { ...s, postal_code: "１２３４５６７", address: " 東京都千代田区 ", invoice_no: "T1234567890123" });
     const after = await repo.getSettings(db);
-    expect([after.postal_code, after.address, after.invoice_no]).toEqual(["123-4567", "東京都千代田区", "T1234567890123"]);
+    expect([after.postal_code, after.address, after.invoice_no]).toEqual(["123-4567", "東京都千代田区", ""]);
     await expect(repo.saveSettings(db, { ...after, postal_code: "123" })).rejects.toThrow(/郵便番号/);
   });
 });
@@ -1023,5 +1023,109 @@ describe("祝日・休業日（repo）", () => {
     await repo.deleteCustomHoliday(db, "2026-12-29");
     expect((await repo.getDaysOff(db)).has("2026-12-29")).toBe(false);
     expect((await repo.getMasterHistory(db)).map((h) => h.label)).toContain("祝日（内閣府から取得）");
+  });
+});
+
+describe("消費税（repo）", () => {
+  const ids = async (db: Database) => {
+    const accts = await repo.getAccounts(db, 2026);
+    return (n: string) => accts.find((a) => a.name === n)!.id;
+  };
+  const twenty = { from_year: 2026, status: "twenty" as const, method: "inclusive" as const, business_class: 5, taxable_from: "" };
+
+  test("免税事業者の期間は税区分を持たない。課税事業者にすると科目・取引先の初期値で埋まる", async () => {
+    const { db } = strict;
+    const id = await ids(db);
+    const free = await repo.createEntry(db, "2026-02-01", lines);
+    expect((await repo.getEntry(db, free))!.lines.map((l) => l.tax_code)).toEqual([null, null]);
+
+    await repo.saveTaxYear(db, { ...twenty, taxable_from: "2026-04-01" });
+    // 課税事業者になった日より前は、そのまま税区分なし
+    expect((await repo.getEntry(db, await repo.createEntry(db, "2026-03-31", lines)))!.lines[0].tax_code).toBeNull();
+    const cp = await repo.createCounterparty(db, { name: "個人の外注先", kana: "", invoice_no: "", not_registered: true, memo: "" });
+    const e = await repo.createEntry(db, "2026-04-01", lines, cp);
+    expect((await repo.getEntry(db, e))!.lines.map((l) => [l.tax_code, l.invoice_kind])).toEqual([["purchase10", "transitional"], ["none", null]]);
+    // 入れた税区分はそのまま。課税仕入でなければインボイス区分は外す
+    const sales: JournalLine[] = [
+      { row_no: 1, side: "debit", account_id: id("普通預金"), sub_account_id: null, amount: 1080, memo: "" },
+      { row_no: 1, side: "credit", account_id: id("売上高"), sub_account_id: null, amount: 1080, memo: "", tax_code: "sales8", invoice_kind: "qualified" },
+    ];
+    const s = await repo.createEntry(db, "2026-05-01", sales);
+    expect((await repo.getEntry(db, s))!.lines.map((l) => [l.tax_code, l.invoice_kind])).toEqual([["none", null], ["sales8", null]]);
+    // 履歴の写し・明細の読み込みにも出る
+    expect((await repo.getHistory(db, s))[0].snapshot.lines.find((l) => l.side === "credit")).toMatchObject({ tax: "sales8" });
+    expect((await repo.getLines(db, "2026-05-01", "2026-05-01")).map((l) => l.tax_code)).toEqual(["none", "sales8"]);
+  });
+
+  test("設定は年度ごと。翌年に引き継ぎ、変更は履歴に残る。2割特例は令和8年分まで。年の締めをした年度は変えられない", async () => {
+    const { db } = strict;
+    await repo.saveTaxYear(db, twenty);
+    expect((await repo.getTaxYears(db)).map((t) => t.status)).toEqual(["twenty"]);
+    await expect(repo.saveTaxYear(db, { ...twenty, from_year: 2027 })).rejects.toThrow(/令和8年/);
+    await repo.saveTaxYear(db, { ...twenty, from_year: 2027, status: "thirty" });
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "setting");
+    expect(h.map((x) => [x.label, x.old_value, x.new_value])).toEqual([
+      ["2027年の消費税", "課税事業者（2割特例）・税込経理（前の年から引き継ぎ）", "課税事業者（3割特例）・税込経理"],
+      ["2026年の消費税", "免税事業者", "課税事業者（2割特例）・税込経理"],
+    ]);
+    await repo.closeYear(db, 2026);
+    await expect(repo.saveTaxYear(db, { ...twenty, status: "standard" })).rejects.toThrow(/締め済み/);
+  });
+
+  test("税区分の無い仕訳を一括で埋める（訂正の履歴が残る）。締めた月の仕訳は飛ばす", async () => {
+    const { db } = strict;
+    const a = await repo.createEntry(db, "2026-01-10", lines);
+    const b = await repo.createEntry(db, "2026-06-10", lines);
+    await repo.saveTaxYear(db, twenty);
+    expect((await repo.untaxedEntryIds(db, 2026)).map((x) => x.id)).toEqual([a, b]);
+    await repo.closeThrough(db, 2026, 3);
+    expect(await repo.fillTaxCodes(db, 2026)).toEqual({ updated: 1, closed: 1 });
+    expect((await repo.getEntry(db, b))!.lines[0]).toMatchObject({ tax_code: "purchase10", invoice_kind: "qualified" });
+    expect((await repo.getEntry(db, a))!.lines[0].tax_code).toBeNull();
+    expect((await repo.getHistory(db, b))[0]).toMatchObject({ action: "update", reason: repo.FILL_TAX_REASON });
+  });
+
+  test("改ざんの確認：税区分も照合し、税区分の無い仕訳のハッシュは今までどおり", async () => {
+    const { db, raw } = strict;
+    await repo.initChain(db);
+    const plain = await repo.createEntry(db, "2026-02-01", lines);
+    await repo.saveTaxYear(db, twenty);
+    const taxed = await repo.createEntry(db, "2026-03-01", lines);
+    expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
+    raw.run("UPDATE journal_lines SET invoice_kind = 'none' WHERE entry_id = ? AND side = 'debit'", [taxed]);
+    const issues = (await repo.verifyIntegrity(db)).issues.map((i) => i.message).join("\n");
+    expect(issues).toMatch(new RegExp(`伝票 No.${taxed}`));
+    expect(issues).not.toMatch(new RegExp(`伝票 No.${plain}）`));
+  });
+
+  test("科目の税区分の初期値・取引先・登録番号の変更", async () => {
+    const { db } = strict;
+    const id = await ids(db);
+    await repo.setAccountTaxCode(db, id("地代家賃"), "purchase_nontax");
+    expect((await repo.getAccounts(db, 2026)).find((a) => a.id === id("地代家賃"))!.default_tax_code).toBe("purchase_nontax");
+    await repo.setAccountTaxCode(db, id("地代家賃"), "purchase10"); // 決まった初期値に戻すと null
+    expect((await repo.getAccounts(db, 2026)).find((a) => a.id === id("地代家賃"))!.default_tax_code).toBeNull();
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ old_value: "税区分の初期値 非課税仕入", new_value: "税区分の初期値 課税仕入 10%" });
+
+    // 登録番号のある取引先は「適格請求書発行事業者ではない」にならない
+    const cp = await repo.createCounterparty(db, { name: "B", kana: "", invoice_no: "T1234567890123", not_registered: true, memo: "" });
+    expect((await repo.getCounterparties(db)).find((c) => c.id === cp)!.not_registered).toBe(0);
+
+    await expect(repo.saveInvoiceRegistration(db, "T123", "")).rejects.toThrow(/13桁/);
+    await expect(repo.saveInvoiceRegistration(db, "", "2026-01-01")).rejects.toThrow(/登録番号も/);
+    await repo.saveInvoiceRegistration(db, "t1234-5678-90123", "2023-10-01");
+    expect(await repo.getSettings(db)).toMatchObject({ invoice_no: "T1234567890123", invoice_registered_on: "2023-10-01" });
+  });
+
+  test("家事按分（入力のたびに）で分けた家事分の行は対象外", async () => {
+    const { db } = strict;
+    const id = await ids(db);
+    await repo.saveTaxYear(db, twenty);
+    const e = await repo.createEntry(db, "2026-04-01", [
+      { row_no: 1, side: "debit", account_id: id("水道光熱費"), sub_account_id: null, amount: 6000, memo: "電気" },
+      { row_no: 2, side: "debit", account_id: id("事業主貸"), sub_account_id: null, amount: 4000, memo: "電気（家事分）" },
+      { row_no: 1, side: "credit", account_id: id("普通預金"), sub_account_id: null, amount: 10000, memo: "電気" },
+    ]);
+    expect((await repo.getEntry(db, e))!.lines.map((l) => l.tax_code)).toEqual(["purchase10", "none", "none"]);
   });
 });

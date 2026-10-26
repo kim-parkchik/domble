@@ -42,8 +42,14 @@ export interface LineStateInput {
   sub_account_id: number | null;
   amount: number;
   memo: string;
+  /** 税区分・インボイス区分。あとから足した項目なので、入っているときだけ正規形に入れる（それまでの記録のハッシュを変えないため） */
+  tax_code?: string | null;
+  invoice_kind?: string | null;
 }
-const lineKey = (l: LineStateInput) => [l.row_no, l.side === "debit" ? 0 : 1, l.account_id, l.sub_account_id ?? 0, l.amount, l.memo];
+const lineKey = (l: LineStateInput) => [
+  l.row_no, l.side === "debit" ? 0 : 1, l.account_id, l.sub_account_id ?? 0, l.amount, l.memo,
+  ...(l.tax_code ? [["tax", l.tax_code, l.invoice_kind ?? ""]] : []),
+];
 const cmp = (a: unknown[], b: unknown[]) => {
   for (let i = 0; i < a.length; i++) {
     if (a[i] === b[i]) continue;
