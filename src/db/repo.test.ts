@@ -1144,3 +1144,16 @@ describe("消費税の中間納付税額（repo）", () => {
     await expect(repo.saveTaxInterim(db, 2026, 1, 1)).rejects.toThrow(/締め済み/);
   });
 });
+
+describe("基準期間の課税売上高の手入力（repo）", () => {
+  test("保存すると優先して使い、null で外す。変更は履歴に残る", async () => {
+    const { db } = strict;
+    expect(await repo.getTaxBaseManual(db, 2026)).toBeNull();
+    await repo.saveTaxBaseManual(db, 2026, 8_321_760);
+    expect(await repo.getTaxBaseManual(db, 2026)).toBe(8_321_760);
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "2026年の基準期間（2024年）の課税売上高", old_value: "帳簿から計算", new_value: "8,321,760 円（手で入力）" });
+    await expect(repo.saveTaxBaseManual(db, 2026, 1.5)).rejects.toThrow(/整数/);
+    await repo.saveTaxBaseManual(db, 2026, null);
+    expect(await repo.getTaxBaseManual(db, 2026)).toBeNull();
+  });
+});

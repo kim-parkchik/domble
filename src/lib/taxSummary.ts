@@ -12,6 +12,7 @@ import type { Account, Counterparty, InvoiceKind, TaxCode, TaxStatus, TaxYear } 
 import type { FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
 import { isPurchaseCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
+import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
 
 export type TaxKind = "sales" | "salesReturn" | "badDebt" | "badDebtRecovered" | "purchase" | "purchaseReturn" | "other";
 
@@ -152,6 +153,8 @@ export interface TaxCheckInput {
   invoiceNo: string;
   registeredOn: string;
   summary: TaxSummary;
+  /** 基準期間・特定期間の課税売上高（読み込み中は null） */
+  baseSales?: BaseSalesInfo | null;
 }
 
 export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
@@ -173,7 +176,24 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       detail: `適格請求書発行事業者の登録日（${x.registeredOn || "未入力"}）からは課税事業者です。事業者設定の「消費税」で課税区分を選んでください。`,
     });
   }
+  const mandatory = x.baseSales ? mandatoryReason(x.baseSales) : null;
+  if (ty.status === "exempt" && mandatory) {
+    issues.push({
+      level: "error", title: `${x.year}年は課税事業者です`, fix: "settings", entryIds: [],
+      detail: `${mandatory}。免税事業者にはなれないので、事業者設定の「消費税」で課税区分を選んでください。`,
+    });
+  }
   if (ty.status === "exempt") return issues;
+  if (x.baseSales && (ty.status === "twenty" || ty.status === "thirty" || ty.status === "simplified")) {
+    const m = methodProblem(ty.status, x.baseSales);
+    if (m) issues.push({ level: "error", title: `${statusLabel(ty.status)}は使えません`, fix: "settings", entryIds: [], detail: `${m}。事業者設定の「消費税」で課税区分を選び直してください。` });
+  }
+  if (x.baseSales && x.baseSales.source === "none") {
+    issues.push({
+      level: "info", title: `基準期間（${x.year - 2}年）の課税売上高が分かりません`, fix: "settings", entryIds: [],
+      detail: `${x.year - 2}年の帳簿が domble に無いため計算できません。申告書の第一表に書くほか、2割特例・3割特例・簡易課税が使えるかの確認に使うので、事業者設定の「消費税」で入れてください。`,
+    });
+  }
 
   const accountMap = new Map(x.accounts.map((a) => [a.id, a]));
   const cpMap = new Map(x.counterparties.map((c) => [c.id, c]));

@@ -3,11 +3,14 @@
  *  - 課税区分・経理方式・簡易課税の事業区分・年の途中から課税事業者になった日は年度ごと（次の設定がある年まで引き継ぐ）
  *  - 適格請求書発行事業者の登録番号・登録日は帳簿に1つ
  *  - 課税事業者の期間で税区分の入っていない仕訳を、科目の初期値でまとめて埋める
+ *  - 基準期間（前々年）・特定期間（前年1〜6月）の課税売上高。帳簿に無い年の基準期間は手で入れる
  */
 import { useEffect, useState } from "react";
 import { Save, Wand2 } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { useAppContext } from "../../context/AppContext";
+import { useAppContext, useBaseSales } from "../../context/AppContext";
+import { yen } from "../../lib/format";
+import { EXEMPT_LIMIT, mandatoryReason, SIMPLIFIED_LIMIT } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
 import { BUSINESS_CLASSES, TAX_METHOD_OPTIONS, TAX_STATUS_OPTIONS } from "../../constants/tax";
 import { statusProblem } from "../../lib/tax";
@@ -160,6 +163,8 @@ export const TaxSection = () => {
         </div>
       </form>
 
+      <BaseSalesBlock />
+
       {!!untaxed && (
         <div className="tax-fill" role="status">
           <span>{year}年の課税事業者の期間に、税区分が入っていない仕訳が <b>{untaxed}</b> 件あります（課税事業者にする前に入れた仕訳など）。</span>
@@ -183,5 +188,73 @@ export const TaxSection = () => {
       </form>
       {regError && <p className="form-error-inline" role="alert">{regError}</p>}
     </section>
+  );
+};
+
+/** 基準期間・特定期間の課税売上高（帳簿から計算。帳簿に無い年は手で入れる） */
+const BaseSalesBlock = () => {
+  const { db, year, isClosed, can, bump } = useAppContext();
+  const info = useBaseSales();
+  const toast = useToast();
+  const [draft, setDraft] = useState("");
+  useEffect(() => setDraft(info?.source === "manual" && info.base !== null ? String(info.base) : ""), [info?.source, info?.base]);
+  if (!info) return null;
+  const admin = can("settings") && !isClosed;
+  const by = year - 2, py = year - 1;
+  const save = async (amount: number | null) => {
+    try {
+      await repo.saveTaxBaseManual(db, year, amount);
+      bump();
+      toast(amount === null ? "帳簿から計算するようにしました" : "基準期間の課税売上高を保存しました");
+    } catch (e) {
+      toast(String(e).replace(/^Error: /, ""), "error");
+    }
+  };
+  const mandatory = mandatoryReason(info);
+  return (
+    <div className="tax-base">
+      <h3 className="sheet-sub">基準期間・特定期間の課税売上高</h3>
+      <dl className="kv">
+        <dt>基準期間（{by}年）の課税売上高</dt>
+        <dd className="num">{info.base === null ? "分かりません" : `${yen(info.base)}（${info.source === "manual" ? "手で入力" : "帳簿から計算"}）`}</dd>
+        {info.fromBooks && (
+          <>
+            <dt className="muted">　うち課税事業者の期間（税抜き）</dt><dd className="num muted">{yen(info.fromBooks.taxable)}</dd>
+            <dt className="muted">　うち免税事業者の期間（税抜きしない）</dt><dd className="num muted">{yen(info.fromBooks.exemptPeriod)}</dd>
+            <dt className="muted">　うち輸出免税</dt><dd className="num muted">{yen(info.fromBooks.exportSales)}</dd>
+            {info.source === "manual" && <><dt className="muted">　帳簿から計算した額</dt><dd className="num muted">{yen(info.fromBooks.total)}</dd></>}
+          </>
+        )}
+        {info.specific && (
+          <>
+            <dt>特定期間（{py}年1〜6月）の課税売上高</dt><dd className="num">{yen(info.specific.sales.total)}</dd>
+            <dt className="muted">　同じ期間の給与等支払額</dt><dd className="num muted">{yen(info.specific.salaries)}</dd>
+          </>
+        )}
+      </dl>
+      {mandatory ? (
+        <p className="notice">{mandatory}。{year}年は、登録と関係なく課税事業者です（免税事業者・2割特例・3割特例にはなれません）。</p>
+      ) : info.base !== null && (
+        <p className="field-note">
+          {info.base <= EXEMPT_LIMIT ? "1,000万円以下です（登録していなければ免税事業者。登録していれば、要件を満たせば2割特例・3割特例が使えます）。" : ""}
+          {info.base > SIMPLIFIED_LIMIT ? "5,000万円を超えているため、簡易課税は使えません。" : ""}
+        </p>
+      )}
+      <p className="field-note">
+        課税売上（税抜き）から売上の返還を差し引き、輸出などの免税売上を足した額です。{by}年に免税事業者だった期間の売上は税抜きしません。
+        税区分の無い明細は、科目の税区分の初期値で売上かどうかを決めています。給与等支払額は給料賃金と専従者給与の合計です。
+        {by}年の帳簿が domble に無いとき（または帳簿の計算と違うとき）は、手で入れてください。入れた額が帳簿の計算より優先します。
+      </p>
+      <form className="field-row" onSubmit={(e) => { e.preventDefault(); save(draft === "" ? null : Number(draft)); }}>
+        <label className="field" style={{ maxWidth: 260 }}>
+          <span>基準期間（{by}年）の課税売上高を手で入れる</span>
+          <input className="input num" inputMode="numeric" value={draft} onChange={(e) => setDraft(e.target.value.replace(/[^\d]/g, ""))} placeholder="空なら帳簿から計算" disabled={!admin} />
+        </label>
+        <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
+          <button className="btn primary" type="submit" disabled={!admin || draft === (info.source === "manual" ? String(info.base) : "")}><Save size={16} /> 保存する</button>
+          {info.source === "manual" && <button type="button" className="btn ghost" onClick={() => save(null)} disabled={!admin}>帳簿から計算に戻す</button>}
+        </div>
+      </form>
+    </div>
   );
 };

@@ -355,6 +355,10 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .tax-compare td, .tax-form-table td { white-space: normal; overflow: visible; text-overflow: clip; }
 .tax-compare .badge { margin-left: 6px; }
 .tax-best { margin-left: 6px; font-size: 11px; color: var(--accent); font-weight: 700; }
+.tax-compare tr.unusable td:not(:last-child) { color: #a3adb7; }
+.tax-unusable { color: var(--cr); }
+.tax-base { margin-top: 16px; }
+.tax-base .kv { max-width: 560px; }
 .tax-interim { margin-top: 12px; align-items: flex-end; }
 .tax-interim .field { max-width: 220px; }
 .tax-return-forms { margin-top: 20px; }

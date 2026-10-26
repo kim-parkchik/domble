@@ -345,6 +345,34 @@ const saveTaxYear_ = async (db: Database, t: TaxYear) => {
   }
 };
 
+/** 手で入れた基準期間の課税売上高（無ければ null） */
+export const getTaxBaseManual = async (db: Database, year: number) => {
+  const r = await db.select<{ amount: number }[]>("SELECT amount FROM tax_base_sales WHERE fiscal_year = ?", [year]);
+  return r[0]?.amount ?? null;
+};
+
+/** 基準期間の課税売上高を手で入れる（null で外す＝帳簿から計算する）。変更は履歴に残す */
+const saveTaxBaseManual_ = async (db: Database, year: number, amount: number | null) => {
+  if (amount !== null && (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000_000)) {
+    throw new Error("基準期間の課税売上高は 0 以上の整数（円）で入れてください");
+  }
+  await assertYearOpen(db, year);
+  const before = await getTaxBaseManual(db, year);
+  if (before === amount) return;
+  if (amount === null) await db.execute("DELETE FROM tax_base_sales WHERE fiscal_year = ?", [year]);
+  else {
+    await db.execute(
+      "INSERT INTO tax_base_sales (fiscal_year, amount) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET amount = excluded.amount",
+      [year, amount],
+    );
+  }
+  const text = (x: number | null) => (x === null ? "帳簿から計算" : `${x.toLocaleString()} 円（手で入力）`);
+  await logMaster(db, {
+    target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の基準期間（${year - 2}年）の課税売上高`,
+    old_value: text(before), new_value: text(amount),
+  });
+};
+
 /** その年の中間納付税額（申告した税額。無ければ 0） */
 export const getTaxInterim = async (db: Database, year: number) => {
   const r = await db.select<{ national: number; local: number }[]>("SELECT national, local FROM tax_interims WHERE fiscal_year = ?", [year]);
@@ -2059,6 +2087,7 @@ const saveHomeUseRunEntry_ = async (db: Database, year: number, date: string, li
 export const setEBookMode = inTx(setEBookMode_, () => "保存方式の設定", { perm: "settings" });
 export const saveSettings = inTx(saveSettings_, () => "事業者設定の保存", { perm: "settings" });
 export const saveTaxYear = inTx(saveTaxYear_, (t) => `${t.from_year}年の消費税の設定`, { perm: "settings" });
+export const saveTaxBaseManual = inTx(saveTaxBaseManual_, (year) => `${year}年の基準期間の課税売上高`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
 export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登録番号の保存", { perm: "settings" });
 export const fillTaxCodes = inTx(fillTaxCodes_, (year) => `${year}年の仕訳の税区分の一括設定`, { perm: "entry" });

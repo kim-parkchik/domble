@@ -6,7 +6,8 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Printer, Save } from "lucide-react";
-import { useAppContext, useYearData } from "../../context/AppContext";
+import { useAppContext, useBaseSales, useYearData } from "../../context/AppContext";
+import { methodProblem } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
 import { yen } from "../../lib/format";
 import { BUSINESS_CLASSES } from "../../constants/tax";
@@ -56,18 +57,23 @@ export const TaxReturnView = () => {
   };
 
   const base = useMemo(() => buildTaxBase(lines, taxYears), [lines, taxYears]);
-  const options = { businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local };
+  const baseSales = useBaseSales();
+  const options = { businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null };
   const results = useMemo(
-    () => available.map((m) => ({ m, r: computeReturn(m, base, options) })),
+    () => available.map((m) => ({ m, r: computeReturn(m, base, options), problem: baseSales ? methodProblem(m, baseSales) : null })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [base, interim, taxYear.business_class, year],
+    [base, interim, taxYear.business_class, year, baseSales],
   );
   // 2割・3割特例の第一表は、簡易課税の届出があれば簡易課税用、無ければ一般用
   const shown = method === "twenty" ? twentyReturn(base, options, firstKind)
     : method === "thirty" ? thirtyReturn(base, options, firstKind)
       : results.find((x) => x.m === method)?.r ?? computeReturn(method, base, options);
   const forms = shown.forms;
-  const best = Math.min(...results.map((x) => x.r.total));
+  // 使えない方式は比べない
+  const usable = results.filter((x) => !x.problem);
+  const best = Math.min(...usable.map((x) => x.r.total));
+  // どれも同じ額なら「いちばん有利」は出さない
+  const showBest = new Set(usable.map((x) => x.r.total)).size > 1;
   const admin = can("settings");
 
   return (
@@ -75,26 +81,34 @@ export const TaxReturnView = () => {
       <div className="tax-return-head print-skip">
         <h3 className="sheet-sub">方式の比較（{year}年）</h3>
         <table className="ledger tax-compare">
+          <colgroup>
+            <col style={{ width: "20%" }} /><col style={{ width: "13%" }} /><col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col />
+          </colgroup>
           <thead>
             <tr><th>方式</th><th className="num">消費税</th><th className="num">地方消費税</th><th className="num">合計（納付・△還付）</th><th>使うための主な条件</th></tr>
           </thead>
           <tbody>
-            {results.map(({ m, r }) => (
-              <tr key={m} className={`clickable${m === method ? " on" : ""}`} onClick={() => setMethod(m)}>
+            {results.map(({ m, r, problem }) => (
+              <tr key={m} className={`clickable${m === method ? " on" : ""}${problem ? " unusable" : ""}`} onClick={() => setMethod(m)}>
                 <td>
                   {METHOD_LABEL[m]}
                   {m === current && <span className="badge badge-adjust">この年の設定</span>}
-                  {r.total === best && results.length > 1 && <span className="tax-best">いちばん有利</span>}
+                  {!problem && showBest && r.total === best && <span className="tax-best">いちばん有利</span>}
                 </td>
                 <td className="num">{signed(r.national)}</td>
                 <td className="num">{signed(r.local)}</td>
                 <td className="num"><b>{signed(r.total)}</b></td>
-                <td className="muted">{m === "simplified" ? `${BUSINESS_CLASSES.find((b) => b.value === taxYear.business_class)?.label}として計算。` : ""}{METHOD_NOTE[m]}</td>
+                <td className="muted">
+                  {problem && <span className="tax-unusable">{problem}。</span>}
+                  {m === "simplified" ? `${BUSINESS_CLASSES.find((b) => b.value === taxYear.business_class)?.label}として計算。` : ""}{METHOD_NOTE[m]}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         <p className="field-note">
+          基準期間（{year - 2}年）の課税売上高：
+          {baseSales === null ? "読み込み中" : baseSales.base === null ? "分かりません（事業者設定の「消費税」で入れられます）" : `${yen(baseSales.base)}円（${baseSales.source === "manual" ? "手で入力" : "帳簿から計算"}）`}。
           税込経理・割戻し計算で、中間納付税額を差し引いた額です。課税区分は事業者設定の「消費税」で決めます（ここで選んだ方式は表示だけです）。
           簡易課税は、事業区分が1種類として計算しています。
         </p>

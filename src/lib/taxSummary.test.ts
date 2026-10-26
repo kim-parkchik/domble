@@ -148,3 +148,24 @@ describe("年末一括の家事分の税区分", () => {
     expect(privateTaxSplit(utl, [a, b], 400, [a.entry_id])).toEqual([{ tax_code: "purchase10", invoice_kind: "qualified", amount: 400 }]);
   });
 });
+
+describe("確認の一覧：基準期間の課税売上高", () => {
+  const info = (base: number | null, source: "books" | "manual" | "none" = "books") => ({ year: 2026, base, source, fromBooks: null, specific: null });
+  const check = (taxYears: TaxYear[], baseSales: ReturnType<typeof info>) =>
+    taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, taxYears), baseSales });
+
+  test("免税事業者なのに基準期間が 1,000万円超、2割特例なのに 1,000万円超、簡易課税なのに 5,000万円超", () => {
+    expect(check([], info(12_000_000)).map((i) => i.title)).toEqual(["2026年は課税事業者です"]);
+    expect(check(twenty, info(12_000_000)).map((i) => i.title)).toEqual(["課税事業者（2割特例）は使えません"]);
+    expect(check(twenty, info(9_000_000))).toEqual([]);
+    const simplified: TaxYear[] = [{ ...twenty[0], status: "simplified" }];
+    expect(check(simplified, info(12_000_000))).toEqual([]);
+    expect(check(simplified, info(60_000_000)).map((i) => i.title)).toEqual(["課税事業者（簡易課税）は使えません"]);
+  });
+
+  test("帳簿も手入力も無ければ、入れるよう知らせる（免税事業者の年は知らせない）", () => {
+    expect(check(twenty, info(null, "none")).map((i) => [i.level, i.title])).toEqual([["info", "基準期間（2024年）の課税売上高が分かりません"]]);
+    expect(check([], info(null, "none"))).toEqual([]);
+  });
+});
+

@@ -9,7 +9,7 @@ import { ChevronDown, ChevronRight, Download, TriangleAlert, CircleAlert, Info }
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import type { Page } from "../../App";
-import { useAppContext, useYearData } from "../../context/AppContext";
+import { useAppContext, useBaseSales, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { useToast } from "../../components/Toast";
 import { EntryEditModal } from "../entry/EntryEditModal";
@@ -38,11 +38,12 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
   const [editing, setEditing] = useState<number | null>(null);
 
   const summary = useMemo(() => buildTaxSummary(lines, accounts, taxYears), [lines, accounts, taxYears]);
+  const baseSales = useBaseSales();
   const issues = useMemo(
     () => taxChecks({
-      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary,
+      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary, baseSales,
     }),
-    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary],
+    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales],
   );
   const byEntry = useMemo(() => groupByEntry(lines), [lines]);
 

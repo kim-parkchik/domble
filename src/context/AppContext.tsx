@@ -6,6 +6,7 @@ import { closedMonthOf, closingOf, expectedNextOpening, openingMismatches, type 
 import * as repo from "../db/repo";
 import { can as canRole, type Perm } from "../lib/permissions";
 import { taxActiveOn, taxYearOf } from "../lib/tax";
+import { baseSalesInfo, type BaseSalesInfo } from "../lib/baseSales";
 
 interface AppContextValue {
   db: Database;
@@ -226,6 +227,29 @@ export const useYearData = () => {
   }, [db, year, dataVersion]);
 
   return { lines, opening, subOpening, loading };
+};
+
+/**
+ * 表示中の年度の基準期間（前々年）・特定期間（前年1〜6月）の課税売上高（lib/baseSales.ts）
+ * 前々年・前年の明細と、手で入れた額を読み込む。読み込むまでは null
+ */
+export const useBaseSales = () => {
+  const { db, year, accounts, taxYears, dataVersion } = useAppContext();
+  const [info, setInfo] = useState<BaseSalesInfo | null>(null);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      repo.getLines(db, yearStart(year - 2), yearEnd(year - 2)),
+      repo.getLines(db, yearStart(year - 1), yearEnd(year - 1)),
+      repo.getTaxBaseManual(db, year),
+    ])
+      .then(([baseLines, prevLines, manual]) => alive && setInfo(baseSalesInfo({ year, baseLines, prevLines, accounts, taxYears, manual })))
+      .catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [db, year, accounts, taxYears, dataVersion]);
+  return info;
 };
 
 export interface CarryForwardCheck {

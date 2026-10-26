@@ -56,6 +56,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_master_names", "master_names", "from_year"),
   ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
+  ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
 ];
 
 /**
@@ -203,6 +204,15 @@ export const SCHEMA: string[] = [
     fiscal_year INTEGER PRIMARY KEY,
     national INTEGER NOT NULL DEFAULT 0 CHECK (national >= 0),
     local INTEGER NOT NULL DEFAULT 0 CHECK (local >= 0)
+  );`,
+
+  /**
+   * 基準期間の課税売上高を手で入れた額（申告する年ごと。lib/baseSales.ts）。
+   * 基準期間（前々年）の帳簿が domble に無いとき、または帳簿の計算の代わりに使いたいときだけ。入っていれば帳簿の計算より優先する
+   */
+  `CREATE TABLE IF NOT EXISTS tax_base_sales (
+    fiscal_year INTEGER PRIMARY KEY,
+    amount INTEGER NOT NULL CHECK (amount >= 0)
   );`,
 
   /** 年末の按分振替で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */

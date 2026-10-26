@@ -120,6 +120,8 @@ export interface ReturnOptions {
   /** 中間納付税額（消費税・地方消費税） */
   interimNational: number;
   interimLocal: number;
+  /** 基準期間の課税売上高（分からなければ null。第一表に書く） */
+  baseSales?: number | null;
 }
 
 type AB = Record<Rate, number>;
@@ -194,6 +196,9 @@ const firstTable = (
     { no: "⑪", label: "納付税額（⑨－⑩）", c: f.pay },
     { no: "⑫", label: "中間納付還付税額（⑩－⑨）", c: f.interimRefund },
     ...extra,
+    kind === "簡易課税用"
+      ? { no: "⑯", label: "基準期間の課税売上高", c: o.baseSales ?? null, note: o.baseSales == null ? "分かりません（事業者設定の「消費税」で入れられます）" : undefined }
+      : { no: "", label: "参考事項・基準期間の課税売上高", c: o.baseSales ?? null, note: o.baseSales == null ? "分かりません（事業者設定の「消費税」で入れられます）" : "千円単位の欄" },
     { no: "⑰", label: "地方消費税の課税標準となる消費税額・控除不足還付税額", c: f.shortfall },
     { no: "⑱", label: "地方消費税の課税標準となる消費税額・差引税額", c: f.net },
     { no: "⑲", label: "譲渡割額・還付額（⑰ × 22/78）", c: f.localRefund },
