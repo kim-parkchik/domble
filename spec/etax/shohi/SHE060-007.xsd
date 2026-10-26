@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：課税売上高計算表
+version：7.0
+Date：2023年06月26日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="SHE060-7-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="7.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="SHE060-7-0group">
+<xsd:sequence>
+<xsd:element name="SHE060">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQA00000" type="AQA00000-7-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQB00000" type="AQB00000-7-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得に係る課税売上高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00000" type="AQC00000-7-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産所得に係る課税売上高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00000" type="AQD00000-7-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿所得に係る課税売上高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00000" type="AQE00000-7-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用資産の譲渡所得に係る課税売上高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQF00000" type="AQF00000-7-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税売上高の合計額（（１）+（２）+（３）+（６）+（９））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQG00000" type="AQG00000-7-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税資産の譲渡等の対価の額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="SHE060-7-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="AQA00000-7-0type">
+<xsd:sequence>
+
+<xsd:element name="AQA00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="AQB00000-7-0type">
+<xsd:sequence>
+
+<xsd:element name="AQB00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"営業等課税売上高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQB00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQB00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQB00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQB00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"農業課税売上高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQB00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQB00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQB00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="AQC00000-7-0type">
+<xsd:sequence>
+
+<xsd:element name="AQC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税売上高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="AQD00000-7-0type">
+<xsd:sequence>
+
+<xsd:element name="AQD00010" type="AQD00010-7-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の収入金額　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00025" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の収入金額　うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00027" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の収入金額　うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税売上げにならないもの　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00035" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税売上げにならないもの　うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00037" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税売上げにならないもの　うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引課税売上高（（４）-（５））"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="AQE00000-7-0type">
+<xsd:sequence>
+
+<xsd:element name="AQE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の譲渡収入金額　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00015" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の譲渡収入金額　うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00017" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の譲渡収入金額　うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税売上げにならないもの　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00025" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税売上げにならないもの　うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00027" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税売上げにならないもの　うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引課税売上高（（７）-（８））"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="AQF00000-7-0type">
+<xsd:sequence>
+
+<xsd:element name="AQF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="AQG00000-7-0type">
+<xsd:sequence>
+
+<xsd:element name="AQG00042" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（10）軽減税率6.24％適用分欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQG00044" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（11）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQG00046" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（10）標準税率7.8％適用分欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQG00048" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（12）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="AQD00010-7-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

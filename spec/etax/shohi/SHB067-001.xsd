@@ -1,0 +1,1262 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：付表5-3　控除対象仕入税額等の計算表
+version：1.0
+Date：2020年09月07日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="SHB067-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="SHB067-1-0group">
+<xsd:sequence>
+<xsd:element name="SHB067">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="SHB067-1" type="SHB067-1-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="SHB067-2" type="SHB067-2-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"二面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="SHB067-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="SHB067-1-1-0type">
+<xsd:sequence>
+
+<xsd:element name="DVA00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVA00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVA00020" type="gen:KAZEI_KIKAN_FROMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVA00030" type="gen:KAZEI_KIKAN_TOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVA00040" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　控除対象仕入税額の計算の基礎となる消費税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVB00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税標準額に対する消費税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVB00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVB00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"貸倒回収に係る消費税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVB00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVB00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上対価の返還等に係る消費税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVB00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVB00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象仕入税額の計算の基礎となる消費税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVB00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVB00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　１種類の事業の専業者の場合の控除対象仕入税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVC00010" type="DVC00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　２種類以上の事業を営む事業者の場合の控除対象仕入税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）　事業区分別の課税売上高（税抜き）の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業区分別の合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第一種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00110" type="DVD00110-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第二種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00170" type="DVD00170-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第三種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00230" type="DVD00230-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第四種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00290" type="DVD00290-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第五種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00350" type="DVD00350-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第六種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00390" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00410" type="DVD00410-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00420" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）　（１）の事業区分別の課税売上高に係る消費税額の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00430" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業区分別の合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00440" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00470" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第一種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00490" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00500" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00510" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第二種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00520" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00530" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00550" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第三種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00560" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00570" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00580" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00590" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第四種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00600" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00610" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00620" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00630" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第五種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00640" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00650" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00660" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVD00670" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第六種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVD00680" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00690" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVD00700" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="SHB067-2-1-0type">
+<xsd:sequence>
+
+<xsd:element name="DVE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）　控除対象仕入税額の計算式区分の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"イ　原則計算を適用する場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"ロ　特例計算を適用する場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（イ）　１種類の事業で75％以上"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00070" type="DVE00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（ロ）　２種類の事業で75％以上"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第一種事業及び第二種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第一種事業及び第三種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第一種事業及び第四種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第一種事業及び第五種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第一種事業及び第六種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第二種事業及び第三種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第二種事業及び第四種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00400" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第二種事業及び第五種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00440" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第二種事業及び第六種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00470" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00480" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第三種事業及び第四種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00490" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00500" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00510" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00520" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第三種事業及び第五種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00530" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00550" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00560" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第三種事業及び第六種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00570" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00580" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00590" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00600" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第四種事業及び第五種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00610" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00620" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00640" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第四種事業及び第六種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00650" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00660" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00670" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00680" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第五種事業及び第六種事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00690" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00700" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00710" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DVE00720" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"ハ　上記の計算式区分から選択した控除対象仕入税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DVE00730" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.24％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00740" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率7.8％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DVE00750" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:complexType name="DVC00010-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/><xsd:enumeration value="6"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="DVD00110-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0.0"/><xsd:maxInclusive value="100.0"/><xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DVD00170-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0.0"/><xsd:maxInclusive value="100.0"/><xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DVD00230-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0.0"/><xsd:maxInclusive value="100.0"/><xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DVD00290-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0.0"/><xsd:maxInclusive value="100.0"/><xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DVD00350-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0.0"/><xsd:maxInclusive value="100.0"/><xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DVD00410-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0.0"/><xsd:maxInclusive value="100.0"/><xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="DVE00070-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/><xsd:enumeration value="6"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+
+
+<xsd:complexType name="DVD00110-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="DVD00110-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DVD00170-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="DVD00170-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DVD00230-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="DVD00230-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DVD00290-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="DVD00290-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DVD00350-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="DVD00350-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DVD00410-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="DVD00410-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

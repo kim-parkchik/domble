@@ -17,6 +17,7 @@ import { closedLabel, closedMonthOf, monthEnd, yearsToAutoClose } from "../lib/c
 import { isValidInvoiceNo, normalizeInvoiceNo, type CounterpartyInput } from "../lib/counterparty";
 import { builtinTaxCode, classLabel, isBusinessClass, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText, validateTaxYear } from "../lib/tax";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
+import { normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import { checkScanQuality, docClassOf, type DocClass, type ScanInputMethod } from "../lib/scan";
 import { lastHolidayYear, mergeHolidays, type Holiday } from "../lib/holidays";
@@ -132,8 +133,8 @@ export const checkInterrupted = async (db: Database) => {
 // ────────────────────────────────────────────
 export const getSettings = async (db: Database): Promise<Settings> => {
   const rows = await db.select<Settings[]>(
-    `SELECT business_name, owner_name, postal_code, address, invoice_no, invoice_registered_on, industry, fiscal_year, filing_type, e_book_mode,
-            strict_from_year, strict_switched_at
+    `SELECT business_name, owner_name, postal_code, address, invoice_no, invoice_registered_on, etax_user_id, tax_office, phone, owner_kana,
+            business_kana, industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at
        FROM settings WHERE id = 1`,
   );
   return rows[0];
@@ -313,6 +314,16 @@ const saveSettings_ = async (db: Database, s: Settings) => {
     `UPDATE settings SET business_name = ?, owner_name = ?, postal_code = ?, address = ?, industry = ?, fiscal_year = ?,
             filing_type = ? WHERE id = 1`,
     [s.business_name, s.owner_name, normalizePostalCode(info.postal_code), info.address, s.industry, s.fiscal_year, s.filing_type],
+  );
+};
+
+/** e-Tax の申告者の情報（形式は lib/etax.ts の normalizeEtaxInfo で確かめる） */
+const saveEtaxInfo_ = async (db: Database, x: EtaxInfo) => {
+  const n = normalizeEtaxInfo(x);
+  if (typeof n === "string") throw new Error(n);
+  await db.execute(
+    "UPDATE settings SET etax_user_id = ?, tax_office = ?, phone = ?, owner_kana = ?, business_kana = ? WHERE id = 1",
+    [n.etax_user_id, n.tax_office, n.phone, n.owner_kana, n.business_kana],
   );
 };
 
@@ -2109,6 +2120,7 @@ export const saveTaxYear = inTx(saveTaxYear_, (t) => `${t.from_year}年の消費
 export const saveTaxBaseManual = inTx(saveTaxBaseManual_, (year) => `${year}年の基準期間の課税売上高`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
 export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登録番号の保存", { perm: "settings" });
+export const saveEtaxInfo = inTx(saveEtaxInfo_, () => "e-Tax の申告者の情報の保存", { perm: "settings" });
 export const fillTaxCodes = inTx(fillTaxCodes_, (year) => `${year}年の仕訳の税区分の一括設定`, { perm: "entry" });
 export const setFiscalYear = inTx(setFiscalYear_, (year) => `${year}年への切り替え`, { allowReadOnly: true });
 export const setBackupGenerations = inTx(setBackupGenerations_, () => "バックアップ世代数の保存", { perm: "settings" });

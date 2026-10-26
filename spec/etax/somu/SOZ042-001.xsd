@@ -1,0 +1,1002 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/somu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/somu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：申告書に関する審査事項等記載書面(33の2(2))
+version：1.0
+Date：2023年10月26日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="SOZ042-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+<!-- Root Element Definition -->
+<xsd:element name="SOZ042" type="SOZ042-1-0type"/>
+
+<xsd:complexType name="SOZ042-1-0type">
+<xsd:sequence>
+<xsd:element name="SOZ042-1" type="SOZ042-1-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="SOZ042-2" type="SOZ042-2-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="SOZ042-3" type="SOZ042-3-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="SOZ042-4" type="SOZ042-4-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"４面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="SOZ042-5" type="SOZ042-5-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"５面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="0" maxOccurs="unbounded"/>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="SOZ042-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+
+<xsd:complexType name="SOZ042-1-1-0type">
+<xsd:sequence>
+
+<xsd:element name="AVA00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"添付書面"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00010" type="AVA00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基申告書の受付番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00020" type="AVA00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00030" type="AVA00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿申告書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00040" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業年度分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVA00080" type="AVA00080-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿に係る"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00090" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00100" type="AVA00100-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出先"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税理士又は税理士法人"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00120" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00130" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事務所の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00140" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVA00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"書面作成に係る税理士"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00160" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00170" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事務所の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00180" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所属税理士会等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00200" type="AVA00200-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税理士会"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00210" type="AVA00210-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00220" type="AVA00220-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"登録番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVA00230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税務代理権限証書の提出"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"有（＿）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00250" type="AVA00250-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"有"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00260" type="AVA00260-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（＿）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVA00270" type="AVA00270-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"無"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVA00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"依頼者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVA00290" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00300" type="gen:nozeisha-id" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"依頼者の利用者識別番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00310" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は事務所の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVA00320" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　相談を受けた事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVB00010" type="AVB00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVB00020" type="AVB00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相談の要旨"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　審査に当たって提示を受けた帳簿書類"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVC00010" type="AVC00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"帳簿書類の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVC00020" type="AVC00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"確認した内容"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="SOZ042-2-1-0type">
+<xsd:sequence>
+
+<xsd:element name="AVD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　審査した主な事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)　明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVD00020" type="AVD00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVD00030" type="AVD00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVD00040" type="AVD00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"備考"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVD00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)　明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVD00060" type="AVD00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)のうち顕著な増減事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVD00070" type="AVD00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増減理由"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(3)　明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVD00090" type="AVD00090-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)のうち会計処理方法に変更等があった事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVD00100" type="AVD00100-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"変更等の理由"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="SOZ042-3-1-0type">
+<xsd:sequence>
+
+<xsd:element name="AVE00000" type="AVE00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"４　審査結果"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVF00000" type="AVF00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"５　総合所見"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVG00000" type="AVG00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"６　その他"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="SOZ042-4-1-0type">
+<xsd:sequence>
+
+<xsd:element name="AVH00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加記載する事項(上部)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVH00010" type="AVH00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVH00020" type="AVH00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVH00030" type="AVH00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVH00040" type="AVH00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVH00050" type="AVH00050-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVH00060" type="AVH00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVH00070" type="AVH00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVI00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加記載する事項(下部)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVI00010" type="AVI00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVI00020" type="AVI00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVI00030" type="AVI00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVI00040" type="AVI00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVI00050" type="AVI00050-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVI00060" type="AVI00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVI00070" type="AVI00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="SOZ042-5-1-0type">
+<xsd:sequence>
+
+<xsd:element name="AVJ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加記載する事項(上部)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVJ00010" type="AVJ00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVJ00020" type="AVJ00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVJ00030" type="AVJ00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVJ00040" type="AVJ00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVJ00050" type="AVJ00050-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVJ00060" type="AVJ00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVJ00070" type="AVJ00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AVK00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加記載する事項(下部)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AVK00010" type="AVK00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVK00020" type="AVK00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVK00030" type="AVK00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVK00040" type="AVK00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVK00050" type="AVK00050-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVK00060" type="AVK00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AVK00070" type="AVK00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　記載する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="AVA00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVA00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVA00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="5"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVA00080-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVA00100-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVA00200-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVA00210-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVA00220-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="AVA00250-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="AVA00260-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="AVA00270-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="AVB00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="220"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVB00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="240"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVC00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="220"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVC00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="240"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVD00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="279"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVD00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="775"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVD00040-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="279"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVD00060-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="252"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVD00070-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="558"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVD00090-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="210"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVD00100-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="465"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVE00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1472"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVF00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="828"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVG00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="644"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="AVH00010-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/><xsd:enumeration value="6"/><xsd:enumeration value="7"/><xsd:enumeration value="8"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="AVH00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="22"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVH00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="480"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVH00040-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVH00050-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="704"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVH00060-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="2"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVH00070-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="448"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="AVI00010-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/><xsd:enumeration value="6"/><xsd:enumeration value="7"/><xsd:enumeration value="8"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="AVI00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="22"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVI00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="480"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVI00040-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVI00050-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="704"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVI00060-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="2"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVI00070-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="448"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="AVJ00010-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/><xsd:enumeration value="6"/><xsd:enumeration value="7"/><xsd:enumeration value="8"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="AVJ00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="22"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVJ00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="480"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVJ00040-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVJ00050-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="704"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVJ00060-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="2"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVJ00070-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="448"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="AVK00010-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/><xsd:enumeration value="6"/><xsd:enumeration value="7"/><xsd:enumeration value="8"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="AVK00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="22"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVK00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="480"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVK00040-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVK00050-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="704"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVK00060-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="2"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AVK00070-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="448"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

@@ -1,0 +1,588 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：付表1-2　税率別消費税額計算表兼地方消費税の課税標準となる消費税額計算表【経過措置対象課税資産の譲渡等を含む課税期間用】
+version：5.0
+Date：2023年06月26日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="SHB015-5-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="5.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="SHB015-5-0group">
+<xsd:sequence>
+<xsd:element name="SHB015">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAA00000" type="BAA00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAB00000" type="BAB00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税標準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAM00000" type="BAM00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(１)の内訳"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAC00000" type="BAC00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAD00000" type="BAD00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除過大調整税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00000" type="BAE00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAF00000" type="BAF00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除不足還付税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAG00000" type="BAG00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAI00000" type="BAI00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税の課税標準となる消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="BAN00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(13)Ｂ　合計差引地方消費税の課税標準となる消費税額　税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAO00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(13)Ｃ　合計差引地方消費税の課税標準となる消費税額　税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAJ00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(13)Ｘ　合計差引地方消費税の課税標準となる消費税額　旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BAK00000" type="BAK00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡割額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="SHB015-5-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BAA00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAA00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAA00020" type="gen:KAZEI_KIKAN_FROMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAA00030" type="gen:KAZEI_KIKAN_TOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAA00040" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAB00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAB00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAB00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAB00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAB00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAM00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAM00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税資産の譲渡等の対価の額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAM00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAM00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAM00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAM00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAM00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定課税仕入れに係る支払対価の額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAM00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAM00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAC00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAD00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAD00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAE00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAE00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象仕入税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAE00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"返還等対価に係る税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAE00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(５)の内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAE00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上げの返還等対価に係る税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAE00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAE00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定課税仕入れの返還等対価に係る税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAE00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAE00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"貸倒れに係る税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAE00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAE00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除税額小計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAE00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAE00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAF00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAF00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAF00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAG00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAG00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率３％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAG00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAG00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAG00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAI00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAI00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除不足還付税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAI00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAI00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAI00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAI00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAI00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAI00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAI00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BAK00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="BAK00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"還付額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAK00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAK00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAK00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BAK00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BAK00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率４％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAK00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率6.3％適用分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BAK00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率分小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

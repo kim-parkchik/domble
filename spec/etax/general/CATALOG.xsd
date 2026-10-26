@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+elementFormDefault="qualified" attributeFormDefault="unqualified"
+version="1.0" > 
+<xsd:annotation>
+<xsd:documentation>
+CATALOG Definition
+version:1.0
+Date:2002年05月21日
+</xsd:documentation>
+</xsd:annotation>
+<!--CATALOG definition-->
+<xsd:complexType name="CATALOGtype">
+<xsd:sequence maxOccurs="unbounded">
+<xsd:any namespace="http://www.w3.org/1999/02/22-rdf-syntax-ns#" processContents="lax"/>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID" use="required"/>
+</xsd:complexType>
+</xsd:schema>

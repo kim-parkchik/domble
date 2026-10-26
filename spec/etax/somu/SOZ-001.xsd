@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/somu" 
+xmlns="http://xml.e-tax.nta.go.jp/XSD/somu"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+elementFormDefault="qualified" attributeFormDefault="unqualified"
+version="1.0"> 
+
+
+<!-- Include -->
+<xsd:include schemaLocation="../somu/SOZ040-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ041-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ042-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ050-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ051-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ052-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ070-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ071-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ072-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ074-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ600-001.xsd"/>
+<xsd:include schemaLocation="../somu/SOZ610-001.xsd"/>
+</xsd:schema>

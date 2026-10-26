@@ -168,6 +168,12 @@ export interface Settings {
   /** 適格請求書発行事業者の登録番号（T + 13桁）と登録日（YYYY-MM-DD）。消費税の設定で入れる */
   invoice_no: string;
   invoice_registered_on: string;
+  /** e-Tax の申告者の情報（利用者識別番号・提出先の税務署番号・電話番号・フリガナ）。e-Tax の設定で入れる */
+  etax_user_id: string;
+  tax_office: string;
+  phone: string;
+  owner_kana: string;
+  business_kana: string;
   fiscal_year: number;
   filing_type: FilingType;
   industry: string;

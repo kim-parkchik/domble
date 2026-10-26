@@ -362,10 +362,11 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .tax-interim { margin-top: 12px; align-items: flex-end; }
 .tax-interim .field { max-width: 220px; }
 .tax-return-forms { margin-top: 20px; }
-.tax-return-title { display: flex; align-items: center; gap: 8px; }
-.tax-return-title h3 { font-size: 15px; margin: 0; }
+.tax-return-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tax-return-title h3 { font-size: 15px; margin: 0; flex: 1 1 360px; }
 .tax-return-title .spacer { flex: 1; }
 .tax-return-notes { font-size: 12.5px; color: var(--muted); margin: 8px 0; padding-left: 18px; }
+.tax-xtx { margin: 8px 0; padding: 8px 12px; background: #f4f7fb; border-radius: 4px; font-size: 12.5px; color: var(--muted); }
 .tax-form-block { margin-top: 16px; break-inside: avoid; }
 .tax-form-block h4 { font-size: 13px; margin: 0 0 6px; }
 .tax-form-table td { font-size: 12.5px; }

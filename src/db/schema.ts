@@ -567,4 +567,10 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   // 簡易課税の事業区分（1〜6）：明細（課税売上だけ。NULL = 年度の「主な事業区分」）と科目の初期値
   ["journal_lines", "business_class", "INTEGER CHECK (business_class BETWEEN 1 AND 6)"],
   ["accounts", "default_business_class", "INTEGER CHECK (default_business_class BETWEEN 1 AND 6)"],
+  // e-Tax のデータを書き出すときの申告者の情報：利用者識別番号（16桁）・提出先の税務署番号（5桁）・電話番号・フリガナ
+  ["settings", "etax_user_id", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "tax_office", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "phone", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "owner_kana", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "business_kana", "TEXT NOT NULL DEFAULT ''"],
 ];

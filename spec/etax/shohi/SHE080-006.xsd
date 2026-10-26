@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：課税仕入高計算表
+version：6.0
+Date：2023年06月26日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="SHE080-6-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="6.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="SHE080-6-0group">
+<xsd:sequence>
+<xsd:element name="SHE080">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA00000" type="ASA00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00000" type="ASB00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得に係る課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00000" type="ASC00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産所得に係る課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00000" type="ASD00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿所得に係る課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00000" type="ASE00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用資産の取得に係る課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00000" type="ASF00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税仕入高の合計額（（１）+（２）+（３）+（６）+（９））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00000" type="ASG00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税仕入れに係る消費税額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="SHE080-6-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="ASA00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ASA00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ASB00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ASB00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"営業等課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASB00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00075" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00085" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASB00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"農業課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASB00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00125" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00135" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ASC00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ASC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00075" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00085" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ASD00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ASD00010" type="ASD00010-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"＿所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の仕入金額と経費の金額の合計額　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00025" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の仕入金額と経費の金額の合計額　うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の仕入金額と経費の金額の合計額　うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00027" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の仕入金額と経費の金額の合計額　うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益計算書の仕入金額と経費の金額の合計額　うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税仕入れにならないもの　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00035" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税仕入れにならないもの　うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税仕入れにならないもの　うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00037" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税仕入れにならないもの　うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち、課税仕入れにならないもの　うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引課税仕入高（（４）-（５））"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00085" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00095" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ASE00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ASE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の取得費　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00015" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の取得費　うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の取得費　うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00017" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の取得費　うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業務用固定資産等の取得費　うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税仕入れにならないもの　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00025" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税仕入れにならないもの　うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税仕入れにならないもの　うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00027" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税仕入れにならないもの　うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）のうち、課税仕入れにならないもの　うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引課税仕入高（（７）-（８））"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00075" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00085" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ASF00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ASF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00045" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち軽減税率6.24％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00055" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち標準税率7.8％適用分　経過措置（８割控除）の適用を受ける課税仕入高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ASG00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ASG00042" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（10）軽減税率6.24％適用分（課税仕入高）欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00044" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（11）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00046" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（10）標準税率7.8％適用分（課税仕入高）欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00048" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（12）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（10）軽減税率6.24％適用分（経過措置（８割控除）の適用を受ける課税仕入高）欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（13）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（10）標準税率7.8％適用分（経過措置（８割控除）の適用を受ける課税仕入高）欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（14）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="ASD00010-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

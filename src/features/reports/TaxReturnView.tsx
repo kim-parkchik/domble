@@ -3,13 +3,18 @@
  *  - 方式の比較：その年に使える方式（本則・簡易・2割特例・3割特例）の納付税額を並べる
  *  - 選んだ方式の付表・第二表・第一表を、欄の番号つきで出す（確定申告書等作成コーナーや e-Tax に書き写す）
  *  - 中間納付税額は年度ごとに入れる
+ *  - 選んだ方式の申告書を e-Tax のデータ（.xtx）で書き出す（作るのは lib/taxXtx.ts。申告者の情報は事業者設定から）
  */
 import { useEffect, useMemo, useState } from "react";
-import { Printer, Save } from "lucide-react";
+import { FileDown, Printer, Save } from "lucide-react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext, useBaseSales, useYearData } from "../../context/AppContext";
 import { methodProblem } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
-import { yen } from "../../lib/format";
+import { todayIso, yen } from "../../lib/format";
+import { filerFromSettings, filerProblems } from "../../lib/etax";
+import { buildTaxXtx, xtxProblem } from "../../lib/taxXtx";
 import { buildTaxBase, computeReturn, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn, type ReturnMethod, type TaxForm } from "../../lib/taxReturn";
 import * as repo from "../../db/repo";
 
@@ -24,7 +29,7 @@ const METHOD_NOTE: Record<ReturnMethod, string> = {
 const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
 
 export const TaxReturnView = () => {
-  const { db, year, taxYears, taxYear, isClosed, can, dataVersion, bump } = useAppContext();
+  const { db, year, settings, taxYears, taxYear, isClosed, can, dataVersion, bump } = useAppContext();
   const { lines } = useYearData();
   const toast = useToast();
   const available = methodsFor(year);
@@ -75,6 +80,25 @@ export const TaxReturnView = () => {
   // どれも同じ額なら「いちばん有利」は出さない
   const showBest = new Set(usable.map((x) => x.r.total)).size > 1;
   const admin = can("settings");
+
+  // e-Tax のデータ（.xtx）
+  const filer = filerFromSettings(settings);
+  const xtxBlocked = xtxProblem(shown, year);
+  const missing = filerProblems(filer);
+  const exportXtx = async () => {
+    try {
+      const xml = buildTaxXtx(shown, filer, { from: taxYear.taxable_from || `${year}-01-01`, to: `${year}-12-31`, createdOn: todayIso() });
+      const path = await save({
+        defaultPath: `消費税申告_${year}年分_${METHOD_LABEL[method]}.xtx`,
+        filters: [{ name: "e-Tax のデータ", extensions: ["xtx"] }],
+      });
+      if (!path) return;
+      await writeTextFile(path, xml);
+      toast("e-Tax のデータを書き出しました");
+    } catch (e) {
+      toast(`書き出せませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
 
   return (
     <div className="tax-return">
@@ -134,7 +158,6 @@ export const TaxReturnView = () => {
       <div className="tax-return-forms print-area">
         <div className="tax-return-title">
           <h3>{year}年分 消費税及び地方消費税の申告書の数字（{METHOD_LABEL[method]}）</h3>
-          <span className="spacer" />
           {(method === "twenty" || method === "thirty") && (
             <select className="input sm print-skip" value={firstKind} onChange={(e) => setFirstKind(e.target.value as typeof firstKind)} aria-label="第一表の種類" style={{ width: "auto" }}>
               <option value="一般用">第一表は一般用（簡易課税の届出なし）</option>
@@ -142,13 +165,28 @@ export const TaxReturnView = () => {
             </select>
           )}
           <button className="btn ghost sm print-skip" onClick={() => window.print()}><Printer size={14} /> 印刷</button>
+          <button className="btn primary sm print-skip" onClick={exportXtx} disabled={!!xtxBlocked || missing.length > 0}>
+            <FileDown size={14} /> e-Tax 用に書き出す
+          </button>
+        </div>
+        <div className="tax-xtx print-skip">
+          {xtxBlocked ? (
+            <span>{xtxBlocked}。</span>
+          ) : missing.length > 0 ? (
+            <span>e-Tax 用に書き出すには、事業者設定で次のものを入れてください：{missing.join("、")}。</span>
+          ) : (
+            <span>
+              e-Tax 用のデータ（.xtx）は、e-Taxソフト（WEB版）の「作成済みデータの利用」で読み込み、内容を確かめて送信します（個人番号はそこで入れます）。
+              {current && method !== current && <b> この年の設定（{METHOD_LABEL[current]}）とは違う方式です。</b>}
+            </span>
+          )}
         </div>
         {shown.notes.length > 0 && (
           <ul className="tax-return-notes">{shown.notes.map((n) => <li key={n}>{n}</li>)}</ul>
         )}
         {forms.map((f) => <FormTable key={f.id} form={f} />)}
         <p className="field-note">
-          確定申告書等作成コーナーや e-Tax に書き写すときの数字です。domble は申告書を作ったり送ったりはしません。
+          確定申告書等作成コーナーや e-Tax に書き写すときの数字です。e-Tax 用のデータに書き出すこともできます（送信は e-Tax で行います）。
           申告の前に、集計表と「確認」の内容を確かめてください。
         </p>
       </div>

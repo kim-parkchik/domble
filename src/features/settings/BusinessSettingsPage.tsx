@@ -23,6 +23,7 @@ import { closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
 import { APP_DIR_NAME, BACKUP_DIR_NAME, DEFAULT_INPUT_PERIOD_DAYS, EXT_BACKUP, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS } from "../../constants/appConfig";
 import { TaxSection } from "./TaxSection";
+import { EtaxSection } from "./EtaxSection";
 
 export const FILING_LABEL: Record<FilingType, string> = {
   blue65: "青色申告（65万円控除）",
@@ -230,6 +231,7 @@ export const BusinessSettingsPage = () => {
         </section>
 
         <TaxSection />
+        <EtaxSection />
         <ClosingSection />
         <InputPeriodSection />
         <ScanSection />

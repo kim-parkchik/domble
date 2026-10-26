@@ -98,6 +98,10 @@ export interface FormRow {
   c: number | null;
   /** 転記先・計算式など */
   note?: string;
+  /** 欄の番号の無い行（第一表の参考事項など）を見分ける名前（e-Tax の書き出しで使う） */
+  key?: string;
+  /** 区分の欄（付表5-3 の ⑤・㉑ の事業区分 1〜6） */
+  kubun?: number;
 }
 export interface TaxForm {
   id: string;
@@ -112,8 +116,12 @@ export const METHOD_LABEL: Record<ReturnMethod, string> = {
   standard: "本則課税", simplified: "簡易課税", twenty: "2割特例", thirty: "3割特例",
 };
 
+export type FirstKind = "一般用" | "簡易課税用";
+
 export interface TaxReturn {
   method: ReturnMethod;
+  /** 第一表・第二表の種類 */
+  firstKind: FirstKind;
   forms: TaxForm[];
   /** 消費税（国税）：納付税額 ⑪ − 還付（⑧＋⑫） */
   national: number;
@@ -188,7 +196,7 @@ const secondTable = (s: ReturnType<typeof salesSide>, retTotal: number, localBas
 });
 
 const firstTable = (
-  kind: "一般用" | "簡易課税用", base: number, c: { tax: number; plus: number; deduct: number; ret: number; bad: number }, f: ReturnType<typeof finish>,
+  kind: FirstKind, base: number, c: { tax: number; plus: number; deduct: number; ret: number; bad: number }, f: ReturnType<typeof finish>,
   o: ReturnOptions, extra: FormRow[], twentyLike: string | null,
 ): TaxForm => ({
   id: "first", title: `第一表（${kind}）`, abc: false,
@@ -207,8 +215,8 @@ const firstTable = (
     { no: "⑫", label: "中間納付還付税額（⑩－⑨）", c: f.interimRefund },
     ...extra,
     kind === "簡易課税用"
-      ? { no: "⑯", label: "基準期間の課税売上高", c: o.baseSales ?? null, note: o.baseSales == null ? "分かりません（事業者設定の「消費税」で入れられます）" : undefined }
-      : { no: "", label: "参考事項・基準期間の課税売上高", c: o.baseSales ?? null, note: o.baseSales == null ? "分かりません（事業者設定の「消費税」で入れられます）" : "千円単位の欄" },
+      ? { no: "⑯", key: "baseSales", label: "基準期間の課税売上高", c: o.baseSales ?? null, note: o.baseSales == null ? "分かりません（事業者設定の「消費税」で入れられます）" : undefined }
+      : { no: "", key: "baseSales", label: "参考事項・基準期間の課税売上高", c: o.baseSales ?? null, note: o.baseSales == null ? "分かりません（事業者設定の「消費税」で入れられます）" : "千円単位の欄" },
     { no: "⑰", label: "地方消費税の課税標準となる消費税額・控除不足還付税額", c: f.shortfall },
     { no: "⑱", label: "地方消費税の課税標準となる消費税額・差引税額", c: f.net },
     { no: "⑲", label: "譲渡割額・還付額（⑰ × 22/78）", c: f.localRefund },
@@ -217,7 +225,7 @@ const firstTable = (
     { no: "㉒", label: "納付譲渡割額（⑳－㉑）", c: f.localPay },
     { no: "㉓", label: "中間納付還付譲渡割額（㉑－⑳）", c: f.localInterimRefund },
     { no: "㉖", label: "消費税及び地方消費税の合計（納付又は還付）税額", c: f.total, note: "（⑪＋㉒）－（⑧＋⑫＋⑲＋㉓）。還付はマイナス" },
-    ...(twentyLike ? [{ no: "", label: `税額控除に係る経過措置の適用（${twentyLike}）`, c: null, note: "○ をつける" }] : []),
+    ...(twentyLike ? [{ no: "", key: "special", label: `税額控除に係る経過措置の適用（${twentyLike}）`, c: null, note: "○ をつける" }] : []),
   ],
 });
 
@@ -299,7 +307,7 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
     { no: "⑯", label: "課税売上割合・資産の譲渡等の対価の額", c: r7 },
   ];
   return {
-    method: "standard",
+    method: "standard", firstKind: "一般用",
     forms: [fuhyo23, fuhyo13, secondTable(s, sumAB(s.ret), f.net - f.shortfall, "（一般用）"), firstTable("一般用", sumAB(s.base), c, f, o, extra, null)],
     national: f.national, local: f.local, total: f.total, notes,
   };
@@ -332,6 +340,8 @@ export interface ClassCalc {
   no: string;
   label: string;
   value: AB;
+  /** ㉑ の事業区分 */
+  cls?: number;
 }
 
 /**
@@ -371,7 +381,7 @@ export const multiClassDeduction = (b: TaxBase, basis: AB) => {
   });
   // ㉑ 1種類の事業で75%以上
   const major = present.find((c) => share(c) >= 0.75);
-  if (major) calcs.push({ no: "㉑", label: `特例計算・1種類の事業で75%以上（${CLASS_NAME[major]}。④ × ${CLASS_RATE[major]}%）`, value: fix(map((r) => pct(basis[r], CLASS_RATE[major]))) });
+  if (major) calcs.push({ no: "㉑", cls: major, label: `特例計算・1種類の事業で75%以上（${CLASS_NAME[major]}。④ × ${CLASS_RATE[major]}%）`, value: fix(map((r) => pct(basis[r], CLASS_RATE[major]))) });
   // ㉒〜㊱ 2種類の事業で75%以上：④ ×（第i種の税額 × i のみなし仕入率 ＋（⑬ － 第i種の税額）× j のみなし仕入率）／⑬
   for (const i of present) {
     for (const j of present) {
@@ -412,14 +422,14 @@ export const simplifiedReturn = (input: TaxBase, o: ReturnOptions): TaxReturn =>
   const fuhyo53: TaxForm = {
     id: "5-3", title: "付表5-3 控除対象仕入税額等の計算表", abc: true,
     rows: single
-      ? [...head, abRow("⑤", `１種類の事業の専業者の場合の控除対象仕入税額（④ × みなし仕入率 ${cls.rate}%）`, deduct, `${cls.label}。付表4-3の④へ`)]
+      ? [...head, { ...abRow("⑤", `１種類の事業の専業者の場合の控除対象仕入税額（④ × みなし仕入率 ${cls.rate}%）`, deduct, `${cls.label}。付表4-3の④へ`), kubun: cls.value }]
       : [
         ...head,
         abRow("⑥", "事業区分別の課税売上高（税抜き）の合計額", multi.total6, "売上割合 100%"),
         ...multi.present.map((k) => abRow(SALES_ROW[k], `${CLASS_NAME[k]}の課税売上高（税抜き）`, multi.net[k], `売上割合 ${shareText(sumAB(multi.net[k]), sumAB(multi.total6))}。第一表の「事業区分」欄へ`)),
         abRow("⑬", "事業区分別の課税売上高に係る消費税額の合計額", multi.total13),
         ...multi.present.map((k) => abRow(TAX_ROW[k], `${CLASS_NAME[k]}の消費税額`, multi.tax[k], `みなし仕入率 ${CLASS_RATE[k]}%`)),
-        ...multi.calcs.map((x) => abRow(x.no, x.label, x.value, x === multi.chosen ? "いちばん多い（㊲ に選ぶ）" : undefined)),
+        ...multi.calcs.map((x) => ({ ...abRow(x.no, x.label, x.value, x === multi.chosen ? "いちばん多い（㊲ に選ぶ）" : undefined), kubun: x.cls })),
         abRow("㊲", "上記の計算式区分から選択した控除対象仕入税額", deduct, `${multi.chosen.no} を選択。付表4-3の④へ`),
       ],
   };
@@ -444,13 +454,13 @@ export const simplifiedReturn = (input: TaxBase, o: ReturnOptions): TaxReturn =>
   };
   // 第一表の参考事項：事業区分ごとの課税売上高（千円未満四捨五入）と売上割合、特例計算（令57③）の適用
   const classRows: FormRow[] = single
-    ? [{ no: "", label: `参考事項・事業区分（${cls.label}）の課税売上高（千円）`, c: Math.round(sumAB(salesNet) / 1000), note: "千円未満四捨五入。売上割合 100%" }]
+    ? [{ no: "", key: `class${cls.value}`, label: `参考事項・事業区分（${cls.label}）の課税売上高（千円）`, c: Math.round(sumAB(salesNet) / 1000), note: "千円未満四捨五入。売上割合 100%" }]
     : [
       ...multi.present.map((k) => ({
-        no: "", label: `参考事項・事業区分（${classLabelShort(k)}）の課税売上高（千円）`, c: Math.round(sumAB(multi.net[k]) / 1000),
+        no: "", key: `class${k}`, label: `参考事項・事業区分（${classLabelShort(k)}）の課税売上高（千円）`, c: Math.round(sumAB(multi.net[k]) / 1000),
         note: `千円未満四捨五入。売上割合 ${shareText(sumAB(multi.net[k]), sumAB(multi.total6))}`,
       })),
-      { no: "", label: "参考事項・特例計算適用（令57③）", c: null, note: multi.chosen.no === "⑳" ? "無" : "有" },
+      { no: "", key: "rule57", label: "参考事項・特例計算適用（令57③）", c: null, note: multi.chosen.no === "⑳" ? "無" : "有" },
     ];
   const extra: FormRow[] = [
     { no: "⑮", label: "この課税期間の課税売上高", c: periodSales, note: "税抜き。返還を差し引き、免税売上を足した額" },
@@ -458,7 +468,7 @@ export const simplifiedReturn = (input: TaxBase, o: ReturnOptions): TaxReturn =>
   ];
   const usedClasses = single ? [cls.label] : multi.present.map((k) => CLASS_NAME[k]);
   return {
-    method: "simplified",
+    method: "simplified", firstKind: "簡易課税用",
     forms: [fuhyo53, fuhyo43, secondTable(s, sumAB(s.ret), f.net - f.shortfall, "（簡易課税用）"), firstTable("簡易課税用", sumAB(s.base), c, f, o, extra, null)],
     national: f.national, local: f.local, total: f.total,
     notes: [
@@ -475,7 +485,7 @@ export const simplifiedReturn = (input: TaxBase, o: ReturnOptions): TaxReturn =>
 // ────────────────────────────────────────────
 // 2割特例・3割特例（付表6）
 // ────────────────────────────────────────────
-const specialReturn = (b: TaxBase, o: ReturnOptions, method: "twenty" | "thirty", firstKind: "一般用" | "簡易課税用"): TaxReturn => {
+const specialReturn = (b: TaxBase, o: ReturnOptions, method: "twenty" | "thirty", firstKind: FirstKind): TaxReturn => {
   const s = salesSide(b);
   const pct = method === "twenty" ? 80 : 70;
   const basis = map((r) => s.tax[r] + s.recovered[r] - s.ret[r]); // ⑥
@@ -498,7 +508,7 @@ const specialReturn = (b: TaxBase, o: ReturnOptions, method: "twenty" | "thirty"
     ],
   };
   return {
-    method,
+    method, firstKind,
     forms: [fuhyo6, secondTable(s, sumAB(s.ret), f.net - f.shortfall, ""), firstTable(firstKind, sumAB(s.base), c, f, o, [], label)],
     national: f.national, local: f.local, total: f.total,
     notes: [
@@ -508,8 +518,8 @@ const specialReturn = (b: TaxBase, o: ReturnOptions, method: "twenty" | "thirty"
   };
 };
 
-export const twentyReturn = (b: TaxBase, o: ReturnOptions, firstKind: "一般用" | "簡易課税用" = "一般用") => specialReturn(b, o, "twenty", firstKind);
-export const thirtyReturn = (b: TaxBase, o: ReturnOptions, firstKind: "一般用" | "簡易課税用" = "一般用") => specialReturn(b, o, "thirty", firstKind);
+export const twentyReturn = (b: TaxBase, o: ReturnOptions, firstKind: FirstKind = "一般用") => specialReturn(b, o, "twenty", firstKind);
+export const thirtyReturn = (b: TaxBase, o: ReturnOptions, firstKind: FirstKind = "一般用") => specialReturn(b, o, "thirty", firstKind);
 
 /** その年に使える方式（2割特例は令和8年分まで、3割特例は令和9年分・令和10年分） */
 export const methodsFor = (year: number): ReturnMethod[] => [
