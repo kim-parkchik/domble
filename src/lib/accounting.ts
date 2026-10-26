@@ -31,6 +31,7 @@ export interface FlatLine {
   /** 税区分・インボイス区分（null = 未設定） */
   tax_code?: TaxCode | null;
   invoice_kind?: InvoiceKind | null;
+  business_class?: number | null;
 }
 
 export type AccountMap = Map<number, Account>;
@@ -257,9 +258,10 @@ export interface LedgerRow {
   isCompound: boolean;
   /** 決算整理仕訳か */
   isAdjustment: boolean;
-  /** この科目側の明細の税区分・インボイス区分 */
+  /** この科目側の明細の税区分・インボイス区分・事業区分 */
   taxCode: TaxCode | null;
   invoiceKind: InvoiceKind | null;
+  businessClass: number | null;
 }
 
 /** 指定科目の元帳（残高推移つき）。lines は会計期間内のものを渡す */
@@ -303,6 +305,7 @@ export const buildLedger = (
       isAdjustment: l.is_adjustment === 1,
       taxCode: l.tax_code ?? null,
       invoiceKind: l.invoice_kind ?? null,
+      businessClass: l.business_class ?? null,
     };
   });
 };
@@ -361,6 +364,8 @@ export const emptyRow = (): VoucherRow => ({
   debitInvoice: null,
   creditTax: null,
   creditInvoice: null,
+  debitClass: null,
+  creditClass: null,
 });
 
 const isBlankRow = (r: VoucherRow) =>
@@ -400,14 +405,15 @@ export const rowsToLines = (rows: VoucherRow[]): JournalLine[] => {
     rowNo++;
     const memo = r.memo.trim();
     // 税区分は入れたときだけ持たせる（null は保存のときに科目・取引先の初期値で埋める）
-    const tax = (code?: TaxCode | null, invoice?: InvoiceKind | null) => ({
+    const tax = (code?: TaxCode | null, invoice?: InvoiceKind | null, cls?: number | null) => ({
       ...(code ? { tax_code: code } : {}),
       ...(invoice ? { invoice_kind: invoice } : {}),
+      ...(cls ? { business_class: cls } : {}),
     });
     if (r.debitAccountId && r.debitAmount)
-      lines.push({ row_no: rowNo, side: "debit", account_id: r.debitAccountId, sub_account_id: r.debitSubId, amount: r.debitAmount, memo, ...tax(r.debitTax, r.debitInvoice) });
+      lines.push({ row_no: rowNo, side: "debit", account_id: r.debitAccountId, sub_account_id: r.debitSubId, amount: r.debitAmount, memo, ...tax(r.debitTax, r.debitInvoice, r.debitClass) });
     if (r.creditAccountId && r.creditAmount)
-      lines.push({ row_no: rowNo, side: "credit", account_id: r.creditAccountId, sub_account_id: r.creditSubId, amount: r.creditAmount, memo, ...tax(r.creditTax, r.creditInvoice) });
+      lines.push({ row_no: rowNo, side: "credit", account_id: r.creditAccountId, sub_account_id: r.creditSubId, amount: r.creditAmount, memo, ...tax(r.creditTax, r.creditInvoice, r.creditClass) });
   }
   return lines;
 };
@@ -422,12 +428,14 @@ export const linesToRows = (lines: JournalLine[]): VoucherRow[] => {
       r.debitAmount = l.amount;
       r.debitTax = l.tax_code ?? null;
       r.debitInvoice = l.invoice_kind ?? null;
+      r.debitClass = l.business_class ?? null;
     } else {
       r.creditAccountId = l.account_id;
       r.creditSubId = l.sub_account_id ?? null;
       r.creditAmount = l.amount;
       r.creditTax = l.tax_code ?? null;
       r.creditInvoice = l.invoice_kind ?? null;
+      r.creditClass = l.business_class ?? null;
     }
     if (!r.memo && l.memo) r.memo = l.memo;
     byRow.set(l.row_no, r);

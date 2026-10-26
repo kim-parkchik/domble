@@ -15,10 +15,10 @@ export const SnapshotTable = ({ snap, compare }: { snap: EntrySnapshot; compare?
   const cr = snap.lines.filter((l) => l.side === "credit");
   const n = Math.max(dr.length, cr.length);
   // 前の版と違う箇所に印をつける
-  const key = (l?: EntrySnapshot["lines"][number]) => (l ? `${l.side}|${lineLabel(l)}|${l.amount}|${l.memo}|${l.tax ?? ""}|${l.invoice ?? ""}` : "");
+  const key = (l?: EntrySnapshot["lines"][number]) => (l ? `${l.side}|${lineLabel(l)}|${l.amount}|${l.memo}|${l.tax ?? ""}|${l.invoice ?? ""}|${l.cls ?? ""}` : "");
   // 税区分（入っている写しだけ）
   const tax = (l?: EntrySnapshot["lines"][number]) =>
-    l?.tax ? <span className="tax-tag" title={taxLongLabel(l.tax, l.invoice, snap.date)}>{taxShortLabel(l.tax, l.invoice, snap.date)}</span> : null;
+    l?.tax ? <span className="tax-tag" title={taxLongLabel(l.tax, l.invoice, snap.date, l.cls)}>{taxShortLabel(l.tax, l.invoice, snap.date, l.cls)}</span> : null;
   const prev = new Set(compare?.lines.map(key));
   const changed = (l?: EntrySnapshot["lines"][number]) => !!compare && !!l && !prev.has(key(l));
   const dateChanged = !!compare && compare.date !== snap.date;

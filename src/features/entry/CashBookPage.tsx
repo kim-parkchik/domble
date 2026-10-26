@@ -21,7 +21,7 @@ import { CashbookTabsModal } from "./CashbookTabsModal";
 import * as repo from "../../db/repo";
 import { subKey, type InvoiceKind, type JournalLine, type TaxCode } from "../../lib/types";
 import { splitByRate } from "../../lib/homeUse";
-import { taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { displayClass, taxLongLabel, taxShortLabel } from "../../lib/tax";
 
 /** 科目ごとの列見出し（一般的な出納帳に合わせる） */
 const columnLabels = (code: string, normal: "debit" | "credit") => {
@@ -31,7 +31,7 @@ const columnLabels = (code: string, normal: "debit" | "credit") => {
 };
 
 export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive } = useAppContext();
+  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears } = useAppContext();
   const { lines, opening, subOpening, loading } = useYearData();
   const toast = useToast();
 
@@ -96,12 +96,13 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       const others = (byEntry.get(r.entry_id) ?? []).filter((l) => l.side !== mine);
       if (others.length === 0) return { text: "", title: "" };
       if (others.some((l) => !l.tax_code)) return isTaxActive(r.date) ? { text: "未設定", title: "税区分が入っていません（仕訳を開いて入れるか、事業者設定の消費税でまとめて入れられます）" } : { text: "対象外", title: "" };
-      const keys = new Set(others.map((l) => `${l.tax_code}|${l.invoice_kind ?? ""}`));
+      const keys = new Set(others.map((l) => `${l.tax_code}|${l.invoice_kind ?? ""}|${l.business_class ?? ""}`));
       if (keys.size > 1) return { text: "複数", title: "相手の明細で税区分が違います" };
       const o = others[0];
-      return { text: taxShortLabel(o.tax_code, o.invoice_kind, r.date), title: taxLongLabel(o.tax_code, o.invoice_kind, r.date) };
+      const cls = displayClass(taxYears, o);
+      return { text: taxShortLabel(o.tax_code, o.invoice_kind, r.date, cls), title: taxLongLabel(o.tax_code, o.invoice_kind, r.date, cls) };
     };
-  }, [lines, isTaxActive]);
+  }, [lines, isTaxActive, taxYears]);
 
   const totals = rows.reduce((t, r) => ({ dr: t.dr + r.debit, cr: t.cr + r.credit }), { dr: 0, cr: 0 });
 
@@ -117,7 +118,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
   const [counterId, setCounterId] = useState<number | null>(null);
   const [counterSubId, setCounterSubId] = useState<number | null>(null);
   /** 相手科目の税区分（null = 科目・取引先の初期値） */
-  const [counterTax, setCounterTax] = useState<{ code: TaxCode | null; invoice: InvoiceKind | null }>({ code: null, invoice: null });
+  const [counterTax, setCounterTax] = useState<{ code: TaxCode | null; invoice: InvoiceKind | null; cls: number | null }>({ code: null, invoice: null, cls: null });
   const [memo, setMemo] = useState("");
   const [dr, setDr] = useState<number | null>(null);
   const [cr, setCr] = useState<number | null>(null);
@@ -161,7 +162,10 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     const m = memo.trim();
     // この帳簿の科目側には、選んでいる補助科目をつける（補助科目の無い科目は補助なし）
     // 税区分は相手科目の側だけ持たせる（この帳簿の科目の側は初期値＝ふつうは対象外）
-    const tax = { ...(counterTax.code ? { tax_code: counterTax.code } : {}), ...(counterTax.invoice ? { invoice_kind: counterTax.invoice } : {}) };
+    const tax = {
+      ...(counterTax.code ? { tax_code: counterTax.code } : {}), ...(counterTax.invoice ? { invoice_kind: counterTax.invoice } : {}),
+      ...(counterTax.cls ? { business_class: counterTax.cls } : {}),
+    };
     const lines: JournalLine[] = [
       { row_no: 1, side: "debit", account_id: isDebit ? accountId : counterId, sub_account_id: isDebit ? ownSub : counterSubId, amount, memo: m, ...(isDebit ? {} : tax) },
       { row_no: 1, side: "credit", account_id: isDebit ? counterId : accountId, sub_account_id: isDebit ? counterSubId : ownSub, amount, memo: m, ...(isDebit ? tax : {}) },
@@ -176,7 +180,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       bump();
       toast("登録しました");
       setCounterId(null);
-      setCounterTax({ code: null, invoice: null });
+      setCounterTax({ code: null, invoice: null, cls: null });
       setCounterpartyId(null);
       setCpKey((k) => k + 1);
       setCounterSubId(null);
@@ -269,7 +273,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                 <tr key={`${r.entry_id}-${i}`} className="clickable" onClick={() => setEditing(r.entry_id)} title="クリックで修正">
                   <td>{shortDate(r.date)}</td>
                   <td>{r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter}</td>
-                  <td className={`tax-cell${taxOfRow(r).text === "未設定" ? " tax-missing" : ""}`} title={taxOfRow(r).title}>{taxOfRow(r).text}</td>
+                  <td className={`tax-cell${taxOfRow(r).text === "未設定" || taxOfRow(r).text.endsWith("区分不明") ? " tax-missing" : ""}`} title={taxOfRow(r).title}>{taxOfRow(r).text}</td>
                   <td className="memo">
                     {r.isAdjustment && <span className="badge badge-adjust">決算整理</span>}
                     {bookSub === undefined && r.subId && <span className="sub-tag">{subMap.get(r.subId)?.name}</span>}
@@ -306,12 +310,12 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                     ? <span className="adjust-date" title="決算整理仕訳は年度末の日付で登録します">12/31</span>
                     : <DateInput value={date} onChange={setDate} year={year} onKeyDown={nav} aria-label="日付" />}
                 </td>
-                <td><AccountWithSub accountId={counterId} subId={counterSubId} onAccount={(v) => { setCounterId(v); setCounterSubId(null); setCounterTax({ code: null, invoice: null }); }} onSub={setCounterSubId} onKeyDown={nav} label="相手科目" /></td>
+                <td><AccountWithSub accountId={counterId} subId={counterSubId} onAccount={(v) => { setCounterId(v); setCounterSubId(null); setCounterTax({ code: null, invoice: null, cls: null }); }} onSub={setCounterSubId} onKeyDown={nav} label="相手科目" /></td>
                 <td>
                   {/* 入金なら相手科目は貸方、出金なら借方 */}
                   <TaxSelect
-                    label="税区分" value={counterTax.code} invoice={counterTax.invoice} accountId={counterId} side={(dr ?? 0) > 0 ? "credit" : "debit"}
-                    date={adjustmentOnly ? yearEnd(year) : date} counterpartyId={counterpartyId} onChange={(code, invoice) => setCounterTax({ code, invoice })}
+                    label="税区分" value={counterTax.code} invoice={counterTax.invoice} businessClass={counterTax.cls} accountId={counterId} side={(dr ?? 0) > 0 ? "credit" : "debit"}
+                    date={adjustmentOnly ? yearEnd(year) : date} counterpartyId={counterpartyId} onChange={(code, invoice, cls) => setCounterTax({ code, invoice, cls })}
                   />
                 </td>
                 <td>

@@ -16,7 +16,7 @@ import { groupByEntry, monthEnd, monthStart, yearEnd, yearStart, type FlatLine }
 import { parseAmount, shortDate, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
-import { invoiceCsvLabel, taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { classLabel, displayClass, invoiceCsvLabel, taxLongLabel, taxShortLabel } from "../../lib/tax";
 import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
 
@@ -39,7 +39,7 @@ interface DisplayRow {
 }
 
 export const JournalListPage = () => {
-  const { db, year, accountMap, activeAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear } = useAppContext();
+  const { db, year, accountMap, activeAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear, taxYears } = useAppContext();
   /** 税区分での絞り込み："" = すべて、unset = 未設定（課税事業者の期間で税区分が無い）、transitional / nodeduct = インボイス区分、それ以外は税区分 */
   const [taxFilter, setTaxFilter] = useState("");
   const cpMap = useMemo(() => new Map(counterparties.map((c) => [c.id, c])), [counterparties]);
@@ -140,13 +140,15 @@ export const JournalListPage = () => {
   // 税区分（対象外のものは出さない）
   const tax = (l?: FlatLine) =>
     l?.tax_code && l.tax_code !== "none"
-      ? <span className="tax-tag" title={taxLongLabel(l.tax_code, l.invoice_kind, l.date)}>{taxShortLabel(l.tax_code, l.invoice_kind, l.date)}</span>
+      ? <span className={`tax-tag${displayClass(taxYears, l) === 0 ? " tax-missing" : ""}`} title={taxLongLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l))}>{taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l))}</span>
       : null;
 
   const exportCsv = async () => {
     const header = ["伝票No", "日付", "借方科目", "借方補助", "借方金額", "貸方科目", "貸方補助", "貸方金額", "摘要", "取引先", "登録番号", "状態", "登録日時", "登録までの日数", "入力期間", "決算整理",
-      "借方税区分", "借方インボイス", "貸方税区分", "貸方インボイス"];
-    const taxCols = (l?: FlatLine) => [l?.tax_code ? taxLongLabel(l.tax_code, null, l.date) : "", invoiceCsvLabel(l?.tax_code, l?.invoice_kind)];
+      "借方税区分", "借方インボイス", "借方事業区分", "貸方税区分", "貸方インボイス", "貸方事業区分"];
+    const taxCols = (l?: FlatLine) => [
+      l?.tax_code ? taxLongLabel(l.tax_code, null, l.date) : "", invoiceCsvLabel(l?.tax_code, l?.invoice_kind), l?.business_class ? classLabel(l.business_class) : "",
+    ];
     const sub = (l?: FlatLine) => (l?.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "");
     const body = rows.map((r) =>
       [r.entryId, r.date, r.dr ? accountMap.get(r.dr.account_id)?.name ?? "" : "", sub(r.dr), r.dr?.amount ?? "",

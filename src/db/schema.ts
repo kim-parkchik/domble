@@ -564,4 +564,7 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["journal_lines", "invoice_kind", "TEXT"],
   ["accounts", "default_tax_code", "TEXT"],
   ["counterparties", "not_registered", "INTEGER NOT NULL DEFAULT 0"],
+  // 簡易課税の事業区分（1〜6）：明細（課税売上だけ。NULL = 年度の「主な事業区分」）と科目の初期値
+  ["journal_lines", "business_class", "INTEGER CHECK (business_class BETWEEN 1 AND 6)"],
+  ["accounts", "default_business_class", "INTEGER CHECK (default_business_class BETWEEN 1 AND 6)"],
 ];

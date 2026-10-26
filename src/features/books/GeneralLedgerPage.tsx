@@ -9,14 +9,14 @@ import { MonthRange } from "../../components/MonthRange";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { buildLedger, closingBalances, monthEnd, monthStart } from "../../lib/accounting";
 import { shortDate, yen } from "../../lib/format";
-import { taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { displayClass, taxLongLabel, taxShortLabel } from "../../lib/tax";
 import { CATEGORY_LABEL, isBalanceSheet } from "../../constants/accounts";
 import { subKey, type AccountCategory } from "../../lib/types";
 
 const ORDER: AccountCategory[] = ["asset", "liability", "equity", "revenue", "cogs", "expense", "special"];
 
 export const GeneralLedgerPage = () => {
-  const { year, accounts, accountMap, subAccounts, labelOf, subMap } = useAppContext();
+  const { year, accounts, accountMap, subAccounts, labelOf, subMap, taxYears } = useAppContext();
   const { lines, opening, subOpening } = useYearData();
   const [accountId, setAccountIdRaw] = useState(accounts[0].id);
   const [sub, setSub] = useState<number | null | undefined>(undefined);
@@ -135,7 +135,9 @@ export const GeneralLedgerPage = () => {
                       {sub === undefined && r.subId && <span className="sub-tag">{subMap.get(r.subId)?.name}</span>}
                       {r.memo}
                       {r.taxCode && r.taxCode !== "none" && (
-                        <span className="tax-tag" title={taxLongLabel(r.taxCode, r.invoiceKind, r.date)}>{taxShortLabel(r.taxCode, r.invoiceKind, r.date)}</span>
+                        <span className="tax-tag" title={taxLongLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, { date: r.date, tax_code: r.taxCode, business_class: r.businessClass }))}>
+                          {taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, { date: r.date, tax_code: r.taxCode, business_class: r.businessClass }))}
+                        </span>
                       )}
                     </td>
                     <td className="num">{yen(r.debit, { blankZero: true })}</td>

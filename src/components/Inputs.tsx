@@ -6,8 +6,8 @@ import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import type { Account, InvoiceKind, Side, TaxCode } from "../lib/types";
 import { parseAmount, parseDateInput, shortDate, toHalfWidth } from "../lib/format";
 import { useAppContext } from "../context/AppContext";
-import { TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
-import { defaultInvoiceKind, defaultTaxCode, isPurchaseCode, taxLongLabel, taxShortLabel } from "../lib/tax";
+import { BUSINESS_CLASSES, TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
+import { defaultInvoiceKind, defaultTaxCode, effectiveBusinessClass, isPurchaseCode, isSalesCode, taxLongLabel, taxShortLabel, taxYearOf } from "../lib/tax";
 import { findCounterparty, normName, validateCounterparty } from "../lib/counterparty";
 import * as repo from "../db/repo";
 
@@ -278,20 +278,24 @@ export const MemoInput = ({ value, onChange, placeholder = "摘要", ...rest }: 
 //  Enter での移動では飛ばす（初期値のままのことが多いため。変えるときはクリックか Tab）
 // ────────────────────────────────────────────
 
-const optionValue = (code: TaxCode, invoice: InvoiceKind | null) => (isPurchaseCode(code) ? `${code}|${invoice ?? "qualified"}` : code);
+/** 選択肢の値：課税仕入は「税区分|インボイス区分」、簡易課税の年の課税売上は「税区分#事業区分」 */
+const optionValue = (code: TaxCode, invoice: InvoiceKind | null, cls: number | null = null) =>
+  isPurchaseCode(code) ? `${code}|${invoice ?? "qualified"}` : cls ? `${code}#${cls}` : code;
 
-export const TaxSelect = ({ label, value, invoice, onChange, accountId, side, date, counterpartyId }: {
+export const TaxSelect = ({ label, value, invoice, businessClass, onChange, accountId, side, date, counterpartyId }: {
   label: string;
   value: TaxCode | null | undefined;
   invoice: InvoiceKind | null | undefined;
-  onChange: (code: TaxCode | null, invoice: InvoiceKind | null) => void;
+  /** 簡易課税の事業区分（課税売上だけ。null = 科目の初期値・年度の「主な事業区分」） */
+  businessClass?: number | null;
+  onChange: (code: TaxCode | null, invoice: InvoiceKind | null, businessClass: number | null) => void;
   accountId: number | null;
   side: Side;
-  /** 取引の日付（課税事業者の期間か、経過措置の割合） */
+  /** 取引の日付（課税事業者の期間か、経過措置の割合、簡易課税の年か） */
   date: string;
   counterpartyId?: number | null;
 }) => {
-  const { accountMap, counterparties, isTaxActive } = useAppContext();
+  const { accountMap, counterparties, isTaxActive, taxYears } = useAppContext();
   const account = accountId ? accountMap.get(accountId) : undefined;
   const active = isTaxActive(date);
   if (!active || !account) {
@@ -301,26 +305,34 @@ export const TaxSelect = ({ label, value, invoice, onChange, accountId, side, da
       </select>
     );
   }
+  const ty = taxYearOf(taxYears, Number(date.slice(0, 4)));
+  const simplified = ty.status === "simplified";
   const cp = counterpartyId ? counterparties.find((c) => c.id === counterpartyId) : null;
   const code = value ?? defaultTaxCode(account, side);
   const inv = isPurchaseCode(code) ? invoice ?? defaultInvoiceKind(cp) : null;
-  const opt = (c: TaxCode, i: InvoiceKind | null = null) => (
-    <option key={optionValue(c, i)} value={optionValue(c, i)} title={taxLongLabel(c, i, date)}>{taxShortLabel(c, i, date)}</option>
+  // 簡易課税の年の課税売上は、事業区分も選ぶ（入っていなければ科目の初期値・主な事業区分）
+  const cls = simplified && isSalesCode(code) ? effectiveBusinessClass({ business_class: businessClass }, account, ty.business_class) : null;
+  const isDefault = value == null && (!cls || businessClass == null);
+  const opt = (c: TaxCode, i: InvoiceKind | null = null, k: number | null = null) => (
+    <option key={optionValue(c, i, k)} value={optionValue(c, i, k)} title={taxLongLabel(c, i, date, k)}>{taxShortLabel(c, i, date, k)}</option>
   );
   const group = (g: "sales" | "purchase") => TAX_CODES.filter((t) => t.group === g);
   return (
     <select
-      className={`input tax-select${value == null ? " is-default" : ""}`}
-      value={optionValue(code, inv)}
+      className={`input tax-select${isDefault ? " is-default" : ""}`}
+      value={optionValue(code, inv, cls)}
       aria-label={label}
-      title={`${taxLongLabel(code, inv, date)}${value == null ? "（科目の初期値）" : ""}`}
+      title={`${taxLongLabel(code, inv, date, cls)}${isDefault ? "（科目の初期値）" : ""}`}
       onChange={(e) => {
-        const [c, i] = e.target.value.split("|") as [TaxCode, InvoiceKind | undefined];
-        onChange(c, i ?? null);
+        const [head, k] = e.target.value.split("#");
+        const [c, i] = head.split("|") as [TaxCode, InvoiceKind | undefined];
+        onChange(c, i ?? null, k ? Number(k) : null);
       }}
     >
       {opt("none")}
-      <optgroup label="売上">{group("sales").map((t) => opt(t.code))}</optgroup>
+      <optgroup label="売上">
+        {group("sales").flatMap((t) => (simplified && isSalesCode(t.code) ? BUSINESS_CLASSES.map((b) => opt(t.code, null, b.value)) : [opt(t.code)]))}
+      </optgroup>
       <optgroup label="仕入">
         {group("purchase").flatMap((t) => (isPurchaseCode(t.code) ? (["qualified", "transitional", "none"] as const).map((i) => opt(t.code, i)) : [opt(t.code)]))}
       </optgroup>

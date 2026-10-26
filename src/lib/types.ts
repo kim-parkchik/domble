@@ -26,6 +26,8 @@ export interface Account {
   is_system: number; // 0 / 1
   /** 税区分の初期値（null = 決まった初期値。constants/tax.ts の ACCOUNT_TAX_DEFAULTS か区分から） */
   default_tax_code: TaxCode | null;
+  /** 簡易課税の事業区分の初期値（1〜6。null = 年度の「主な事業区分」） */
+  default_business_class: number | null;
 }
 
 /** 補助科目（例：普通預金 → ○○銀行、売掛金 → 取引先） */
@@ -51,6 +53,8 @@ export interface JournalLine {
   tax_code?: TaxCode | null;
   /** インボイス区分（課税仕入の明細だけ。それ以外は null） */
   invoice_kind?: InvoiceKind | null;
+  /** 簡易課税の事業区分（1〜6。課税売上の明細だけ。null = 年度の「主な事業区分」） */
+  business_class?: number | null;
 }
 
 export interface JournalEntry {
@@ -83,6 +87,8 @@ export interface SnapshotLine {
   /** 税区分・インボイス区分（入っているときだけ。消費税に対応する前の履歴には無い） */
   tax?: TaxCode;
   invoice?: InvoiceKind;
+  /** 事業区分（入っているときだけ） */
+  cls?: number;
 }
 
 /** 履歴に残す仕訳の写し。科目名は記録時点の名前で保存する */
@@ -121,6 +127,9 @@ export interface VoucherRow {
   debitInvoice?: InvoiceKind | null;
   creditTax?: TaxCode | null;
   creditInvoice?: InvoiceKind | null;
+  /** 事業区分（課税売上だけ）。null = 科目の初期値・年度の「主な事業区分」 */
+  debitClass?: number | null;
+  creditClass?: number | null;
 }
 
 export type FilingType = "blue65" | "blue55" | "blue10" | "white";

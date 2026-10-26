@@ -5,10 +5,11 @@ import { describe, expect, test } from "bun:test";
 import type { TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { buildTaxBase, computeReturn, methodsFor, simplifiedReturn, standardReturn, thirtyReturn, twentyReturn, type TaxBase, type TaxReturn } from "./taxReturn";
+import { effectiveBusinessClass } from "./tax";
 
 const base = (x: Partial<TaxBase>): TaxBase => ({
   sales: { 8: 0, 10: 0 }, salesReturn: { 8: 0, 10: 0 }, badDebt: { 8: 0, 10: 0 }, badDebtRecovered: { 8: 0, 10: 0 },
-  exportSales: 0, nontaxSales: 0, purchase: { 8: 0, 10: 0 }, purchaseReturn: { 8: 0, 10: 0 }, transitional: [], ...x,
+  exportSales: 0, nontaxSales: 0, purchase: { 8: 0, 10: 0 }, purchaseReturn: { 8: 0, 10: 0 }, transitional: [], byClass: {}, ...x,
 });
 const opts = { businessClass: 5, interimNational: 0, interimLocal: 0 };
 /** 様式の欄の値（no で引く） */
@@ -145,4 +146,73 @@ describe("2割特例・3割特例（2割特例用の手引きの設例）", () =
 test("第一表の ① は第二表の ① と同じ課税標準額", () => {
   const r = twentyReturn(base({ sales: { 8: 0, 10: 6_609_330 } }), opts);
   expect(cell(r, "first", "①").c).toBe(cell(r, "second", "①").c);
+});
+
+describe("簡易課税・2種類以上の事業（簡易課税用の書き方の設例：第二種と第四種）", () => {
+  const b = base({
+    sales: { 8: 19_192_000, 10: 11_516_000 }, salesReturn: { 8: 1_250_000, 10: 756_000 },
+    exportSales: 1_100_000, badDebt: { 8: 0, 10: 560_000 },
+    byClass: {
+      2: { sales: { 8: 19_192_000, 10: 7_712_000 }, ret: { 8: 1_250_000, 10: 456_000 } },
+      4: { sales: { 8: 0, 10: 3_804_000 }, ret: { 8: 0, 10: 300_000 } },
+    },
+  });
+  const r = simplifiedReturn(b, opts);
+  test("付表5-3 ⑥〜⑲：事業区分ごとの売上と税額", () => {
+    expect(cell(r, "5-3", "⑥")).toEqual({ a: 16_612_963, b: 9_781_818, c: 26_394_781 });
+    expect(cell(r, "5-3", "⑧")).toEqual({ a: 16_612_963, b: 6_596_364, c: 23_209_327 });
+    expect(cell(r, "5-3", "⑩")).toEqual({ a: 0, b: 3_185_454, c: 3_185_454 });
+    expect(cell(r, "5-3", "⑬")).toEqual({ a: 1_036_649, b: 762_982, c: 1_799_631 });
+    expect(cell(r, "5-3", "⑮")).toEqual({ a: 1_036_649, b: 514_516, c: 1_551_165 });
+    expect(cell(r, "5-3", "⑰")).toEqual({ a: 0, b: 248_466, c: 248_466 });
+  });
+  test("原則計算・特例計算と、いちばん多いものの選択", () => {
+    expect(cell(r, "5-3", "⑳")).toEqual({ a: 829_300, b: 560_685, c: 1_389_985 });
+    expect(cell(r, "5-3", "㉑")).toEqual({ a: 829_300, b: 610_380, c: 1_439_680 });
+    expect(cell(r, "5-3", "㉘")).toEqual({ a: 829_300, b: 560_685, c: 1_389_985 });
+    expect(cell(r, "5-3", "㊲")).toEqual({ a: 829_300, b: 610_380, c: 1_439_680 });
+    expect(cell(r, "4-3", "④").c).toBe(1_439_680);
+    expect(cell(r, "4-3", "⑨").c).toBe(320_200);
+    // 第一表の参考事項：千円未満四捨五入・売上割合（小数第1位未満切り捨て）
+    const first = r.forms.find((f) => f.id === "first")!.rows;
+    expect(first.filter((x) => x.label.includes("事業区分")).map((x) => [x.c, x.note])).toEqual([
+      [23_209, "千円未満四捨五入。売上割合 87.9%"],
+      [3_185, "千円未満四捨五入。売上割合 12.0%"],
+    ]);
+    expect(first.find((x) => x.label.includes("令57③"))!.note).toBe("有");
+  });
+  test("どれも 75% に届かなければ原則計算", () => {
+    const even = simplifiedReturn(base({
+      sales: { 8: 0, 10: 3_300_000 },
+      byClass: { 1: { sales: { 8: 0, 10: 1_100_000 }, ret: { 8: 0, 10: 0 } }, 3: { sales: { 8: 0, 10: 1_100_000 }, ret: { 8: 0, 10: 0 } }, 5: { sales: { 8: 0, 10: 1_100_000 }, ret: { 8: 0, 10: 0 } } },
+    }), opts);
+    // 各区分 78,000。⑳ = 234,000 × (70,200 + 54,600 + 39,000) / 234,000
+    expect(cell(even, "5-3", "㊲").c).toBe(163_800);
+    expect(even.forms[0].rows.some((x) => x.no === "㉑")).toBe(false);
+  });
+  test("明細の事業区分 → 科目の初期値 → 主な事業区分（固定資産の売却は第4種）で分ける", () => {
+    const years: TaxYear[] = [{ from_year: 2026, status: "simplified", method: "inclusive", business_class: 5, taxable_from: "" }];
+    const acc = (id: number, category: "revenue" | "asset", cls: number | null) => ({ id, code: "", name: "", kana: "", category, normal_side: "credit" as const, sort_order: 0, is_active: 1, is_system: 0, default_tax_code: null, default_business_class: cls });
+    const accounts = new Map([[1, acc(1, "revenue", null)], [2, acc(2, "revenue", 2)], [3, acc(3, "asset", null)]]);
+    const l = (account_id: number, amount: number, business_class: number | null = null): FlatLine => ({
+      entry_id: account_id, date: "2026-05-01", description: "", row_no: 1, side: "credit", account_id, sub_account_id: null, amount, memo: "", tax_code: "sales10", business_class,
+    });
+    const tb = buildTaxBase([l(1, 110), l(1, 220, 3), l(2, 330), l(3, 440)], years, (x) => effectiveBusinessClass(x, accounts.get(x.account_id), 5));
+    expect(Object.fromEntries(Object.entries(tb.byClass).map(([k, v]) => [k, v.sales[10]]))).toEqual({ 2: 330, 3: 220, 4: 440, 5: 110 });
+  });
+});
+
+describe("簡易課税・事業区分の分からない売上", () => {
+  const cls = (sales10: number) => ({ sales: { 8: 0, 10: sales10 }, ret: { 8: 0, 10: 0 } });
+  test("その年の売上に出てくる区分のうち、みなし仕入率がいちばん低い区分として計算する", () => {
+    const b = base({ sales: { 8: 0, 10: 3_300_000 }, byClass: { 2: cls(1_100_000), 5: cls(1_100_000), 0: cls(1_100_000) } });
+    const r = simplifiedReturn(b, { ...opts, businessClass: 2 });
+    expect(cell(r, "5-3", "⑪").c).toBe(2_000_000); // 第五種 = 1,000,000 + 不明 1,000,000
+    expect(r.notes.join()).toMatch(/第五種事業.*いちばん低い区分/);
+  });
+  test("区分の分かる売上が無ければ主な事業区分（1種類）", () => {
+    const r = simplifiedReturn(base({ sales: { 8: 0, 10: 1_100_000 }, byClass: { 0: cls(1_100_000) } }), { ...opts, businessClass: 3 });
+    expect(r.forms[0].rows.find((x) => x.no === "⑤")!.label).toMatch(/70%/);
+    expect(r.notes.join()).toMatch(/第三種事業（主な事業区分）/);
+  });
 });

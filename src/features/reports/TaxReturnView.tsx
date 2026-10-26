@@ -10,7 +10,6 @@ import { useAppContext, useBaseSales, useYearData } from "../../context/AppConte
 import { methodProblem } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
 import { yen } from "../../lib/format";
-import { BUSINESS_CLASSES } from "../../constants/tax";
 import { buildTaxBase, computeReturn, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn, type ReturnMethod, type TaxForm } from "../../lib/taxReturn";
 import * as repo from "../../db/repo";
 
@@ -56,6 +55,7 @@ export const TaxReturnView = () => {
     }
   };
 
+  // 簡易課税の事業区分は、明細に記録した区分（登録したときに 明細 → 科目の初期値 → 主な事業区分 で決まる。無ければ不明）
   const base = useMemo(() => buildTaxBase(lines, taxYears), [lines, taxYears]);
   const baseSales = useBaseSales();
   const options = { businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null };
@@ -100,17 +100,17 @@ export const TaxReturnView = () => {
                 <td className="num"><b>{signed(r.total)}</b></td>
                 <td className="muted">
                   {problem && <span className="tax-unusable">{problem}。</span>}
-                  {m === "simplified" ? `${BUSINESS_CLASSES.find((b) => b.value === taxYear.business_class)?.label}として計算。` : ""}{METHOD_NOTE[m]}
+                  {METHOD_NOTE[m]}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <p className="field-note">
+          簡易課税は、売上の明細に記録した事業区分ごとに計算しています（区分の分からない売上は、その年の売上に出てくる区分のうち、みなし仕入率がいちばん低い区分）。
           基準期間（{year - 2}年）の課税売上高：
           {baseSales === null ? "読み込み中" : baseSales.base === null ? "分かりません（事業者設定の「消費税」で入れられます）" : `${yen(baseSales.base)}円（${baseSales.source === "manual" ? "手で入力" : "帳簿から計算"}）`}。
           税込経理・割戻し計算で、中間納付税額を差し引いた額です。課税区分は事業者設定の「消費税」で決めます（ここで選んだ方式は表示だけです）。
-          簡易課税は、事業区分が1種類として計算しています。
         </p>
 
         <form className="field-row tax-interim" onSubmit={(e) => { e.preventDefault(); saveInterim(); }}>

@@ -169,3 +169,19 @@ describe("確認の一覧：基準期間の課税売上高", () => {
   });
 });
 
+
+describe("確認の一覧：事業区分の分からない売上", () => {
+  test("簡易課税の年に区分の無い課税売上があれば知らせる。集計表では「不明」（0）に分ける", () => {
+    const simplified: TaxYear[] = [{ from_year: 2026, status: "simplified", method: "inclusive", business_class: 5, taxable_from: "" }];
+    const lines = [
+      line("2026-05-01", "credit", "売上高", 1100, "sales10"),
+      { ...line("2026-05-02", "credit", "売上高", 2200, "sales10"), business_class: 2 },
+    ];
+    const summary = buildTaxSummary(lines, accounts, simplified);
+    expect(summary.rows.map((r) => [r.businessClass, r.amount])).toEqual([[0, 1100], [2, 2200]]);
+    const issues = taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears: simplified, invoiceNo: "", registeredOn: "", summary });
+    expect(issues.map((i) => [i.level, i.title, i.entryIds])).toEqual([["error", "事業区分の分からない売上", [lines[0].entry_id]]]);
+    // 本則課税の年は知らせない
+    expect(taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears: twenty, invoiceNo: "", registeredOn: "", summary: buildTaxSummary(lines, accounts, twenty) })).toEqual([]);
+  });
+});

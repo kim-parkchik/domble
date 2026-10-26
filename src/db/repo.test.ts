@@ -1157,3 +1157,57 @@ describe("基準期間の課税売上高の手入力（repo）", () => {
     expect(await repo.getTaxBaseManual(db, 2026)).toBeNull();
   });
 });
+
+describe("簡易課税の事業区分（repo）", () => {
+  test("登録のときに 明細 → 科目の初期値 → 主な事業区分 で決めて記録し、履歴の写しと照合に入る。科目の初期値の変更は履歴に残る", async () => {
+    const { db, raw } = strict;
+    await repo.initChain(db);
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    await repo.saveTaxYear(db, { from_year: 2026, status: "simplified", method: "inclusive", business_class: 5, taxable_from: "" });
+    await repo.setAccountBusinessClass(db, id("雑収入"), 4);
+    expect((await repo.getAccounts(db, 2026)).find((a) => a.id === id("雑収入"))!.default_business_class).toBe(4);
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ old_value: "事業区分の初期値 主な事業区分", new_value: "事業区分の初期値 第四種" });
+    const e = await repo.createEntry(db, "2026-05-01", [
+      { row_no: 1, side: "debit", account_id: id("普通預金"), sub_account_id: null, amount: 3300, memo: "" },
+      { row_no: 1, side: "credit", account_id: id("売上高"), sub_account_id: null, amount: 1100, memo: "", business_class: 2 },
+      { row_no: 2, side: "credit", account_id: id("雑収入"), sub_account_id: null, amount: 1100, memo: "" },
+      { row_no: 3, side: "credit", account_id: id("売上高"), sub_account_id: null, amount: 1100, memo: "" },
+    ]);
+    expect((await repo.getEntry(db, e))!.lines.map((l) => l.business_class)).toEqual([null, 2, 4, 5]);
+    expect((await repo.getHistory(db, e))[0].snapshot.lines.map((l) => l.cls ?? null)).toEqual([null, 2, 4, 5]);
+    expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
+    raw.run("UPDATE journal_lines SET business_class = 6 WHERE entry_id = ? AND business_class = 2", [e]);
+    expect((await repo.verifyIntegrity(db)).issues.map((i) => i.message).join()).toMatch(new RegExp(`伝票 No.${e}`));
+    await expect(repo.setAccountBusinessClass(db, id("雑収入"), 7)).rejects.toThrow(/第1種/);
+  });
+});
+
+describe("事業区分の分からない売上（repo）", () => {
+  test("CSV 取り込みでは主な事業区分を入れない（科目の初期値は入る）。簡易課税に変えた年の区分の無い売上は一括設定で埋まる", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const sale = (acc: string): JournalLine[] => [
+      { row_no: 1, side: "debit", account_id: id("普通預金"), sub_account_id: null, amount: 1100, memo: "" },
+      { row_no: 1, side: "credit", account_id: id(acc), sub_account_id: null, amount: 1100, memo: "" },
+    ];
+    // 本則課税のときに入れた売上（区分は記録されない）
+    await repo.saveTaxYear(db, { from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "" });
+    const before = await repo.createEntry(db, "2026-02-01", sale("売上高"));
+    expect((await repo.getEntry(db, before))!.lines[1].business_class).toBeNull();
+    // 簡易課税に変える
+    await repo.saveTaxYear(db, { from_year: 2026, status: "simplified", method: "inclusive", business_class: 5, taxable_from: "" });
+    await repo.setAccountBusinessClass(db, id("雑収入"), 4);
+    const [imported, importedMisc] = await repo.importEntries(db, [
+      { date: "2026-03-01", lines: sale("売上高"), counterpartyId: null },
+      { date: "2026-03-02", lines: sale("雑収入"), counterpartyId: null },
+    ], "test.csv");
+    expect((await repo.getEntry(db, imported))!.lines[1].business_class).toBeNull();
+    expect((await repo.getEntry(db, importedMisc))!.lines[1].business_class).toBe(4);
+    expect((await repo.untaxedEntryIds(db, 2026)).map((x) => x.id)).toEqual([before, imported]);
+    expect(await repo.fillTaxCodes(db, 2026)).toEqual({ updated: 2, closed: 0 });
+    expect((await repo.getEntry(db, before))!.lines[1].business_class).toBe(5);
+    expect(await repo.untaxedEntryIds(db, 2026)).toEqual([]);
+  });
+});

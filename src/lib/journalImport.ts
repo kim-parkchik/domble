@@ -4,7 +4,7 @@
  * 形式は仕訳日記帳の CSV 書き出しと同じ（書き出したものをそのまま取り込める）。列は見出しの名前で探すので、順番は問わない
  *  - 必須：日付・借方科目・借方金額・貸方科目・貸方金額
  *  - 任意：伝票No（同じ番号の行を1つの仕訳にまとめる。無ければ1行 = 1仕訳）・借方補助・貸方補助・摘要・取引先・状態（「削除済み」の行は飛ばす）・
- *    決算整理（何か入っていれば決算整理仕訳。日付は年度末）・借方税区分・借方インボイス・貸方税区分・貸方インボイス
+ *    決算整理（何か入っていれば決算整理仕訳。日付は年度末）・借方税区分・借方インボイス・借方事業区分・貸方税区分・貸方インボイス・貸方事業区分
  *    （空なら科目・取引先の初期値。免税事業者の期間の仕訳では外れる）
  *  - それ以外の列（登録番号・登録日時など）は読まない
  * 科目・補助科目・取引先は名前で探す（全角半角・空白の違いは無視）。見つからない名前は作らずに問題として返す
@@ -15,7 +15,7 @@ import { emptyRow, rowsToLines } from "./accounting";
 import { parseAmount, toHalfWidth } from "./format";
 import { normName } from "./counterparty";
 import { parseCsv, unguardCell } from "./csv";
-import { parseInvoiceKind, parseTaxCode } from "./tax";
+import { parseBusinessClass, parseInvoiceKind, parseTaxCode } from "./tax";
 
 /** 一度に取り込める仕訳の数 */
 export const MAX_IMPORT_ENTRIES = 10_000;
@@ -67,6 +67,8 @@ const COLUMNS = {
   drInv: ["借方インボイス"],
   crTax: ["貸方税区分"],
   crInv: ["貸方インボイス"],
+  drCls: ["借方事業区分"],
+  crCls: ["貸方事業区分"],
 } as const;
 type Col = keyof typeof COLUMNS;
 const REQUIRED: Col[] = ["date", "drAcc", "drAmt", "crAcc", "crAmt"];
@@ -160,18 +162,23 @@ export const importJournalCsv = (text: string, ctx: ImportContext): ImportResult
       const invRaw = get(`${side}Inv`);
       const inv = parseInvoiceKind(invRaw);
       if (inv === undefined) err(`${label}インボイス「${invRaw}」が読めません（適格・経過措置・控除なし）`);
+      const clsRaw = get(`${side}Cls`);
+      const cls = parseBusinessClass(clsRaw);
+      if (cls === undefined) err(`${label}事業区分「${clsRaw}」が読めません（第一種〜第六種、または 1〜6）`);
       if (side === "dr") {
         vr.debitAccountId = acc.id;
         vr.debitSubId = subId;
         vr.debitAmount = amount;
         vr.debitTax = tax ?? null;
         vr.debitInvoice = inv ?? null;
+        vr.debitClass = cls ?? null;
       } else {
         vr.creditAccountId = acc.id;
         vr.creditSubId = subId;
         vr.creditAmount = amount;
         vr.creditTax = tax ?? null;
         vr.creditInvoice = inv ?? null;
+        vr.creditClass = cls ?? null;
       }
     }
 

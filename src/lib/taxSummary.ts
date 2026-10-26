@@ -11,7 +11,7 @@
 import type { Account, Counterparty, InvoiceKind, TaxCode, TaxStatus, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
-import { isPurchaseCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
+import { isPurchaseCode, isSalesCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
 
 export type TaxKind = "sales" | "salesReturn" | "badDebt" | "badDebtRecovered" | "purchase" | "purchaseReturn" | "other";
@@ -45,6 +45,8 @@ export interface TaxSummaryRow {
   invoice: InvoiceKind | null;
   /** 経過措置で控除できる割合（%。経過措置の行だけ） */
   transitional: number | null;
+  /** 簡易課税の事業区分（簡易課税の年の課税売上・返還の行だけ。0 = 区分が分からない） */
+  businessClass: number | null;
   /** 税込の金額 */
   amount: number;
   /** うち消費税等（参考） */
@@ -77,8 +79,10 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
     if (kind === "other" && !isPL(accountMap.get(l.account_id))) continue;
     const invoice = isPurchaseCode(l.tax_code) ? l.invoice_kind ?? "qualified" : null;
     const transitional = invoice === "transitional" ? transitionalRate(l.date) : null;
-    const key = `${l.tax_code}|${kind}|${invoice ?? ""}|${transitional ?? ""}`;
-    const r = rows.get(key) ?? { code: l.tax_code, kind, invoice, transitional, amount: 0, tax: 0, lines: 0, accounts: [] };
+    const ty = taxYearOf(taxYears, Number(l.date.slice(0, 4)));
+    const businessClass = ty.status === "simplified" && isSalesCode(l.tax_code) ? l.business_class ?? 0 : null;
+    const key = `${l.tax_code}|${kind}|${invoice ?? ""}|${transitional ?? ""}|${businessClass ?? ""}`;
+    const r = rows.get(key) ?? { code: l.tax_code, kind, invoice, transitional, businessClass, amount: 0, tax: 0, lines: 0, accounts: [] };
     r.amount += l.amount;
     r.lines++;
     const a = r.accounts.find((x) => x.account_id === l.account_id);
@@ -95,7 +99,7 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
   }));
   list.sort((x, y) =>
     KIND_ORDER.indexOf(x.kind) - KIND_ORDER.indexOf(y.kind) || codeOrder(x.code) - codeOrder(y.code)
-    || invoiceOrder(x.invoice) - invoiceOrder(y.invoice) || (y.transitional ?? 0) - (x.transitional ?? 0));
+    || invoiceOrder(x.invoice) - invoiceOrder(y.invoice) || (y.transitional ?? 0) - (x.transitional ?? 0) || (x.businessClass ?? 0) - (y.businessClass ?? 0));
 
   // 課税売上割合（税抜。売上の返還を差し引く）
   const net = (code: TaxCode) =>
@@ -183,7 +187,7 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       detail: `${mandatory}。免税事業者にはなれないので、事業者設定の「消費税」で課税区分を選んでください。`,
     });
   }
-  if (ty.status === "exempt") return issues;
+  if (ty.status === "exempt") return byLevel(issues);
   if (x.baseSales && (ty.status === "twenty" || ty.status === "thirty" || ty.status === "simplified")) {
     const m = methodProblem(ty.status, x.baseSales);
     if (m) issues.push({ level: "error", title: `${statusLabel(ty.status)}は使えません`, fix: "settings", entryIds: [], detail: `${m}。事業者設定の「消費税」で課税区分を選び直してください。` });
@@ -206,6 +210,18 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       level: "error", title: "税区分が入っていない仕訳", fix: "settings", entryIds: entryIdsOf(untaxed),
       detail: "課税事業者にする前に入れた仕訳などです。事業者設定の「消費税」の「科目の初期値で入れる」でまとめて入れるか、仕訳を開いて入れてください。",
     });
+  }
+
+  // 簡易課税の年：事業区分の分からない売上（本則課税から変えた年の売上、区分を指定せずに取り込んだ売上など）
+  if (ty.status === "simplified") {
+    const unknown = scoped.filter((l) => isSalesCode(l.tax_code) && !l.business_class);
+    if (unknown.length) {
+      issues.push({
+        level: "error", title: "事業区分の分からない売上", fix: "settings", entryIds: entryIdsOf(unknown),
+        detail: "簡易課税に変える前に入れた売上や、事業区分を指定せずに取り込んだ売上です。申告書の数字は、その年の売上に出てくる区分のうちみなし仕入率がいちばん低い区分で計算しています。"
+          + "事業者設定の「消費税」の「科目の初期値で入れる」で（科目の初期値 → 主な事業区分 の順に）まとめて入れるか、仕訳を開いて選んでください。",
+      });
+    }
   }
 
   // 科目と税区分の組み合わせ
@@ -259,5 +275,9 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       detail: "95% 未満のときは、仕入税額を個別対応方式か一括比例配分方式で計算します。申告書の数字は一括比例配分方式で出しています（個別対応方式には未対応）。個別対応方式のほうが有利なこともあるので、申告の前に確かめてください。",
     });
   }
-  return issues;
+  return byLevel(issues);
 };
+
+/** 直すもの（赤）→ 確かめるもの（黄）→ 念のため（青）の順（同じ重さの中は見つけた順） */
+const LEVEL_ORDER = { error: 0, warn: 1, info: 2 };
+const byLevel = (issues: TaxIssue[]) => [...issues].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);

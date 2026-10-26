@@ -17,7 +17,7 @@ import { groupByEntry } from "../../lib/accounting";
 import { shortDate, yen } from "../../lib/format";
 import { toCsv } from "../../lib/csv";
 import { INVOICE_KINDS, TAX_STATUS_OPTIONS, TAX_METHOD_OPTIONS } from "../../constants/tax";
-import { taxCodeDef } from "../../lib/tax";
+import { classLabel, taxCodeDef } from "../../lib/tax";
 import { buildTaxSummary, taxChecks, TAX_KIND_LABEL, type TaxIssue, type TaxSummaryRow } from "../../lib/taxSummary";
 import { TaxReturnView } from "./TaxReturnView";
 
@@ -53,7 +53,9 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
     ...(exempt ? [] : [TAX_METHOD_OPTIONS.find((o) => o.value === taxYear.method)?.label]),
     ...(taxYear.taxable_from ? [`${shortDate(taxYear.taxable_from)}から課税事業者`] : []),
   ].join("・");
-  const rowKey = (r: TaxSummaryRow) => `${r.kind}|${r.code}|${r.invoice ?? ""}|${r.transitional ?? ""}`;
+  const rowKey = (r: TaxSummaryRow) => `${r.kind}|${r.code}|${r.invoice ?? ""}|${r.transitional ?? ""}|${r.businessClass ?? ""}`;
+  const codeLabel = (r: TaxSummaryRow) =>
+    `${taxCodeDef(r.code).label}${r.businessClass === 0 ? "（事業区分不明）" : r.businessClass ? `（${classLabel(r.businessClass)}）` : ""}`;
   const toggle = (k: string) => setOpen((s) => {
     const n = new Set(s);
     if (n.has(k)) n.delete(k);
@@ -64,8 +66,8 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
   const exportCsv = async () => {
     const header = ["区分", "税区分", "インボイス", "科目", "税込金額", "消費税等（参考）", "件数"];
     const body = summary.rows.flatMap((r) => [
-      [TAX_KIND_LABEL[r.kind], taxCodeDef(r.code).label, invoiceLabel(r), "（合計）", r.amount, r.tax, r.lines],
-      ...r.accounts.map((a) => [TAX_KIND_LABEL[r.kind], taxCodeDef(r.code).label, invoiceLabel(r), accountMap.get(a.account_id)?.name ?? "", a.amount, "", a.lines]),
+      [TAX_KIND_LABEL[r.kind], codeLabel(r), invoiceLabel(r), "（合計）", r.amount, r.tax, r.lines],
+      ...r.accounts.map((a) => [TAX_KIND_LABEL[r.kind], codeLabel(r), invoiceLabel(r), accountMap.get(a.account_id)?.name ?? "", a.amount, "", a.lines]),
     ]);
     const path = await save({ defaultPath: `消費税集計表_${settings.business_name || "帳簿"}_${year}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
     if (!path) return;
@@ -133,7 +135,7 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
                     <Fragment key={k}>
                       <tr className="clickable tax-sum-row" onClick={() => toggle(k)} aria-expanded={isOpen}>
                         <td>{isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />} {TAX_KIND_LABEL[r.kind]}</td>
-                        <td>{taxCodeDef(r.code).label}</td>
+                        <td>{codeLabel(r)}</td>
                         <td>{invoiceLabel(r)}</td>
                         <td className="muted">{r.accounts.length === 1 ? accountMap.get(r.accounts[0].account_id)?.name : `${r.accounts.length} 科目`}</td>
                         <td className="num">{yen(r.amount)}</td>

@@ -58,7 +58,8 @@ export const TaxSection = () => {
   const fill = async () => {
     const ok = await ask(
       `${year}年の課税事業者の期間で、税区分が入っていない仕訳 ${untaxed} 件に、科目の初期値で税区分を入れます（課税仕入のインボイス区分は取引先から）。\n` +
-        "すでに入っている税区分はそのままです。締めた月の仕訳は変えません。" +
+        (taxYear.status === "simplified" ? "簡易課税の売上には、事業区分も入れます（科目の初期値、無ければ主な事業区分）。\n" : "") +
+        "すでに入っている税区分・事業区分はそのままです。締めた月の仕訳は変えません。" +
         (strict ? "\n1件ずつ訂正として保存し、「訂正・削除履歴」に残ります。" : ""),
       { title: "税区分の一括設定", kind: "info", okLabel: "入れる", cancelLabel: "やめる" },
     );
@@ -66,7 +67,7 @@ export const TaxSection = () => {
     try {
       const r = await repo.fillTaxCodes(db, year);
       bump();
-      toast(`${r.updated} 件の仕訳に税区分を入れました${r.closed ? `（締めた月の ${r.closed} 件はそのままです）` : ""}`);
+      toast(`${r.updated} 件の仕訳に税区分${taxYear.status === "simplified" ? "・事業区分" : ""}を入れました${r.closed ? `（締めた月の ${r.closed} 件はそのままです）` : ""}`);
     } catch (e) {
       toast(`入れられませんでした：${String(e)}`, "error");
     }
@@ -152,6 +153,12 @@ export const TaxSection = () => {
             2割特例の翌年から簡易課税にするときは、簡易課税制度選択届出書を出します（翌年分の申告期限まで）。
           </p>
         )}
+        {t.status === "simplified" && (
+          <p className="field-note">
+            2種類以上の事業がある場合は、売上の科目ごと（勘定科目の画面の「事業区分」）や、売上の明細ごと（帳簿入力・振替伝票の税区分の欄）に事業区分を選べます。
+            どちらも選んでいない売上は「主な事業区分」になります。業務用の固定資産の売却は第四種です。
+          </p>
+        )}
         {t.status === "thirty" && <p className="field-note">3割特例は、登録によって課税事業者になった個人事業者で、基準期間（2年前）の課税売上高が1,000万円以下のときに使えます。</p>}
         {t.method === "inclusive" && t.status !== "exempt" && <p className="field-note">税込経理：帳簿の金額は税込のままです。税抜経理には今後対応します。</p>}
         {error && <p className="form-error-inline" role="alert">{error}</p>}
@@ -167,7 +174,10 @@ export const TaxSection = () => {
 
       {!!untaxed && (
         <div className="tax-fill" role="status">
-          <span>{year}年の課税事業者の期間に、税区分が入っていない仕訳が <b>{untaxed}</b> 件あります（課税事業者にする前に入れた仕訳など）。</span>
+          <span>
+            {year}年の課税事業者の期間に、税区分{taxYear.status === "simplified" ? "（簡易課税の売上は事業区分）" : ""}が入っていない仕訳が <b>{untaxed}</b> 件あります
+            （課税事業者{taxYear.status === "simplified" ? "・簡易課税" : ""}にする前に入れた仕訳など）。
+          </span>
           <button className="btn ghost sm" onClick={fill} disabled={!can("entry")}><Wand2 size={14} /> 科目の初期値で入れる</button>
         </div>
       )}

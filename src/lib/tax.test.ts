@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { Account, JournalLine, TaxYear } from "./types";
 import {
+  defaultBusinessClass, effectiveBusinessClass, parseBusinessClass,
   builtinTaxCode, defaultTaxCode, invoiceCsvLabel, parseInvoiceKind, parseTaxCode, resolveLineTax, statusProblem, taxActiveOn,
   taxLongLabel, taxShortLabel, taxYearOf, transitionalRate, validateTaxYear,
 } from "./tax";
 
-const acc = (id: number, code: string, category: Account["category"], default_tax_code: Account["default_tax_code"] = null): Account => ({
-  id, code, name: code, kana: "", category, normal_side: category === "revenue" ? "credit" : "debit", sort_order: 0, is_active: 1, is_system: 1, default_tax_code,
+const acc = (id: number, code: string, category: Account["category"], default_tax_code: Account["default_tax_code"] = null, default_business_class: number | null = null): Account => ({
+  id, code, name: code, kana: "", category, normal_side: category === "revenue" ? "credit" : "debit", sort_order: 0, is_active: 1, is_system: 1, default_tax_code, default_business_class,
 });
 const ty = (from_year: number, status: TaxYear["status"], taxable_from = ""): TaxYear => ({ from_year, status, method: "inclusive", business_class: 5, taxable_from });
 
@@ -116,5 +117,31 @@ describe("CSV の税区分", () => {
     expect(parseInvoiceKind("あり")).toBeUndefined();
     expect(invoiceCsvLabel("purchase10", "qualified")).toBe("適格");
     expect(invoiceCsvLabel("sales10", "qualified")).toBe("");
+  });
+});
+
+describe("簡易課税の事業区分", () => {
+  test("課税売上の明細だけ持つ。入っていなければ科目の初期値、資産の科目（固定資産の売却）は第4種", () => {
+    const accounts = new Map([[1, acc(1, "401", "revenue")], [2, acc(2, "450", "revenue", null, 2)], [3, acc(3, "134", "asset")], [4, acc(4, "610", "expense")]]);
+    const line = (account_id: number, side: "debit" | "credit", extra: Partial<JournalLine> = {}): JournalLine =>
+      ({ row_no: 1, side, account_id, sub_account_id: null, amount: 1100, memo: "", ...extra });
+    const out = resolveLineTax([
+      line(1, "credit"), line(1, "credit", { business_class: 3 }), line(2, "credit"),
+      line(3, "credit", { tax_code: "sales10" }), line(4, "debit", { business_class: 3 }),
+    ], true, (id) => accounts.get(id), null);
+    expect(out.map((l) => l.business_class)).toEqual([null, 3, 2, 4, null]);
+    expect(resolveLineTax([line(1, "credit", { business_class: 3 })], false, () => undefined, null)[0].business_class).toBeNull();
+    expect(defaultBusinessClass(acc(9, "401", "revenue"))).toBeNull();
+    expect(effectiveBusinessClass({ business_class: null }, acc(9, "401", "revenue"), 5)).toBe(5);
+    expect(effectiveBusinessClass({ business_class: 1 }, acc(9, "450", "revenue", null, 2), 5)).toBe(1);
+  });
+
+  test("表示と CSV の読み方", () => {
+    expect(taxShortLabel("sales10", null, "2026-05-01", 5)).toBe("課売10% 5種");
+    expect(taxLongLabel("sales8", null, "2026-05-01", 2)).toBe("課税売上 8%（軽減）（第二種）");
+    expect(taxShortLabel("purchase10", "qualified", "2026-05-01", 5)).toBe("課仕10%");
+    expect(["5", "5種", "第5種", "第五種", "第５種事業", ""].map(parseBusinessClass)).toEqual([5, 5, 5, 5, 5, null]);
+    expect(parseBusinessClass("7")).toBeUndefined();
+    expect(parseBusinessClass("サービス")).toBeUndefined();
   });
 });

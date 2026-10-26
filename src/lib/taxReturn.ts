@@ -33,14 +33,19 @@ export interface TaxBase {
   purchaseReturn: Record<Rate, number>;
   /** 経過措置の課税仕入とその返還（控除できる割合ごと） */
   transitional: { pct: number; purchase: Record<Rate, number>; ret: Record<Rate, number> }[];
+  /** 簡易課税の事業区分ごとの課税売上とその返還（1〜6。0 = 区分が分からない売上） */
+  byClass: Record<number, { sales: Record<Rate, number>; ret: Record<Rate, number> }>;
 }
 
 const zero = (): Record<Rate, number> => ({ 8: 0, 10: 0 });
 
-export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[]): TaxBase => {
+/**
+ * @param classOf 課税売上の明細の事業区分（ふつうは明細に記録した区分。null = 分からない）
+ */
+export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l: FlatLine) => number | null = (l) => l.business_class ?? null): TaxBase => {
   const b: TaxBase = {
     sales: zero(), salesReturn: zero(), badDebt: zero(), badDebtRecovered: zero(), exportSales: 0, nontaxSales: 0,
-    purchase: zero(), purchaseReturn: zero(), transitional: [],
+    purchase: zero(), purchaseReturn: zero(), transitional: [], byClass: {},
   };
   for (const l of lines) {
     if (l.is_deleted || !l.tax_code || l.tax_code === "none" || !taxActiveOn(taxYears, l.date)) continue;
@@ -50,7 +55,12 @@ export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[]): TaxBase =>
     if (l.tax_code === "export") b.exportSales += dr ? -l.amount : l.amount;
     else if (l.tax_code === "sales_nontax") b.nontaxSales += dr ? -l.amount : l.amount;
     else if (l.tax_code === "baddebt10" || l.tax_code === "baddebt8") (dr ? b.badDebt : b.badDebtRecovered)[rate] += l.amount;
-    else if (def.group === "sales") (dr ? b.salesReturn : b.sales)[rate] += l.amount;
+    else if (def.group === "sales") {
+      (dr ? b.salesReturn : b.sales)[rate] += l.amount;
+      const k = classOf(l) ?? 0;
+      const x = (b.byClass[k] ??= { sales: zero(), ret: zero() });
+      (dr ? x.ret : x.sales)[rate] += l.amount;
+    }
     else if (isPurchaseCode(l.tax_code)) {
       const inv = l.invoice_kind ?? "qualified";
       if (inv === "none") continue;
@@ -296,13 +306,96 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
 };
 
 // ────────────────────────────────────────────
-// 簡易課税（付表4-3・5-3）。事業区分は1種類（年度の「主な事業区分」）
+// 簡易課税（付表4-3・5-3）
+//  事業区分が1種類なら ⑤（④ × みなし仕入率）。2種類以上なら ⑥〜⑲ で区分ごとの売上と税額を出し、
+//  ⑳ 原則計算、㉑ 1種類で75%以上、㉒〜㊱ 2種類で75%以上 のうち、合計（C）がいちばん多いものを ㊲ に選ぶ
+//  （適用税率ごとに違う計算方法は選べない）。各区分の税額 × みなし仕入率 は 1 円未満をその都度切り捨てる
 // ────────────────────────────────────────────
-export const simplifiedReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
+const CLASSES = [1, 2, 3, 4, 5, 6] as const;
+const CLASS_RATE: Record<number, number> = Object.fromEntries(BUSINESS_CLASSES.map((c) => [c.value, c.rate]));
+const CLASS_NAME: Record<number, string> = { 1: "第一種事業（卸売業）", 2: "第二種事業（小売業等）", 3: "第三種事業（製造業等）", 4: "第四種事業（その他）", 5: "第五種事業（サービス業等）", 6: "第六種事業（不動産業）" };
+const SALES_ROW = ["", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫"];
+const TAX_ROW = ["", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲"];
+/** 2種類で75%以上の欄（第i種及び第j種） */
+const PAIR_ROW: Record<string, string> = {
+  "1-2": "㉒", "1-3": "㉓", "1-4": "㉔", "1-5": "㉕", "1-6": "㉖", "2-3": "㉗", "2-4": "㉘", "2-5": "㉙", "2-6": "㉚",
+  "3-4": "㉛", "3-5": "㉜", "3-6": "㉝", "4-5": "㉞", "4-6": "㉟", "5-6": "㊱",
+};
+/** a × b ÷ c の 1 円未満切り捨て（大きな金額でも誤差が出ないように整数で） */
+const mulDiv = (a: number, b: number, c: number) => (c === 0 ? 0 : Number((BigInt(a) * BigInt(b)) / BigInt(c)));
+const pct = (n: number, rate: number) => Math.floor((n * rate) / 100);
+/** 売上割合（表示用。小数第1位未満切り捨て） */
+const shareText = (x: number, total: number) => (total > 0 ? `${(Math.floor((x / total) * 1000) / 10).toFixed(1)}%` : "—");
+
+export interface ClassCalc {
+  /** 計算式の欄（⑳、㉑、㉒…） */
+  no: string;
+  label: string;
+  value: AB;
+}
+
+/**
+ * 区分が分からない売上（byClass[0]）を、その年の売上に出てくる区分のうちみなし仕入率がいちばん低い区分に入れる
+ * （2種類以上の事業で区分していない売上は、いちばん低い率の事業の売上として計算する決まり。施行令57条④）。
+ * 区分の分かる売上が1つも無ければ fallback（年度の「主な事業区分」）に入れる
+ */
+export const assignUnknownClass = (b: TaxBase, fallback: number): { base: TaxBase; unknownTo: number | null; usedFallback: boolean } => {
+  const unknown = b.byClass[0];
+  if (!unknown || (sumAB(unknown.sales) === 0 && sumAB(unknown.ret) === 0)) return { base: b, unknownTo: null, usedFallback: false };
+  const known = CLASSES.filter((c) => b.byClass[c] && (sumAB(b.byClass[c].sales) !== 0 || sumAB(b.byClass[c].ret) !== 0));
+  const to = known.length ? known.reduce((low, c) => (CLASS_RATE[c] < CLASS_RATE[low] ? c : low)) : fallback;
+  const byClass = { ...b.byClass };
+  delete byClass[0];
+  const t = byClass[to] ?? { sales: zero(), ret: zero() };
+  byClass[to] = { sales: map((r) => t.sales[r] + unknown.sales[r]), ret: map((r) => t.ret[r] + unknown.ret[r]) };
+  return { base: { ...b, byClass }, unknownTo: to, usedFallback: known.length === 0 };
+};
+
+/** 付表5-3 の 2種類以上の計算（⑥〜㊲） */
+export const multiClassDeduction = (b: TaxBase, basis: AB) => {
+  const present = CLASSES.filter((c) => b.byClass[c] && (sumAB(b.byClass[c].sales) !== 0 || sumAB(b.byClass[c].ret) !== 0));
+  const netOf = (c: number) => map((r) => exclusive(b.byClass[c].sales[r], r) - exclusive(b.byClass[c].ret[r], r));
+  const taxOf = (c: number) => map((r) => nationalTaxIn(b.byClass[c].sales[r], r) - nationalTaxIn(b.byClass[c].ret[r], r));
+  const net = Object.fromEntries(present.map((c) => [c, netOf(c)])) as Record<number, AB>;
+  const tax = Object.fromEntries(present.map((c) => [c, taxOf(c)])) as Record<number, AB>;
+  const total6 = map((r) => present.reduce((t, c) => t + net[c][r], 0));
+  const total13 = map((r) => present.reduce((t, c) => t + tax[c][r], 0));
+  const share = (c: number) => (sumAB(total6) > 0 ? sumAB(net[c]) / sumAB(total6) : 0);
+  const fix = (v: AB): AB => map((r) => Math.max(v[r], 0));
+
+  const calcs: ClassCalc[] = [];
+  // ⑳ 原則計算：④ ×（⑭×90%＋⑮×80%＋…）／⑬
+  calcs.push({
+    no: "⑳", label: "原則計算を適用する場合（④ × みなし仕入率 ／ ⑬）",
+    value: fix(map((r) => mulDiv(basis[r], present.reduce((t, c) => t + pct(tax[c][r], CLASS_RATE[c]), 0), total13[r]))),
+  });
+  // ㉑ 1種類の事業で75%以上
+  const major = present.find((c) => share(c) >= 0.75);
+  if (major) calcs.push({ no: "㉑", label: `特例計算・1種類の事業で75%以上（${CLASS_NAME[major]}。④ × ${CLASS_RATE[major]}%）`, value: fix(map((r) => pct(basis[r], CLASS_RATE[major]))) });
+  // ㉒〜㊱ 2種類の事業で75%以上：④ ×（第i種の税額 × i のみなし仕入率 ＋（⑬ － 第i種の税額）× j のみなし仕入率）／⑬
+  for (const i of present) {
+    for (const j of present) {
+      if (j <= i || share(i) + share(j) < 0.75) continue;
+      calcs.push({
+        no: PAIR_ROW[`${i}-${j}`], label: `特例計算・2種類の事業で75%以上（${classLabelShort(i)}及び${classLabelShort(j)}）`,
+        value: fix(map((r) => mulDiv(basis[r], pct(tax[i][r], CLASS_RATE[i]) + pct(total13[r] - tax[i][r], CLASS_RATE[j]), total13[r]))),
+      });
+    }
+  }
+  const chosen = calcs.reduce((best, x) => (sumAB(x.value) > sumAB(best.value) ? x : best), calcs[0]);
+  return { present, net, tax, total6, total13, share, calcs, chosen };
+};
+const classLabelShort = (c: number) => CLASS_NAME[c].replace(/（.*）/, "");
+
+export const simplifiedReturn = (input: TaxBase, o: ReturnOptions): TaxReturn => {
+  const { base: b, unknownTo, usedFallback } = assignUnknownClass(input, o.businessClass);
   const s = salesSide(b);
-  const cls = BUSINESS_CLASSES.find((x) => x.value === o.businessClass) ?? BUSINESS_CLASSES[4];
   const basis = map((r) => s.tax[r] + s.recovered[r] - s.ret[r]); // 付表5-3 ④
-  const deduct = map((r) => Math.max(Math.floor((basis[r] * cls.rate) / 100), 0)); // 付表5-3 ⑤
+  const multi = multiClassDeduction(b, basis);
+  const single = multi.present.length <= 1;
+  const onlyClass = multi.present[0] ?? o.businessClass;
+  const cls = BUSINESS_CLASSES.find((x) => x.value === onlyClass) ?? BUSINESS_CLASSES[4];
+  const deduct = single ? map((r) => Math.max(pct(basis[r], cls.rate), 0)) : multi.chosen.value; // 付表5-3 ⑤ または ㊲
   const subtotal = map((r) => deduct[r] + s.ret[r] + s.bad[r]);
   const c = { tax: sumAB(s.tax), plus: sumAB(s.recovered), deduct: sumAB(deduct), ret: sumAB(s.ret), bad: sumAB(s.bad) };
   const f = finish(c, o);
@@ -310,15 +403,25 @@ export const simplifiedReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
   const salesNet = map((r) => exclusive(b.sales[r], r) - exclusive(b.salesReturn[r], r));
   const periodSales = sumAB(salesNet) + b.exportSales;
 
+  const head: FormRow[] = [
+    abRow("①", "課税標準額に対する消費税額", s.tax, "付表4-3の②から"),
+    abRow("②", "貸倒回収に係る消費税額", s.recovered, "付表4-3の③から"),
+    abRow("③", "売上対価の返還等に係る消費税額", s.ret, "付表4-3の⑤から"),
+    abRow("④", "控除対象仕入税額の計算の基礎となる消費税額（①＋②－③）", basis),
+  ];
   const fuhyo53: TaxForm = {
     id: "5-3", title: "付表5-3 控除対象仕入税額等の計算表", abc: true,
-    rows: [
-      abRow("①", "課税標準額に対する消費税額", s.tax, "付表4-3の②から"),
-      abRow("②", "貸倒回収に係る消費税額", s.recovered, "付表4-3の③から"),
-      abRow("③", "売上対価の返還等に係る消費税額", s.ret, "付表4-3の⑤から"),
-      abRow("④", "控除対象仕入税額の計算の基礎となる消費税額（①＋②－③）", basis),
-      abRow("⑤", `１種類の事業の専業者の場合の控除対象仕入税額（④ × みなし仕入率 ${cls.rate}%）`, deduct, `${cls.label}。付表4-3の④へ`),
-    ],
+    rows: single
+      ? [...head, abRow("⑤", `１種類の事業の専業者の場合の控除対象仕入税額（④ × みなし仕入率 ${cls.rate}%）`, deduct, `${cls.label}。付表4-3の④へ`)]
+      : [
+        ...head,
+        abRow("⑥", "事業区分別の課税売上高（税抜き）の合計額", multi.total6, "売上割合 100%"),
+        ...multi.present.map((k) => abRow(SALES_ROW[k], `${CLASS_NAME[k]}の課税売上高（税抜き）`, multi.net[k], `売上割合 ${shareText(sumAB(multi.net[k]), sumAB(multi.total6))}。第一表の「事業区分」欄へ`)),
+        abRow("⑬", "事業区分別の課税売上高に係る消費税額の合計額", multi.total13),
+        ...multi.present.map((k) => abRow(TAX_ROW[k], `${CLASS_NAME[k]}の消費税額`, multi.tax[k], `みなし仕入率 ${CLASS_RATE[k]}%`)),
+        ...multi.calcs.map((x) => abRow(x.no, x.label, x.value, x === multi.chosen ? "いちばん多い（㊲ に選ぶ）" : undefined)),
+        abRow("㊲", "上記の計算式区分から選択した控除対象仕入税額", deduct, `${multi.chosen.no} を選択。付表4-3の④へ`),
+      ],
   };
   const fuhyo43: TaxForm = {
     id: "4-3", title: "付表4-3 税率別消費税額計算表 兼 地方消費税の課税標準となる消費税額計算表", abc: true,
@@ -327,7 +430,7 @@ export const simplifiedReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
       abRow("①", "課税標準額（千円未満切り捨て）", s.base, "第二表の①へ"),
       abRow("②", "消費税額", s.tax, "第二表の⑪⑮⑯へ"),
       abRow("③", "貸倒回収に係る消費税額", s.recovered, "第一表の③へ"),
-      abRow("④", "控除対象仕入税額", deduct, "付表5-3の⑤から。第一表の④へ"),
+      abRow("④", "控除対象仕入税額", deduct, `付表5-3の${single ? "⑤" : "㊲"}から。第一表の④へ`),
       abRow("⑤", "返還等対価に係る税額", s.ret, "第二表の⑰⑱へ"),
       abRow("⑥", "貸倒れに係る税額", s.bad, "第一表の⑥へ"),
       abRow("⑦", "控除税額小計（④＋⑤＋⑥）", subtotal, "第一表の⑦へ"),
@@ -339,15 +442,33 @@ export const simplifiedReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
       { no: "⑬", label: "譲渡割額・納税額", c: f.localTax, note: "第一表の⑳へ" },
     ],
   };
+  // 第一表の参考事項：事業区分ごとの課税売上高（千円未満四捨五入）と売上割合、特例計算（令57③）の適用
+  const classRows: FormRow[] = single
+    ? [{ no: "", label: `参考事項・事業区分（${cls.label}）の課税売上高（千円）`, c: Math.round(sumAB(salesNet) / 1000), note: "千円未満四捨五入。売上割合 100%" }]
+    : [
+      ...multi.present.map((k) => ({
+        no: "", label: `参考事項・事業区分（${classLabelShort(k)}）の課税売上高（千円）`, c: Math.round(sumAB(multi.net[k]) / 1000),
+        note: `千円未満四捨五入。売上割合 ${shareText(sumAB(multi.net[k]), sumAB(multi.total6))}`,
+      })),
+      { no: "", label: "参考事項・特例計算適用（令57③）", c: null, note: multi.chosen.no === "⑳" ? "無" : "有" },
+    ];
   const extra: FormRow[] = [
     { no: "⑮", label: "この課税期間の課税売上高", c: periodSales, note: "税抜き。返還を差し引き、免税売上を足した額" },
-    { no: "", label: `参考事項・事業区分（${cls.label}）の課税売上高`, c: Math.round(sumAB(salesNet) / 1000), note: "千円単位（千円未満四捨五入）。売上割合 100%" },
+    ...classRows,
   ];
+  const usedClasses = single ? [cls.label] : multi.present.map((k) => CLASS_NAME[k]);
   return {
     method: "simplified",
     forms: [fuhyo53, fuhyo43, secondTable(s, sumAB(s.ret), f.net - f.shortfall, "（簡易課税用）"), firstTable("簡易課税用", sumAB(s.base), c, f, o, extra, null)],
     national: f.national, local: f.local, total: f.total,
-    notes: ["事業区分が1種類（年度の「主な事業区分」）として計算しています。2種類以上の事業がある場合の計算には、まだ対応していません"],
+    notes: [
+      single
+        ? `事業区分は ${cls.label} の1種類として計算しています（付表5-3 の ⑤）`
+        : `事業区分が ${usedClasses.length} 種類（${usedClasses.join("・")}）あるので、原則計算と特例計算のうち、控除対象仕入税額がいちばん多い ${multi.chosen.no} を選んでいます`,
+      ...(unknownTo !== null
+        ? [`事業区分の分からない売上があるため、${classLabelShort(unknownTo)}（${usedFallback ? "主な事業区分" : "その年の売上に出てくる区分のうち、みなし仕入率がいちばん低い区分"}）として計算しています。「確認」から区分を入れてください`]
+        : []),
+    ],
   };
 };
 

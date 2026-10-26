@@ -13,10 +13,10 @@ import { useAppContext } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { Modal } from "../../components/Modal";
 import { useToast } from "../../components/Toast";
-import { CATEGORY_CODE_RANGE, CATEGORY_LABEL, LOCKED_CODES } from "../../constants/accounts";
+import { CATEGORY_CODE_RANGE, CATEGORY_LABEL, FIXED_ASSET_CODES, LOCKED_CODES } from "../../constants/accounts";
 import { MAX_SUB_ACCOUNTS_PER_ACCOUNT } from "../../constants/appConfig";
-import { TAX_CODES } from "../../constants/tax";
-import { accountTaxCode, builtinTaxCode } from "../../lib/tax";
+import { BUSINESS_CLASSES, TAX_CODES } from "../../constants/tax";
+import { accountTaxCode, builtinTaxCode, classLabel } from "../../lib/tax";
 import type { Account, AccountCategory, TaxCode } from "../../lib/types";
 import * as repo from "../../db/repo";
 
@@ -54,6 +54,15 @@ export const AccountsPage = () => {
   const setTax = async (a: Account, code: TaxCode) => {
     try {
       await repo.setAccountTaxCode(db, a.id, code);
+      await reloadAccounts();
+    } catch (e) {
+      toast(`変更できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+
+  const setClass = async (a: Account, cls: number | null) => {
+    try {
+      await repo.setAccountBusinessClass(db, a.id, cls);
       await reloadAccounts();
     } catch (e) {
       toast(`変更できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
@@ -118,13 +127,15 @@ export const AccountsPage = () => {
               <col style={{ width: 64 }} />
               <col />
               <col style={{ width: 150 }} />
-              <col style={{ width: "22%" }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: "18%" }} />
               <col style={{ width: 230 }} />
             </colgroup>
             <thead>
               <tr>
                 <th>使う</th><th>コード</th><th>科目名</th>
                 <th title="課税事業者の期間に、この科目を選んだときに入る税区分。資産の科目は借方（取得したとき）だけに使い、貸方は対象外です">税区分（初期値）</th>
+                <th title="簡易課税の年に、この科目の課税売上に入る事業区分。「主な事業区分」は事業者設定の年度ごとの設定です。資産の売却は第四種">事業区分（簡易課税）</th>
                 <th>補助科目</th><th />
               </tr>
             </thead>
@@ -132,7 +143,7 @@ export const AccountsPage = () => {
               {shownCats.map((c) => (
                 <Fragment key={c}>
                   <tr className="cat-row">
-                    <td colSpan={6}>{CATEGORY_LABEL[c]}<span className="cat-range">コード {CATEGORY_CODE_RANGE[c][0]}〜{CATEGORY_CODE_RANGE[c][1]}</span></td>
+                    <td colSpan={7}>{CATEGORY_LABEL[c]}<span className="cat-range">コード {CATEGORY_CODE_RANGE[c][0]}〜{CATEGORY_CODE_RANGE[c][1]}</span></td>
                   </tr>
                   {accounts.filter((a) => a.category === c).map((a) => {
                     const locked = LOCKED_CODES.includes(a.code);
@@ -160,6 +171,17 @@ export const AccountsPage = () => {
                           >
                             {TAX_CODES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
                           </select>
+                        </td>
+                        <td>
+                          {a.category === "revenue" ? (
+                            <select
+                              className={`input tax-select${a.default_business_class ? "" : " is-default"}`} value={a.default_business_class ?? ""}
+                              onChange={(e) => setClass(a, e.target.value ? Number(e.target.value) : null)} aria-label={`${a.name}の事業区分の初期値`}
+                            >
+                              <option value="">主な事業区分</option>
+                              {BUSINESS_CLASSES.map((b) => <option key={b.value} value={b.value}>{classLabel(b.value)}（{b.rate}%）</option>)}
+                            </select>
+                          ) : a.category === "asset" && FIXED_ASSET_CODES.includes(a.code) ? <span className="muted" title="業務用の固定資産の売却は第四種">第四種（売却）</span> : null}
                         </td>
                         <td className="muted">{subs.length ? subs.map((s) => s.name).join("、") : ""}</td>
                         <td className="row-actions">
