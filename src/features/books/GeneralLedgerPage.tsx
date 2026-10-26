@@ -9,6 +9,7 @@ import { MonthRange } from "../../components/MonthRange";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { buildLedger, closingBalances, monthEnd, monthStart } from "../../lib/accounting";
 import { shortDate, yen } from "../../lib/format";
+import { taxLongLabel, taxShortLabel } from "../../lib/tax";
 import { CATEGORY_LABEL, isBalanceSheet } from "../../constants/accounts";
 import { subKey, type AccountCategory } from "../../lib/types";
 
@@ -133,6 +134,9 @@ export const GeneralLedgerPage = () => {
                     <td className="memo">
                       {sub === undefined && r.subId && <span className="sub-tag">{subMap.get(r.subId)?.name}</span>}
                       {r.memo}
+                      {r.taxCode && r.taxCode !== "none" && (
+                        <span className="tax-tag" title={taxLongLabel(r.taxCode, r.invoiceKind, r.date)}>{taxShortLabel(r.taxCode, r.invoiceKind, r.date)}</span>
+                      )}
                     </td>
                     <td className="num">{yen(r.debit, { blankZero: true })}</td>
                     <td className="num">{yen(r.credit, { blankZero: true })}</td>

@@ -257,6 +257,9 @@ export interface LedgerRow {
   isCompound: boolean;
   /** 決算整理仕訳か */
   isAdjustment: boolean;
+  /** この科目側の明細の税区分・インボイス区分 */
+  taxCode: TaxCode | null;
+  invoiceKind: InvoiceKind | null;
 }
 
 /** 指定科目の元帳（残高推移つき）。lines は会計期間内のものを渡す */
@@ -298,6 +301,8 @@ export const buildLedger = (
       balance,
       isCompound: entryLines.length > 2,
       isAdjustment: l.is_adjustment === 1,
+      taxCode: l.tax_code ?? null,
+      invoiceKind: l.invoice_kind ?? null,
     };
   });
 };

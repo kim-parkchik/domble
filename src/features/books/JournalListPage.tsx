@@ -17,6 +17,7 @@ import { parseAmount, shortDate, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
 import { invoiceCsvLabel, taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
 
 interface DisplayRow {
@@ -38,7 +39,9 @@ interface DisplayRow {
 }
 
 export const JournalListPage = () => {
-  const { db, year, accountMap, activeAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties } = useAppContext();
+  const { db, year, accountMap, activeAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear } = useAppContext();
+  /** 税区分での絞り込み："" = すべて、unset = 未設定（課税事業者の期間で税区分が無い）、transitional / nodeduct = インボイス区分、それ以外は税区分 */
+  const [taxFilter, setTaxFilter] = useState("");
   const cpMap = useMemo(() => new Map(counterparties.map((c) => [c.id, c])), [counterparties]);
   const [cpId, setCpId] = useState(0);
   const { lines: activeLines } = useYearData();
@@ -83,6 +86,11 @@ export const JournalListPage = () => {
     for (const [entryId, ls] of grouped) {
       if (accountId && !ls.some((l) => l.account_id === accountId)) continue;
       if (cpId && ls[0].counterparty_id !== cpId) continue;
+      if (taxFilter && !ls.some((l) =>
+        taxFilter === "unset" ? !l.tax_code && isTaxActive(l.date)
+          : taxFilter === "transitional" ? l.invoice_kind === "transitional"
+            : taxFilter === "nodeduct" ? l.invoice_kind === "none"
+              : l.tax_code === taxFilter)) continue;
       const counterparty = ls[0].counterparty_id ? cpMap.get(ls[0].counterparty_id)?.name ?? "" : "";
       const createdAt = ls[0].created_at ?? "";
       const late = inputDays != null && isLateInput(ls[0].date, createdAt, inputDays);
@@ -124,7 +132,7 @@ export const JournalListPage = () => {
       );
     }
     return out;
-  }, [lines, year, from, to, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly]);
+  }, [lines, year, from, to, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly, taxFilter, isTaxActive]);
 
   const total = rows.filter((r) => !r.deleted).reduce((s, r) => s + (r.dr?.amount ?? 0), 0);
   const entryCount = rows.filter((r) => r.first && !r.deleted).length;
@@ -181,6 +189,15 @@ export const JournalListPage = () => {
           <select value={cpId} onChange={(e) => setCpId(Number(e.target.value))} aria-label="取引先で絞り込み">
             <option value={0}>すべての取引先</option>
             {counterparties.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+        {(taxYear.status !== "exempt" || taxFilter) && (
+          <select value={taxFilter} onChange={(e) => setTaxFilter(e.target.value)} aria-label="税区分で絞り込み">
+            <option value="">すべての税区分</option>
+            <option value="unset">税区分が未設定</option>
+            <option value="transitional">経過措置の仕入れ</option>
+            <option value="nodeduct">控除しない仕入れ</option>
+            {TAX_CODES.filter((t) => t.code !== "none").map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
           </select>
         )}
         <label className="search">

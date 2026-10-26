@@ -12,7 +12,7 @@ import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { useToast } from "../../components/Toast";
 import { EntryEditModal } from "../entry/EntryEditModal";
-import { yearEndRows } from "../../lib/homeUse";
+import { privateTaxSplit, yearEndRows } from "../../lib/homeUse";
 import { yearEnd } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
@@ -33,7 +33,7 @@ const COMMON = ["地代家賃", "水道光熱費", "通信費", "車両費", "�
 
 export const HomeUsePage = () => {
   const { db, year, accounts, homeUseRates, reloadHomeUse, bump, strict, dataVersion, isClosed } = useAppContext();
-  const { lines } = useYearData();
+  const { lines: yearLines } = useYearData();
   const toast = useToast();
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [runId, setRunId] = useState<number | null>(null);
@@ -82,8 +82,8 @@ export const HomeUsePage = () => {
 
   // ── 年末一括の振替 ──
   const rows = useMemo(
-    () => yearEndRows(accounts, lines, homeUseRates, [runId, depRunId].filter((x): x is number => x !== null)),
-    [accounts, lines, homeUseRates, runId, depRunId],
+    () => yearEndRows(accounts, yearLines, homeUseRates, [runId, depRunId].filter((x): x is number => x !== null)),
+    [accounts, yearLines, homeUseRates, runId, depRunId],
   );
   const privateTotal = rows.reduce((s, r) => s + r.private, 0);
 
@@ -97,12 +97,18 @@ export const HomeUsePage = () => {
     );
     if (!ok) return;
     const memo = `家事按分（年末振替）`;
+    // 家事分は、その科目の税区分・インボイス区分ごとに分けて戻す（消費税の仕入の返還になる）
+    const exclude = [runId, depRunId].filter((x): x is number => x !== null);
+    const credits = targets.flatMap((r) =>
+      privateTaxSplit(r.account, yearLines, r.private, exclude).map((p) => ({
+        side: "credit" as const, account_id: r.account.id, sub_account_id: null, amount: p.amount,
+        memo: `${memo} ${r.account.name} 家事分 ${100 - r.rate.rate}%`,
+        ...(p.tax_code ? { tax_code: p.tax_code } : {}), ...(p.invoice_kind ? { invoice_kind: p.invoice_kind } : {}),
+      })),
+    );
     const lines: JournalLine[] = [
       { row_no: 1, side: "debit", account_id: draw.id, sub_account_id: null, amount: privateTotal, memo },
-      ...targets.map((r, i) => ({
-        row_no: i + 1, side: "credit" as const, account_id: r.account.id, sub_account_id: null, amount: r.private,
-        memo: `${memo} ${r.account.name} 家事分 ${100 - r.rate.rate}%`,
-      })),
+      ...credits.map((c, i) => ({ ...c, row_no: i + 1 })),
     ];
     try {
       await repo.saveHomeUseRunEntry(db, year, yearEnd(year), lines, runId ?? null);

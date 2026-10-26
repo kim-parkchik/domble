@@ -331,6 +331,26 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .ledger td.tax-cell.tax-missing { color: var(--cr); }
 .tax-fill { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 8px 12px; background: #fff8e6; border-radius: 4px; font-size: 13px; }
 .tax-tag { font-size: 11px; color: var(--muted); margin-left: 6px; white-space: nowrap; }
+/* 消費税の画面 */
+.count-badge { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: #e8a33d; color: #fff; font-size: 11px; line-height: 18px; }
+.count-badge.error { background: var(--cr); }
+.count-badge.info { background: var(--accent); }
+.seg button.on .count-badge { background: #fff; color: var(--accent); }
+.tax-summary-table .sub-row td { color: var(--muted); font-size: 12.5px; background: #fafbfc; }
+.tax-sum-row td:first-child { white-space: nowrap; }
+.kv.tax-ratio { margin: 12px 0 0; grid-template-columns: max-content 140px; justify-content: start; }
+.tax-issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.tax-issue { border: 1px solid var(--rule); border-left-width: 4px; border-radius: 4px; padding: 10px 14px; }
+.tax-issue.level-error { border-left-color: var(--cr); }
+.tax-issue.level-warn { border-left-color: #e8a33d; }
+.tax-issue.level-info { border-left-color: var(--accent); }
+.tax-issue-head { display: flex; align-items: center; gap: 8px; }
+.tax-issue.level-error .tax-issue-head svg { color: var(--cr); }
+.tax-issue.level-warn .tax-issue-head svg { color: #c98a24; }
+.tax-issue.level-info .tax-issue-head svg { color: var(--accent); }
+.tax-issue-head .spacer { flex: 1; }
+.tax-issue-detail { font-size: 13px; margin: 6px 0 8px; }
+.tax-issue-entries { font-size: 12.5px; }
 .field-note { font-size: 12px; color: var(--muted); }
 
 /* ---------- 設定 ---------- */
