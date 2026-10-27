@@ -185,3 +185,51 @@ describe("確認の一覧：事業区分の分からない売上", () => {
     expect(taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears: twenty, invoiceNo: "", registeredOn: "", summary: buildTaxSummary(lines, accounts, twenty) })).toEqual([]);
   });
 });
+
+describe("本則課税の用途区分（集計表・確認）", () => {
+  const standard = (deduction: TaxYear["deduction"] = "individual"): TaxYear[] => [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction }];
+  const lines = () => [
+    line("2026-05-01", "credit", "売上高", 110000, "sales10"),
+    line("2026-05-02", "credit", "雑収入", 100000, "sales_nontax"),
+    line("2026-05-03", "debit", "消耗品費", 1100, "purchase10", "qualified", { purchase_use: "taxable" }),
+    line("2026-05-04", "debit", "消耗品費", 2200, "purchase10", "qualified"),
+  ];
+  test("課税売上割合が 95% 未満なら、課税仕入を用途区分ごとに分けて集計し、区分の無いものを知らせる", () => {
+    const ls = lines();
+    const summary = buildTaxSummary(ls, accounts, standard());
+    expect(summary.rows.filter((r) => r.kind === "purchase").map((r) => [r.purchaseUse, r.amount])).toEqual([["taxable", 1100], ["unknown", 2200]]);
+    const issues = taxChecks({ year: 2026, lines: ls, accounts, counterparties: [], taxYears: standard(), invoiceNo: "", registeredOn: "", summary });
+    expect(issues.map((i) => [i.title, i.entryIds])).toEqual([
+      [expect.stringMatching(/95% 未満/), []],
+      ["用途区分の入っていない課税仕入", [ls[3].entry_id]],
+    ]);
+    expect(issues[0].detail).toMatch(/今は個別対応方式/);
+    // 一括比例配分方式なら用途区分は使わない
+    const lump = taxChecks({ year: 2026, lines: ls, accounts, counterparties: [], taxYears: standard("lump"), invoiceNo: "", registeredOn: "", summary });
+    expect(lump.map((i) => i.title)).toEqual([expect.stringMatching(/95% 未満/)]);
+  });
+
+  test("95% 以上なら用途区分で分けない", () => {
+    const ls = [line("2026-05-01", "credit", "売上高", 110000, "sales10"), ...lines().slice(2)];
+    const summary = buildTaxSummary(ls, accounts, standard());
+    expect(summary.rows.filter((r) => r.kind === "purchase").map((r) => [r.purchaseUse, r.amount, r.lines])).toEqual([[null, 3300, 2]]);
+  });
+
+  test("前の年に一括比例配分方式にしたのに、この年が個別対応方式なら知らせる", () => {
+    const years: TaxYear[] = [{ ...standard("lump")[0], from_year: 2025 }, ...standard("individual")];
+    const issues = taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears: years, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, years) });
+    expect(issues.map((i) => [i.level, i.title])).toEqual([["error", "控除の方式を確かめてください"]]);
+  });
+
+  test("年末一括の家事分は用途区分ごとにも分ける", () => {
+    const utl = acc("水道光熱費");
+    const ls = [
+      line("2026-01-10", "debit", "水道光熱費", 3000, "purchase10", "qualified", { purchase_use: "taxable" }),
+      line("2026-02-10", "debit", "水道光熱費", 1000, "purchase10", "qualified", { purchase_use: "common" }),
+    ];
+    expect(privateTaxSplit(utl, ls, 400)).toEqual([
+      { tax_code: "purchase10", invoice_kind: "qualified", purchase_use: "taxable", amount: 300 },
+      { tax_code: "purchase10", invoice_kind: "qualified", purchase_use: "common", amount: 100 },
+    ]);
+  });
+});

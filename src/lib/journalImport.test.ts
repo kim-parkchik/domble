@@ -124,6 +124,15 @@ describe("税区分の列", () => {
     expect(r.entries[1].lines.map((l) => l.tax_code)).toEqual([undefined, undefined]);
   });
 
+  test("用途区分の列を読む。読めなければ問題として返す", () => {
+    const H = ["日付", "借方科目", "借方金額", "借方用途区分", "貸方科目", "貸方金額"];
+    const r = importJournalCsv(toCsv(H, [["2026-01-05", "消耗品費", 1100, "非課税対応", "現金", 1100], ["2026-01-06", "消耗品費", 1100, "", "現金", 1100]]), ctx);
+    expect(r.issues).toEqual([]);
+    expect(r.entries.map((e) => e.lines[0].purchase_use)).toEqual(["nontaxable", undefined]);
+    const bad = importJournalCsv(toCsv(H, [["2026-01-05", "消耗品費", 1100, "課税", "現金", 1100]]), ctx);
+    expect(bad.issues.map((i) => i.message)).toEqual([expect.stringMatching(/借方用途区分「課税」/)]);
+  });
+
   test("読めない税区分・インボイスは問題として返す", () => {
     const r = importJournalCsv(toCsv(TAX_HEADER, [["2026-01-05", "消耗品費", 1100, "消費税", "あり", "現金", 1100, ""]]), ctx);
     expect(r.issues.map((i) => i.message)).toEqual([

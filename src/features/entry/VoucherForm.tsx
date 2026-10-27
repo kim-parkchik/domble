@@ -86,10 +86,10 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
       const next = rs.map((r, j) => (j === i ? { ...r, ...patch } : r));
       // 科目を変えたら補助科目は選び直し、税区分はその科目の初期値に戻す
       if ("debitAccountId" in patch && patch.debitAccountId !== rs[i].debitAccountId) {
-        next[i] = { ...next[i], debitSubId: null, debitTax: null, debitInvoice: null, debitClass: null };
+        next[i] = { ...next[i], debitSubId: null, debitTax: null, debitInvoice: null, debitClass: null, debitUse: null };
       }
       if ("creditAccountId" in patch && patch.creditAccountId !== rs[i].creditAccountId) {
-        next[i] = { ...next[i], creditSubId: null, creditTax: null, creditInvoice: null, creditClass: null };
+        next[i] = { ...next[i], creditSubId: null, creditTax: null, creditInvoice: null, creditClass: null, creditUse: null };
       }
       // 1行だけの仕訳のときは、借方金額を貸方にも写す（貸方が空 or 同額だった場合）
       if ("debitAmount" in patch) {
@@ -216,16 +216,16 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
                 <td><AmountInput value={r.debitAmount} onChange={(v) => update(i, { debitAmount: v })} onKeyDown={nav} aria-label={`${i + 1}行目 借方金額`} /></td>
                 <td>
                   <TaxSelect
-                    label={`${i + 1}行目 借方税区分`} value={r.debitTax} invoice={r.debitInvoice} businessClass={r.debitClass} accountId={r.debitAccountId} side="debit"
-                    date={date} counterpartyId={counterpartyId} onChange={(c, inv, k) => update(i, { debitTax: c, debitInvoice: inv, debitClass: k })}
+                    label={`${i + 1}行目 借方税区分`} value={r.debitTax} invoice={r.debitInvoice} businessClass={r.debitClass} purchaseUse={r.debitUse} accountId={r.debitAccountId} side="debit"
+                    date={date} counterpartyId={counterpartyId} onChange={(c, inv, k, u) => update(i, { debitTax: c, debitInvoice: inv, debitClass: k, debitUse: u })}
                   />
                 </td>
                 <td><AccountWithSub accountId={r.creditAccountId} subId={r.creditSubId} onAccount={(v) => update(i, { creditAccountId: v })} onSub={(v) => update(i, { creditSubId: v })} onKeyDown={nav} label={`${i + 1}行目 貸方科目`} /></td>
                 <td><AmountInput value={r.creditAmount} onChange={(v) => update(i, { creditAmount: v })} onKeyDown={nav} aria-label={`${i + 1}行目 貸方金額`} /></td>
                 <td>
                   <TaxSelect
-                    label={`${i + 1}行目 貸方税区分`} value={r.creditTax} invoice={r.creditInvoice} businessClass={r.creditClass} accountId={r.creditAccountId} side="credit"
-                    date={date} counterpartyId={counterpartyId} onChange={(c, inv, k) => update(i, { creditTax: c, creditInvoice: inv, creditClass: k })}
+                    label={`${i + 1}行目 貸方税区分`} value={r.creditTax} invoice={r.creditInvoice} businessClass={r.creditClass} purchaseUse={r.creditUse} accountId={r.creditAccountId} side="credit"
+                    date={date} counterpartyId={counterpartyId} onChange={(c, inv, k, u) => update(i, { creditTax: c, creditInvoice: inv, creditClass: k, creditUse: u })}
                   />
                 </td>
                 <td><MemoInput value={r.memo} onChange={(v) => update(i, { memo: v })} onKeyDown={nav} aria-label={`${i + 1}行目 摘要`} /></td>

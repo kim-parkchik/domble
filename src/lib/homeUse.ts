@@ -2,7 +2,7 @@
  * 家事按分の計算（純粋関数）
  * 端数は「事業分を切り捨て、残りを家事分（事業主貸）」にする（経費を多く見積もらない側に倒す）
  */
-import type { Account, HomeUseRate, InvoiceKind, JournalLine, TaxCode } from "./types";
+import type { Account, HomeUseRate, InvoiceKind, JournalLine, PurchaseUse, TaxCode } from "./types";
 import type { FlatLine } from "./accounting";
 
 export const splitByRate = (amount: number, rate: number) => {
@@ -102,18 +102,18 @@ export const yearEndRows = (
 };
 
 /**
- * 年末一括の家事分を、その科目の明細の税区分・インボイス区分ごとに分ける（消費税の仕入の返還を正しく出すため）。
+ * 年末一括の家事分を、その科目の明細の税区分・インボイス区分・用途区分ごとに分ける（消費税の仕入の返還を正しく出すため）。
  * 年間の計上額（返還を差し引いた額）の割合で分け、端数は大きい余りから 1 円ずつ配る。
  * 税区分の無い明細（免税事業者の期間など）の分は「対象外」。税区分がまったく無ければ1つ（null = 保存のときの初期値）
  */
 export const privateTaxSplit = (
   account: Account, lines: FlatLine[], amount: number, excludeEntryIds: number[] = [],
-): { tax_code: TaxCode | null; invoice_kind: InvoiceKind | null; amount: number }[] => {
-  const buckets = new Map<string, { tax_code: TaxCode | null; invoice_kind: InvoiceKind | null; base: number }>();
+): { tax_code: TaxCode | null; invoice_kind: InvoiceKind | null; purchase_use?: PurchaseUse | null; amount: number }[] => {
+  const buckets = new Map<string, { tax_code: TaxCode | null; invoice_kind: InvoiceKind | null; purchase_use: PurchaseUse | null; base: number }>();
   for (const l of lines) {
     if (l.account_id !== account.id || excludeEntryIds.includes(l.entry_id)) continue;
-    const key = `${l.tax_code ?? ""}|${l.invoice_kind ?? ""}`;
-    const b = buckets.get(key) ?? { tax_code: l.tax_code ?? null, invoice_kind: l.invoice_kind ?? null, base: 0 };
+    const key = `${l.tax_code ?? ""}|${l.invoice_kind ?? ""}|${l.purchase_use ?? ""}`;
+    const b = buckets.get(key) ?? { tax_code: l.tax_code ?? null, invoice_kind: l.invoice_kind ?? null, purchase_use: l.purchase_use ?? null, base: 0 };
     b.base += l.side === account.normal_side ? l.amount : -l.amount;
     buckets.set(key, b);
   }
@@ -121,7 +121,9 @@ export const privateTaxSplit = (
   if (amount <= 0 || list.length === 0 || list.every((b) => !b.tax_code)) return [{ tax_code: null, invoice_kind: null, amount }];
   const total = list.reduce((s, b) => s + b.base, 0);
   const parts = list.map((b) => ({ ...b, exact: (amount * b.base) / total }));
-  const out = parts.map((p) => ({ tax_code: p.tax_code ?? ("none" as const), invoice_kind: p.invoice_kind, amount: Math.floor(p.exact) }));
+  const out = parts.map((p) => ({
+    tax_code: p.tax_code ?? ("none" as const), invoice_kind: p.invoice_kind, ...(p.purchase_use ? { purchase_use: p.purchase_use } : {}), amount: Math.floor(p.exact),
+  }));
   let rest = amount - out.reduce((s, o) => s + o.amount, 0);
   const order = parts.map((p, i) => ({ i, r: p.exact - Math.floor(p.exact) })).sort((a, b) => b.r - a.r || a.i - b.i);
   for (const { i } of order) {

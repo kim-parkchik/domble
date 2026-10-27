@@ -61,11 +61,50 @@ describe("本則課税（一般用の書き方の設例：割戻し計算）", (
     expect(r.notes.join()).not.toMatch(/一括比例/);
   });
 
-  test("課税売上割合が 95% 未満なら一括比例配分方式", () => {
-    const low = standardReturn(base({ sales: { 8: 0, 10: 1_100_000 }, nontaxSales: 1_000_000, purchase: { 8: 0, 10: 220_000 } }), opts);
-    // ⑰ = 220,000 × 7.8/110 = 15,600。割合 1,000,000 / 2,000,000 = 50%
-    expect(cell(low, "2-3", "㉒")).toEqual({ a: 0, b: 7_800, c: 7_800 });
-    expect(low.notes.join()).toMatch(/一括比例配分方式/);
+  describe("課税売上割合が 95% 未満：個別対応方式と一括比例配分方式", () => {
+    // 課税売上 1,100,000（税抜 1,000,000）・非課税売上 1,000,000 → 課税売上割合 50%
+    // 課税仕入（10%）：課税対応 110,000（税額 7,800）・用途区分なし 220,000（共通対応 15,600）・非課税対応 330,000（23,400）
+    const line = (entry_id: number, amount: number, purchase_use: FlatLine["purchase_use"], code: FlatLine["tax_code"] = "purchase10", side: FlatLine["side"] = "debit"): FlatLine => ({
+      entry_id, date: "2026-05-01", description: "", row_no: 1, side, account_id: 1, sub_account_id: null, amount, memo: "", tax_code: code, invoice_kind: code === "purchase10" ? "qualified" : null, purchase_use,
+    });
+    const years: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" }];
+    const tb = buildTaxBase([
+      line(1, 1_100_000, null, "sales10", "credit"), line(2, 1_000_000, null, "sales_nontax", "credit"),
+      line(3, 110_000, "taxable"), line(4, 220_000, null), line(5, 330_000, "nontaxable"),
+    ], years);
+
+    test("個別対応方式：⑲ 課税対応 ＋ ⑳ 共通対応 × 課税売上割合（非課税対応は控除しない）", () => {
+      const r = standardReturn(tb, opts);
+      expect(cell(r, "2-3", "⑰").c).toBe(46_800);
+      expect(cell(r, "2-3", "⑲").c).toBe(7_800);
+      expect(cell(r, "2-3", "⑳").c).toBe(15_600);
+      expect(cell(r, "2-3", "㉑")).toEqual({ a: 0, b: 15_600, c: 15_600 });
+      expect(cell(r, "2-3", "㉖").c).toBe(15_600);
+      expect(r.forms[0].rows.some((x) => x.no === "㉒")).toBe(false);
+      expect(r.deduction).toEqual({ method: "individual", amounts: { individual: 15_600, lump: 23_400 } });
+      expect(r.notes.join()).toMatch(/個別対応方式/);
+      expect(r.notes.join()).toMatch(/用途区分の入っていない課税仕入（税込 220,000円）は、共通対応/);
+    });
+
+    test("一括比例配分方式：⑰ × 課税売上割合", () => {
+      const r = standardReturn(tb, { ...opts, deduction: "lump" });
+      expect(cell(r, "2-3", "㉒")).toEqual({ a: 0, b: 23_400, c: 23_400 });
+      expect(cell(r, "2-3", "㉖").c).toBe(23_400);
+      expect(r.forms[0].rows.some((x) => x.no === "㉑")).toBe(false);
+      expect(r.deduction?.method).toBe("lump");
+      expect(r.notes.join()).toMatch(/一括比例配分方式/);
+    });
+
+    test("用途区分の無い TaxBase（全部共通対応）なら、どちらの方式も同じ額", () => {
+      const low = base({ sales: { 8: 0, 10: 1_100_000 }, nontaxSales: 1_000_000, purchase: { 8: 0, 10: 220_000 } });
+      // ⑰ = 220,000 × 7.8/110 = 15,600。割合 50%
+      expect(cell(standardReturn(low, opts), "2-3", "㉑").c).toBe(7_800);
+      expect(cell(standardReturn(low, { ...opts, deduction: "lump" }), "2-3", "㉒").c).toBe(7_800);
+    });
+
+    test("95% 以上なら全額控除で、方式の比較は出さない", () => {
+      expect(standardReturn(base({ sales: { 8: 0, 10: 1_100_000 }, purchase: { 8: 0, 10: 220_000 } }), opts).deduction).toBeUndefined();
+    });
   });
 
   test("令和8年は経過措置が 80% と 70% に分かれる", () => {
@@ -74,7 +113,7 @@ describe("本則課税（一般用の書き方の設例：割戻し計算）", (
       { entry_id: 2, date: "2026-10-01", description: "", row_no: 1, side: "debit", account_id: 1, sub_account_id: null, amount: 110_000, memo: "", tax_code: "purchase10", invoice_kind: "transitional" },
       { entry_id: 3, date: "2026-10-02", description: "", row_no: 1, side: "debit", account_id: 1, sub_account_id: null, amount: 110_000, memo: "", tax_code: "purchase10", invoice_kind: "none" },
     ];
-    const years: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "" }];
+    const years: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" }];
     const tb = buildTaxBase(lines, years);
     expect(tb.transitional.map((t) => [t.pct, t.purchase[10]])).toEqual([[80, 110_000], [70, 110_000]]);
     expect(tb.purchase[10]).toBe(0); // 控除しない

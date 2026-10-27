@@ -16,7 +16,7 @@ import { groupByEntry, monthEnd, monthStart, yearEnd, yearStart, type FlatLine }
 import { parseAmount, shortDate, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
-import { classLabel, displayClass, invoiceCsvLabel, taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { classLabel, displayClass, displayUse, invoiceCsvLabel, isPurchaseCode, taxLongLabel, taxShortLabel, useLabel } from "../../lib/tax";
 import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
 
@@ -140,14 +140,15 @@ export const JournalListPage = () => {
   // 税区分（対象外のものは出さない）
   const tax = (l?: FlatLine) =>
     l?.tax_code && l.tax_code !== "none"
-      ? <span className={`tax-tag${displayClass(taxYears, l) === 0 ? " tax-missing" : ""}`} title={taxLongLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l))}>{taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l))}</span>
+      ? <span className={`tax-tag${displayClass(taxYears, l) === 0 ? " tax-missing" : ""}`} title={taxLongLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}>{taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}</span>
       : null;
 
   const exportCsv = async () => {
     const header = ["伝票No", "日付", "借方科目", "借方補助", "借方金額", "貸方科目", "貸方補助", "貸方金額", "摘要", "取引先", "登録番号", "状態", "登録日時", "登録までの日数", "入力期間", "決算整理",
-      "借方税区分", "借方インボイス", "借方事業区分", "貸方税区分", "貸方インボイス", "貸方事業区分"];
+      "借方税区分", "借方インボイス", "借方事業区分", "借方用途区分", "貸方税区分", "貸方インボイス", "貸方事業区分", "貸方用途区分"];
     const taxCols = (l?: FlatLine) => [
       l?.tax_code ? taxLongLabel(l.tax_code, null, l.date) : "", invoiceCsvLabel(l?.tax_code, l?.invoice_kind), l?.business_class ? classLabel(l.business_class) : "",
+      isPurchaseCode(l?.tax_code) && l?.purchase_use ? useLabel(l.purchase_use) : "",
     ];
     const sub = (l?: FlatLine) => (l?.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "");
     const body = rows.map((r) =>

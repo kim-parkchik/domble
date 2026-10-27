@@ -3,11 +3,13 @@
  * どれも「打って Enter」で確定できるよう、テキスト入力ベースで作っています。
  */
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
-import type { Account, InvoiceKind, Side, TaxCode } from "../lib/types";
+import type { Account, InvoiceKind, PurchaseUse, Side, TaxCode } from "../lib/types";
 import { parseAmount, parseDateInput, shortDate, toHalfWidth } from "../lib/format";
 import { useAppContext } from "../context/AppContext";
-import { BUSINESS_CLASSES, TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
-import { defaultInvoiceKind, defaultTaxCode, effectiveBusinessClass, isPurchaseCode, isSalesCode, taxLongLabel, taxShortLabel, taxYearOf } from "../lib/tax";
+import { BUSINESS_CLASSES, PURCHASE_USES, TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
+import {
+  defaultInvoiceKind, defaultTaxCode, effectiveBusinessClass, effectivePurchaseUse, isPurchaseCode, isSalesCode, taxLongLabel, taxShortLabel, taxYearOf, useLabel,
+} from "../lib/tax";
 import { findCounterparty, normName, validateCounterparty } from "../lib/counterparty";
 import * as repo from "../db/repo";
 
@@ -273,22 +275,24 @@ export const MemoInput = ({ value, onChange, placeholder = "摘要", ...rest }: 
 
 // ────────────────────────────────────────────
 // 税区分（免税事業者の期間は「対象外」で固定・グレー表示）
-//  課税仕入は、インボイス区分（適格・経過措置・控除しない）も同じ欄で選ぶ。
+//  課税仕入は、インボイス区分（適格・経過措置・控除しない）も同じ欄で選ぶ。本則課税の年は用途区分（課税対応・共通対応・非課税対応）も。
 //  値が null のあいだは、科目・取引先から決まる初期値を出す（保存のときも同じ初期値になる。lib/tax.ts の resolveLineTax）。
 //  Enter での移動では飛ばす（初期値のままのことが多いため。変えるときはクリックか Tab）
 // ────────────────────────────────────────────
 
-/** 選択肢の値：課税仕入は「税区分|インボイス区分」、簡易課税の年の課税売上は「税区分#事業区分」 */
-const optionValue = (code: TaxCode, invoice: InvoiceKind | null, cls: number | null = null) =>
-  isPurchaseCode(code) ? `${code}|${invoice ?? "qualified"}` : cls ? `${code}#${cls}` : code;
+/** 選択肢の値：課税仕入は「税区分|インボイス区分」（本則課税の年は「…@用途区分」）、簡易課税の年の課税売上は「税区分#事業区分」 */
+const optionValue = (code: TaxCode, invoice: InvoiceKind | null, cls: number | null = null, use: PurchaseUse | null = null) =>
+  isPurchaseCode(code) ? `${code}|${invoice ?? "qualified"}${use ? `@${use}` : ""}` : cls ? `${code}#${cls}` : code;
 
-export const TaxSelect = ({ label, value, invoice, businessClass, onChange, accountId, side, date, counterpartyId }: {
+export const TaxSelect = ({ label, value, invoice, businessClass, purchaseUse, onChange, accountId, side, date, counterpartyId }: {
   label: string;
   value: TaxCode | null | undefined;
   invoice: InvoiceKind | null | undefined;
   /** 簡易課税の事業区分（課税売上だけ。null = 科目の初期値・年度の「主な事業区分」） */
   businessClass?: number | null;
-  onChange: (code: TaxCode | null, invoice: InvoiceKind | null, businessClass: number | null) => void;
+  /** 本則課税の用途区分（課税仕入だけ。null = 科目の初期値・共通対応） */
+  purchaseUse?: PurchaseUse | null;
+  onChange: (code: TaxCode | null, invoice: InvoiceKind | null, businessClass: number | null, purchaseUse: PurchaseUse | null) => void;
   accountId: number | null;
   side: Side;
   /** 取引の日付（課税事業者の期間か、経過措置の割合、簡易課税の年か） */
@@ -307,35 +311,44 @@ export const TaxSelect = ({ label, value, invoice, businessClass, onChange, acco
   }
   const ty = taxYearOf(taxYears, Number(date.slice(0, 4)));
   const simplified = ty.status === "simplified";
+  const standard = ty.status === "standard";
   const cp = counterpartyId ? counterparties.find((c) => c.id === counterpartyId) : null;
   const code = value ?? defaultTaxCode(account, side);
   const inv = isPurchaseCode(code) ? invoice ?? defaultInvoiceKind(cp) : null;
   // 簡易課税の年の課税売上は、事業区分も選ぶ（入っていなければ科目の初期値・主な事業区分）
   const cls = simplified && isSalesCode(code) ? effectiveBusinessClass({ business_class: businessClass }, account, ty.business_class) : null;
-  const isDefault = value == null && (!cls || businessClass == null);
-  const opt = (c: TaxCode, i: InvoiceKind | null = null, k: number | null = null) => (
-    <option key={optionValue(c, i, k)} value={optionValue(c, i, k)} title={taxLongLabel(c, i, date, k)}>{taxShortLabel(c, i, date, k)}</option>
+  // 本則課税の年の課税仕入は、用途区分も選ぶ（入っていなければ科目の初期値・共通対応）
+  const use = standard && isPurchaseCode(code) ? effectivePurchaseUse({ purchase_use: purchaseUse }, account) : null;
+  const isDefault = value == null && (!cls || businessClass == null) && (!use || purchaseUse == null);
+  const opt = (c: TaxCode, i: InvoiceKind | null = null, k: number | null = null, u: PurchaseUse | null = null) => (
+    <option key={optionValue(c, i, k, u)} value={optionValue(c, i, k, u)} title={taxLongLabel(c, i, date, k, u)}>{taxShortLabel(c, i, date, k, u, true)}</option>
   );
   const group = (g: "sales" | "purchase") => TAX_CODES.filter((t) => t.group === g);
+  const invoices = ["qualified", "transitional", "none"] as const;
+  const purchases = (u: PurchaseUse | null) => group("purchase").filter((t) => isPurchaseCode(t.code)).flatMap((t) => invoices.map((i) => opt(t.code, i, null, u)));
   return (
     <select
       className={`input tax-select${isDefault ? " is-default" : ""}`}
-      value={optionValue(code, inv, cls)}
+      value={optionValue(code, inv, cls, use)}
       aria-label={label}
-      title={`${taxLongLabel(code, inv, date, cls)}${isDefault ? "（科目の初期値）" : ""}`}
+      title={`${taxLongLabel(code, inv, date, cls, use)}${isDefault ? "（科目の初期値）" : ""}`}
       onChange={(e) => {
         const [head, k] = e.target.value.split("#");
-        const [c, i] = head.split("|") as [TaxCode, InvoiceKind | undefined];
-        onChange(c, i ?? null, k ? Number(k) : null);
+        const [body, u] = head.split("@");
+        const [c, i] = body.split("|") as [TaxCode, InvoiceKind | undefined];
+        onChange(c, i ?? null, k ? Number(k) : null, (u as PurchaseUse | undefined) ?? null);
       }}
     >
       {opt("none")}
       <optgroup label="売上">
         {group("sales").flatMap((t) => (simplified && isSalesCode(t.code) ? BUSINESS_CLASSES.map((b) => opt(t.code, null, b.value)) : [opt(t.code)]))}
       </optgroup>
-      <optgroup label="仕入">
-        {group("purchase").flatMap((t) => (isPurchaseCode(t.code) ? (["qualified", "transitional", "none"] as const).map((i) => opt(t.code, i)) : [opt(t.code)]))}
-      </optgroup>
+      {standard
+        ? <>
+          {PURCHASE_USES.map((u) => <optgroup key={u.value} label={`仕入（${useLabel(u.value)}）`}>{purchases(u.value)}</optgroup>)}
+          <optgroup label="仕入（その他）">{group("purchase").filter((t) => !isPurchaseCode(t.code)).map((t) => opt(t.code))}</optgroup>
+        </>
+        : <optgroup label="仕入">{group("purchase").flatMap((t) => (isPurchaseCode(t.code) ? invoices.map((i) => opt(t.code, i)) : [opt(t.code)]))}</optgroup>}
     </select>
   );
 };

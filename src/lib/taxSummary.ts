@@ -8,10 +8,10 @@
  *  - 対象外は、損益の科目のものだけ出す（現金・預金などの相手側まで並べると読めないため）
  *  - 消費税等の額は「参考」：税込の金額 × 税率 /（100 + 税率）の 1 円未満切り捨て。申告の計算（端数処理・国税と地方税の分け方）は別
  */
-import type { Account, Counterparty, InvoiceKind, TaxCode, TaxStatus, TaxYear } from "./types";
+import type { Account, Counterparty, InvoiceKind, PurchaseUse, TaxCode, TaxStatus, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
-import { isPurchaseCode, isSalesCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
+import { deductionProblem, isPurchaseCode, isSalesCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
 
 export type TaxKind = "sales" | "salesReturn" | "badDebt" | "badDebtRecovered" | "purchase" | "purchaseReturn" | "other";
@@ -47,6 +47,8 @@ export interface TaxSummaryRow {
   transitional: number | null;
   /** 簡易課税の事業区分（簡易課税の年の課税売上・返還の行だけ。0 = 区分が分からない） */
   businessClass: number | null;
+  /** 用途区分（本則課税の年で課税売上割合が 95% 未満のときの課税仕入・返還の行だけ。unknown = 区分が無い＝共通対応として計算） */
+  purchaseUse: PurchaseUse | "unknown" | null;
   /** 税込の金額 */
   amount: number;
   /** うち消費税等（参考） */
@@ -81,8 +83,9 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
     const transitional = invoice === "transitional" ? transitionalRate(l.date) : null;
     const ty = taxYearOf(taxYears, Number(l.date.slice(0, 4)));
     const businessClass = ty.status === "simplified" && isSalesCode(l.tax_code) ? l.business_class ?? 0 : null;
-    const key = `${l.tax_code}|${kind}|${invoice ?? ""}|${transitional ?? ""}|${businessClass ?? ""}`;
-    const r = rows.get(key) ?? { code: l.tax_code, kind, invoice, transitional, businessClass, amount: 0, tax: 0, lines: 0, accounts: [] };
+    const purchaseUse = ty.status === "standard" && isPurchaseCode(l.tax_code) ? l.purchase_use ?? "unknown" : null;
+    const key = rowKeyOf({ code: l.tax_code, kind, invoice, transitional, businessClass, purchaseUse });
+    const r = rows.get(key) ?? { code: l.tax_code, kind, invoice, transitional, businessClass, purchaseUse, amount: 0, tax: 0, lines: 0, accounts: [] };
     r.amount += l.amount;
     r.lines++;
     const a = r.accounts.find((x) => x.account_id === l.account_id);
@@ -92,14 +95,11 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
     } else r.accounts.push({ account_id: l.account_id, amount: l.amount, lines: 1 });
     rows.set(key, r);
   }
-  const list = [...rows.values()].map((r) => ({
-    ...r,
-    tax: includedTax(r.amount, taxCodeDef(r.code).rate),
-    accounts: r.accounts.sort((x, y) => y.amount - x.amount),
-  }));
+  let list = [...rows.values()];
   list.sort((x, y) =>
     KIND_ORDER.indexOf(x.kind) - KIND_ORDER.indexOf(y.kind) || codeOrder(x.code) - codeOrder(y.code)
-    || invoiceOrder(x.invoice) - invoiceOrder(y.invoice) || (y.transitional ?? 0) - (x.transitional ?? 0) || (x.businessClass ?? 0) - (y.businessClass ?? 0));
+    || invoiceOrder(x.invoice) - invoiceOrder(y.invoice) || (y.transitional ?? 0) - (x.transitional ?? 0) || (x.businessClass ?? 0) - (y.businessClass ?? 0)
+    || useOrder(x.purchaseUse) - useOrder(y.purchaseUse));
 
   // 課税売上割合（税抜。売上の返還を差し引く）
   const net = (code: TaxCode) =>
@@ -109,10 +109,41 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
   const exportSales = net("export");
   const nontax = net("sales_nontax");
   const denom = taxable + exportSales + nontax;
+  const value = denom > 0 ? (taxable + exportSales) / denom : null;
+  // 用途区分は個別対応方式でだけ使うので、課税売上割合が 95% 未満のときだけ分けて出す
+  if (value === null || value >= 0.95) list = mergeUses(list);
   return {
-    rows: list,
-    ratio: { taxable, exportSales, nontax, value: denom > 0 ? (taxable + exportSales) / denom : null },
+    rows: list.map((r) => ({ ...r, tax: includedTax(r.amount, taxCodeDef(r.code).rate), accounts: r.accounts.sort((x, y) => y.amount - x.amount) })),
+    ratio: { taxable, exportSales, nontax, value },
   };
+};
+
+const rowKeyOf = (r: Pick<TaxSummaryRow, "code" | "kind" | "invoice" | "transitional" | "businessClass" | "purchaseUse">) =>
+  `${r.code}|${r.kind}|${r.invoice ?? ""}|${r.transitional ?? ""}|${r.businessClass ?? ""}|${r.purchaseUse ?? ""}`;
+const USE_ORDER = ["taxable", "common", "unknown", "nontaxable"];
+const useOrder = (u: TaxSummaryRow["purchaseUse"]) => (u ? USE_ORDER.indexOf(u) : -1);
+
+/** 用途区分で分けた行をまとめ直す（並び順は保つ） */
+const mergeUses = (list: TaxSummaryRow[]) => {
+  const out = new Map<string, TaxSummaryRow>();
+  for (const r of list) {
+    const key = rowKeyOf({ ...r, purchaseUse: null });
+    const m = out.get(key);
+    if (!m) {
+      out.set(key, { ...r, purchaseUse: null, accounts: r.accounts.map((a) => ({ ...a })) });
+      continue;
+    }
+    m.amount += r.amount;
+    m.lines += r.lines;
+    for (const a of r.accounts) {
+      const x = m.accounts.find((y) => y.account_id === a.account_id);
+      if (x) {
+        x.amount += a.amount;
+        x.lines += a.lines;
+      } else m.accounts.push({ ...a });
+    }
+  }
+  return [...out.values()];
 };
 
 // ────────────────────────────────────────────
@@ -270,10 +301,27 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
   // 課税売上割合（本則課税のときだけ仕入税額の計算に効く）
   const ratio = x.summary.ratio.value;
   if (ty.status === "standard" && ratio !== null && ratio < 0.95) {
+    const methodName = ty.deduction === "individual" ? "個別対応方式" : "一括比例配分方式";
     issues.push({
-      level: "warn", title: `課税売上割合が ${(Math.floor(ratio * 10000) / 100).toFixed(2)}%（95% 未満）です`, entryIds: [],
-      detail: "95% 未満のときは、仕入税額を個別対応方式か一括比例配分方式で計算します。申告書の数字は一括比例配分方式で出しています（個別対応方式には未対応）。個別対応方式のほうが有利なこともあるので、申告の前に確かめてください。",
+      level: "warn", title: `課税売上割合が ${(Math.floor(ratio * 10000) / 100).toFixed(2)}%（95% 未満）です`, entryIds: [], fix: "settings",
+      detail: `95% 未満のときは、仕入税額を個別対応方式か一括比例配分方式で計算します。申告書の数字は事業者設定の「消費税」の控除の方式（今は${methodName}）で出しています。`
+        + "「申告書」で両方の額を比べられます。一括比例配分方式にすると、2年続けて使う決まりがあります。",
     });
+    // 個別対応方式：用途区分の入っていない課税仕入
+    if (ty.deduction === "individual") {
+      const noUse = scoped.filter((l) => isPurchaseCode(l.tax_code) && (l.invoice_kind ?? "qualified") !== "none" && !l.purchase_use);
+      if (noUse.length) {
+        issues.push({
+          level: "warn", title: "用途区分の入っていない課税仕入", fix: "settings", entryIds: entryIdsOf(noUse),
+          detail: "個別対応方式では、課税仕入を課税対応・共通対応・非課税対応に分けます。入っていない課税仕入は共通対応として計算しています。"
+            + "事業者設定の「消費税」の「科目の初期値で入れる」で（科目の初期値 → 共通対応 の順に）まとめて入れるか、仕訳を開いて選んでください。",
+        });
+      }
+    }
+  }
+  if (ty.status === "standard") {
+    const d = deductionProblem(x.taxYears, x.year, ty.deduction);
+    if (d) issues.push({ level: "error", title: "控除の方式を確かめてください", fix: "settings", entryIds: [], detail: `${d}。事業者設定の「消費税」で選び直してください。` });
   }
   return byLevel(issues);
 };

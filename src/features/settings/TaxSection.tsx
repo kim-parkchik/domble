@@ -1,6 +1,6 @@
 /**
  * 消費税の設定（事業者設定の中の節）
- *  - 課税区分・経理方式・簡易課税の事業区分・年の途中から課税事業者になった日は年度ごと（次の設定がある年まで引き継ぐ）
+ *  - 課税区分・経理方式・簡易課税の事業区分・本則課税の控除の方式・年の途中から課税事業者になった日は年度ごと（次の設定がある年まで引き継ぐ）
  *  - 適格請求書発行事業者の登録番号・登録日は帳簿に1つ
  *  - 課税事業者の期間で税区分の入っていない仕訳を、科目の初期値でまとめて埋める
  *  - 基準期間（前々年）・特定期間（前年1〜6月）の課税売上高。帳簿に無い年の基準期間は手で入れる
@@ -12,13 +12,13 @@ import { useAppContext, useBaseSales } from "../../context/AppContext";
 import { yen } from "../../lib/format";
 import { EXEMPT_LIMIT, mandatoryReason, SIMPLIFIED_LIMIT } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
-import { BUSINESS_CLASSES, TAX_METHOD_OPTIONS, TAX_STATUS_OPTIONS } from "../../constants/tax";
-import { statusProblem } from "../../lib/tax";
-import type { TaxMethod, TaxStatus, TaxYear } from "../../lib/types";
+import { BUSINESS_CLASSES, DEDUCTION_METHODS, TAX_METHOD_OPTIONS, TAX_STATUS_OPTIONS } from "../../constants/tax";
+import { deductionProblem, statusProblem } from "../../lib/tax";
+import type { DeductionMethod, TaxMethod, TaxStatus, TaxYear } from "../../lib/types";
 import * as repo from "../../db/repo";
 
 export const TaxSection = () => {
-  const { db, year, settings, taxYear, reloadTaxYears, reloadSettings, isClosed, strict, can, dataVersion, bump } = useAppContext();
+  const { db, year, settings, taxYear, taxYears, reloadTaxYears, reloadSettings, isClosed, strict, can, dataVersion, bump } = useAppContext();
   const toast = useToast();
   const [t, setT] = useState<TaxYear>(taxYear);
   const [error, setError] = useState("");
@@ -27,7 +27,8 @@ export const TaxSection = () => {
   useEffect(() => setT(taxYear), [taxKey]);
   const set = <K extends keyof TaxYear>(k: K, v: TaxYear[K]) => setT((x) => ({ ...x, [k]: v }));
   const changed = t.status !== taxYear.status || t.method !== taxYear.method || t.business_class !== taxYear.business_class
-    || t.taxable_from !== taxYear.taxable_from;
+    || t.taxable_from !== taxYear.taxable_from || t.deduction !== taxYear.deduction;
+  const individualProblem = deductionProblem(taxYears, year, "individual");
   const admin = can("settings");
   const regOn = settings.invoice_registered_on;
 
@@ -130,6 +131,18 @@ export const TaxSection = () => {
         </div>
         {t.status !== "exempt" && (
           <div className="field-row">
+            {t.status === "standard" && (
+              <label className="field">
+                <span>控除の方式（課税売上割合が95%未満のとき）</span>
+                <select className="input" value={t.deduction} onChange={(e) => set("deduction", e.target.value as DeductionMethod)} disabled={!admin || isClosed}>
+                  {DEDUCTION_METHODS.map((d) => (
+                    <option key={d.value} value={d.value} disabled={d.value === "individual" && !!individualProblem} title={d.value === "individual" ? individualProblem ?? undefined : undefined}>
+                      {d.label}{d.value === "individual" && individualProblem ? "（この年は選べません）" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {t.status === "simplified" && (
               <label className="field">
                 <span>主な事業区分（簡易課税）</span>
@@ -159,6 +172,13 @@ export const TaxSection = () => {
             どちらも選んでいない売上は「主な事業区分」になります。業務用の固定資産の売却は第四種です。
           </p>
         )}
+        {t.status === "standard" && (
+          <p className="field-note">
+            課税売上割合が 95% 以上（かつ課税売上高が5億円以下）なら、課税仕入の消費税は全額控除するので、控除の方式は使いません。
+            個別対応方式では、課税仕入を課税対応・共通対応・非課税対応に分けます（帳簿入力・振替伝票の税区分の欄で選べます。初期値は勘定科目の画面の「用途区分」、無ければ共通対応）。
+            一括比例配分方式にした年から2年は、個別対応方式に戻せません。{individualProblem ? `${individualProblem}。` : ""}
+          </p>
+        )}
         {t.status === "thirty" && <p className="field-note">3割特例は、登録によって課税事業者になった個人事業者で、基準期間（2年前）の課税売上高が1,000万円以下のときに使えます。</p>}
         {t.method === "inclusive" && t.status !== "exempt" && <p className="field-note">税込経理：帳簿の金額は税込のままです。税抜経理には今後対応します。</p>}
         {error && <p className="form-error-inline" role="alert">{error}</p>}
@@ -175,7 +195,7 @@ export const TaxSection = () => {
       {!!untaxed && (
         <div className="tax-fill" role="status">
           <span>
-            {year}年の課税事業者の期間に、税区分{taxYear.status === "simplified" ? "（簡易課税の売上は事業区分）" : ""}が入っていない仕訳が <b>{untaxed}</b> 件あります
+            {year}年の課税事業者の期間に、税区分{taxYear.status === "simplified" ? "（簡易課税の売上は事業区分）" : taxYear.status === "standard" ? "（課税仕入は用途区分）" : ""}が入っていない仕訳が <b>{untaxed}</b> 件あります
             （課税事業者{taxYear.status === "simplified" ? "・簡易課税" : ""}にする前に入れた仕訳など）。
           </span>
           <button className="btn ghost sm" onClick={fill} disabled={!can("entry")}><Wand2 size={14} /> 科目の初期値で入れる</button>

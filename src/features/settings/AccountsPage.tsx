@@ -15,9 +15,9 @@ import { Modal } from "../../components/Modal";
 import { useToast } from "../../components/Toast";
 import { CATEGORY_CODE_RANGE, CATEGORY_LABEL, FIXED_ASSET_CODES, LOCKED_CODES } from "../../constants/accounts";
 import { MAX_SUB_ACCOUNTS_PER_ACCOUNT } from "../../constants/appConfig";
-import { BUSINESS_CLASSES, TAX_CODES } from "../../constants/tax";
-import { accountTaxCode, builtinTaxCode, classLabel } from "../../lib/tax";
-import type { Account, AccountCategory, TaxCode } from "../../lib/types";
+import { BUSINESS_CLASSES, PURCHASE_USES, TAX_CODES } from "../../constants/tax";
+import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, useLabel } from "../../lib/tax";
+import type { Account, AccountCategory, PurchaseUse, TaxCode } from "../../lib/types";
 import * as repo from "../../db/repo";
 
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as AccountCategory[];
@@ -63,6 +63,15 @@ export const AccountsPage = () => {
   const setClass = async (a: Account, cls: number | null) => {
     try {
       await repo.setAccountBusinessClass(db, a.id, cls);
+      await reloadAccounts();
+    } catch (e) {
+      toast(`変更できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+
+  const setUse = async (a: Account, use: PurchaseUse | null) => {
+    try {
+      await repo.setAccountPurchaseUse(db, a.id, use);
       await reloadAccounts();
     } catch (e) {
       toast(`変更できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
@@ -127,7 +136,7 @@ export const AccountsPage = () => {
               <col style={{ width: 64 }} />
               <col />
               <col style={{ width: 150 }} />
-              <col style={{ width: 130 }} />
+              <col style={{ width: 150 }} />
               <col style={{ width: "18%" }} />
               <col style={{ width: 230 }} />
             </colgroup>
@@ -135,7 +144,7 @@ export const AccountsPage = () => {
               <tr>
                 <th>使う</th><th>コード</th><th>科目名</th>
                 <th title="課税事業者の期間に、この科目を選んだときに入る税区分。資産の科目は借方（取得したとき）だけに使い、貸方は対象外です">税区分（初期値）</th>
-                <th title="簡易課税の年に、この科目の課税売上に入る事業区分。「主な事業区分」は事業者設定の年度ごとの設定です。資産の売却は第四種">事業区分（簡易課税）</th>
+                <th title="簡易課税の年に、この科目の課税売上に入る事業区分（「主な事業区分」は事業者設定の年度ごとの設定。資産の売却は第四種）と、本則課税の年に、この科目の課税仕入に入る用途区分（個別対応方式で使う）">事業区分・用途区分</th>
                 <th>補助科目</th><th />
               </tr>
             </thead>
@@ -180,6 +189,15 @@ export const AccountsPage = () => {
                             >
                               <option value="">主な事業区分</option>
                               {BUSINESS_CLASSES.map((b) => <option key={b.value} value={b.value}>{classLabel(b.value)}（{b.rate}%）</option>)}
+                            </select>
+                          ) : isPurchaseCode(accountTaxCode(a)) ? (
+                            <select
+                              className={`input tax-select${a.default_purchase_use ? "" : " is-default"}`} value={a.default_purchase_use ?? ""}
+                              onChange={(e) => setUse(a, (e.target.value || null) as PurchaseUse | null)} aria-label={`${a.name}の用途区分の初期値`}
+                              title={`本則課税の個別対応方式で使う用途区分${FIXED_ASSET_CODES.includes(a.code) ? "（取得したとき。売却は簡易課税の第四種）" : ""}`}
+                            >
+                              <option value="">{useLabel("common")}（初期値）</option>
+                              {PURCHASE_USES.filter((u) => u.value !== "common").map((u) => <option key={u.value} value={u.value}>{useLabel(u.value)}</option>)}
                             </select>
                           ) : a.category === "asset" && FIXED_ASSET_CODES.includes(a.code) ? <span className="muted" title="業務用の固定資産の売却は第四種">第四種（売却）</span> : null}
                         </td>

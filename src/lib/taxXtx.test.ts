@@ -154,11 +154,32 @@ test("還付（控除不足還付税額）。合計はマイナス", () => {
   expect(val(xml, "AAW00010")).toBe("-70200");
 });
 
-test("課税売上割合が 95% 未満なら一括比例配分方式（2）", () => {
-  const xml = buildTaxXtx(standardReturn(base({ sales: { 8: 0, 10: 1_100_000 }, nontaxSales: 500_000, purchase: { 8: 0, 10: 550_000 } }), opts), filer, period);
-  expect(validate(xml)).toBe("");
-  expect(val(xml, "AAM00020")).toBe("2");
-  expect(val(xml, "DTD00000")).toBe("66.66");
+describe("課税売上割合が 95% 未満", () => {
+  const purchases = { purchase: { 8: 0, 10: 550_000 } as const };
+  const b = base({
+    sales: { 8: 0, 10: 1_100_000 }, nontaxSales: 500_000, ...purchases,
+    byUse: {
+      taxable: { purchase: { 8: 0, 10: 110_000 }, ret: { 8: 0, 10: 0 }, transitional: [] },
+      common: { purchase: { 8: 0, 10: 440_000 }, ret: { 8: 0, 10: 0 }, transitional: [] },
+      nontaxable: { purchase: { 8: 0, 10: 0 }, ret: { 8: 0, 10: 0 }, transitional: [] },
+    },
+  });
+  test("一括比例配分方式（2）", () => {
+    const xml = buildTaxXtx(standardReturn(b, { ...opts, deduction: "lump" }), filer, period);
+    expect(validate(xml)).toBe("");
+    expect(val(xml, "AAM00020")).toBe("2");
+    expect(val(xml, "DTD00000")).toBe("66.66");
+    expect(val(xml, "DTG00170")).toBe("26000"); // 39,000 × 1,000,000 / 1,500,000
+    expect(xml).not.toContain("<DTG00130>");
+  });
+  test("個別対応方式（1）：⑲⑳㉑", () => {
+    const xml = buildTaxXtx(standardReturn(b, { ...opts, deduction: "individual" }), filer, period);
+    expect(validate(xml)).toBe("");
+    expect(val(xml, "AAM00020")).toBe("1");
+    expect([val(xml, "DTG00050"), val(xml, "DTG00090"), val(xml, "DTG00130")]).toEqual(["7800", "31200", "28600"]); // 7,800 ＋ 31,200 × 2/3
+    expect(val(xml, "DTI00040")).toBe("28600");
+    expect(xml).not.toContain("<DTG00170>");
+  });
 });
 
 test("申告者の情報が最小限（屋号・フリガナ・電話・郵便番号なし）でも XSD に合う", () => {

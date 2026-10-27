@@ -2,7 +2,7 @@
  * 消費税まわりの定義（選択肢・税区分・科目の初期値）
  * 計算や判定は lib/tax.ts。制度は令和8年分に合わせています。
  */
-import type { InvoiceKind, TaxCode, TaxMethod, TaxStatus } from "../lib/types";
+import type { DeductionMethod, InvoiceKind, PurchaseUse, TaxCode, TaxMethod, TaxStatus } from "../lib/types";
 
 /**
  * 課税区分。years は選べる年（2割特例は令和8年分まで、3割特例は個人事業者の令和9年分・令和10年分）
@@ -28,6 +28,19 @@ export const BUSINESS_CLASSES: { value: number; label: string; rate: number }[] 
   { value: 4, label: "第4種（飲食店業など、ほかに当たらない事業）", rate: 60 },
   { value: 5, label: "第5種（サービス業・運輸通信業・金融業など）", rate: 50 },
   { value: 6, label: "第6種（不動産業）", rate: 40 },
+];
+
+/** 課税仕入の用途区分（本則課税の個別対応方式。付表2-3 の ⑲ 課税対応・⑳ 共通対応。非課税対応は控除しない） */
+export const PURCHASE_USES: { value: PurchaseUse; label: string; short: string }[] = [
+  { value: "taxable", label: "課税対応（課税売上にだけ要するもの）", short: "課対" },
+  { value: "common", label: "共通対応（課税売上と非課税売上に共通して要するもの）", short: "共通" },
+  { value: "nontaxable", label: "非課税対応（非課税売上にだけ要するもの）", short: "非対" },
+];
+
+/** 本則課税で課税売上割合が 95% 未満（または課税売上高が5億円超）のときの控除の方式 */
+export const DEDUCTION_METHODS: { value: DeductionMethod; label: string }[] = [
+  { value: "individual", label: "個別対応方式" },
+  { value: "lump", label: "一括比例配分方式" },
 ];
 
 /**

@@ -190,13 +190,15 @@ export const SCHEMA: string[] = [
    * 消費税の設定（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ。計算は lib/tax.ts）
    * status：exempt（免税）/ standard（本則）/ simplified（簡易）/ twenty（2割特例）/ thirty（3割特例）
    * taxable_from：年の途中から課税事業者になった日（空 = その年の初めから）
+   * deduction：本則課税で課税売上割合が 95% 未満のときの控除の方式（individual 個別対応方式 / lump 一括比例配分方式）
    */
   `CREATE TABLE IF NOT EXISTS tax_years (
     from_year INTEGER PRIMARY KEY,
     status TEXT NOT NULL CHECK (status IN ('exempt','standard','simplified','twenty','thirty')),
     method TEXT NOT NULL DEFAULT 'inclusive' CHECK (method IN ('inclusive','exclusive')),
     business_class INTEGER NOT NULL DEFAULT 5 CHECK (business_class BETWEEN 1 AND 6),
-    taxable_from TEXT NOT NULL DEFAULT ''
+    taxable_from TEXT NOT NULL DEFAULT '',
+    deduction TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump'))
   );`,
 
   /** 消費税の中間納付税額（年度ごと。申告した税額。消費税＝国税分と地方消費税＝譲渡割額） */
@@ -573,4 +575,9 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "phone", "TEXT NOT NULL DEFAULT ''"],
   ["settings", "owner_kana", "TEXT NOT NULL DEFAULT ''"],
   ["settings", "business_kana", "TEXT NOT NULL DEFAULT ''"],
+  // 本則課税の個別対応方式：課税仕入の明細の用途区分（taxable 課税対応 / nontaxable 非課税対応 / common 共通対応）と科目の初期値、
+  // 年度ごとの控除の方式（individual 個別対応方式 / lump 一括比例配分方式）
+  ["journal_lines", "purchase_use", "TEXT CHECK (purchase_use IN ('taxable','nontaxable','common'))"],
+  ["accounts", "default_purchase_use", "TEXT CHECK (default_purchase_use IN ('taxable','nontaxable','common'))"],
+  ["tax_years", "deduction", "TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump'))"],
 ];

@@ -9,13 +9,16 @@ import { RETIRED_TRIGGERS } from "./schema";
 import type {
   AccessLogRecord, Account, AccountCategory, Counterparty, User, EBookMode, EntrySnapshot, Evidence, EvidenceAction, EvidenceHistoryRecord, EvidenceKind, EvidenceMeta,
   EvidenceSnapshot, FiscalClosing, HistoryAction, HistoryRecord, JournalEntry, JournalLine,
-  HomeUseRate, MasterHistoryRecord, OpeningBalances, Settings, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
+  HomeUseRate, MasterHistoryRecord, OpeningBalances, PurchaseUse, Settings, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
 } from "../lib/types";
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
 import { closedLabel, closedMonthOf, monthEnd, yearsToAutoClose } from "../lib/closing";
 import { isValidInvoiceNo, normalizeInvoiceNo, type CounterpartyInput } from "../lib/counterparty";
-import { builtinTaxCode, classLabel, isBusinessClass, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText, validateTaxYear } from "../lib/tax";
+import {
+  builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
+  useLabel, validateTaxYear,
+} from "../lib/tax";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
 import { normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
@@ -332,20 +335,25 @@ const saveEtaxInfo_ = async (db: Database, x: EtaxInfo) => {
 //  年度ごとの設定は from_year 以降に効く（次の設定がある年まで引き継ぐ）。年の締めをした年度の設定は変えられない
 // ────────────────────────────────────────────
 export const getTaxYears = (db: Database) =>
-  db.select<TaxYear[]>("SELECT from_year, status, method, business_class, taxable_from FROM tax_years ORDER BY from_year");
+  db.select<TaxYear[]>("SELECT from_year, status, method, business_class, taxable_from, deduction FROM tax_years ORDER BY from_year");
 
 /** year 年の設定を保存する（前の年から引き継いでいた年も、その年の設定として持つ）。変更は履歴に残す（厳密モード） */
 const saveTaxYear_ = async (db: Database, t: TaxYear) => {
-  const row: TaxYear = { ...t, taxable_from: t.status === "exempt" ? "" : t.taxable_from.trim() };
+  const row: TaxYear = { ...t, taxable_from: t.status === "exempt" ? "" : t.taxable_from.trim(), deduction: t.deduction ?? "individual" };
   const err = validateTaxYear(row);
   if (err) throw new Error(err);
   await assertYearOpen(db, row.from_year);
-  const before = taxYearOf(await getTaxYears(db), row.from_year);
+  const years = await getTaxYears(db);
+  if (row.status === "standard") {
+    const d = deductionProblem(years, row.from_year, row.deduction);
+    if (d) throw new Error(d);
+  }
+  const before = taxYearOf(years, row.from_year);
   await db.execute(
-    `INSERT INTO tax_years (from_year, status, method, business_class, taxable_from) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO tax_years (from_year, status, method, business_class, taxable_from, deduction) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT (from_year) DO UPDATE SET status = excluded.status, method = excluded.method,
-       business_class = excluded.business_class, taxable_from = excluded.taxable_from`,
-    [row.from_year, row.status, row.method, row.business_class, row.taxable_from],
+       business_class = excluded.business_class, taxable_from = excluded.taxable_from, deduction = excluded.deduction`,
+    [row.from_year, row.status, row.method, row.business_class, row.taxable_from, row.deduction],
   );
   const [o, n] = [taxYearText(before), taxYearText(row)];
   if (o !== n || before.inherited) {
@@ -491,7 +499,7 @@ const setInputPeriodDays_ = async (db: Database, n: number) => {
 export const getAccounts = (db: Database, year: number) =>
   db.select<Account[]>(
     `SELECT a.id, a.code, ${effectiveName("account", "a")} AS name, a.kana, a.category, a.normal_side,
-            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class
+            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class, a.default_purchase_use
        FROM accounts a ORDER BY a.code`,
     [year],
   );
@@ -538,6 +546,17 @@ const setAccountBusinessClass_ = async (db: Database, id: number, cls: number | 
   await db.execute("UPDATE accounts SET default_business_class = ? WHERE id = ?", [cls, id]);
   const text = (c: number | null) => `事業区分の初期値 ${c ? classLabel(c) : "主な事業区分"}`;
   await logMaster(db, { target_type: "account", target_id: id, action: "change", fiscal_year: year, label: before.name, old_value: text(before.default_business_class), new_value: text(cls) });
+};
+
+/** 科目の用途区分（本則課税の個別対応方式）の初期値を変える（null = 共通対応）。今までの仕訳の用途区分は変わらない */
+const setAccountPurchaseUse_ = async (db: Database, id: number, use: PurchaseUse | null) => {
+  if (use !== null && !isPurchaseUse(use)) throw new Error("用途区分は課税対応・共通対応・非課税対応から選んでください");
+  const year = await currentYear(db);
+  const before = (await getAccounts(db, year)).find((a) => a.id === id);
+  if (!before || before.default_purchase_use === use) return;
+  await db.execute("UPDATE accounts SET default_purchase_use = ? WHERE id = ?", [use, id]);
+  const text = (u: PurchaseUse | null) => `用途区分の初期値 ${useLabel(u ?? "common")}`;
+  await logMaster(db, { target_type: "account", target_id: id, action: "change", fiscal_year: year, label: before.name, old_value: text(before.default_purchase_use), new_value: text(use) });
 };
 
 /** 科目の使用件数（仕訳・期首残高・家事按分の設定・固定資産台帳） */
@@ -942,7 +961,7 @@ const saveOpening_ = async (db: Database, year: number, bySub: SubOpeningBalance
 export const getLines = (db: Database, from: string, to: string, includeDeleted = false) =>
   db.select<FlatLine[]>(
     `SELECT l.entry_id, e.date, e.description, e.is_deleted, e.revision, e.counterparty_id, e.is_adjustment, l.row_no, l.side,
-            l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code, l.invoice_kind, l.business_class,
+            l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code, l.invoice_kind, l.business_class, l.purchase_use,
             COALESCE((SELECT h.recorded_at FROM entry_history h WHERE h.entry_id = e.id AND h.action = 'create'), e.created_at) AS created_at
        FROM journal_lines l
        JOIN journal_entries e ON e.id = l.entry_id
@@ -961,7 +980,7 @@ export const getEntry = async (db: Database, id: number): Promise<JournalEntry |
   );
   if (e.length === 0) return null;
   const lines = await db.select<JournalLine[]>(
-    `SELECT id, entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class
+    `SELECT id, entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use
        FROM journal_lines WHERE entry_id = ? ORDER BY row_no, CASE side WHEN 'debit' THEN 0 ELSE 1 END`,
     [id],
   );
@@ -970,12 +989,14 @@ export const getEntry = async (db: Database, id: number): Promise<JournalEntry |
 
 const insertLines = async (db: Database, entryId: number, lines: JournalLine[]) => {
   // 1文でまとめて INSERT（途中で失敗しても半端な明細が残らない）
-  const placeholders = lines.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+  const placeholders = lines.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
   const params = lines.flatMap((l) => [
     entryId, l.row_no, l.side, l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code ?? null, l.invoice_kind ?? null, l.business_class ?? null,
+    l.purchase_use ?? null,
   ]);
   await db.execute(
-    `INSERT INTO journal_lines (entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class) VALUES ${placeholders}`,
+    `INSERT INTO journal_lines (entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use)
+     VALUES ${placeholders}`,
     params,
   );
 };
@@ -984,6 +1005,7 @@ const insertLines = async (db: Database, entryId: number, lines: JournalLine[]) 
  * 保存する明細の税区分をそろえる（lib/tax.ts の resolveLineTax）。
  * 課税事業者の期間なら、入っていない税区分を科目の初期値で、インボイス区分を取引先の初期値で埋める。免税事業者の期間なら外す
  * 簡易課税の年の課税売上には事業区分を記録する（明細 → 科目の初期値 → 主な事業区分）。stampMain = false なら「主な事業区分」は入れない（CSV 取り込み：区分の無い売上は不明のまま）
+ * 本則課税の年の課税仕入には用途区分を記録する（明細 → 科目の初期値 → 共通対応）。stampMain = false なら共通対応は入れない（分からないまま）
  */
 const withTax = async (db: Database, date: string, lines: JournalLine[], counterpartyId: number | null, stampMain = true) => {
   const years = await getTaxYears(db);
@@ -992,7 +1014,11 @@ const withTax = async (db: Database, date: string, lines: JournalLine[], counter
   const accounts = new Map((await getAccounts(db, Number(date.slice(0, 4)))).map((a) => [a.id, a]));
   const cp = counterpartyId ? (await getCounterparties(db)).find((c) => c.id === counterpartyId) : null;
   const ty = taxYearOf(years, Number(date.slice(0, 4)));
-  return resolveLineTax(lines, true, (id) => accounts.get(id), cp, stampMain && ty.status === "simplified" ? ty.business_class : null);
+  return resolveLineTax(
+    lines, true, (id) => accounts.get(id), cp,
+    stampMain && ty.status === "simplified" ? ty.business_class : null,
+    stampMain && ty.status === "standard" ? "common" : null,
+  );
 };
 
 const descriptionOf = (lines: JournalLine[]) => lines.find((l) => l.memo)?.memo ?? "";
@@ -1021,6 +1047,7 @@ const makeSnapshot = async (
       ...(l.tax_code ? { tax: l.tax_code } : {}),
       ...(l.invoice_kind ? { invoice: l.invoice_kind } : {}),
       ...(l.business_class ? { cls: l.business_class } : {}),
+      ...(l.purchase_use ? { use: l.purchase_use } : {}),
     })),
   };
 };
@@ -1129,15 +1156,18 @@ const deleteEntry_ = async (db: Database, id: number, reason = "") => {
 
 /**
  * 税区分が入っていない仕訳（課税事業者の期間の、削除済みでない仕訳）の伝票番号。簡易課税の年は、事業区分の無い課税売上がある仕訳も。
+ * 本則課税の年は、用途区分の無い課税仕入がある仕訳も。
  * 免税事業者から課税事業者に変えた年、本則課税から簡易課税に変えた年、消費税に対応する前に入れた仕訳を、あとから埋めるときに使う
  */
 export const untaxedEntryIds = async (db: Database, year: number) => {
   const rows = await getTaxYears(db);
-  const simplified = taxYearOf(rows, year).status === "simplified";
+  const status = taxYearOf(rows, year).status;
   const r = await db.select<{ id: number; date: string }[]>(
     `SELECT DISTINCT e.id, e.date FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id
       WHERE e.is_deleted = 0 AND e.date BETWEEN ? AND ?
-        AND (l.tax_code IS NULL ${simplified ? "OR (l.tax_code IN ('sales10','sales8') AND l.business_class IS NULL)" : ""})
+        AND (l.tax_code IS NULL
+             ${status === "simplified" ? "OR (l.tax_code IN ('sales10','sales8') AND l.business_class IS NULL)" : ""}
+             ${status === "standard" ? "OR (l.tax_code IN ('purchase10','purchase8') AND l.purchase_use IS NULL)" : ""})
       ORDER BY e.date, e.id`,
     [yearStart(year), yearEnd(year)],
   );
@@ -1721,7 +1751,7 @@ const currentState = async (db: Database, key: string): Promise<string> => {
     );
     if (!e[0]) return "null";
     const lines = await db.select<Parameters<typeof entryState>[1]>(
-      "SELECT row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class FROM journal_lines WHERE entry_id = ?", [id],
+      "SELECT row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use FROM journal_lines WHERE entry_id = ?", [id],
     );
     return entryState(e[0], lines);
   }
@@ -2135,6 +2165,7 @@ export const createAccount = inTx(createAccount_, (d) => `勘定科目「${d.nam
 export const updateAccount = inTx(updateAccount_, (id) => `勘定科目 #${id} の変更`, { perm: "master" });
 export const deleteAccount = inTx(deleteAccount_, (id) => `勘定科目 #${id} の削除`, { perm: "master" });
 export const setAccountBusinessClass = inTx(setAccountBusinessClass_, (id) => `勘定科目 #${id} の事業区分の初期値`, { perm: "master" });
+export const setAccountPurchaseUse = inTx(setAccountPurchaseUse_, (id) => `勘定科目 #${id} の用途区分の初期値`, { perm: "master" });
 export const setAccountTaxCode = inTx(setAccountTaxCode_, (id) => `勘定科目 #${id} の税区分の初期値`, { perm: "master" });
 export const createSub = inTx(createSub_, (_a, name) => `補助科目「${name}」の追加`, { perm: "master" });
 export const renameSub = inTx(renameSub_, (id) => `補助科目 #${id} の名前変更`, { perm: "master" });

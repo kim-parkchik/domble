@@ -28,6 +28,8 @@ export interface Account {
   default_tax_code: TaxCode | null;
   /** 簡易課税の事業区分の初期値（1〜6。null = 年度の「主な事業区分」） */
   default_business_class: number | null;
+  /** 課税仕入の用途区分の初期値（本則課税の個別対応方式。null = 共通対応） */
+  default_purchase_use: PurchaseUse | null;
 }
 
 /** 補助科目（例：普通預金 → ○○銀行、売掛金 → 取引先） */
@@ -55,6 +57,8 @@ export interface JournalLine {
   invoice_kind?: InvoiceKind | null;
   /** 簡易課税の事業区分（1〜6。課税売上の明細だけ。null = 年度の「主な事業区分」） */
   business_class?: number | null;
+  /** 課税仕入の用途区分（本則課税の個別対応方式。課税仕入の明細だけ。null = 分からない＝共通対応として計算） */
+  purchase_use?: PurchaseUse | null;
 }
 
 export interface JournalEntry {
@@ -87,8 +91,9 @@ export interface SnapshotLine {
   /** 税区分・インボイス区分（入っているときだけ。消費税に対応する前の履歴には無い） */
   tax?: TaxCode;
   invoice?: InvoiceKind;
-  /** 事業区分（入っているときだけ） */
+  /** 事業区分・用途区分（入っているときだけ） */
   cls?: number;
+  use?: PurchaseUse;
 }
 
 /** 履歴に残す仕訳の写し。科目名は記録時点の名前で保存する */
@@ -130,6 +135,9 @@ export interface VoucherRow {
   /** 事業区分（課税売上だけ）。null = 科目の初期値・年度の「主な事業区分」 */
   debitClass?: number | null;
   creditClass?: number | null;
+  /** 用途区分（課税仕入だけ）。null = 科目の初期値・共通対応 */
+  debitUse?: PurchaseUse | null;
+  creditUse?: PurchaseUse | null;
 }
 
 export type FilingType = "blue65" | "blue55" | "blue10" | "white";
@@ -137,6 +145,10 @@ export type FilingType = "blue65" | "blue55" | "blue10" | "white";
 export type TaxStatus = "exempt" | "standard" | "simplified" | "twenty" | "thirty";
 /** 経理方式：税込・税抜 */
 export type TaxMethod = "inclusive" | "exclusive";
+/** 課税仕入の用途区分：課税売上にだけ要するもの・非課税売上にだけ要するもの・共通して要するもの */
+export type PurchaseUse = "taxable" | "nontaxable" | "common";
+/** 本則課税で課税売上割合が 95% 未満のときの控除の方式：個別対応方式・一括比例配分方式 */
+export type DeductionMethod = "individual" | "lump";
 /** 明細の税区分（定義は constants/tax.ts の TAX_CODES） */
 export type TaxCode =
   | "none" | "sales10" | "sales8" | "export" | "sales_nontax"
@@ -153,6 +165,8 @@ export interface TaxYear {
   method: TaxMethod;
   /** 簡易課税の主な事業区分（1〜6） */
   business_class: number;
+  /** 本則課税で課税売上割合が 95% 未満のときの控除の方式 */
+  deduction: DeductionMethod;
   /** 年の途中から課税事業者になった日（YYYY-MM-DD。空 = その年の初めから） */
   taxable_from: string;
 }

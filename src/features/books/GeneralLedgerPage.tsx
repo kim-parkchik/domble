@@ -9,7 +9,7 @@ import { MonthRange } from "../../components/MonthRange";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { buildLedger, closingBalances, monthEnd, monthStart } from "../../lib/accounting";
 import { shortDate, yen } from "../../lib/format";
-import { displayClass, taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { displayClass, displayUse, taxLongLabel, taxShortLabel } from "../../lib/tax";
 import { CATEGORY_LABEL, isBalanceSheet } from "../../constants/accounts";
 import { subKey, type AccountCategory } from "../../lib/types";
 
@@ -127,7 +127,9 @@ export const GeneralLedgerPage = () => {
                   <td colSpan={4}>{from === 1 ? "前期より繰越" : "前月より繰越"}</td>
                   <td className="num">{yen(carried)}</td>
                 </tr>
-                {rows.map((r, i) => (
+                {rows.map((r, i) => {
+                  const lt = { date: r.date, tax_code: r.taxCode, business_class: r.businessClass, purchase_use: r.purchaseUse };
+                  return (
                   <tr key={`${r.entry_id}-${i}`} className="clickable" onClick={() => setEditing(r.entry_id)}>
                     <td>{shortDate(r.date)}</td>
                     <td>{r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter}</td>
@@ -135,8 +137,8 @@ export const GeneralLedgerPage = () => {
                       {sub === undefined && r.subId && <span className="sub-tag">{subMap.get(r.subId)?.name}</span>}
                       {r.memo}
                       {r.taxCode && r.taxCode !== "none" && (
-                        <span className="tax-tag" title={taxLongLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, { date: r.date, tax_code: r.taxCode, business_class: r.businessClass }))}>
-                          {taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, { date: r.date, tax_code: r.taxCode, business_class: r.businessClass }))}
+                        <span className="tax-tag" title={taxLongLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, lt), displayUse(taxYears, lt))}>
+                          {taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, lt), displayUse(taxYears, lt))}
                         </span>
                       )}
                     </td>
@@ -144,7 +146,8 @@ export const GeneralLedgerPage = () => {
                     <td className="num">{yen(r.credit, { blankZero: true })}</td>
                     <td className={`num${r.balance < 0 ? " negative" : ""}`}>{yen(r.balance)}</td>
                   </tr>
-                ))}
+                  );
+                })}
                 {rows.length === 0 && (
                   <tr className="empty-row"><td colSpan={6}>この期間の動きはありません。</td></tr>
                 )}

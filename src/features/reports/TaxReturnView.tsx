@@ -63,11 +63,13 @@ export const TaxReturnView = () => {
   // 簡易課税の事業区分は、明細に記録した区分（登録したときに 明細 → 科目の初期値 → 主な事業区分 で決まる。無ければ不明）
   const base = useMemo(() => buildTaxBase(lines, taxYears), [lines, taxYears]);
   const baseSales = useBaseSales();
-  const options = { businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null };
+  const options = {
+    businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null, deduction: taxYear.deduction,
+  };
   const results = useMemo(
     () => available.map((m) => ({ m, r: computeReturn(m, base, options), problem: baseSales ? methodProblem(m, baseSales) : null })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [base, interim, taxYear.business_class, year, baseSales],
+    [base, interim, taxYear.business_class, taxYear.deduction, year, baseSales],
   );
   // 2割・3割特例の第一表は、簡易課税の届出があれば簡易課税用、無ければ一般用
   const shown = method === "twenty" ? twentyReturn(base, options, firstKind)
@@ -181,6 +183,15 @@ export const TaxReturnView = () => {
             </span>
           )}
         </div>
+        {shown.deduction && (
+          <div className="tax-xtx print-skip">
+            控除する課税仕入れ等の税額：個別対応方式 <b>{yen(shown.deduction.amounts.individual)}円</b>・一括比例配分方式 <b>{yen(shown.deduction.amounts.lump)}円</b>
+            {shown.deduction.amounts.individual !== shown.deduction.amounts.lump && (
+              <>（{shown.deduction.amounts.individual > shown.deduction.amounts.lump ? "個別対応方式" : "一括比例配分方式"}が有利）</>
+            )}。
+            今は{shown.deduction.method === "individual" ? "個別対応方式" : "一括比例配分方式"}で計算しています（事業者設定の「消費税」の控除の方式。一括比例配分方式は2年続けて使う決まり）。
+          </div>
+        )}
         {shown.notes.length > 0 && (
           <ul className="tax-return-notes">{shown.notes.map((n) => <li key={n}>{n}</li>)}</ul>
         )}

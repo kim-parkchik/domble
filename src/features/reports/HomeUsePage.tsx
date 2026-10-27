@@ -97,13 +97,14 @@ export const HomeUsePage = () => {
     );
     if (!ok) return;
     const memo = `家事按分（年末振替）`;
-    // 家事分は、その科目の税区分・インボイス区分ごとに分けて戻す（消費税の仕入の返還になる）
+    // 家事分は、その科目の税区分・インボイス区分・用途区分ごとに分けて戻す（消費税の仕入の返還になる）
     const exclude = [runId, depRunId].filter((x): x is number => x !== null);
     const credits = targets.flatMap((r) =>
       privateTaxSplit(r.account, yearLines, r.private, exclude).map((p) => ({
         side: "credit" as const, account_id: r.account.id, sub_account_id: null, amount: p.amount,
         memo: `${memo} ${r.account.name} 家事分 ${100 - r.rate.rate}%`,
         ...(p.tax_code ? { tax_code: p.tax_code } : {}), ...(p.invoice_kind ? { invoice_kind: p.invoice_kind } : {}),
+        ...(p.purchase_use ? { purchase_use: p.purchase_use } : {}),
       })),
     );
     const lines: JournalLine[] = [

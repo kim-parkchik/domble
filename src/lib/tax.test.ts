@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Account, JournalLine, TaxYear } from "./types";
 import {
-  defaultBusinessClass, effectiveBusinessClass, parseBusinessClass,
+  defaultBusinessClass, effectiveBusinessClass, parseBusinessClass, deductionProblem, displayUse, effectivePurchaseUse, parsePurchaseUse,
   builtinTaxCode, defaultTaxCode, invoiceCsvLabel, parseInvoiceKind, parseTaxCode, resolveLineTax, statusProblem, taxActiveOn,
   taxLongLabel, taxShortLabel, taxYearOf, transitionalRate, validateTaxYear,
 } from "./tax";
@@ -143,5 +143,43 @@ describe("簡易課税の事業区分", () => {
     expect(["5", "5種", "第5種", "第五種", "第５種事業", ""].map(parseBusinessClass)).toEqual([5, 5, 5, 5, 5, null]);
     expect(parseBusinessClass("7")).toBeUndefined();
     expect(parseBusinessClass("サービス")).toBeUndefined();
+  });
+});
+
+describe("本則課税の用途区分", () => {
+  test("課税仕入の明細だけ持つ。明細 → 科目の初期値 → mainUse（本則課税の年の共通対応。null なら記録しない）", () => {
+    const accounts = new Map([[1, acc(1, "602", "expense")], [2, { ...acc(2, "502", "cogs"), default_purchase_use: "taxable" as const }], [3, acc(3, "401", "revenue")]]);
+    const line = (account_id: number, side: "debit" | "credit", extra: Partial<JournalLine> = {}): JournalLine =>
+      ({ row_no: 1, side, account_id, sub_account_id: null, amount: 1100, memo: "", ...extra });
+    const lines = [line(1, "debit"), line(1, "debit", { purchase_use: "nontaxable" }), line(2, "debit"), line(3, "credit", { purchase_use: "taxable" })];
+    expect(resolveLineTax(lines, true, (id) => accounts.get(id), null, null, "common").map((l) => l.purchase_use)).toEqual(["common", "nontaxable", "taxable", null]);
+    expect(resolveLineTax(lines, true, (id) => accounts.get(id), null).map((l) => l.purchase_use)).toEqual([null, "nontaxable", "taxable", null]);
+    expect(resolveLineTax(lines, false, () => undefined, null).map((l) => l.purchase_use)).toEqual([null, null, null, null]);
+    expect(effectivePurchaseUse({ purchase_use: null }, accounts.get(1))).toBe("common");
+    expect(effectivePurchaseUse({ purchase_use: null }, accounts.get(2))).toBe("taxable");
+  });
+
+  test("表示（共通対応は出さない）と CSV の読み方。本則課税の年だけ表示する", () => {
+    expect(taxShortLabel("purchase10", "qualified", "2026-05-01", null, "taxable")).toBe("課仕10% 課対");
+    expect(taxShortLabel("purchase10", "transitional", "2026-05-01", null, "common")).toBe("課仕10% 経過80%");
+    expect(taxShortLabel("purchase10", "transitional", "2026-05-01", null, "common", true)).toBe("課仕10% 経過80% 共通");
+    expect(taxLongLabel("purchase10", "transitional", "2026-05-01", null, "nontaxable")).toBe("課税仕入 10%（80%控除対象・非課税対応）");
+    expect(taxLongLabel("purchase10", "qualified", "2026-05-01")).toBe("課税仕入 10%");
+    expect(["課税対応", "課対", "共通対応", "非課税対応", "taxable", ""].map(parsePurchaseUse)).toEqual(["taxable", "taxable", "common", "nontaxable", "taxable", null]);
+    expect(parsePurchaseUse("課税")).toBeUndefined();
+    const l = { date: "2026-05-01", tax_code: "purchase10" as const, purchase_use: "taxable" as const };
+    expect(displayUse([ty(2026, "standard")], l)).toBe("taxable");
+    expect(displayUse([ty(2026, "twenty")], l)).toBeNull();
+  });
+
+  test("一括比例配分方式は2年続けて使う：1年目の翌年は個別対応方式にできない", () => {
+    const lump = (y: number): TaxYear => ({ ...ty(y, "standard"), deduction: "lump" });
+    const ind = (y: number): TaxYear => ({ ...ty(y, "standard"), deduction: "individual" });
+    expect(deductionProblem([lump(2025)], 2026, "individual")).toMatch(/2025年に一括比例配分方式/);
+    expect(deductionProblem([lump(2025)], 2026, "lump")).toBeNull();
+    expect(deductionProblem([lump(2025)], 2027, "individual")).toBeNull(); // 2025・2026（引き継ぎ）の2年
+    expect(deductionProblem([ind(2024), lump(2026)], 2027, "individual")).toMatch(/2026年/);
+    expect(deductionProblem([{ ...lump(2025), status: "simplified" }], 2026, "individual")).toBeNull();
+    expect(deductionProblem([], 2026, "individual")).toBeNull();
   });
 });

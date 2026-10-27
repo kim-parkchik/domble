@@ -5,7 +5,7 @@
  * 金額の符号ルール:
  *   「残高」は常に科目の正常残高側（資産・費用なら借方、負債・資本・収益なら貸方）をプラスで表す。
  */
-import type { Account, AccountCategory, InvoiceKind, JournalLine, OpeningBalances, Side, SubOpeningBalances, TaxCode, VoucherRow } from "./types";
+import type { Account, AccountCategory, InvoiceKind, JournalLine, OpeningBalances, PurchaseUse, Side, SubOpeningBalances, TaxCode, VoucherRow } from "./types";
 import { subKey } from "./types";
 import { CODE } from "../constants/accounts";
 
@@ -32,6 +32,7 @@ export interface FlatLine {
   tax_code?: TaxCode | null;
   invoice_kind?: InvoiceKind | null;
   business_class?: number | null;
+  purchase_use?: PurchaseUse | null;
 }
 
 export type AccountMap = Map<number, Account>;
@@ -262,6 +263,7 @@ export interface LedgerRow {
   taxCode: TaxCode | null;
   invoiceKind: InvoiceKind | null;
   businessClass: number | null;
+  purchaseUse: PurchaseUse | null;
 }
 
 /** 指定科目の元帳（残高推移つき）。lines は会計期間内のものを渡す */
@@ -306,6 +308,7 @@ export const buildLedger = (
       taxCode: l.tax_code ?? null,
       invoiceKind: l.invoice_kind ?? null,
       businessClass: l.business_class ?? null,
+      purchaseUse: l.purchase_use ?? null,
     };
   });
 };
@@ -366,6 +369,8 @@ export const emptyRow = (): VoucherRow => ({
   creditInvoice: null,
   debitClass: null,
   creditClass: null,
+  debitUse: null,
+  creditUse: null,
 });
 
 const isBlankRow = (r: VoucherRow) =>
@@ -405,15 +410,16 @@ export const rowsToLines = (rows: VoucherRow[]): JournalLine[] => {
     rowNo++;
     const memo = r.memo.trim();
     // 税区分は入れたときだけ持たせる（null は保存のときに科目・取引先の初期値で埋める）
-    const tax = (code?: TaxCode | null, invoice?: InvoiceKind | null, cls?: number | null) => ({
+    const tax = (code?: TaxCode | null, invoice?: InvoiceKind | null, cls?: number | null, use?: PurchaseUse | null) => ({
       ...(code ? { tax_code: code } : {}),
       ...(invoice ? { invoice_kind: invoice } : {}),
       ...(cls ? { business_class: cls } : {}),
+      ...(use ? { purchase_use: use } : {}),
     });
     if (r.debitAccountId && r.debitAmount)
-      lines.push({ row_no: rowNo, side: "debit", account_id: r.debitAccountId, sub_account_id: r.debitSubId, amount: r.debitAmount, memo, ...tax(r.debitTax, r.debitInvoice, r.debitClass) });
+      lines.push({ row_no: rowNo, side: "debit", account_id: r.debitAccountId, sub_account_id: r.debitSubId, amount: r.debitAmount, memo, ...tax(r.debitTax, r.debitInvoice, r.debitClass, r.debitUse) });
     if (r.creditAccountId && r.creditAmount)
-      lines.push({ row_no: rowNo, side: "credit", account_id: r.creditAccountId, sub_account_id: r.creditSubId, amount: r.creditAmount, memo, ...tax(r.creditTax, r.creditInvoice, r.creditClass) });
+      lines.push({ row_no: rowNo, side: "credit", account_id: r.creditAccountId, sub_account_id: r.creditSubId, amount: r.creditAmount, memo, ...tax(r.creditTax, r.creditInvoice, r.creditClass, r.creditUse) });
   }
   return lines;
 };
@@ -429,6 +435,7 @@ export const linesToRows = (lines: JournalLine[]): VoucherRow[] => {
       r.debitTax = l.tax_code ?? null;
       r.debitInvoice = l.invoice_kind ?? null;
       r.debitClass = l.business_class ?? null;
+      r.debitUse = l.purchase_use ?? null;
     } else {
       r.creditAccountId = l.account_id;
       r.creditSubId = l.sub_account_id ?? null;
@@ -436,6 +443,7 @@ export const linesToRows = (lines: JournalLine[]): VoucherRow[] => {
       r.creditTax = l.tax_code ?? null;
       r.creditInvoice = l.invoice_kind ?? null;
       r.creditClass = l.business_class ?? null;
+      r.creditUse = l.purchase_use ?? null;
     }
     if (!r.memo && l.memo) r.memo = l.memo;
     byRow.set(l.row_no, r);

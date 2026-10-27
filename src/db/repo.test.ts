@@ -1211,3 +1211,50 @@ describe("事業区分の分からない売上（repo）", () => {
     expect(await repo.untaxedEntryIds(db, 2026)).toEqual([]);
   });
 });
+
+describe("本則課税の用途区分・控除の方式（repo）", () => {
+  test("登録のときに 明細 → 科目の初期値 → 共通対応 で記録し、履歴の写しと照合に入る。CSV 取り込みでは共通対応を入れず、一括設定で埋まる", async () => {
+    const { db, raw } = strict;
+    await repo.initChain(db);
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    await repo.saveTaxYear(db, { from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" });
+    await repo.setAccountPurchaseUse(db, id("仕入高"), "taxable");
+    expect((await repo.getAccounts(db, 2026)).find((a) => a.id === id("仕入高"))!.default_purchase_use).toBe("taxable");
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ old_value: "用途区分の初期値 共通対応", new_value: "用途区分の初期値 課税対応" });
+    const pay = (acc: string, extra: Partial<JournalLine> = {}): JournalLine[] => [
+      { row_no: 1, side: "debit", account_id: id(acc), sub_account_id: null, amount: 1100, memo: "", ...extra },
+      { row_no: 1, side: "credit", account_id: id("普通預金"), sub_account_id: null, amount: 1100, memo: "" },
+    ];
+    const e1 = await repo.createEntry(db, "2026-05-01", pay("消耗品費", { purchase_use: "nontaxable" }));
+    const e2 = await repo.createEntry(db, "2026-05-02", pay("仕入高"));
+    const e3 = await repo.createEntry(db, "2026-05-03", pay("通信費"));
+    const useOf = async (e: number) => (await repo.getEntry(db, e))!.lines.map((l) => l.purchase_use ?? null);
+    expect(await useOf(e1)).toEqual(["nontaxable", null]);
+    expect(await useOf(e2)).toEqual(["taxable", null]);
+    expect(await useOf(e3)).toEqual(["common", null]);
+    expect((await repo.getHistory(db, e1))[0].snapshot.lines.map((l) => l.use ?? null)).toEqual(["nontaxable", null]);
+    expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
+    raw.run("UPDATE journal_lines SET purchase_use = 'taxable' WHERE entry_id = ? AND purchase_use = 'nontaxable'", [e1]);
+    expect((await repo.verifyIntegrity(db)).issues.map((i) => i.message).join()).toMatch(new RegExp(`伝票 No.${e1}`));
+    raw.run("UPDATE journal_lines SET purchase_use = 'nontaxable' WHERE entry_id = ? AND purchase_use = 'taxable'", [e1]);
+
+    const [imported] = await repo.importEntries(db, [{ date: "2026-06-01", lines: pay("通信費"), counterpartyId: null }], "test.csv");
+    expect(await useOf(imported)).toEqual([null, null]);
+    expect((await repo.untaxedEntryIds(db, 2026)).map((x) => x.id)).toEqual([imported]);
+    expect(await repo.fillTaxCodes(db, 2026)).toEqual({ updated: 1, closed: 0 });
+    expect(await useOf(imported)).toEqual(["common", null]);
+    await expect(repo.setAccountPurchaseUse(db, id("通信費"), "x" as never)).rejects.toThrow(/用途区分/);
+  });
+
+  test("一括比例配分方式の翌年は個別対応方式にできない（2年続けて使う決まり）。変更は履歴に残る", async () => {
+    const { db } = strict;
+    await repo.saveTaxYear(db, { from_year: 2025, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "lump" });
+    await expect(repo.saveTaxYear(db, { from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" }))
+      .rejects.toThrow(/2025年に一括比例配分方式にしたため/);
+    await repo.saveTaxYear(db, { from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "lump" });
+    expect((await repo.getTaxYears(db)).map((t) => t.deduction)).toEqual(["lump", "lump"]);
+    expect((await repo.getMasterHistory(db))[0].new_value).toMatch(/一括比例配分方式/);
+    await repo.saveTaxYear(db, { from_year: 2027, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" });
+  });
+});

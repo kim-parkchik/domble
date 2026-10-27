@@ -3,7 +3,7 @@
  *
  * 手続（令和8年分。手続の版 26.0.0）
  *  - 第一表が一般用：RSH0010（消費税及び地方消費税申告(一般・個人)）
- *      本則課税：SHA010（第一表・第二表）・SHB017（付表1-3）・SHB033（付表2-3）
+ *      本則課税：SHA010（第一表・第二表）・SHB017（付表1-3）・SHB033（付表2-3。個別対応方式なら ⑲⑳㉑、一括比例配分方式なら ㉒）
  *      2割特例：SHA010・SHB070（付表6）。第一表の「控除税額の計算方法」を 8（2割特例）にする
  *  - 第一表が簡易課税用：RSH0030（消費税及び地方消費税申告(簡易課税・個人)）
  *      簡易課税：SHA020（第一表・第二表）・SHB047（付表4-3）・SHB067（付表5-3）
@@ -77,7 +77,7 @@ const FUHYO13: Table = {
 const FUHYO23: Table = {
   "①": abc("DTB", 20), "②": "DTB00050", "③": "DTB00060", "④": "DTB00070", "⑥": "DTC00020", "⑦": "DTC00030",
   "⑨": abc("DTE", 20), "⑩": abc("DTE", 60), "⑪": abc("DTE", 280), "⑫": abc("DTE", 320), "⑰": abc("DTE", 240),
-  "⑱": abc("DTF", 10), "㉒": abc("DTG", 150), "㉖": abc("DTI", 20), "㉗": abc("DTI", 60), "㉘": abc("DTJ", 10),
+  "⑱": abc("DTF", 10), "⑲": abc("DTG", 30), "⑳": abc("DTG", 70), "㉑": abc("DTG", 110), "㉒": abc("DTG", 150), "㉖": abc("DTI", 20), "㉗": abc("DTI", 60), "㉘": abc("DTJ", 10),
 };
 const FUHYO43: Table = {
   "①-1": abc("DUC", 10), "①": abc("DUB", 10), "②": abc("DUD", 10), "③": abc("DUE", 10), "④": abc("DUF", 20),
@@ -160,7 +160,7 @@ const firstValues = (r: TaxReturn, f: EtaxFiler) => {
   const baseSales = rows.find((x) => x.key === "baseSales")?.c ?? null;
   if (general) {
     // 控除税額の計算方法：1 個別対応方式・2 一括比例配分方式・3 全額控除・8 2割特例
-    v.AAM00020 = { kubun: r.method === "twenty" ? 8 : rowOf(r, "2-3", "⑱") ? 3 : 2 };
+    v.AAM00020 = { kubun: r.method === "twenty" ? 8 : rowOf(r, "2-3", "⑱") ? 3 : rowOf(r, "2-3", "㉑") ? 1 : 2 };
     if (baseSales !== null) v.AAM00030 = Math.floor(baseSales / 1000); // 千円単位
   } else {
     if (r.method === "twenty") v.ABY00000 = { kubun: 1 };

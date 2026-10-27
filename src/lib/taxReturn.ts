@@ -9,9 +9,10 @@
  *  - 第二表・第一表は付表から転記する
  * 端数：計算の途中の 1 円未満はその都度切り捨て、課税標準額は千円未満切り捨て、差引税額・譲渡割額は百円未満切り捨て
  * 対象は課税事業者の期間の、削除済みでない明細（年の途中から課税事業者になった場合はその日から）
- * 個別対応方式・特定課税仕入れ・課税貨物・棚卸資産の調整・旧税率には対応していない
+ * 本則課税で課税売上割合が 95% 未満（または課税売上高が5億円超）なら、個別対応方式（⑲⑳㉑。課税仕入の用途区分ごと）か一括比例配分方式（㉒）
+ * 課税売上割合に準ずる割合・特定課税仕入れ・課税貨物・棚卸資産の調整・調整対象固定資産の調整・旧税率には対応していない
  */
-import type { TaxYear } from "./types";
+import type { DeductionMethod, PurchaseUse, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { isPurchaseCode, taxActiveOn, taxCodeDef, transitionalRate } from "./tax";
 import { BUSINESS_CLASSES } from "../constants/tax";
@@ -35,6 +36,17 @@ export interface TaxBase {
   transitional: { pct: number; purchase: Record<Rate, number>; ret: Record<Rate, number> }[];
   /** 簡易課税の事業区分ごとの課税売上とその返還（1〜6。0 = 区分が分からない売上） */
   byClass: Record<number, { sales: Record<Rate, number>; ret: Record<Rate, number> }>;
+  /** 本則課税の用途区分ごとの課税仕入（インボイスのあるもの・経過措置。区分の無い課税仕入は共通対応） */
+  byUse?: Record<PurchaseUse, PurchaseGroup>;
+  /** 用途区分の無い課税仕入とその返還の額（税込。共通対応として計算したもの） */
+  useUnknown?: number;
+}
+
+/** 課税仕入とその返還（インボイスのあるもの・経過措置の控除できる割合ごと） */
+export interface PurchaseGroup {
+  purchase: Record<Rate, number>;
+  ret: Record<Rate, number>;
+  transitional: { pct: number; purchase: Record<Rate, number>; ret: Record<Rate, number> }[];
 }
 
 const zero = (): Record<Rate, number> => ({ 8: 0, 10: 0 });
@@ -43,9 +55,16 @@ const zero = (): Record<Rate, number> => ({ 8: 0, 10: 0 });
  * @param classOf 課税売上の明細の事業区分（ふつうは明細に記録した区分。null = 分からない）
  */
 export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l: FlatLine) => number | null = (l) => l.business_class ?? null): TaxBase => {
+  const group = (): PurchaseGroup => ({ purchase: zero(), ret: zero(), transitional: [] });
+  const byUse: Record<PurchaseUse, PurchaseGroup> = { taxable: group(), common: group(), nontaxable: group() };
   const b: TaxBase = {
     sales: zero(), salesReturn: zero(), badDebt: zero(), badDebtRecovered: zero(), exportSales: 0, nontaxSales: 0,
-    purchase: zero(), purchaseReturn: zero(), transitional: [], byClass: {},
+    purchase: zero(), purchaseReturn: zero(), transitional: [], byClass: {}, byUse, useUnknown: 0,
+  };
+  const addTransitional = (list: PurchaseGroup["transitional"], pct: number, rate: Rate, dr: boolean, amount: number) => {
+    let t = list.find((x) => x.pct === pct);
+    if (!t) list.push((t = { pct, purchase: zero(), ret: zero() }));
+    (dr ? t.purchase : t.ret)[rate] += amount;
   };
   for (const l of lines) {
     if (l.is_deleted || !l.tax_code || l.tax_code === "none" || !taxActiveOn(taxYears, l.date)) continue;
@@ -64,16 +83,20 @@ export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l
     else if (isPurchaseCode(l.tax_code)) {
       const inv = l.invoice_kind ?? "qualified";
       if (inv === "none") continue;
-      if (inv === "qualified") (dr ? b.purchase : b.purchaseReturn)[rate] += l.amount;
-      else {
+      const u = byUse[l.purchase_use ?? "common"];
+      if (!l.purchase_use) b.useUnknown! += l.amount;
+      if (inv === "qualified") {
+        (dr ? b.purchase : b.purchaseReturn)[rate] += l.amount;
+        (dr ? u.purchase : u.ret)[rate] += l.amount;
+      } else {
         const pct = transitionalRate(l.date);
-        let t = b.transitional.find((x) => x.pct === pct);
-        if (!t) b.transitional.push((t = { pct, purchase: zero(), ret: zero() }));
-        (dr ? t.purchase : t.ret)[rate] += l.amount;
+        addTransitional(b.transitional, pct, rate, dr, l.amount);
+        addTransitional(u.transitional, pct, rate, dr, l.amount);
       }
     }
   }
   b.transitional.sort((x, y) => y.pct - x.pct);
+  for (const u of Object.values(byUse)) u.transitional.sort((x, y) => y.pct - x.pct);
   return b;
 };
 
@@ -130,6 +153,8 @@ export interface TaxReturn {
   /** 消費税及び地方消費税の合計（納付又は還付）税額 ㉖（還付はマイナス） */
   total: number;
   notes: string[];
+  /** 本則課税で課税売上割合が 95% 未満のとき：控除の方式（使ったもの）と、方式ごとの控除する課税仕入れ等の税額（合計） */
+  deduction?: { method: DeductionMethod; amounts: Record<DeductionMethod, number> };
 }
 
 export interface ReturnOptions {
@@ -140,6 +165,8 @@ export interface ReturnOptions {
   interimLocal: number;
   /** 基準期間の課税売上高（分からなければ null。第一表に書く） */
   baseSales?: number | null;
+  /** 本則課税で課税売上割合が 95% 未満のときの控除の方式（既定は個別対応方式） */
+  deduction?: DeductionMethod;
 }
 
 type AB = Record<Rate, number>;
@@ -157,6 +184,10 @@ const salesSide = (b: TaxBase) => {
   const recovered = map((r) => nationalTaxIn(b.badDebtRecovered[r], r));
   return { price, base, tax, ret, bad, recovered };
 };
+
+/** 経過措置の仕入れの税額（控除できる割合ごとに計算して合計。付表2-3 の ⑫） */
+const transitionalTax = (list: PurchaseGroup["transitional"], r: Rate) =>
+  list.reduce((t, x) => t + Math.floor(((nationalTaxIn(x.purchase[r], r) - nationalTaxIn(x.ret[r], r)) * x.pct) / 100), 0);
 
 /** 第一表の納付税額まで（②③④⑤⑥ から） */
 const finish = (c: { tax: number; plus: number; deduct: number; ret: number; bad: number }, o: ReturnOptions) => {
@@ -244,19 +275,32 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
   const pay9 = map((r) => b.purchase[r] - b.purchaseReturn[r]);
   const tax10 = map((r) => nationalTaxIn(b.purchase[r], r) - nationalTaxIn(b.purchaseReturn[r], r));
   const pay11 = map((r) => b.transitional.reduce((t, x) => t + x.purchase[r] - x.ret[r], 0));
-  const tax12 = map((r) => b.transitional.reduce(
-    (t, x) => t + Math.floor(((nationalTaxIn(x.purchase[r], r) - nationalTaxIn(x.ret[r], r)) * x.pct) / 100), 0));
+  const tax12 = map((r) => transitionalTax(b.transitional, r));
   const total17 = map((r) => tax10[r] + tax12[r]);
   const full = r1 + b.exportSales <= 500_000_000 && ratio >= 0.95;
-  const deductible = full ? total17 : map((r) => Math.floor(total17[r] * (r7 > 0 ? r4 / r7 : 1))); // ⑱ または ㉒（一括比例配分方式）
-  if (!full) notes.push("課税売上割合が 95% 未満（または課税売上高が5億円超）のため、一括比例配分方式（㉒）で計算しています。個別対応方式には対応していません");
+  // 個別対応方式：⑲ 課税対応の税額、⑳ 共通対応の税額、㉑ ⑲ ＋ ⑳ × ④／⑦（非課税対応は控除しない）
+  const useTax = (g: PurchaseGroup | undefined) =>
+    map((r) => (g ? nationalTaxIn(g.purchase[r], r) - nationalTaxIn(g.ret[r], r) + transitionalTax(g.transitional, r) : 0));
+  const r19 = useTax(b.byUse?.taxable);
+  const r20 = useTax(b.byUse?.common ?? { purchase: map((r) => b.purchase[r]), ret: map((r) => b.purchaseReturn[r]), transitional: b.transitional });
+  const r21 = map((r) => r19[r] + (r7 > 0 ? mulDiv(r20[r], r4, r7) : r20[r]));
+  const r22 = map((r) => (r7 > 0 ? mulDiv(total17[r], r4, r7) : total17[r])); // 一括比例配分方式：⑰ × ④／⑦
+  const method: DeductionMethod = o.deduction ?? "individual";
+  const deductible = full ? total17 : method === "individual" ? r21 : r22; // ⑱・㉑・㉒
+  const pct2 = (x: number) => (Math.floor(x * 10000) / 100).toFixed(2);
+  if (!full) {
+    notes.push(`課税売上割合が 95% 未満（または課税売上高が5億円超）のため、${method === "individual" ? "個別対応方式（⑲⑳㉑）" : "一括比例配分方式（㉒）"}で計算しています（事業者設定の「消費税」の控除の方式）`);
+    if (method === "individual" && (b.useUnknown ?? 0) !== 0) {
+      notes.push(`用途区分の入っていない課税仕入（税込 ${(b.useUnknown ?? 0).toLocaleString()}円）は、共通対応として計算しています`);
+    }
+  }
   const r26 = map((r) => Math.max(deductible[r], 0));
   const r27 = map((r) => Math.max(-deductible[r], 0));
   const plus3 = map((r) => r27[r] + s.recovered[r]);
   const subtotal7 = map((r) => r26[r] + s.ret[r] + s.bad[r]);
   const c = { tax: sumAB(s.tax), plus: sumAB(plus3), deduct: sumAB(r26), ret: sumAB(s.ret), bad: sumAB(s.bad) };
   const f = finish(c, o);
-  const ratioText = `${(Math.floor(ratio * 10000) / 100).toFixed(2)}%`;
+  const ratioText = `${pct2(ratio)}%`;
   if (b.transitional.length) notes.push(`経過措置の仕入れは、控除できる割合（${b.transitional.map((t) => `${t.pct}%`).join("・")}）ごとに計算して ⑫ に合計しています`);
 
   const fuhyo23: TaxForm = {
@@ -274,9 +318,15 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
       abRow("⑪", "適格請求書発行事業者以外の者から行った課税仕入れに係る経過措置の適用を受ける課税仕入れに係る支払対価の額（税込み）", pay11),
       abRow("⑫", "適格請求書発行事業者以外の者から行った課税仕入れに係る経過措置により課税仕入れに係る消費税額とみなされる額", tax12),
       abRow("⑰", "課税仕入れ等の税額の合計額（⑩＋⑫＋⑭＋⑮±⑯）", total17),
-      full
-        ? abRow("⑱", "課税売上高が5億円以下、かつ、課税売上割合が95%以上の場合（⑰の金額）", total17)
-        : abRow("㉒", "一括比例配分方式により控除する課税仕入れ等の税額（⑰×④／⑦）", deductible),
+      ...(full
+        ? [abRow("⑱", "課税売上高が5億円以下、かつ、課税売上割合が95%以上の場合（⑰の金額）", total17)]
+        : method === "individual"
+          ? [
+            abRow("⑲", "⑰のうち、課税売上げにのみ要するもの", r19, "課税対応"),
+            abRow("⑳", "⑰のうち、課税売上げと非課税売上げに共通して要するもの", r20, "共通対応"),
+            abRow("㉑", "個別対応方式により控除する課税仕入れ等の税額（⑲＋⑳×④／⑦）", r21),
+          ]
+          : [abRow("㉒", "一括比例配分方式により控除する課税仕入れ等の税額（⑰×④／⑦）", r22)]),
       abRow("㉖", "差引・控除対象仕入税額", r26, "付表1-3の④へ"),
       abRow("㉗", "差引・控除過大調整税額", r27, "付表1-3の③へ"),
       abRow("㉘", "貸倒回収に係る消費税額", s.recovered, "付表1-3の③へ"),
@@ -308,6 +358,7 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
   ];
   return {
     method: "standard", firstKind: "一般用",
+    ...(full ? {} : { deduction: { method, amounts: { individual: sumAB(r21), lump: sumAB(r22) } } }),
     forms: [fuhyo23, fuhyo13, secondTable(s, sumAB(s.ret), f.net - f.shortfall, "（一般用）"), firstTable("一般用", sumAB(s.base), c, f, o, extra, null)],
     national: f.national, local: f.local, total: f.total, notes,
   };

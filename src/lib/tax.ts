@@ -6,10 +6,15 @@
  *  - 免税事業者の期間の明細は税区分を持たない（null）
  *  - 簡易課税の事業区分は課税売上の明細ごと。登録するときに、明細で選んだ区分 → 科目の初期値（固定資産の売却は第4種）→ 年度の「主な事業区分」
  *    の順で決めて記録する（あとで「主な事業区分」を変えても、登録済みの売上は変わらない）。区分の無い売上は「不明」として扱う
+ *  - 本則課税の用途区分（課税対応・非課税対応・共通対応）は課税仕入の明細ごと。登録するときに、明細で選んだ区分 → 科目の初期値 → 共通対応
+ *    の順で決めて記録する（本則課税の年）。区分の無い課税仕入は共通対応として計算し、「確認」で知らせる
+ *  - 課税売上割合が 95% 未満のときの控除の方式（個別対応方式・一括比例配分方式）は年度ごと。一括比例配分方式は2年続けて使う決まり
  * 制度は令和8年分に合わせている（2割特例は令和8年分まで、3割特例は令和9年分・令和10年分、経過措置は 80% → 70% …）
  */
-import type { Account, Counterparty, InvoiceKind, JournalLine, Side, TaxCode, TaxStatus, TaxYear } from "./types";
-import { ACCOUNT_TAX_DEFAULTS, BUSINESS_CLASSES, INVOICE_KINDS, TAX_CODES, TAX_METHOD_OPTIONS, TAX_STATUS_OPTIONS } from "../constants/tax";
+import type { Account, Counterparty, DeductionMethod, InvoiceKind, JournalLine, PurchaseUse, Side, TaxCode, TaxStatus, TaxYear } from "./types";
+import {
+  ACCOUNT_TAX_DEFAULTS, BUSINESS_CLASSES, DEDUCTION_METHODS, INVOICE_KINDS, PURCHASE_USES, TAX_CODES, TAX_METHOD_OPTIONS, TAX_STATUS_OPTIONS,
+} from "../constants/tax";
 import { yearStart } from "./accounting";
 
 const CODE_SET = new Set<string>(TAX_CODES.map((t) => t.code));
@@ -22,6 +27,8 @@ export const isPurchaseCode = (code: TaxCode | null | undefined) => code === "pu
 /** 課税売上（簡易課税の事業区分を持つ明細） */
 export const isSalesCode = (code: TaxCode | null | undefined) => code === "sales10" || code === "sales8";
 export const isBusinessClass = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 6;
+export const isPurchaseUse = (v: unknown): v is PurchaseUse => PURCHASE_USES.some((u) => u.value === v);
+export const isDeductionMethod = (v: unknown): v is DeductionMethod => DEDUCTION_METHODS.some((d) => d.value === v);
 
 /**
  * 科目の事業区分の初期値：資産の科目（業務用の固定資産などの売却）は第4種、科目に初期値があればそれ、無ければ null
@@ -34,12 +41,18 @@ export const effectiveBusinessClass = (
   l: { business_class?: number | null }, a: Pick<Account, "category" | "default_business_class"> | undefined, mainClass: number,
 ) => l.business_class ?? (a ? defaultBusinessClass(a) : null) ?? mainClass;
 
+/** 用途区分（明細 → 科目の初期値 → 共通対応）。入力欄の初期表示にも使う */
+export const effectivePurchaseUse = (l: { purchase_use?: PurchaseUse | null }, a: Pick<Account, "default_purchase_use"> | undefined): PurchaseUse =>
+  l.purchase_use ?? a?.default_purchase_use ?? "common";
+
 // ────────────────────────────────────────────
 // 年度ごとの設定
 // ────────────────────────────────────────────
 
 /** 設定が1つも無い年の扱い（免税事業者・税込経理） */
-export const EXEMPT_YEAR = (year: number): TaxYear => ({ from_year: year, status: "exempt", method: "inclusive", business_class: 5, taxable_from: "" });
+export const EXEMPT_YEAR = (year: number): TaxYear => ({
+  from_year: year, status: "exempt", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual",
+});
 
 /** その年に効いている設定（その年以前でいちばん新しいもの）。inherited = 前の年から引き継いだもの */
 export const taxYearOf = (rows: TaxYear[], year: number): TaxYear & { inherited: boolean } => {
@@ -72,6 +85,7 @@ export const validateTaxYear = (t: TaxYear): string | null => {
   if (s) return s;
   if (!TAX_METHOD_OPTIONS.some((o) => o.value === t.method && o.enabled)) return "その経理方式にはまだ対応していません";
   if (!BUSINESS_CLASSES.some((b) => b.value === t.business_class)) return "事業区分は第1種〜第6種から選んでください";
+  if (!isDeductionMethod(t.deduction ?? "individual")) return "控除の方式は個別対応方式か一括比例配分方式から選んでください";
   if (t.taxable_from) {
     if (t.status === "exempt") return "免税事業者のときは「課税事業者になった日」は入れられません";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(t.taxable_from) || !t.taxable_from.startsWith(`${t.from_year}-`)) {
@@ -81,12 +95,28 @@ export const validateTaxYear = (t: TaxYear): string | null => {
   return null;
 };
 
+/**
+ * 個別対応方式を選べるか（選べなければ理由）。一括比例配分方式は2年以上続けて使ってからでないと個別対応方式に変えられないため、
+ * 前の年が本則課税・一括比例配分方式で、その前の年はそうでない（1年しか使っていない）なら選べない
+ */
+export const deductionProblem = (rows: TaxYear[], year: number, deduction: DeductionMethod): string | null => {
+  if (deduction !== "individual") return null;
+  const lump = (y: number) => {
+    const t = taxYearOf(rows, y);
+    return t.status === "standard" && (t.deduction ?? "individual") === "lump";
+  };
+  return lump(year - 1) && !lump(year - 2)
+    ? `${year - 1}年に一括比例配分方式にしたため、${year}年は個別対応方式にできません（一括比例配分方式は2年続けて使う決まり）`
+    : null;
+};
+
 /** 履歴に残す説明（例：課税事業者（2割特例）・税込経理・2026-10-01 から） */
-export const taxYearText = (t: Pick<TaxYear, "status" | "method" | "business_class" | "taxable_from">) =>
+export const taxYearText = (t: Pick<TaxYear, "status" | "method" | "business_class" | "taxable_from" | "deduction">) =>
   [
     TAX_STATUS_OPTIONS.find((o) => o.value === t.status)?.label ?? t.status,
     ...(t.status === "exempt" ? [] : [TAX_METHOD_OPTIONS.find((o) => o.value === t.method)?.label ?? t.method]),
     ...(t.status === "simplified" ? [BUSINESS_CLASSES.find((b) => b.value === t.business_class)?.label ?? ""] : []),
+    ...(t.status === "standard" ? [DEDUCTION_METHODS.find((d) => d.value === t.deduction)?.label ?? ""] : []),
     ...(t.taxable_from ? [`${t.taxable_from} から課税事業者`] : []),
   ].join("・");
 
@@ -122,19 +152,23 @@ export const defaultInvoiceKind = (cp: Pick<Counterparty, "not_registered"> | nu
  *  - 税区分が無ければ科目の初期値、課税仕入でインボイス区分が無ければ取引先の初期値
  *  - 課税仕入でない明細のインボイス区分は外す
  *  - 課税売上の事業区分は、入っていなければ科目の初期値（資産の科目は第4種）、無ければ mainClass（簡易課税の年の「主な事業区分」）。課税売上でなければ外す
+ *  - 課税仕入の用途区分は、入っていなければ科目の初期値、無ければ mainUse（本則課税の年の共通対応）。課税仕入でなければ外す
  */
 export const resolveLineTax = <L extends JournalLine>(
   lines: L[], active: boolean, accountOf: (id: number) => Account | undefined, cp: Counterparty | null | undefined,
   /** 簡易課税の年の「主な事業区分」（区分も科目の初期値も無い課税売上に記録する。null なら記録しない＝不明のまま） */
   mainClass: number | null = null,
+  /** 本則課税の年の用途区分の最後の初期値（共通対応。null なら記録しない＝分からないまま） */
+  mainUse: PurchaseUse | null = null,
 ): L[] =>
   lines.map((l) => {
-    if (!active) return { ...l, tax_code: null, invoice_kind: null, business_class: null };
+    if (!active) return { ...l, tax_code: null, invoice_kind: null, business_class: null, purchase_use: null };
     const acc = accountOf(l.account_id);
     const code: TaxCode = l.tax_code && isTaxCode(l.tax_code) ? l.tax_code : acc ? defaultTaxCode(acc, l.side) : "none";
     const invoice = isPurchaseCode(code) ? (l.invoice_kind && isInvoiceKind(l.invoice_kind) ? l.invoice_kind : defaultInvoiceKind(cp)) : null;
     const cls = isSalesCode(code) ? (isBusinessClass(l.business_class) ? l.business_class : (acc ? defaultBusinessClass(acc) : null) ?? mainClass) : null;
-    return { ...l, tax_code: code, invoice_kind: invoice, business_class: cls };
+    const use = isPurchaseCode(code) ? (isPurchaseUse(l.purchase_use) ? l.purchase_use : acc?.default_purchase_use ?? mainUse) : null;
+    return { ...l, tax_code: code, invoice_kind: invoice, business_class: cls, purchase_use: use };
   });
 
 // ────────────────────────────────────────────
@@ -167,24 +201,47 @@ export const classLabel = (cls: number) => `第${CLASS_KANJI[cls]}種`;
 export const displayClass = (taxYears: TaxYear[], l: { date: string; tax_code?: TaxCode | null; business_class?: number | null }) =>
   l.business_class ?? (isSalesCode(l.tax_code) && taxYearOf(taxYears, Number(l.date.slice(0, 4))).status === "simplified" ? 0 : null);
 
-/** 表示用の短い名前（例：課仕10% 経過80%、課売10% 5種）。cls = 0 は事業区分が分からない売上 */
-export const taxShortLabel = (code: TaxCode | null | undefined, invoice: InvoiceKind | null | undefined, date: string, cls?: number | null) => {
+/** 用途区分の短い名前（例：課対）・名前（例：課税対応） */
+export const useShort = (u: PurchaseUse) => PURCHASE_USES.find((x) => x.value === u)!.short;
+export const useLabel = (u: PurchaseUse) => PURCHASE_USES.find((x) => x.value === u)!.label.replace(/（.*）/, "");
+
+/**
+ * 表示する用途区分：本則課税の年の課税仕入だけ（記録した区分。無ければ null）。それ以外の年は出さない
+ */
+export const displayUse = (taxYears: TaxYear[], l: { date: string; tax_code?: TaxCode | null; purchase_use?: PurchaseUse | null }) =>
+  isPurchaseCode(l.tax_code) && taxYearOf(taxYears, Number(l.date.slice(0, 4))).status === "standard" ? l.purchase_use ?? null : null;
+
+/**
+ * 表示用の短い名前（例：課仕10% 経過80%、課売10% 5種、課仕10% 課対）。cls = 0 は事業区分が分からない売上
+ * 用途区分は課税対応・非課税対応だけ出す（共通対応は出さない。showCommon で出す）
+ */
+export const taxShortLabel = (
+  code: TaxCode | null | undefined, invoice: InvoiceKind | null | undefined, date: string, cls?: number | null, use?: PurchaseUse | null, showCommon = false,
+) => {
   if (!code) return "";
   if (isSalesCode(code) && cls === 0) return `${taxCodeDef(code).short} 区分不明`;
   if (isSalesCode(code) && cls) return `${taxCodeDef(code).short} ${classShort(cls)}`;
   const base = taxCodeDef(code).short;
-  if (!isPurchaseCode(code) || !invoice || invoice === "qualified") return base;
-  return invoice === "transitional" ? `${base} 経過${transitionalRate(date)}%` : `${base} 控除なし`;
+  if (!isPurchaseCode(code)) return base;
+  const inv = !invoice || invoice === "qualified" ? "" : invoice === "transitional" ? ` 経過${transitionalRate(date)}%` : " 控除なし";
+  const u = use && (use !== "common" || showCommon) ? ` ${useShort(use)}` : "";
+  return `${base}${inv}${u}`;
 };
 
-/** 帳簿に出す名前（例：課税仕入 10%（80%控除対象）、課税売上 10%（第五種）） */
-export const taxLongLabel = (code: TaxCode | null | undefined, invoice: InvoiceKind | null | undefined, date: string, cls?: number | null) => {
+/** 帳簿に出す名前（例：課税仕入 10%（80%控除対象）、課税売上 10%（第五種）、課税仕入 10%（課税対応）） */
+export const taxLongLabel = (
+  code: TaxCode | null | undefined, invoice: InvoiceKind | null | undefined, date: string, cls?: number | null, use?: PurchaseUse | null,
+) => {
   if (!code) return "";
   if (isSalesCode(code) && cls === 0) return `${taxCodeDef(code).label}（事業区分不明）`;
   if (isSalesCode(code) && cls) return `${taxCodeDef(code).label}（${classLabel(cls)}）`;
   const base = taxCodeDef(code).label;
-  if (!isPurchaseCode(code) || !invoice || invoice === "qualified") return base;
-  return invoice === "transitional" ? `${base}（${transitionalRate(date)}%控除対象）` : `${base}（控除しない）`;
+  if (!isPurchaseCode(code)) return base;
+  const notes = [
+    ...(!invoice || invoice === "qualified" ? [] : [invoice === "transitional" ? `${transitionalRate(date)}%控除対象` : "控除しない"]),
+    ...(use ? [useLabel(use)] : []),
+  ];
+  return notes.length ? `${base}（${notes.join("・")}）` : base;
 };
 
 // ────────────────────────────────────────────
@@ -214,6 +271,13 @@ export const parseBusinessClass = (raw: string): number | null | undefined => {
   if (!m) return undefined;
   const d = Number(m[1]);
   return Number.isNaN(d) ? CLASS_KANJI.indexOf(m[1]) : d;
+};
+
+/** CSV の用途区分の文字（課税対応・課対・taxable など）。空なら null、読めなければ undefined */
+export const parsePurchaseUse = (raw: string): PurchaseUse | null | undefined => {
+  const n = norm(raw);
+  if (!n) return null;
+  return PURCHASE_USES.find((u) => norm(useLabel(u.value)) === n || norm(u.short) === n || norm(u.label) === n || u.value === n)?.value;
 };
 
 /** CSV に書くインボイス区分（課税仕入でなければ空） */

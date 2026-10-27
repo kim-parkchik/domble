@@ -17,7 +17,7 @@ import { groupByEntry } from "../../lib/accounting";
 import { shortDate, yen } from "../../lib/format";
 import { toCsv } from "../../lib/csv";
 import { INVOICE_KINDS, TAX_STATUS_OPTIONS, TAX_METHOD_OPTIONS } from "../../constants/tax";
-import { classLabel, taxCodeDef } from "../../lib/tax";
+import { classLabel, taxCodeDef, useLabel } from "../../lib/tax";
 import { buildTaxSummary, taxChecks, TAX_KIND_LABEL, type TaxIssue, type TaxSummaryRow } from "../../lib/taxSummary";
 import { TaxReturnView } from "./TaxReturnView";
 
@@ -53,9 +53,10 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
     ...(exempt ? [] : [TAX_METHOD_OPTIONS.find((o) => o.value === taxYear.method)?.label]),
     ...(taxYear.taxable_from ? [`${shortDate(taxYear.taxable_from)}から課税事業者`] : []),
   ].join("・");
-  const rowKey = (r: TaxSummaryRow) => `${r.kind}|${r.code}|${r.invoice ?? ""}|${r.transitional ?? ""}|${r.businessClass ?? ""}`;
+  const rowKey = (r: TaxSummaryRow) => `${r.kind}|${r.code}|${r.invoice ?? ""}|${r.transitional ?? ""}|${r.businessClass ?? ""}|${r.purchaseUse ?? ""}`;
   const codeLabel = (r: TaxSummaryRow) =>
-    `${taxCodeDef(r.code).label}${r.businessClass === 0 ? "（事業区分不明）" : r.businessClass ? `（${classLabel(r.businessClass)}）` : ""}`;
+    `${taxCodeDef(r.code).label}${r.businessClass === 0 ? "（事業区分不明）" : r.businessClass ? `（${classLabel(r.businessClass)}）` : ""}`
+    + `${r.purchaseUse === "unknown" ? "（用途区分なし・共通対応で計算）" : r.purchaseUse ? `（${useLabel(r.purchaseUse)}）` : ""}`;
   const toggle = (k: string) => setOpen((s) => {
     const n = new Set(s);
     if (n.has(k)) n.delete(k);
