@@ -9,12 +9,11 @@ import { PageHeader } from "../../components/PageHeader";
 import { closingBalances, summarizeBalanceSheet, summarizeIncome } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import * as repo from "../../db/repo";
-import type { Account, FilingType } from "../../lib/types";
+import type { Account } from "../../lib/types";
+import { BLUE_DEDUCTION_LIMIT } from "../../lib/incomeTax";
 import { StatementPage2, StatementPage3 } from "./StatementPages";
 import { isYearCompliant } from "../../lib/ebook";
 
-/** 青色申告特別控除の上限（目安） */
-const DEDUCTION_LIMIT: Record<FilingType, number> = { blue65: 650_000, blue55: 550_000, blue10: 100_000, white: 0 };
 
 type Tab = "pl" | "p2" | "p3" | "bs";
 
@@ -42,7 +41,7 @@ export const StatementsPage = () => {
   const val = (a: Account) => end.get(a.id) ?? 0;
   const open = (a: Account) => opening[a.id] ?? 0;
 
-  const limit = DEDUCTION_LIMIT[settings.filing_type];
+  const limit = BLUE_DEDUCTION_LIMIT[settings.filing_type];
   const deduction = Math.min(limit, Math.max(0, pl.income));
 
   const cogs = by("cogs");

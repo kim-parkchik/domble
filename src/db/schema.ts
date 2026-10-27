@@ -58,6 +58,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
   ...yearGuards("trg_closed_tax_prev_amounts", "tax_prev_amounts", "fiscal_year"),
+  ...yearGuards("trg_closed_income_tax_inputs", "income_tax_inputs", "fiscal_year"),
 ];
 
 /**
@@ -227,6 +228,15 @@ export const SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS tax_prev_amounts (
     fiscal_year INTEGER PRIMARY KEY,
     amount INTEGER NOT NULL CHECK (amount >= 0)
+  );`,
+
+  /**
+   * 所得税の申告書に入れる、帳簿から出せないもの（年度ごと。給与・公的年金等・雑所得、所得控除、配偶者・扶養親族、予定納税額など）。
+   * data は JSON（形は lib/incomeTax.ts の IncomeTaxInput。保存の前に normalizeIncomeTaxInput で確かめる）。個人番号は持たない
+   */
+  `CREATE TABLE IF NOT EXISTS income_tax_inputs (
+    fiscal_year INTEGER PRIMARY KEY,
+    data TEXT NOT NULL
   );`,
 
   /** 年末の按分振替で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */

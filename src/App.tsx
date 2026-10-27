@@ -4,7 +4,7 @@ import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
   House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Users, UserRound, Repeat,
-  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt,
+  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator,
 } from "lucide-react";
 import { Popover } from "./components/Popover";
 import { copyText } from "./lib/clipboard";
@@ -16,7 +16,7 @@ import { isBeforeStrict, isYearCompliant } from "./lib/ebook";
 
 /** 画面ごとに、変更に要る権限（無い人には画面上部で知らせる） */
 const PAGE_PERM: Partial<Record<Page, Perm>> = {
-  opening: "master", accounts: "master", homeuse: "master", assets: "master", settings: "settings", users: "users",
+  opening: "master", accounts: "master", homeuse: "master", assets: "master", settings: "settings", users: "users", incometax: "settings",
 };
 import * as repo from "./db/repo";
 import type { Account, Settings, SubAccount, User } from "./lib/types";
@@ -34,6 +34,7 @@ import { StatementsPage } from "./features/reports/StatementsPage";
 import { HomeUsePage } from "./features/reports/HomeUsePage";
 import { FixedAssetsPage } from "./features/reports/FixedAssetsPage";
 import { TaxPage } from "./features/reports/TaxPage";
+import { IncomeTaxPage } from "./features/reports/IncomeTaxPage";
 import { OpeningBalancesPage } from "./features/settings/OpeningBalancesPage";
 import { AccountsPage } from "./features/settings/AccountsPage";
 import { CounterpartiesPage } from "./features/settings/CounterpartiesPage";
@@ -48,7 +49,7 @@ import { YearNotice } from "./components/YearNotice";
 import { IntegrityNotice } from "./components/IntegrityNotice";
 
 export type Page =
-  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook";
+  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
   { group: "", items: [{ id: "home", label: "ホーム", icon: <House size={17} /> }] },
@@ -76,6 +77,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
       { id: "assets", label: "固定資産台帳", icon: <Boxes size={17} /> },
       { id: "tax", label: "消費税", icon: <Receipt size={17} /> },
       { id: "statements", label: "決算書", icon: <FileSpreadsheet size={17} /> },
+      { id: "incometax", label: "所得税", icon: <Calculator size={17} /> },
     ],
   },
   {
@@ -495,6 +497,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
           {page === "assets" && <FixedAssetsPage />}
           {page === "tax" && <TaxPage go={setPage} />}
           {page === "statements" && <StatementsPage />}
+          {page === "incometax" && <IncomeTaxPage />}
           {page === "opening" && <OpeningBalancesPage />}
           {page === "accounts" && <AccountsPage />}
           {page === "counterparties" && <CounterpartiesPage />}

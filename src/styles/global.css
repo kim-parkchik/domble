@@ -756,3 +756,20 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .tax-interim-table tfoot td { border-top: 1px solid var(--rule-strong); }
 .tax-interim-fill { align-items: center; gap: 8px; }
 .tax-interim-fill .field-note { margin: 0; flex: 1 1 auto; }
+/* 所得税 */
+.it-bar { align-items: center; gap: 8px; flex-wrap: wrap; }
+.it-balance { font-size: 13px; margin-left: 8px; }
+.it-balance b { font-size: 15px; }
+.it-note { margin: 0 0 8px; }
+.it-section { margin-bottom: 6px; max-width: 1000px; }
+.it-rows { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.it-table { width: 100%; }
+.it-table td { padding: 3px 4px; white-space: normal; overflow: visible; }
+.it-table td.center { text-align: center; }
+.it-table .input { width: 100%; min-width: 0; }
+.it-amounts .field { flex: 0 1 190px; min-width: 160px; }
+.it-pick { margin-top: 8px; }
+.it-first tr.st-strong td { font-weight: 700; border-bottom: 1px solid var(--rule-strong); }
+.it-kv { max-width: 420px; }
+.it-plain { font-size: 13px; margin: 0 0 8px; }
+.btn.icon { padding-left: 6px; padding-right: 6px; }

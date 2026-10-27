@@ -12,6 +12,7 @@ import type { JournalLine } from "../lib/types";
 import { subKey } from "../lib/types";
 import { depreciationLines } from "../lib/depreciation";
 import { taxYearOf } from "../lib/tax";
+import { EMPTY_INCOME_TAX_INPUT } from "../lib/incomeTax";
 
 const makeDb = (mode: "strict" | "standard") => {
   const raw = new Sqlite(":memory:");
@@ -1183,6 +1184,20 @@ describe("中間申告（repo）", () => {
     expect((await repo.getMasterHistory(db))[0].new_value).toMatch(/任意の中間申告の届出あり/);
     await repo.saveTaxYear(db, { ...t, from_year: 2027, status: "exempt", voluntary_interim: 1 });
     expect(taxYearOf(await repo.getTaxYears(db), 2027).voluntary_interim).toBe(0);
+  });
+});
+
+describe("所得税の申告書の入力（repo）", () => {
+  test("年度ごとに保存して読み直せる。おかしな金額は保存しない。締めた年は変えられない", async () => {
+    const { db } = strict;
+    expect((await repo.getIncomeTaxInput(db, 2026)).socialInsurance).toEqual([]);
+    const input = { ...EMPTY_INCOME_TAX_INPUT, birthday: "1980-04-01", socialInsurance: [{ kind: "国民年金", amount: 210_000 }], prepaid: 30_000 };
+    await repo.saveIncomeTaxInput(db, 2026, input);
+    expect(await repo.getIncomeTaxInput(db, 2026)).toEqual(input);
+    expect((await repo.getIncomeTaxInput(db, 2027)).prepaid).toBe(0);
+    await expect(repo.saveIncomeTaxInput(db, 2026, { ...input, prepaid: -1 })).rejects.toThrow(/予定納税額/);
+    await repo.closeYear(db, 2026);
+    await expect(repo.saveIncomeTaxInput(db, 2026, input)).rejects.toThrow(/締め済み/);
   });
 });
 

@@ -21,6 +21,7 @@ import {
 } from "../lib/tax";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
 import { normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
+import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import { checkScanQuality, docClassOf, type DocClass, type ScanInputMethod } from "../lib/scan";
 import { lastHolidayYear, mergeHolidays, type Holiday } from "../lib/holidays";
@@ -421,6 +422,31 @@ const saveTaxPrevManual_ = async (db: Database, year: number, amount: number | n
     target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の中間申告の判定に使う前年（${year - 1}年）の確定消費税額`,
     old_value: text(before), new_value: text(amount),
   });
+};
+
+// ────────────────────────────────────────────
+// 所得税の申告書に入れるもの（年度ごと。考え方は lib/incomeTax.ts）
+//  帳簿そのものではないので履歴には残さない（決算書の書き込み欄と同じ）。年の締めをした年度は変えられない
+// ────────────────────────────────────────────
+export const getIncomeTaxInput = async (db: Database, year: number): Promise<IncomeTaxInput> => {
+  const r = await db.select<{ data: string }[]>("SELECT data FROM income_tax_inputs WHERE fiscal_year = ?", [year]);
+  if (!r[0]) return EMPTY_INCOME_TAX_INPUT;
+  try {
+    const n = normalizeIncomeTaxInput(JSON.parse(r[0].data));
+    return typeof n === "string" ? EMPTY_INCOME_TAX_INPUT : n;
+  } catch {
+    return EMPTY_INCOME_TAX_INPUT;
+  }
+};
+
+const saveIncomeTaxInput_ = async (db: Database, year: number, input: IncomeTaxInput) => {
+  const n = normalizeIncomeTaxInput(input);
+  if (typeof n === "string") throw new Error(n);
+  await assertYearOpen(db, year);
+  await db.execute(
+    "INSERT INTO income_tax_inputs (fiscal_year, data) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET data = excluded.data",
+    [year, JSON.stringify(n)],
+  );
 };
 
 /** その年の中間納付税額（申告した税額。無ければ 0） */
@@ -2179,6 +2205,7 @@ export const setEBookMode = inTx(setEBookMode_, () => "保存方式の設定", {
 export const saveSettings = inTx(saveSettings_, () => "事業者設定の保存", { perm: "settings" });
 export const saveTaxYear = inTx(saveTaxYear_, (t) => `${t.from_year}年の消費税の設定`, { perm: "settings" });
 export const saveTaxBaseManual = inTx(saveTaxBaseManual_, (year) => `${year}年の基準期間の課税売上高`, { perm: "settings" });
+export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
 export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登録番号の保存", { perm: "settings" });
