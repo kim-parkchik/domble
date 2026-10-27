@@ -2,14 +2,15 @@
  * 消費税の申告書の数字（「消費税」の画面の「申告書」タブ。計算は lib/taxReturn.ts）
  *  - 方式の比較：その年に使える方式（本則・簡易・2割特例・3割特例）の納付税額を並べる
  *  - 選んだ方式の付表・第二表・第一表を、欄の番号つきで出す（確定申告書等作成コーナーや e-Tax に書き写す）
- *  - 中間納付税額は年度ごとに入れる
+ *  - 中間納付税額は年度ごとに入れる（前年の実績で計算した中間申告の額を「判定した額を入れる」で入れられる）
  *  - 選んだ方式の申告書を e-Tax のデータ（.xtx）で書き出す（作るのは lib/taxXtx.ts。申告者の情報は事業者設定から）
  */
 import { useEffect, useMemo, useState } from "react";
 import { FileDown, Printer, Save } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { useAppContext, useBaseSales, useYearData } from "../../context/AppContext";
+import { useAppContext, useBaseSales, useInterim, useYearData } from "../../context/AppContext";
+import { InterimFillButton } from "./TaxInterimView";
 import { methodProblem } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
 import { todayIso, yen } from "../../lib/format";
@@ -44,6 +45,7 @@ export const TaxReturnView = () => {
   // 中間納付税額
   const [interim, setInterim] = useState({ national: 0, local: 0 });
   const [draft, setDraft] = useState({ national: "", local: "" });
+  const interimInfo = useInterim();
   useEffect(() => {
     repo.getTaxInterim(db, year).then((x) => {
       setInterim(x);
@@ -148,12 +150,16 @@ export const TaxReturnView = () => {
             <span>中間納付譲渡割額（地方消費税）</span>
             <input className="input num" inputMode="numeric" value={draft.local} onChange={(e) => setDraft((d) => ({ ...d, local: e.target.value.replace(/[^\d]/g, "") }))} disabled={!admin || isClosed} />
           </label>
-          <div style={{ alignSelf: "flex-end" }}>
+          <div style={{ alignSelf: "flex-end", display: "flex", gap: 8 }}>
             <button className="btn ghost" type="submit" disabled={!admin || isClosed || (String(interim.national) === draft.national && String(interim.local) === draft.local)}>
               <Save size={15} /> 保存する
             </button>
+            {interimInfo && <InterimFillButton info={interimInfo} />}
           </div>
-          <p className="field-note" style={{ alignSelf: "flex-end" }}>納付した額ではなく、中間申告書に書いた「納付すべき税額」の合計です。</p>
+          <p className="field-note">
+            納付した額ではなく、中間申告書に書いた「納付すべき税額」の合計です。
+            {interimInfo && interimInfo.plan.periods.length > 0 && `前年の実績で計算した額は、消費税 ${yen(interimInfo.plan.national)}円・地方消費税 ${yen(interimInfo.plan.local)}円です（「中間申告」で回数と期限を見られます）。`}
+          </p>
         </form>
       </div>
 

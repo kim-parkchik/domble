@@ -335,11 +335,14 @@ const saveEtaxInfo_ = async (db: Database, x: EtaxInfo) => {
 //  年度ごとの設定は from_year 以降に効く（次の設定がある年まで引き継ぐ）。年の締めをした年度の設定は変えられない
 // ────────────────────────────────────────────
 export const getTaxYears = (db: Database) =>
-  db.select<TaxYear[]>("SELECT from_year, status, method, business_class, taxable_from, deduction FROM tax_years ORDER BY from_year");
+  db.select<TaxYear[]>("SELECT from_year, status, method, business_class, taxable_from, deduction, voluntary_interim FROM tax_years ORDER BY from_year");
 
 /** year 年の設定を保存する（前の年から引き継いでいた年も、その年の設定として持つ）。変更は履歴に残す（厳密モード） */
 const saveTaxYear_ = async (db: Database, t: TaxYear) => {
-  const row: TaxYear = { ...t, taxable_from: t.status === "exempt" ? "" : t.taxable_from.trim(), deduction: t.deduction ?? "individual" };
+  const row: TaxYear = {
+    ...t, taxable_from: t.status === "exempt" ? "" : t.taxable_from.trim(), deduction: t.deduction ?? "individual",
+    voluntary_interim: t.status === "exempt" ? 0 : t.voluntary_interim ? 1 : 0,
+  };
   const err = validateTaxYear(row);
   if (err) throw new Error(err);
   await assertYearOpen(db, row.from_year);
@@ -350,10 +353,10 @@ const saveTaxYear_ = async (db: Database, t: TaxYear) => {
   }
   const before = taxYearOf(years, row.from_year);
   await db.execute(
-    `INSERT INTO tax_years (from_year, status, method, business_class, taxable_from, deduction) VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT (from_year) DO UPDATE SET status = excluded.status, method = excluded.method,
-       business_class = excluded.business_class, taxable_from = excluded.taxable_from, deduction = excluded.deduction`,
-    [row.from_year, row.status, row.method, row.business_class, row.taxable_from, row.deduction],
+    `INSERT INTO tax_years (from_year, status, method, business_class, taxable_from, deduction, voluntary_interim) VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (from_year) DO UPDATE SET status = excluded.status, method = excluded.method, business_class = excluded.business_class,
+       taxable_from = excluded.taxable_from, deduction = excluded.deduction, voluntary_interim = excluded.voluntary_interim`,
+    [row.from_year, row.status, row.method, row.business_class, row.taxable_from, row.deduction, row.voluntary_interim],
   );
   const [o, n] = [taxYearText(before), taxYearText(row)];
   if (o !== n || before.inherited) {
@@ -388,6 +391,34 @@ const saveTaxBaseManual_ = async (db: Database, year: number, amount: number | n
   const text = (x: number | null) => (x === null ? "帳簿から計算" : `${x.toLocaleString()} 円（手で入力）`);
   await logMaster(db, {
     target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の基準期間（${year - 2}年）の課税売上高`,
+    old_value: text(before), new_value: text(amount),
+  });
+};
+
+/** 手で入れた前年の確定消費税額（中間申告の判定に使う。無ければ null） */
+export const getTaxPrevManual = async (db: Database, year: number) => {
+  const r = await db.select<{ amount: number }[]>("SELECT amount FROM tax_prev_amounts WHERE fiscal_year = ?", [year]);
+  return r[0]?.amount ?? null;
+};
+
+/** 前年の確定消費税額を手で入れる（null で外す＝帳簿から計算する）。変更は履歴に残す */
+const saveTaxPrevManual_ = async (db: Database, year: number, amount: number | null) => {
+  if (amount !== null && (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000_000)) {
+    throw new Error("前年の確定消費税額は 0 以上の整数（円）で入れてください");
+  }
+  await assertYearOpen(db, year);
+  const before = await getTaxPrevManual(db, year);
+  if (before === amount) return;
+  if (amount === null) await db.execute("DELETE FROM tax_prev_amounts WHERE fiscal_year = ?", [year]);
+  else {
+    await db.execute(
+      "INSERT INTO tax_prev_amounts (fiscal_year, amount) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET amount = excluded.amount",
+      [year, amount],
+    );
+  }
+  const text = (x: number | null) => (x === null ? "帳簿から計算" : `${x.toLocaleString()} 円（手で入力）`);
+  await logMaster(db, {
+    target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の中間申告の判定に使う前年（${year - 1}年）の確定消費税額`,
     old_value: text(before), new_value: text(amount),
   });
 };
@@ -2148,6 +2179,7 @@ export const setEBookMode = inTx(setEBookMode_, () => "保存方式の設定", {
 export const saveSettings = inTx(saveSettings_, () => "事業者設定の保存", { perm: "settings" });
 export const saveTaxYear = inTx(saveTaxYear_, (t) => `${t.from_year}年の消費税の設定`, { perm: "settings" });
 export const saveTaxBaseManual = inTx(saveTaxBaseManual_, (year) => `${year}年の基準期間の課税売上高`, { perm: "settings" });
+export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
 export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登録番号の保存", { perm: "settings" });
 export const saveEtaxInfo = inTx(saveEtaxInfo_, () => "e-Tax の申告者の情報の保存", { perm: "settings" });

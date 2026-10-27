@@ -57,6 +57,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
+  ...yearGuards("trg_closed_tax_prev_amounts", "tax_prev_amounts", "fiscal_year"),
 ];
 
 /**
@@ -191,6 +192,7 @@ export const SCHEMA: string[] = [
    * status：exempt（免税）/ standard（本則）/ simplified（簡易）/ twenty（2割特例）/ thirty（3割特例）
    * taxable_from：年の途中から課税事業者になった日（空 = その年の初めから）
    * deduction：本則課税で課税売上割合が 95% 未満のときの控除の方式（individual 個別対応方式 / lump 一括比例配分方式）
+   * voluntary_interim：任意の中間申告書を提出する旨の届出をしているか（1 = している。lib/taxInterim.ts）
    */
   `CREATE TABLE IF NOT EXISTS tax_years (
     from_year INTEGER PRIMARY KEY,
@@ -198,7 +200,8 @@ export const SCHEMA: string[] = [
     method TEXT NOT NULL DEFAULT 'inclusive' CHECK (method IN ('inclusive','exclusive')),
     business_class INTEGER NOT NULL DEFAULT 5 CHECK (business_class BETWEEN 1 AND 6),
     taxable_from TEXT NOT NULL DEFAULT '',
-    deduction TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump'))
+    deduction TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump')),
+    voluntary_interim INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))
   );`,
 
   /** 消費税の中間納付税額（年度ごと。申告した税額。消費税＝国税分と地方消費税＝譲渡割額） */
@@ -213,6 +216,15 @@ export const SCHEMA: string[] = [
    * 基準期間（前々年）の帳簿が domble に無いとき、または帳簿の計算の代わりに使いたいときだけ。入っていれば帳簿の計算より優先する
    */
   `CREATE TABLE IF NOT EXISTS tax_base_sales (
+    fiscal_year INTEGER PRIMARY KEY,
+    amount INTEGER NOT NULL CHECK (amount >= 0)
+  );`,
+
+  /**
+   * 中間申告の判定に使う前年の確定消費税額（⑨）を手で入れた額（中間申告をする年ごと。lib/taxInterim.ts）。
+   * 前年の帳簿が domble に無いとき、または修正申告などで帳簿の計算と違うときだけ。入っていれば帳簿の計算より優先する
+   */
+  `CREATE TABLE IF NOT EXISTS tax_prev_amounts (
     fiscal_year INTEGER PRIMARY KEY,
     amount INTEGER NOT NULL CHECK (amount >= 0)
   );`,
@@ -580,4 +592,5 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["journal_lines", "purchase_use", "TEXT CHECK (purchase_use IN ('taxable','nontaxable','common'))"],
   ["accounts", "default_purchase_use", "TEXT CHECK (default_purchase_use IN ('taxable','nontaxable','common'))"],
   ["tax_years", "deduction", "TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump'))"],
+  ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],
 ];

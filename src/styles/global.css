@@ -360,7 +360,9 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .tax-base { margin-top: 16px; }
 .tax-base .kv { max-width: 560px; }
 .tax-interim { margin-top: 12px; align-items: flex-end; }
-.tax-interim .field { max-width: 220px; }
+.tax-interim { flex-wrap: wrap; }
+.tax-interim .field { max-width: 220px; min-width: 180px; }
+.tax-interim > .field-note { flex-basis: 100%; margin: 0; }
 .tax-return-forms { margin-top: 20px; }
 .tax-return-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tax-return-title h3 { font-size: 15px; margin: 0; flex: 1 1 360px; }
@@ -749,3 +751,8 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .input.sm { height: 28px; font-size: 12.5px; padding: 0 6px; width: auto; }
 .settings-layout > .span-all { grid-column: 1 / -1; }
 .closing-table td { white-space: nowrap; }
+.tax-interim-table { max-width: 860px; margin: 4px 0 8px; }
+.tax-interim-table td { white-space: normal; overflow: visible; text-overflow: clip; }
+.tax-interim-table tfoot td { border-top: 1px solid var(--rule-strong); }
+.tax-interim-fill { align-items: center; gap: 8px; }
+.tax-interim-fill .field-note { margin: 0; flex: 1 1 auto; }

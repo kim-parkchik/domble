@@ -3,13 +3,14 @@
  *  - 集計表：区分（売上・売上の返還・仕入…）× 税区分 × インボイス区分（経過措置は控除できる割合ごと）。行を開くと科目ごとの内訳
  *  - 確認：申告の前に直すもの・確かめるもの。関係する仕訳を開いて直せる
  *  - 申告書：方式の比較と、付表・第二表・第一表の数字（TaxReturnView.tsx）
+ *  - 中間申告：前年の確定消費税額から、その年の中間申告の回数・期限・額（TaxInterimView.tsx）
  */
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Download, TriangleAlert, CircleAlert, Info } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import type { Page } from "../../App";
-import { useAppContext, useBaseSales, useYearData } from "../../context/AppContext";
+import { useAppContext, useBaseSales, useInterim, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { useToast } from "../../components/Toast";
 import { EntryEditModal } from "../entry/EntryEditModal";
@@ -20,8 +21,9 @@ import { INVOICE_KINDS, TAX_STATUS_OPTIONS, TAX_METHOD_OPTIONS } from "../../con
 import { classLabel, taxCodeDef, useLabel } from "../../lib/tax";
 import { buildTaxSummary, taxChecks, TAX_KIND_LABEL, type TaxIssue, type TaxSummaryRow } from "../../lib/taxSummary";
 import { TaxReturnView } from "./TaxReturnView";
+import { TaxInterimView } from "./TaxInterimView";
 
-type View = "summary" | "checks" | "return";
+type View = "summary" | "checks" | "return" | "interim";
 
 const invoiceLabel = (r: TaxSummaryRow) =>
   r.invoice ? `${INVOICE_KINDS.find((k) => k.value === r.invoice)!.short}${r.transitional !== null ? `（${r.transitional}%控除）` : ""}` : "";
@@ -39,11 +41,12 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
 
   const summary = useMemo(() => buildTaxSummary(lines, accounts, taxYears), [lines, accounts, taxYears]);
   const baseSales = useBaseSales();
+  const interim = useInterim();
   const issues = useMemo(
     () => taxChecks({
-      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary, baseSales,
+      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary, baseSales, interim,
     }),
-    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales],
+    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales, interim],
   );
   const byEntry = useMemo(() => groupByEntry(lines), [lines]);
 
@@ -101,6 +104,7 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
             確認{issues.length > 0 && <span className={`count-badge ${errors ? "error" : issues.some((i) => i.level === "warn") ? "warn" : "info"}`}>{issues.length}</span>}
           </button>
           <button role="tab" aria-selected={view === "return"} className={view === "return" ? "on" : ""} onClick={() => setView("return")} disabled={exempt}>申告書</button>
+          <button role="tab" aria-selected={view === "interim"} className={view === "interim" ? "on" : ""} onClick={() => setView("interim")} disabled={exempt}>中間申告</button>
         </div>
         {exempt && <span className="muted">{year}年は免税事業者です（事業者設定の「消費税」で変えられます）。</span>}
       </div>
@@ -110,6 +114,12 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
           <div className="scroll-y">
             {errors > 0 && <p className="notice print-skip">「確認」に、申告の前に直すものが {errors} 件あります。</p>}
             <TaxReturnView />
+          </div>
+        </section>
+      ) : view === "interim" && !exempt ? (
+        <section className="sheet sheet-fill">
+          <div className="scroll-y">
+            <TaxInterimView onOpenReturn={() => setView("return")} />
           </div>
         </section>
       ) : view === "summary" ? (
@@ -178,7 +188,7 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
             ) : (
               <ul className="tax-issues">
                 {issues.map((i) => (
-                  <IssueCard key={i.title} issue={i} byEntry={byEntry} onOpen={setEditing} go={go} />
+                  <IssueCard key={i.title} issue={i} byEntry={byEntry} onOpen={setEditing} go={go} onView={setView} />
                 ))}
               </ul>
             )}
@@ -192,14 +202,19 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
 };
 
 const LEVEL_ICON = { error: <CircleAlert size={16} />, warn: <TriangleAlert size={16} />, info: <Info size={16} /> };
-const FIX_LABEL = { settings: "事業者設定を開く", counterparties: "取引先を開く", entries: "" };
+const FIX_LABEL = { settings: "事業者設定を開く", counterparties: "取引先を開く", entries: "", return: "申告書を開く", interim: "中間申告を開く" };
 
-const IssueCard = ({ issue, byEntry, onOpen, go }: {
+const IssueCard = ({ issue, byEntry, onOpen, go, onView }: {
   issue: TaxIssue;
   byEntry: ReturnType<typeof groupByEntry>;
   onOpen: (id: number) => void;
   go: (p: Page) => void;
+  onView: (v: View) => void;
 }) => {
+  const fix = () => {
+    if (issue.fix === "return" || issue.fix === "interim") onView(issue.fix);
+    else go(issue.fix === "settings" ? "settings" : "counterparties");
+  };
   const { labelOf } = useAppContext();
   const shown = issue.entryIds.slice(0, MAX_ENTRIES);
   return (
@@ -210,7 +225,7 @@ const IssueCard = ({ issue, byEntry, onOpen, go }: {
         {issue.entryIds.length > 0 && <span className="muted">{issue.entryIds.length} 件</span>}
         <span className="spacer" />
         {issue.fix && issue.fix !== "entries" && (
-          <button className="btn ghost sm" onClick={() => go(issue.fix === "settings" ? "settings" : "counterparties")}>{FIX_LABEL[issue.fix]}</button>
+          <button className="btn ghost sm" onClick={fix}>{FIX_LABEL[issue.fix]}</button>
         )}
       </div>
       <p className="tax-issue-detail">{issue.detail}</p>

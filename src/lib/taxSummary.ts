@@ -13,6 +13,7 @@ import type { FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
 import { deductionProblem, isPurchaseCode, isSalesCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
+import { INTERIM_KIND_LABEL, type InterimPlan } from "./taxInterim";
 
 export type TaxKind = "sales" | "salesReturn" | "badDebt" | "badDebtRecovered" | "purchase" | "purchaseReturn" | "other";
 
@@ -157,8 +158,8 @@ export interface TaxIssue {
   detail: string;
   /** 関係する仕訳（伝票番号。日付順） */
   entryIds: number[];
-  /** 直す場所 */
-  fix?: "settings" | "counterparties" | "entries";
+  /** 直す場所（return = 申告書タブ、interim = 中間申告タブ） */
+  fix?: "settings" | "counterparties" | "entries" | "return" | "interim";
 }
 
 const entryIdsOf = (ls: FlatLine[]) => {
@@ -190,7 +191,47 @@ export interface TaxCheckInput {
   summary: TaxSummary;
   /** 基準期間・特定期間の課税売上高（読み込み中は null） */
   baseSales?: BaseSalesInfo | null;
+  /** 中間申告の予定と、申告書に入れてある中間納付税額（読み込み中は null） */
+  interim?: { plan: InterimPlan; entered: { national: number; local: number } } | null;
 }
+
+const yenText = (n: number) => `${n.toLocaleString()}円`;
+
+/** 中間納付税額が中間申告の予定と合っているか */
+const interimIssues = (year: number, i: NonNullable<TaxCheckInput["interim"]>): TaxIssue[] => {
+  const { plan, entered } = i;
+  const none = entered.national === 0 && entered.local === 0;
+  const planned = `消費税 ${yenText(plan.national)}・地方消費税 ${yenText(plan.local)}`;
+  const prev = `前年（${year - 1}年）の確定消費税額 ${yenText(plan.prevTax ?? 0)}`;
+  if (plan.kind === "unknown") {
+    return [{
+      level: "info", title: `前年（${year - 1}年）の確定消費税額が分かりません`, fix: "interim", entryIds: [],
+      detail: `${year - 1}年の帳簿が domble に無いため、中間申告が要るか判定できません。「中間申告」で前年の確定申告書の ⑨ 差引税額を入れてください。`,
+    }];
+  }
+  if (plan.periods.length === 0) {
+    return none ? [] : [{
+      level: "info", title: "中間申告が要らない年ですが、中間納付税額が入っています", fix: "return", entryIds: [],
+      detail: `${prev}は48万円以下です。任意の中間申告をしたときは、事業者設定の「消費税」で届出の印を付けてください。`,
+    }];
+  }
+  if (none) {
+    return [{
+      level: plan.kind === "voluntary" ? "info" : "warn", title: "中間納付税額が入っていません", fix: "return", entryIds: [],
+      detail: `${prev}から、${year}年の中間申告は${INTERIM_KIND_LABEL[plan.kind]}（合計 ${planned}）です。`
+        + "申告書の「中間納付税額」に、中間申告で納める税額を入れてください（「判定した額を入れる」で入れられます）。"
+        + (plan.kind === "voluntary" ? "任意の中間申告書を期限までに出さなかったときは、0 のままで構いません。" : ""),
+    }];
+  }
+  if (entered.national !== plan.national || entered.local !== plan.local) {
+    return [{
+      level: "info", title: "中間納付税額が、前年の実績で計算した額と違います", fix: "return", entryIds: [],
+      detail: `前年の実績で計算すると ${planned} です（入っている額：消費税 ${yenText(entered.national)}・地方消費税 ${yenText(entered.local)}）。`
+        + "仮決算で中間申告をしたときや、前年の税額が修正申告で変わったときは、そのままで構いません。",
+    }];
+  }
+  return [];
+};
 
 export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
   const issues: TaxIssue[] = [];
@@ -229,6 +270,8 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       detail: `${x.year - 2}年の帳簿が domble に無いため計算できません。申告書の第一表に書くほか、2割特例・3割特例・簡易課税が使えるかの確認に使うので、事業者設定の「消費税」で入れてください。`,
     });
   }
+
+  if (x.interim) issues.push(...interimIssues(x.year, x.interim));
 
   const accountMap = new Map(x.accounts.map((a) => [a.id, a]));
   const cpMap = new Map(x.counterparties.map((c) => [c.id, c]));

@@ -4,6 +4,7 @@ import type { Account, Counterparty, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { buildTaxSummary, codeMismatch, includedTax, taxChecks, taxKindOf } from "./taxSummary";
 import { privateTaxSplit } from "./homeUse";
+import { interimPlan } from "./taxInterim";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1, default_tax_code: null }));
 const id = (name: string) => accounts.find((a) => a.name === name)!.id;
@@ -231,5 +232,29 @@ describe("本則課税の用途区分（集計表・確認）", () => {
       { tax_code: "purchase10", invoice_kind: "qualified", purchase_use: "taxable", amount: 300 },
       { tax_code: "purchase10", invoice_kind: "qualified", purchase_use: "common", amount: 100 },
     ]);
+  });
+});
+
+describe("中間申告（確認）", () => {
+  const standard: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }];
+  const check = (prevTax: number | null, entered: { national: number; local: number }, voluntary = false) => taxChecks({
+    year: 2026, lines: [], accounts, counterparties: [], taxYears: standard, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, standard),
+    interim: { plan: interimPlan({ year: 2026, prevTax, exempt: false, voluntary }), entered },
+  });
+
+  test("中間申告が要るのに中間納付税額が 0 なら知らせる（任意の中間申告は念のため）", () => {
+    const [i] = check(6_000_000, { national: 0, local: 0 });
+    expect(i).toMatchObject({ level: "warn", title: "中間納付税額が入っていません", fix: "return" });
+    expect(i.detail).toMatch(/年3回（合計 消費税 4,500,000円・地方消費税 1,269,000円）/);
+    expect(check(400_000, { national: 0, local: 0 }, true)[0]).toMatchObject({ level: "info", title: "中間納付税額が入っていません" });
+  });
+  test("前年の実績で計算した額と同じなら何も出さず、違えば念のため知らせる", () => {
+    expect(check(6_000_000, { national: 4_500_000, local: 1_269_000 })).toEqual([]);
+    expect(check(6_000_000, { national: 4_000_000, local: 1_128_200 })[0]).toMatchObject({ level: "info", title: expect.stringMatching(/計算した額と違います/) });
+  });
+  test("前年の税額が分からなければ入れるように知らせる。要らない年に入っていれば知らせる", () => {
+    expect(check(null, { national: 0, local: 0 })[0]).toMatchObject({ level: "info", fix: "interim", title: "前年（2025年）の確定消費税額が分かりません" });
+    expect(check(300_000, { national: 0, local: 0 })).toEqual([]);
+    expect(check(300_000, { national: 100_000, local: 28_200 })[0]).toMatchObject({ title: expect.stringMatching(/要らない年/) });
   });
 });

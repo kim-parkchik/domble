@@ -1,6 +1,6 @@
 /**
  * 消費税の設定（事業者設定の中の節）
- *  - 課税区分・経理方式・簡易課税の事業区分・本則課税の控除の方式・年の途中から課税事業者になった日は年度ごと（次の設定がある年まで引き継ぐ）
+ *  - 課税区分・経理方式・簡易課税の事業区分・本則課税の控除の方式・年の途中から課税事業者になった日・任意の中間申告の届出は年度ごと（次の設定がある年まで引き継ぐ）
  *  - 適格請求書発行事業者の登録番号・登録日は帳簿に1つ
  *  - 課税事業者の期間で税区分の入っていない仕訳を、科目の初期値でまとめて埋める
  *  - 基準期間（前々年）・特定期間（前年1〜6月）の課税売上高。帳簿に無い年の基準期間は手で入れる
@@ -27,7 +27,7 @@ export const TaxSection = () => {
   useEffect(() => setT(taxYear), [taxKey]);
   const set = <K extends keyof TaxYear>(k: K, v: TaxYear[K]) => setT((x) => ({ ...x, [k]: v }));
   const changed = t.status !== taxYear.status || t.method !== taxYear.method || t.business_class !== taxYear.business_class
-    || t.taxable_from !== taxYear.taxable_from || t.deduction !== taxYear.deduction;
+    || t.taxable_from !== taxYear.taxable_from || t.deduction !== taxYear.deduction || !!t.voluntary_interim !== !!taxYear.voluntary_interim;
   const individualProblem = deductionProblem(taxYears, year, "individual");
   const admin = can("settings");
   const regOn = settings.invoice_registered_on;
@@ -159,6 +159,18 @@ export const TaxSection = () => {
               />
             </label>
           </div>
+        )}
+        {t.status !== "exempt" && (
+          <>
+            <label className="check">
+              <input type="checkbox" checked={!!t.voluntary_interim} onChange={(e) => set("voluntary_interim", e.target.checked ? 1 : 0)} disabled={!admin || isClosed} />
+              任意の中間申告書を提出する旨の届出をしている
+            </label>
+            <p className="field-note">
+              前年の確定消費税額が48万円以下で中間申告が要らない人も、届出をすれば年1回（1〜6月分）の中間申告ができます。
+              届出をやめるまで次の年に引き継ぎます。期限までに中間申告書を出さなかったときは、届出をやめたものとみなされます。予定は消費税の画面の「中間申告」で見られます。
+            </p>
+          </>
         )}
         {t.status === "twenty" && year === 2026 && (
           <p className="field-note">

@@ -51,7 +51,7 @@ export const effectivePurchaseUse = (l: { purchase_use?: PurchaseUse | null }, a
 
 /** 設定が1つも無い年の扱い（免税事業者・税込経理） */
 export const EXEMPT_YEAR = (year: number): TaxYear => ({
-  from_year: year, status: "exempt", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual",
+  from_year: year, status: "exempt", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0,
 });
 
 /** その年に効いている設定（その年以前でいちばん新しいもの）。inherited = 前の年から引き継いだもの */
@@ -86,6 +86,7 @@ export const validateTaxYear = (t: TaxYear): string | null => {
   if (!TAX_METHOD_OPTIONS.some((o) => o.value === t.method && o.enabled)) return "その経理方式にはまだ対応していません";
   if (!BUSINESS_CLASSES.some((b) => b.value === t.business_class)) return "事業区分は第1種〜第6種から選んでください";
   if (!isDeductionMethod(t.deduction ?? "individual")) return "控除の方式は個別対応方式か一括比例配分方式から選んでください";
+  if (![0, 1].includes(t.voluntary_interim ?? 0)) return "任意の中間申告の届出が正しくありません";
   if (t.taxable_from) {
     if (t.status === "exempt") return "免税事業者のときは「課税事業者になった日」は入れられません";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(t.taxable_from) || !t.taxable_from.startsWith(`${t.from_year}-`)) {
@@ -111,13 +112,14 @@ export const deductionProblem = (rows: TaxYear[], year: number, deduction: Deduc
 };
 
 /** 履歴に残す説明（例：課税事業者（2割特例）・税込経理・2026-10-01 から） */
-export const taxYearText = (t: Pick<TaxYear, "status" | "method" | "business_class" | "taxable_from" | "deduction">) =>
+export const taxYearText = (t: Pick<TaxYear, "status" | "method" | "business_class" | "taxable_from" | "deduction"> & Partial<Pick<TaxYear, "voluntary_interim">>) =>
   [
     TAX_STATUS_OPTIONS.find((o) => o.value === t.status)?.label ?? t.status,
     ...(t.status === "exempt" ? [] : [TAX_METHOD_OPTIONS.find((o) => o.value === t.method)?.label ?? t.method]),
     ...(t.status === "simplified" ? [BUSINESS_CLASSES.find((b) => b.value === t.business_class)?.label ?? ""] : []),
     ...(t.status === "standard" ? [DEDUCTION_METHODS.find((d) => d.value === t.deduction)?.label ?? ""] : []),
     ...(t.taxable_from ? [`${t.taxable_from} から課税事業者`] : []),
+    ...(t.status !== "exempt" && t.voluntary_interim ? ["任意の中間申告の届出あり"] : []),
   ].join("・");
 
 // ────────────────────────────────────────────

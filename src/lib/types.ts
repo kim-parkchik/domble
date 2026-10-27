@@ -169,6 +169,8 @@ export interface TaxYear {
   deduction: DeductionMethod;
   /** 年の途中から課税事業者になった日（YYYY-MM-DD。空 = その年の初めから） */
   taxable_from: string;
+  /** 任意の中間申告書を提出する旨の届出をしているか（1 = している。届出をやめるまで次の年に引き継ぐ） */
+  voluntary_interim: 0 | 1;
 }
 /** strict = 電子帳簿保存法（優良な電子帳簿）対応、standard = 通常 */
 export type EBookMode = "strict" | "standard";

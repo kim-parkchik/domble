@@ -11,6 +11,7 @@ import * as repo from "./repo";
 import type { JournalLine } from "../lib/types";
 import { subKey } from "../lib/types";
 import { depreciationLines } from "../lib/depreciation";
+import { taxYearOf } from "../lib/tax";
 
 const makeDb = (mode: "strict" | "standard") => {
   const raw = new Sqlite(":memory:");
@@ -1155,6 +1156,33 @@ describe("基準期間の課税売上高の手入力（repo）", () => {
     await expect(repo.saveTaxBaseManual(db, 2026, 1.5)).rejects.toThrow(/整数/);
     await repo.saveTaxBaseManual(db, 2026, null);
     expect(await repo.getTaxBaseManual(db, 2026)).toBeNull();
+  });
+});
+
+describe("中間申告（repo）", () => {
+  test("前年の確定消費税額の手入力：保存すると優先して使い、null で外す。変更は履歴に残り、締めた年は変えられない", async () => {
+    const { db } = strict;
+    expect(await repo.getTaxPrevManual(db, 2026)).toBeNull();
+    await repo.saveTaxPrevManual(db, 2026, 1_200_000);
+    expect(await repo.getTaxPrevManual(db, 2026)).toBe(1_200_000);
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({
+      label: "2026年の中間申告の判定に使う前年（2025年）の確定消費税額", old_value: "帳簿から計算", new_value: "1,200,000 円（手で入力）",
+    });
+    await expect(repo.saveTaxPrevManual(db, 2026, -1)).rejects.toThrow(/整数/);
+    await repo.saveTaxPrevManual(db, 2026, null);
+    expect(await repo.getTaxPrevManual(db, 2026)).toBeNull();
+    await repo.closeYear(db, 2026);
+    await expect(repo.saveTaxPrevManual(db, 2026, 1)).rejects.toThrow(/締め済み/);
+  });
+
+  test("任意の中間申告の届出：年度の設定に持ち、次の年に引き継ぐ。免税事業者にすると外れる", async () => {
+    const { db } = strict;
+    const t = { from_year: 2026, status: "standard" as const, method: "inclusive" as const, business_class: 5, taxable_from: "", deduction: "individual" as const };
+    await repo.saveTaxYear(db, { ...t, voluntary_interim: 1 });
+    expect(taxYearOf(await repo.getTaxYears(db), 2027).voluntary_interim).toBe(1);
+    expect((await repo.getMasterHistory(db))[0].new_value).toMatch(/任意の中間申告の届出あり/);
+    await repo.saveTaxYear(db, { ...t, from_year: 2027, status: "exempt", voluntary_interim: 1 });
+    expect(taxYearOf(await repo.getTaxYears(db), 2027).voluntary_interim).toBe(0);
   });
 });
 

@@ -146,6 +146,8 @@ export interface TaxReturn {
   /** 第一表・第二表の種類 */
   firstKind: FirstKind;
   forms: TaxForm[];
+  /** 差引税額 ⑨（中間申告の判定に使う「確定消費税額」。地方消費税は含まない） */
+  net: number;
   /** 消費税（国税）：納付税額 ⑪ − 還付（⑧＋⑫） */
   national: number;
   /** 地方消費税：納付譲渡割額 ㉒ − 還付（⑲＋㉓） */
@@ -360,7 +362,7 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
     method: "standard", firstKind: "一般用",
     ...(full ? {} : { deduction: { method, amounts: { individual: sumAB(r21), lump: sumAB(r22) } } }),
     forms: [fuhyo23, fuhyo13, secondTable(s, sumAB(s.ret), f.net - f.shortfall, "（一般用）"), firstTable("一般用", sumAB(s.base), c, f, o, extra, null)],
-    national: f.national, local: f.local, total: f.total, notes,
+    net: f.net, national: f.national, local: f.local, total: f.total, notes,
   };
 };
 
@@ -521,7 +523,7 @@ export const simplifiedReturn = (input: TaxBase, o: ReturnOptions): TaxReturn =>
   return {
     method: "simplified", firstKind: "簡易課税用",
     forms: [fuhyo53, fuhyo43, secondTable(s, sumAB(s.ret), f.net - f.shortfall, "（簡易課税用）"), firstTable("簡易課税用", sumAB(s.base), c, f, o, extra, null)],
-    national: f.national, local: f.local, total: f.total,
+    net: f.net, national: f.national, local: f.local, total: f.total,
     notes: [
       single
         ? `事業区分は ${cls.label} の1種類として計算しています（付表5-3 の ⑤）`
@@ -561,7 +563,7 @@ const specialReturn = (b: TaxBase, o: ReturnOptions, method: "twenty" | "thirty"
   return {
     method, firstKind,
     forms: [fuhyo6, secondTable(s, sumAB(s.ret), f.net - f.shortfall, ""), firstTable(firstKind, sumAB(s.base), c, f, o, [], label)],
-    national: f.national, local: f.local, total: f.total,
+    net: f.net, national: f.national, local: f.local, total: f.total,
     notes: [
       `第一表は、簡易課税制度選択届出書を出していれば簡易課税用、出していなければ一般用を使います（欄の番号は同じ。③の名前だけ違います）。${label}では「この課税期間の課税売上高」と事業区分は書きません`,
       `付表6 は${method === "twenty" ? "令和5年10月1日以後終了課税期間用" : "令和8年10月1日以後開始する課税期間用（3割特例）"}の様式です`,

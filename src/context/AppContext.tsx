@@ -7,6 +7,7 @@ import * as repo from "../db/repo";
 import { can as canRole, type Perm } from "../lib/permissions";
 import { taxActiveOn, taxYearOf } from "../lib/tax";
 import { baseSalesInfo, type BaseSalesInfo } from "../lib/baseSales";
+import { interimPlan, prevTaxInfo, type InterimPlan, type PrevTaxInfo } from "../lib/taxInterim";
 
 interface AppContextValue {
   db: Database;
@@ -250,6 +251,42 @@ export const useBaseSales = () => {
     };
   }, [db, year, accounts, taxYears, dataVersion]);
   return info;
+};
+
+export interface InterimInfo {
+  /** 前年の確定消費税額 */
+  prev: PrevTaxInfo;
+  /** その年の中間申告の予定 */
+  plan: InterimPlan;
+  /** 申告書に入れてある中間納付税額 */
+  entered: { national: number; local: number };
+}
+
+/** 表示中の年度の中間申告（前年の帳簿・手で入れた前年の税額・その年の消費税の設定から。lib/taxInterim.ts） */
+export const useInterim = (): InterimInfo | null => {
+  const { db, year, taxYears, taxYear, dataVersion } = useAppContext();
+  const [loaded, setLoaded] = useState<{ prev: PrevTaxInfo; holidays: ReadonlySet<string>; entered: InterimInfo["entered"] } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      repo.getLines(db, yearStart(year - 1), yearEnd(year - 1)),
+      repo.getTaxPrevManual(db, year),
+      repo.getHolidayData(db),
+      repo.getTaxInterim(db, year),
+    ])
+      .then(([prevLines, manual, h, entered]) => alive && setLoaded({
+        prev: prevTaxInfo({ year, prevLines, taxYears, manual }), holidays: new Set(h.holidays.map((x) => x.date)), entered,
+      }))
+      .catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [db, year, taxYears, dataVersion]);
+  return useMemo(() => loaded && {
+    prev: loaded.prev,
+    entered: loaded.entered,
+    plan: interimPlan({ year, prevTax: loaded.prev.amount, exempt: taxYear.status === "exempt", voluntary: !!taxYear.voluntary_interim, holidays: loaded.holidays }),
+  }, [loaded, year, taxYear.status, taxYear.voluntary_interim]);
 };
 
 export interface CarryForwardCheck {
