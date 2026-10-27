@@ -597,10 +597,27 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "phone", "TEXT NOT NULL DEFAULT ''"],
   ["settings", "owner_kana", "TEXT NOT NULL DEFAULT ''"],
   ["settings", "business_kana", "TEXT NOT NULL DEFAULT ''"],
+  // 確定申告書の申告者の欄（職業・世帯主・1月1日の住所・事業所の電話番号）と還付される税金の受取場所（個人番号は持たない）
+  ["settings", "occupation", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "householder_name", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "householder_relation", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "jan1_address", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "office_phone", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "refund_mode", "TEXT NOT NULL DEFAULT 'none' CHECK (refund_mode IN ('none','bank','yucho','public'))"],
+  ["settings", "bank_name", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "bank_kind", "TEXT NOT NULL DEFAULT '1'"],
+  ["settings", "branch_name", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "branch_kind", "TEXT NOT NULL DEFAULT '2'"],
+  ["settings", "deposit_kind", "TEXT NOT NULL DEFAULT '1'"],
+  ["settings", "account_no", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "yucho_symbol", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "yucho_number", "TEXT NOT NULL DEFAULT ''"],
   // 本則課税の個別対応方式：課税仕入の明細の用途区分（taxable 課税対応 / nontaxable 非課税対応 / common 共通対応）と科目の初期値、
   // 年度ごとの控除の方式（individual 個別対応方式 / lump 一括比例配分方式）
   ["journal_lines", "purchase_use", "TEXT CHECK (purchase_use IN ('taxable','nontaxable','common'))"],
   ["accounts", "default_purchase_use", "TEXT CHECK (default_purchase_use IN ('taxable','nontaxable','common'))"],
   ["tax_years", "deduction", "TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump'))"],
+  // 青色申告決算書で書く欄（NULL = 科目名から自動。lib/statementLines.ts）
+  ["accounts", "statement_line", "TEXT"],
   ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],
 ];

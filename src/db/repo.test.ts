@@ -1187,6 +1187,21 @@ describe("中間申告（repo）", () => {
   });
 });
 
+describe("決算書の欄（repo）", () => {
+  test("科目ごとに選べて履歴に残る。null で自動に戻す。売上の科目・ほかの部分の欄は選べない", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    await repo.setAccountStatementLine(db, id("車両費"), "旅費交通費");
+    expect((await repo.getAccounts(db, 2026)).find((a) => a.name === "車両費")!.statement_line).toBe("旅費交通費");
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "車両費", old_value: "決算書の欄 自動（追加の欄）", new_value: "決算書の欄 旅費交通費" });
+    await repo.setAccountStatementLine(db, id("車両費"), null);
+    expect((await repo.getAccounts(db, 2026)).find((a) => a.name === "車両費")!.statement_line).toBeNull();
+    await expect(repo.setAccountStatementLine(db, id("売上高"), "雑費")).rejects.toThrow(/売上/);
+    await expect(repo.setAccountStatementLine(db, id("車両費"), "現金")).rejects.toThrow(/決算書の欄/);
+  });
+});
+
 describe("所得税の申告書の入力（repo）", () => {
   test("年度ごとに保存して読み直せる。おかしな金額は保存しない。締めた年は変えられない", async () => {
     const { db } = strict;

@@ -18,6 +18,7 @@ import { filerFromSettings, filerProblems } from "../../lib/etax";
 import { buildTaxXtx, xtxProblem } from "../../lib/taxXtx";
 import { buildTaxBase, computeReturn, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn, type ReturnMethod, type TaxForm } from "../../lib/taxReturn";
 import * as repo from "../../db/repo";
+import { MyNumberDialog } from "../../components/MyNumberDialog";
 
 /** 方式ごとの、使うための主な条件 */
 const METHOD_NOTE: Record<ReturnMethod, string> = {
@@ -89,9 +90,13 @@ export const TaxReturnView = () => {
   const filer = filerFromSettings(settings);
   const xtxBlocked = xtxProblem(shown, year);
   const missing = filerProblems(filer);
-  const exportXtx = async () => {
+  // 個人番号は書き出すときに入れてもらう（保存しない）。公金受取口座で還付を受けるときは必須
+  const [askNumber, setAskNumber] = useState(false);
+  const publicRefund = shown.total < 0 && filer.refund?.kind === "public";
+  const exportXtx = async (myNumber: string) => {
+    setAskNumber(false);
     try {
-      const xml = buildTaxXtx(shown, filer, { from: taxYear.taxable_from || `${year}-01-01`, to: `${year}-12-31`, createdOn: todayIso() });
+      const xml = buildTaxXtx(shown, { ...filer, myNumber }, { from: taxYear.taxable_from || `${year}-01-01`, to: `${year}-12-31`, createdOn: todayIso() });
       const path = await save({
         defaultPath: `消費税申告_${year}年分_${METHOD_LABEL[method]}.xtx`,
         filters: [{ name: "e-Tax のデータ", extensions: ["xtx"] }],
@@ -106,6 +111,13 @@ export const TaxReturnView = () => {
 
   return (
     <div className="tax-return">
+      {askNumber && (
+        <MyNumberDialog
+          persons={[{ key: "self", label: settings.owner_name || "本人", required: publicRefund }]}
+          note={publicRefund ? "公金受取口座で還付を受けるので、個人番号が要ります。" : "入れないと、個人番号の欄が空の申告書になります。"}
+          onSubmit={(n) => exportXtx(n.self)} onClose={() => setAskNumber(false)}
+        />
+      )}
       <div className="tax-return-head print-skip">
         <h3 className="sheet-sub">方式の比較（{year}年）</h3>
         <table className="ledger tax-compare">
@@ -173,7 +185,7 @@ export const TaxReturnView = () => {
             </select>
           )}
           <button className="btn ghost sm print-skip" onClick={() => window.print()}><Printer size={14} /> 印刷</button>
-          <button className="btn primary sm print-skip" onClick={exportXtx} disabled={!!xtxBlocked || missing.length > 0}>
+          <button className="btn primary sm print-skip" onClick={() => setAskNumber(true)} disabled={!!xtxBlocked || missing.length > 0}>
             <FileDown size={14} /> e-Tax 用に書き出す
           </button>
         </div>
@@ -184,7 +196,8 @@ export const TaxReturnView = () => {
             <span>e-Tax 用に書き出すには、事業者設定で次のものを入れてください：{missing.join("、")}。</span>
           ) : (
             <span>
-              e-Tax 用のデータ（.xtx）は、e-Taxソフト（WEB版）の「作成済みデータの利用」で読み込み、内容を確かめて送信します（個人番号はそこで入れます）。
+              e-Tax 用のデータ（.xtx）は、e-Taxソフト（WEB版）の「作成済みデータの利用」で読み込み、内容を確かめて送信します。個人番号は書き出すときに入れます。
+              {shown.total < 0 && (filer.refund ? "還付になるので、事業者設定の還付先も書きます。" : "還付になりますが、事業者設定に還付先が入っていません。")}
               {current && method !== current && <b> この年の設定（{METHOD_LABEL[current]}）とは違う方式です。</b>}
             </span>
           )}

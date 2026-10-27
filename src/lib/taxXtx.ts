@@ -126,19 +126,24 @@ const fuhyo53Values = (r: TaxReturn) => {
 };
 
 // ── 第一表・第二表 ──
-/** 納税者等部（第一表は AAI/ABH、第二表は AAN/ABM。番号は同じ） */
-const headValues = (prefix: string, f: EtaxFiler, first: boolean): EtaxValues => {
-  const refs = itRefs(f);
+/**
+ * 納税者等部（第一表は AAI/ABH、第二表は AAN/ABM。番号は同じ）。refund = 還付になる申告
+ * 個人番号と還付先は第一表だけ。公金受取口座を使うときは口座を書かず、口座情報利用同意区分を 1（個人番号が必須）にする
+ */
+const headValues = (prefix: string, f: EtaxFiler, first: boolean, refund: boolean): EtaxValues => {
+  const refs = itRefs(f, { refund });
   const v: EtaxValues = {};
   // 名称又は屋号 = 屋号、代表者氏名又は氏名 = 氏名（個人）。第二表には提出先税務署が無い
   const numbers: [string, number, number][] = [
     ["ZEIMUSHO", 20, 0], ["NOZEISHA_ADR", 30, 10], ["NOZEISHA_TEL", 40, 20], ["NOZEISHA_YAGO_KN", 60, 40], ["NOZEISHA_YAGO", 70, 50],
-    ["NOZEISHA_NM_KN", 100, 70], ["NOZEISHA_NM", 110, 80], ["KAZEI_KIKAN_FROM", 130, 100], ["KAZEI_KIKAN_TO", 140, 110], ["SHINKOKU_KBN", 150, 120],
+    ["NOZEISHA_BANGO", 80, 0], ["NOZEISHA_NM_KN", 100, 70], ["NOZEISHA_NM", 110, 80], ["KAZEI_KIKAN_FROM", 130, 100], ["KAZEI_KIKAN_TO", 140, 110],
+    ["SHINKOKU_KBN", 150, 120], ["KANPU_KINYUKIKAN", 190, 0],
   ];
   for (const [ref, one, two] of numbers) {
     const n = first ? one : two;
     if (n && refs.has(ref)) v[tag(prefix, n)] = { ref };
   }
+  if (first && refund && f.refund?.kind === "public" && f.myNumber) v[tag(prefix, 250)] = { kubun: 1 };
   return v;
 };
 
@@ -153,7 +158,7 @@ const firstValues = (r: TaxReturn, f: EtaxFiler) => {
     ...(general ? { "⑮": "AAJ00180", "⑯": "AAJ00190" } : { "⑮": "ABI00170", baseSales: "ABI00180" }),
   };
   const rows = rowsOf(r, "first");
-  const v = fill(headValues(general ? "AAI" : "ABH", f, true), rows, table);
+  const v = fill(headValues(general ? "AAI" : "ABH", f, true, r.total < 0), rows, table);
   // 付記事項（割賦基準・延払基準・工事進行基準・現金主義会計）と、課税標準額に対する消費税額の計算の特例（積上げ計算）は「無」
   for (const n of [10, 20, 30, 40]) v[tag(note, n)] = { kubun: 2 };
   v[tag(ref, 10)] = { kubun: 2 };
@@ -185,7 +190,7 @@ const secondValues = (r: TaxReturn, f: EtaxFiler) => {
   const t = general
     ? { "①": "AAP00000", "⑤": "AAQ00040", "⑥": "AAQ00050", "⑦": "AAQ00060", "⑪": "AAS00000", "⑮": "AAT00040", "⑯": "AAT00050", "⑰": "AAU00000", "⑱": "AAV00010", "⑳": "AAW00010", "㉓": "AAW00040" }
     : { "①": "ABO00000", "⑤": "ABP00040", "⑥": "ABP00050", "⑦": "ABP00060", "⑪": "ABR00000", "⑮": "ABS00040", "⑯": "ABS00050", "⑰": "ABT00000", "⑱": "ABU00010", "⑳": "ABV00010", "㉓": "ABV00040" };
-  return fill(headValues(general ? "AAN" : "ABM", f, false), rowsOf(r, "second"), t);
+  return fill(headValues(general ? "AAN" : "ABM", f, false, false), rowsOf(r, "second"), t);
 };
 
 export interface XtxOptions {
@@ -213,7 +218,7 @@ export const buildTaxXtx = (r: TaxReturn, filer: EtaxFiler, o: XtxOptions): stri
     namespace: NAMESPACE,
     procedure: p.procedure,
     procedureVersion: PROCEDURE_VERSION,
-    it: itXml(filer, { procedure: p.procedure, procedureName: p.name, from: o.from, to: o.to, shinkokuKbn: 1 }),
+    it: itXml(filer, { procedure: p.procedure, procedureName: p.name, from: o.from, to: o.to, shinkokuKbn: 1, refund: r.total < 0 }),
     forms,
   });
 };

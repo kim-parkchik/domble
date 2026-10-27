@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { simplifiedReturn, standardReturn, thirtyReturn, twentyReturn, type TaxBase } from "./taxReturn";
 import { buildTaxXtx, xtxProblem } from "./taxXtx";
-import { filerProblems, formXml, itXml, toKatakana, warekiXml, type EtaxFiler } from "./etax";
+import { filerProblems, formXml, isValidMyNumber, itXml, normalizeEtaxInfo, toKatakana, warekiXml, type EtaxFiler, type EtaxInfo } from "./etax";
 
 const base = (x: Partial<TaxBase>): TaxBase => ({
   sales: { 8: 0, 10: 0 }, salesReturn: { 8: 0, 10: 0 }, badDebt: { 8: 0, 10: 0 }, badDebtRecovered: { 8: 0, 10: 0 },
@@ -19,6 +19,7 @@ const filer: EtaxFiler = {
   userId: "1234567890123456", officeCode: "01101", officeName: "麹町",
   name: "山田　太郎", nameKana: "ヤマダ　タロウ", yago: "山田商店 & Co.", yagoKana: "やまだしょうてん",
   postalCode: "100-0001", address: "東京都千代田区千代田１－１", phone: "03-1234-5678",
+  myNumber: "", occupation: "", householderName: "", householderRelation: "", jan1Address: "", refund: null,
 };
 const period = { from: "2026-01-01", to: "2026-12-31", createdOn: "2027-02-01" };
 
@@ -188,6 +189,52 @@ test("申告者の情報が最小限（屋号・フリガナ・電話・郵便�
   expect(validate(xml)).toBe("");
   expect(xml).not.toContain("AAI00070");
   expect(xml).not.toContain("NOZEISHA_TEL");
+});
+
+describe("個人番号・還付先の口座", () => {
+  // 課税売上 1,100,000・課税仕入 3,300,000 → 控除不足還付
+  const refundReturn = standardReturn(base({ sales: { 8: 0, 10: 1_100_000 }, purchase: { 8: 0, 10: 3_300_000 } }), opts);
+  const bank = { kind: "bank" as const, bankName: "みずほ", bankKind: "1", branchName: "渋谷", branchKind: "2", depositKind: "1", accountNo: "1234567" };
+
+  test("個人番号は IT部に書き、第一表から参照する（第二表には無い）", () => {
+    const xml = buildTaxXtx(twentyReturn(base({ sales: { 8: 0, 10: 1_100_000 } }), opts), { ...filer, myNumber: "123456789018" }, period);
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain('<NOZEISHA_BANGO ID="NOZEISHA_BANGO"><gen:kojinbango>123456789018</gen:kojinbango></NOZEISHA_BANGO>');
+    expect(ref(xml, "AAI00080")).toBe("NOZEISHA_BANGO");
+    expect(xml).not.toContain("KANPU_KINYUKIKAN");
+  });
+  test("還付になるときだけ還付先の口座を書く（銀行等・ゆうちょ銀行）", () => {
+    expect(refundReturn.total).toBeLessThan(0);
+    const xml = buildTaxXtx(refundReturn, { ...filer, refund: bank }, period);
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain('<gen:kinyukikan_NM kinyukikan_KB="1">みずほ</gen:kinyukikan_NM><gen:shiten_NM shiten_KB="2">渋谷</gen:shiten_NM><gen:yokin>1</gen:yokin><gen:koza>1234567</gen:koza>');
+    expect(ref(xml, "AAI00190")).toBe("KANPU_KINYUKIKAN");
+    const yucho = buildTaxXtx(refundReturn, { ...filer, refund: { kind: "yucho", symbol: "10120", number: "12345671" } }, period);
+    expect(validate(yucho)).toBe("");
+    expect(yucho).toContain("<gen:kigobango1>10120</gen:kigobango1><gen:kigobango2>12345671</gen:kigobango2>");
+    const pay = buildTaxXtx(twentyReturn(base({ sales: { 8: 0, 10: 1_100_000 } }), opts), { ...filer, refund: bank }, period);
+    expect(pay).not.toContain("KANPU_KINYUKIKAN");
+  });
+  test("公金受取口座：口座は書かず、口座情報利用同意区分を 1（個人番号があるときだけ）", () => {
+    const xml = buildTaxXtx(refundReturn, { ...filer, myNumber: "123456789018", refund: { kind: "public" } }, period);
+    expect(validate(xml)).toBe("");
+    expect(val(xml, "AAI00250")).toBe("1");
+    expect(xml).not.toContain("KANPU_KINYUKIKAN");
+    expect(buildTaxXtx(refundReturn, { ...filer, refund: { kind: "public" } }, period)).not.toContain("AAI00250");
+  });
+  test("個人番号の検査用数字・口座の確かめ", () => {
+    expect(isValidMyNumber("123456789018")).toBe(true);
+    expect(isValidMyNumber("123456789012")).toBe(false);
+    expect(isValidMyNumber("12345678901")).toBe(false);
+    const info: EtaxInfo = {
+      etax_user_id: "", tax_office: "", phone: "", owner_kana: "", business_kana: "", occupation: "デザイナー", householder_name: "", householder_relation: "",
+      jan1_address: "", office_phone: "", refund_mode: "bank", bank_name: "みずほ銀行", bank_kind: "1", branch_name: "渋谷支店", branch_kind: "2", deposit_kind: "1",
+      account_no: "１２３４５６７", yucho_symbol: "", yucho_number: "",
+    };
+    expect(normalizeEtaxInfo(info)).toMatchObject({ bank_name: "みずほ", branch_name: "渋谷", account_no: "1234567" });
+    expect(normalizeEtaxInfo({ ...info, account_no: "" })).toMatch(/口座番号/);
+    expect(normalizeEtaxInfo({ ...info, refund_mode: "yucho" })).toMatch(/ゆうちょ/);
+  });
 });
 
 test("年の途中から課税事業者：課税期間の初日", () => {

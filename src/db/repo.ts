@@ -20,8 +20,9 @@ import {
   useLabel, validateTaxYear,
 } from "../lib/tax";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
-import { normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
+import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
+import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import { checkScanQuality, docClassOf, type DocClass, type ScanInputMethod } from "../lib/scan";
 import { lastHolidayYear, mergeHolidays, type Holiday } from "../lib/holidays";
@@ -138,7 +139,9 @@ export const checkInterrupted = async (db: Database) => {
 export const getSettings = async (db: Database): Promise<Settings> => {
   const rows = await db.select<Settings[]>(
     `SELECT business_name, owner_name, postal_code, address, invoice_no, invoice_registered_on, etax_user_id, tax_office, phone, owner_kana,
-            business_kana, industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at
+            business_kana, occupation, householder_name, householder_relation, jan1_address, office_phone, refund_mode, bank_name, bank_kind,
+            branch_name, branch_kind, deposit_kind, account_no, yucho_symbol, yucho_number,
+            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at
        FROM settings WHERE id = 1`,
   );
   return rows[0];
@@ -326,8 +329,10 @@ const saveEtaxInfo_ = async (db: Database, x: EtaxInfo) => {
   const n = normalizeEtaxInfo(x);
   if (typeof n === "string") throw new Error(n);
   await db.execute(
-    "UPDATE settings SET etax_user_id = ?, tax_office = ?, phone = ?, owner_kana = ?, business_kana = ? WHERE id = 1",
-    [n.etax_user_id, n.tax_office, n.phone, n.owner_kana, n.business_kana],
+    `UPDATE settings SET etax_user_id = ?, tax_office = ?, phone = ?, owner_kana = ?, business_kana = ?, occupation = ?, householder_name = ?,
+            householder_relation = ?, jan1_address = ?, office_phone = ?, refund_mode = ?, bank_name = ?, bank_kind = ?, branch_name = ?, branch_kind = ?,
+            deposit_kind = ?, account_no = ?, yucho_symbol = ?, yucho_number = ? WHERE id = 1`,
+    ETAX_FIELDS.map((k) => n[k]),
   );
 };
 
@@ -556,7 +561,7 @@ const setInputPeriodDays_ = async (db: Database, n: number) => {
 export const getAccounts = (db: Database, year: number) =>
   db.select<Account[]>(
     `SELECT a.id, a.code, ${effectiveName("account", "a")} AS name, a.kana, a.category, a.normal_side,
-            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class, a.default_purchase_use
+            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class, a.default_purchase_use, a.statement_line
        FROM accounts a ORDER BY a.code`,
     [year],
   );
@@ -615,6 +620,21 @@ const setAccountPurchaseUse_ = async (db: Database, id: number, use: PurchaseUse
   const text = (u: PurchaseUse | null) => `用途区分の初期値 ${useLabel(u ?? "common")}`;
   await logMaster(db, { target_type: "account", target_id: id, action: "change", fiscal_year: year, label: before.name, old_value: text(before.default_purchase_use), new_value: text(use) });
 };
+
+/** 青色申告決算書で書く欄（null = 科目名から自動）。変更は履歴に残す */
+const setAccountStatementLine_ = async (db: Database, id: number, line: string | null) => {
+  const year = await currentYear(db);
+  const before = (await getAccounts(db, year)).find((a) => a.id === id);
+  if (!before) return;
+  const section = sectionOf(before);
+  if (!section) throw new Error("売上（収入）金額の科目は、決算書の欄を選べません");
+  if (line !== null && !lineOptions(section).some(([v]) => v === line)) throw new Error("決算書の欄が正しくありません");
+  if ((before.statement_line ?? null) === line) return;
+  await db.execute("UPDATE accounts SET statement_line = ? WHERE id = ?", [line, id]);
+  const text = (l: string | null) => `決算書の欄 ${l === null ? `自動（${autoLineLabel(before)}）` : l === EXTRA_LINE ? "追加の欄" : l}`;
+  await logMaster(db, { target_type: "account", target_id: id, action: "change", fiscal_year: year, label: before.name, old_value: text(before.statement_line ?? null), new_value: text(line) });
+};
+const autoLineLabel = (a: Account) => (autoLine(a) === EXTRA_LINE ? "追加の欄" : autoLine(a));
 
 /** 科目の使用件数（仕訳・期首残高・家事按分の設定・固定資産台帳） */
 export const accountUsage = async (db: Database, id: number) => {
@@ -2205,6 +2225,7 @@ export const setEBookMode = inTx(setEBookMode_, () => "保存方式の設定", {
 export const saveSettings = inTx(saveSettings_, () => "事業者設定の保存", { perm: "settings" });
 export const saveTaxYear = inTx(saveTaxYear_, (t) => `${t.from_year}年の消費税の設定`, { perm: "settings" });
 export const saveTaxBaseManual = inTx(saveTaxBaseManual_, (year) => `${year}年の基準期間の課税売上高`, { perm: "settings" });
+export const setAccountStatementLine = inTx(setAccountStatementLine_, (id) => `勘定科目 #${id} の決算書の欄`, { perm: "master" });
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });

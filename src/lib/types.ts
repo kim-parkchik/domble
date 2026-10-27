@@ -30,6 +30,8 @@ export interface Account {
   default_business_class: number | null;
   /** 課税仕入の用途区分の初期値（本則課税の個別対応方式。null = 共通対応） */
   default_purchase_use: PurchaseUse | null;
+  /** 青色申告決算書で書く欄（欄の名前か "extra" = 追加の欄。null = 自動。lib/statementLines.ts） */
+  statement_line: string | null;
 }
 
 /** 補助科目（例：普通預金 → ○○銀行、売掛金 → 取引先） */
@@ -141,6 +143,7 @@ export interface VoucherRow {
 }
 
 export type FilingType = "blue65" | "blue55" | "blue10" | "white";
+export type RefundMode = "none" | "bank" | "yucho" | "public";
 /** 課税区分：免税・本則課税・簡易課税・2割特例・3割特例 */
 export type TaxStatus = "exempt" | "standard" | "simplified" | "twenty" | "thirty";
 /** 経理方式：税込・税抜 */
@@ -190,6 +193,24 @@ export interface Settings {
   phone: string;
   owner_kana: string;
   business_kana: string;
+  /** 確定申告書の申告者の欄：職業・世帯主の氏名と続柄・1月1日の住所（今の住所と違うときだけ）・事業所の電話番号 */
+  occupation: string;
+  householder_name: string;
+  householder_relation: string;
+  jan1_address: string;
+  office_phone: string;
+  /** 還付される税金の受取場所（bank 銀行等 / yucho ゆうちょ銀行 / public 公金受取口座 / none 書かない） */
+  refund_mode: RefundMode;
+  /** 銀行等：金融機関名と区分（1:銀行 2:金庫 3:組合 4:農協 5:漁協）・支店名と区分（1:本店 2:支店 3:本所 4:支所 5:出張所）・預金の種類（1:普通 2:当座 3:納税準備 6:貯蓄 など）・口座番号 */
+  bank_name: string;
+  bank_kind: string;
+  branch_name: string;
+  branch_kind: string;
+  deposit_kind: string;
+  account_no: string;
+  /** ゆうちょ銀行：貯金記号番号（上5桁・下8桁まで） */
+  yucho_symbol: string;
+  yucho_number: string;
   fiscal_year: number;
   filing_type: FilingType;
   industry: string;

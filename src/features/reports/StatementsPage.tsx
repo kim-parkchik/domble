@@ -11,6 +11,7 @@ import { yen } from "../../lib/format";
 import * as repo from "../../db/repo";
 import type { Account } from "../../lib/types";
 import { BLUE_DEDUCTION_LIMIT } from "../../lib/incomeTax";
+import { statementLayout } from "../../lib/statementLines";
 import { StatementPage2, StatementPage3 } from "./StatementPages";
 import { isYearCompliant } from "../../lib/ebook";
 
@@ -40,6 +41,9 @@ export const StatementsPage = () => {
   const by = (cat: Account["category"]) => accounts.filter((a) => a.category === cat);
   const val = (a: Account) => end.get(a.id) ?? 0;
   const open = (a: Account) => opening[a.id] ?? 0;
+
+  // e-Tax 用のデータの決算書では、追加の欄に上限がある（勘定科目の画面の「決算書の欄」で選べる）
+  const layoutWarnings = useMemo(() => statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0).warnings, [accounts, end, opening]);
 
   const limit = BLUE_DEDUCTION_LIMIT[settings.filing_type];
   const deduction = Math.min(limit, Math.max(0, pl.income));
@@ -71,6 +75,11 @@ export const StatementsPage = () => {
         </button>
       </PageHeader>
 
+      {layoutWarnings.length > 0 && (
+        <p className="notice print-skip">
+          {layoutWarnings.join("。")}（e-Tax 用のデータの決算書）。勘定科目の画面の「決算書の欄」で、書く欄を選び直せます。
+        </p>
+      )}
       <section className="sheet statement print-area">
         <header className="statement-head">
           <h2 className={tab === "p2" || tab === "p3" ? "st-title-small" : ""}>{TAB_TITLE[tab]}</h2>

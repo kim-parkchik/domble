@@ -773,3 +773,5 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .it-kv { max-width: 420px; }
 .it-plain { font-size: 13px; margin: 0 0 8px; }
 .btn.icon { padding-left: 6px; padding-right: 6px; }
+/* 勘定科目の表：列が多いので、狭い画面では横に送る（科目名の列をつぶさない） */
+.accounts-table { min-width: 1080px; }

@@ -19,6 +19,7 @@ import { BUSINESS_CLASSES, PURCHASE_USES, TAX_CODES } from "../../constants/tax"
 import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, useLabel } from "../../lib/tax";
 import type { Account, AccountCategory, PurchaseUse, TaxCode } from "../../lib/types";
 import * as repo from "../../db/repo";
+import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../../lib/statementLines";
 
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as AccountCategory[];
 
@@ -72,6 +73,15 @@ export const AccountsPage = () => {
   const setUse = async (a: Account, use: PurchaseUse | null) => {
     try {
       await repo.setAccountPurchaseUse(db, a.id, use);
+      await reloadAccounts();
+    } catch (e) {
+      toast(`変更できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+
+  const setLine = async (a: Account, line: string | null) => {
+    try {
+      await repo.setAccountStatementLine(db, a.id, line);
       await reloadAccounts();
     } catch (e) {
       toast(`変更できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
@@ -137,7 +147,8 @@ export const AccountsPage = () => {
               <col />
               <col style={{ width: 150 }} />
               <col style={{ width: 150 }} />
-              <col style={{ width: "18%" }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: "14%" }} />
               <col style={{ width: 230 }} />
             </colgroup>
             <thead>
@@ -145,6 +156,7 @@ export const AccountsPage = () => {
                 <th>使う</th><th>コード</th><th>科目名</th>
                 <th title="課税事業者の期間に、この科目を選んだときに入る税区分。資産の科目は借方（取得したとき）だけに使い、貸方は対象外です">税区分（初期値）</th>
                 <th title="簡易課税の年に、この科目の課税売上に入る事業区分（「主な事業区分」は事業者設定の年度ごとの設定。資産の売却は第四種）と、本則課税の年に、この科目の課税仕入に入る用途区分（個別対応方式で使う）">事業区分・用途区分</th>
+                <th title="青色申告決算書（e-Tax 用のデータ）で書く欄。初期値は科目名から自動（名前の同じ欄、無ければ科目名で書く追加の欄）。追加の欄が足りないときは雑費などにまとめます">決算書の欄</th>
                 <th>補助科目</th><th />
               </tr>
             </thead>
@@ -152,7 +164,7 @@ export const AccountsPage = () => {
               {shownCats.map((c) => (
                 <Fragment key={c}>
                   <tr className="cat-row">
-                    <td colSpan={7}>{CATEGORY_LABEL[c]}<span className="cat-range">コード {CATEGORY_CODE_RANGE[c][0]}〜{CATEGORY_CODE_RANGE[c][1]}</span></td>
+                    <td colSpan={8}>{CATEGORY_LABEL[c]}<span className="cat-range">コード {CATEGORY_CODE_RANGE[c][0]}〜{CATEGORY_CODE_RANGE[c][1]}</span></td>
                   </tr>
                   {accounts.filter((a) => a.category === c).map((a) => {
                     const locked = LOCKED_CODES.includes(a.code);
@@ -200,6 +212,22 @@ export const AccountsPage = () => {
                               {PURCHASE_USES.filter((u) => u.value !== "common").map((u) => <option key={u.value} value={u.value}>{useLabel(u.value)}</option>)}
                             </select>
                           ) : a.category === "asset" && FIXED_ASSET_CODES.includes(a.code) ? <span className="muted" title="業務用の固定資産の売却は第四種">第四種（売却）</span> : null}
+                        </td>
+                        <td>
+                          {(() => {
+                            const section = sectionOf(a);
+                            if (!section) return <span className="muted">売上（収入）金額</span>;
+                            const auto = autoLine(a);
+                            return (
+                              <select
+                                className={`input tax-select${a.statement_line ? "" : " is-default"}`} value={a.statement_line ?? ""}
+                                onChange={(e) => setLine(a, e.target.value || null)} aria-label={`${a.name}の決算書の欄`}
+                              >
+                                <option value="">自動（{auto === EXTRA_LINE ? "追加の欄" : auto}）</option>
+                                {lineOptions(section).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                              </select>
+                            );
+                          })()}
                         </td>
                         <td className="muted">{subs.length ? subs.map((s) => s.name).join("、") : ""}</td>
                         <td className="row-actions">

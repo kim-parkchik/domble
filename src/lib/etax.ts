@@ -34,7 +34,22 @@ export interface EtaxFiler {
   address: string;
   /** 電話番号（03-1234-5678 のようにハイフンで区切る） */
   phone: string;
+  /** 個人番号（12桁。書き出すときだけ入れてもらい、保存しない。無ければ空） */
+  myNumber: string;
+  /** 確定申告書の欄（職業・世帯主の氏名と続柄・1月1日の住所。無ければ空） */
+  occupation: string;
+  householderName: string;
+  householderRelation: string;
+  jan1Address: string;
+  /** 還付される税金の受取場所（口座・公金受取口座。書かないなら null） */
+  refund: RefundPlace | null;
 }
+
+/** 還付される税金の受取場所 */
+export type RefundPlace =
+  | { kind: "bank"; bankName: string; bankKind: string; branchName: string; branchKind: string; depositKind: string; accountNo: string }
+  | { kind: "yucho"; symbol: string; number: string }
+  | { kind: "public" };
 
 /** 欄の値 */
 export type EtaxValue =
@@ -87,24 +102,70 @@ export const filerProblems = (f: EtaxFiler): string[] => {
   return p;
 };
 
-/** 事業者設定に持つ e-Tax の申告者の情報 */
-export type EtaxInfo = Pick<Settings, "etax_user_id" | "tax_office" | "phone" | "owner_kana" | "business_kana">;
+/** 事業者設定に持つ e-Tax の申告者の情報（保存する列の順） */
+export const ETAX_FIELDS = [
+  "etax_user_id", "tax_office", "phone", "owner_kana", "business_kana", "occupation", "householder_name", "householder_relation", "jan1_address",
+  "office_phone", "refund_mode", "bank_name", "bank_kind", "branch_name", "branch_kind", "deposit_kind", "account_no", "yucho_symbol", "yucho_number",
+] as const satisfies readonly (keyof Settings)[];
+export type EtaxInfo = Pick<Settings, (typeof ETAX_FIELDS)[number]>;
+
+export const BANK_KINDS: [string, string][] = [["1", "銀行"], ["2", "金庫"], ["3", "組合"], ["4", "農協"], ["5", "漁協"]];
+export const BRANCH_KINDS: [string, string][] = [["1", "本店"], ["2", "支店"], ["3", "本所"], ["4", "支所"], ["5", "出張所"]];
+export const DEPOSIT_KINDS: [string, string][] = [["1", "普通"], ["2", "当座"], ["3", "納税準備"], ["4", "通知"], ["5", "別段"], ["6", "貯蓄"], ["9", "その他"]];
+
+const digits = (s: string) => s.normalize("NFKC").replace(/[\s-]/g, "");
+const phoneOf = (s: string) => s.normalize("NFKC").replace(/[ー－‐]/g, "-").replace(/\s/g, "");
 
 /** 保存する前にそろえて確かめる（空欄はよい）。問題があればメッセージ */
 export const normalizeEtaxInfo = (x: EtaxInfo): EtaxInfo | string => {
+  const t = (s: string | undefined) => (s ?? "").normalize("NFKC").trim();
   const n: EtaxInfo = {
-    etax_user_id: x.etax_user_id.normalize("NFKC").replace(/[\s-]/g, ""),
+    etax_user_id: digits(x.etax_user_id),
     tax_office: x.tax_office.trim(),
-    phone: x.phone.normalize("NFKC").replace(/[ー－‐]/g, "-").replace(/\s/g, ""),
+    phone: phoneOf(x.phone),
     owner_kana: toKatakana(x.owner_kana),
     business_kana: toKatakana(x.business_kana),
+    occupation: t(x.occupation),
+    householder_name: t(x.householder_name),
+    householder_relation: t(x.householder_relation),
+    jan1_address: t(x.jan1_address),
+    office_phone: phoneOf(x.office_phone ?? ""),
+    refund_mode: (["bank", "yucho", "public"] as const).find((m) => m === x.refund_mode) ?? "none",
+    bank_name: t(x.bank_name).replace(/(銀行|信用金庫|金庫|信用組合|組合|農業協同組合|農協|漁業協同組合|漁協)$/, ""),
+    bank_kind: BANK_KINDS.some(([v]) => v === x.bank_kind) ? x.bank_kind : "1",
+    branch_name: t(x.branch_name).replace(/(本店|支店|本所|支所|出張所)$/, ""),
+    branch_kind: BRANCH_KINDS.some(([v]) => v === x.branch_kind) ? x.branch_kind : "2",
+    deposit_kind: DEPOSIT_KINDS.some(([v]) => v === x.deposit_kind) ? x.deposit_kind : "1",
+    account_no: digits(x.account_no ?? ""),
+    yucho_symbol: digits(x.yucho_symbol ?? ""),
+    yucho_number: digits(x.yucho_number ?? ""),
   };
   if (n.etax_user_id && !/^\d{16}$/.test(n.etax_user_id)) return "利用者識別番号は16桁の数字です";
   if (n.tax_office && !TAX_OFFICES.has(n.tax_office)) return "提出先の税務署を一覧から選んでください";
   if (n.phone && !splitPhone(n.phone)) return "電話番号は 03-1234-5678 のようにハイフンで区切って入れてください";
+  if (n.office_phone && !splitPhone(n.office_phone)) return "事業所の電話番号は 03-1234-5678 のようにハイフンで区切って入れてください";
   if (!KANA.test(n.owner_kana) || !KANA.test(n.business_kana)) return "フリガナはカタカナで入れてください";
   if (n.business_kana.length > 60) return "屋号のフリガナは60文字までです";
+  if (n.occupation.length > 20) return "職業は20文字までです";
+  if (n.householder_relation.length > 5) return "世帯主との続柄は5文字までです";
+  if (n.householder_name.length > 30) return "世帯主の氏名は30文字までです";
+  if (n.bank_name.length > 15 || n.branch_name.length > 15) return "金融機関名・支店名は15文字までです";
+  if (n.account_no && !/^\d{1,10}$/.test(n.account_no)) return "口座番号は10桁までの数字です";
+  if (n.yucho_symbol && !/^\d{5}$/.test(n.yucho_symbol)) return "ゆうちょ銀行の記号は5桁の数字です";
+  if (n.yucho_number && !/^\d{1,8}$/.test(n.yucho_number)) return "ゆうちょ銀行の番号は8桁までの数字です";
+  if (n.refund_mode === "bank" && (!n.bank_name || !n.branch_name || !n.account_no)) return "還付先の金融機関名・支店名・口座番号を入れてください";
+  if (n.refund_mode === "yucho" && (!n.yucho_symbol || !n.yucho_number)) return "還付先のゆうちょ銀行の記号番号を入れてください";
   return n;
+};
+
+/** 個人番号（12桁）の検査用数字が合っているか（行政手続における特定の個人を識別するための番号の利用等に関する法律施行令の計算） */
+export const isValidMyNumber = (s: string) => {
+  if (!/^\d{12}$/.test(s)) return false;
+  const d = [...s].map(Number);
+  let sum = 0;
+  for (let n = 1; n <= 11; n++) sum += d[11 - n] * (n <= 6 ? n + 1 : n - 5);
+  const r = sum % 11;
+  return d[11] === (r <= 1 ? 0 : 11 - r);
 };
 
 /** 事業者設定から申告者の情報を作る */
@@ -119,6 +180,15 @@ export const filerFromSettings = (s: Settings): EtaxFiler => ({
   postalCode: s.postal_code,
   address: s.address,
   phone: s.phone,
+  myNumber: "",
+  occupation: s.occupation,
+  householderName: s.householder_name,
+  householderRelation: s.householder_relation,
+  jan1Address: s.jan1_address,
+  refund: s.refund_mode === "bank"
+    ? { kind: "bank", bankName: s.bank_name, bankKind: s.bank_kind, branchName: s.branch_name, branchKind: s.branch_kind, depositKind: s.deposit_kind, accountNo: s.account_no }
+    : s.refund_mode === "yucho" ? { kind: "yucho", symbol: s.yucho_symbol, number: s.yucho_number }
+      : s.refund_mode === "public" ? { kind: "public" } : null,
 });
 
 // ── IT部 ──
@@ -130,9 +200,26 @@ export interface ItOptions {
   to: string;
   /** 申告の種類（1:確定 2:中間 3:修正確定 4:修正中間） */
   shinkokuKbn: number;
+  /** 還付される税金の受取場所（口座）を書くか（還付になるときだけ） */
+  refund?: boolean;
+  /** 確定申告書の申告者の欄（職業・世帯主・1月1日の住所）を書くか（所得税） */
+  personal?: boolean;
 }
 
-/** IT部（XSD の順番：税務署・利用者識別番号・氏名読み・氏名・郵便番号・住所・屋号読み・屋号・電話・手続・課税期間・申告の種類） */
+/** IT部に書く還付先の口座（銀行等・ゆうちょ銀行。公金受取口座は様式の区分で示す） */
+const refundAccount = (r: RefundPlace | null): string => {
+  if (r?.kind === "bank") {
+    return `<gen:kinyukikan_NM kinyukikan_KB="${r.bankKind}">${escapeXml(r.bankName)}</gen:kinyukikan_NM>`
+      + `<gen:shiten_NM shiten_KB="${r.branchKind}">${escapeXml(r.branchName)}</gen:shiten_NM><gen:yokin>${r.depositKind}</gen:yokin><gen:koza>${r.accountNo}</gen:koza>`;
+  }
+  if (r?.kind === "yucho") return `<gen:kigobango1>${r.symbol}</gen:kigobango1><gen:kigobango2>${r.number}</gen:kigobango2>`;
+  return "";
+};
+
+/**
+ * IT部（XSD の順番：税務署・利用者識別番号・個人番号・氏名読み・氏名・郵便番号・住所・1月1日の住所・屋号読み・屋号・電話・
+ * 世帯主の氏名・続柄・職業・還付先の口座・手続・課税期間・申告の種類）
+ */
 export const itXml = (f: EtaxFiler, o: ItOptions) => {
   const el = (tag: string, body: string) => `<${tag} ID="${tag}">${body}</${tag}>`;
   const zip = f.postalCode.replace(/-/g, "");
@@ -141,13 +228,19 @@ export const itXml = (f: EtaxFiler, o: ItOptions) => {
     `<IT VR="${IT_VERSION}" id="IT">`,
     el("ZEIMUSHO", `<gen:zeimusho_CD>${f.officeCode}</gen:zeimusho_CD>${f.officeName ? `<gen:zeimusho_NM>${escapeXml(f.officeName)}</gen:zeimusho_NM>` : ""}`),
     el("NOZEISHA_ID", f.userId),
+    f.myNumber ? el("NOZEISHA_BANGO", `<gen:kojinbango>${f.myNumber}</gen:kojinbango>`) : "",
     f.nameKana ? el("NOZEISHA_NM_KN", escapeXml(toKatakana(f.nameKana))) : "",
     el("NOZEISHA_NM", escapeXml(f.name.trim())),
     zip.length === 7 ? el("NOZEISHA_ZIP", `<gen:zip1>${zip.slice(0, 3)}</gen:zip1><gen:zip2>${zip.slice(3)}</gen:zip2>`) : "",
     el("NOZEISHA_ADR", escapeXml(f.address.trim())),
+    o.personal && f.jan1Address.trim() ? el("ICHIGATSUIPPI_ADR", escapeXml(f.jan1Address.trim())) : "",
     f.yago && f.yagoKana ? el("NOZEISHA_YAGO_KN", escapeXml(toKatakana(f.yagoKana))) : "",
     f.yago ? el("NOZEISHA_YAGO", escapeXml(f.yago.trim())) : "",
     tel ? el("NOZEISHA_TEL", `<gen:tel1>${tel.tel1}</gen:tel1><gen:tel2>${tel.tel2}</gen:tel2><gen:tel3>${tel.tel3}</gen:tel3>`) : "",
+    o.personal && f.householderName.trim() ? el("SETAINUSHI_NM", escapeXml(f.householderName.trim())) : "",
+    o.personal && f.householderRelation.trim() ? el("SETAINUSHI_ZOKU", escapeXml(f.householderRelation.trim())) : "",
+    o.personal && f.occupation.trim() ? el("SHOKUGYO", escapeXml(f.occupation.trim())) : "",
+    o.refund && refundAccount(f.refund) ? el("KANPU_KINYUKIKAN", refundAccount(f.refund)) : "",
     el("TETSUZUKI", `<procedure_CD>${o.procedure}</procedure_CD><procedure_NM>${escapeXml(o.procedureName)}</procedure_NM>`),
     el("KAZEI_KIKAN_FROM", warekiXml(o.from)),
     el("KAZEI_KIKAN_TO", warekiXml(o.to)),
@@ -157,8 +250,14 @@ export const itXml = (f: EtaxFiler, o: ItOptions) => {
 };
 
 /** IT部にある項目（様式から参照してよいもの） */
-export const itRefs = (f: EtaxFiler) => {
+export const itRefs = (f: EtaxFiler, o: Pick<ItOptions, "refund" | "personal"> = {}) => {
   const s = new Set(["ZEIMUSHO", "NOZEISHA_ID", "NOZEISHA_NM", "NOZEISHA_ADR", "TETSUZUKI", "KAZEI_KIKAN_FROM", "KAZEI_KIKAN_TO", "SHINKOKU_KBN"]);
+  if (f.myNumber) s.add("NOZEISHA_BANGO");
+  if (o.personal && f.jan1Address.trim()) s.add("ICHIGATSUIPPI_ADR");
+  if (o.personal && f.householderName.trim()) s.add("SETAINUSHI_NM");
+  if (o.personal && f.householderRelation.trim()) s.add("SETAINUSHI_ZOKU");
+  if (o.personal && f.occupation.trim()) s.add("SHOKUGYO");
+  if (o.refund && refundAccount(f.refund)) s.add("KANPU_KINYUKIKAN");
   if (f.nameKana) s.add("NOZEISHA_NM_KN");
   if (f.yago) s.add("NOZEISHA_YAGO");
   if (f.yago && f.yagoKana) s.add("NOZEISHA_YAGO_KN");
