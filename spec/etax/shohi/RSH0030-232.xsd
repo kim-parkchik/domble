@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shohi"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general"
+xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:som="http://xml.e-tax.nta.go.jp/XSD/somu"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ elementFormDefault="qualified" attributeFormDefault="unqualified"
+ version="1.0" > 
+
+<xsd:annotation>
+<xsd:documentation>
+消費税及び地方消費税申告(簡易課税・個人)
+version:23.2.0 Date: 2023年11月27日
+</xsd:documentation>
+</xsd:annotation>
+
+<!-- import and include-->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:include schemaLocation="../general/ITdefinition.xsd"/>
+<xsd:include schemaLocation="../general/CATALOG.xsd"/>
+<xsd:include schemaLocation="SHA020-009.xsd"/>
+<xsd:include schemaLocation="SHB043-002.xsd"/>
+<xsd:include schemaLocation="SHB045-003.xsd"/>
+<xsd:include schemaLocation="SHB047-001.xsd"/>
+<xsd:include schemaLocation="SHB055-002.xsd"/>
+<xsd:include schemaLocation="SHB065-003.xsd"/>
+<xsd:include schemaLocation="SHB067-001.xsd"/>
+<xsd:include schemaLocation="SHB070-001.xsd"/>
+<xsd:include schemaLocation="SHB100-001.xsd"/>
+<xsd:include schemaLocation="SHE020-006.xsd"/>
+<xsd:include schemaLocation="SHE040-006.xsd"/>
+<xsd:include schemaLocation="SHE060-007.xsd"/>
+<xsd:include schemaLocation="SHE100-005.xsd"/>
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/somu" schemaLocation="../somu/SOZ-001.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="RSH0030-232-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="23.2.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:complexType name="TETSUZUKItype">
+<xsd:complexContent>
+<xsd:restriction base="gen:procedure">
+<xsd:sequence>
+<xsd:element name="procedure_CD">
+<xsd:simpleType>
+<xsd:restriction base="gen:procedure_CD">
+<xsd:enumeration value="RSH0030"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+<xsd:element name="procedure_NM" minOccurs="0">
+<xsd:simpleType>
+<xsd:restriction base="gen:str">
+<xsd:maxLength value="200"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+</xsd:sequence>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="SHINKOKU_KBNtype">
+<xsd:complexContent>
+<xsd:restriction base="gen:kubun2">
+<xsd:sequence>
+<xsd:element name="kubun_CD">
+<xsd:simpleType>
+<xsd:restriction base="xsd:nonNegativeInteger">
+<xsd:pattern value="\d?\d"/>
+</xsd:restriction></xsd:simpleType>
+</xsd:element>
+<xsd:element name="kubun_NM" minOccurs="0">
+<xsd:simpleType>
+<xsd:restriction base="gen:str">
+<xsd:maxLength value="30"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+</xsd:sequence>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KEISANSHO_KBNtype">
+<xsd:complexContent>
+<xsd:restriction base="gen:kubun2">
+<xsd:sequence>
+<xsd:element name="kubun_CD">
+<xsd:simpleType>
+<xsd:restriction base="xsd:nonNegativeInteger">
+<xsd:pattern value="\d?\d"/>
+</xsd:restriction></xsd:simpleType>
+</xsd:element>
+<xsd:element name="kubun_NM" minOccurs="0">
+<xsd:simpleType>
+<xsd:restriction base="gen:str">
+<xsd:maxLength value="30"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+</xsd:sequence>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+
+<!-- Root Element Definition --><xsd:element name="DATA">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="RSH0030" type="RSH0030-232-0type"/>
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="0" maxOccurs="unbounded"/>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID"/></xsd:complexType>
+</xsd:element>
+<!-- Procedure Definition -->
+<xsd:complexType name="RSH0030-232-0type">
+<xsd:sequence>
+<xsd:element name="CATALOG" type="CATALOGtype">
+<xsd:annotation>
+<xsd:appinfo>管理部</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CONTENTS" type="RSH0030-232-0contentsType">
+<xsd:annotation>
+<xsd:appinfo>内容部分</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID" use="required"/><xsd:attribute name="VR" type="RSH0030-232-0VRtype" use="required"/>
+</xsd:complexType>
+<xsd:complexType name="RSH0030-232-0contentsType"><xsd:sequence>
+<!-- IT部-->
+<xsd:element name="IT" type="ITtype"/>
+<!-- 帳票個別部分 -->
+<xsd:group ref="SHA020-9-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB043-2-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB045-3-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB047-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB055-2-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB065-3-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB067-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB070-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHB100-1-1group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="SHE020-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHE040-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHE060-7-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="SHE100-5-0group" minOccurs="0" maxOccurs="1"/>
+
+<xsd:element name="TENPU" minOccurs="0">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element ref="som:SOZ042" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="som:SOZ052" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="som:SOZ074" minOccurs="0" maxOccurs="unbounded"/>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID" use="required"/>
+</xsd:complexType>
+</xsd:element>
+
+
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID" use="required"/>
+
+
+</xsd:complexType>
+</xsd:schema>

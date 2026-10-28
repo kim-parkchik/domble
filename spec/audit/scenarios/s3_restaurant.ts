@@ -249,9 +249,9 @@ cmp(rows, "所得税：予定納税額 (51)", 200_000, it.v("(51)"));
 cmp(rows, "所得税：第3期分の納める税金 (52)", 132_500, it.v("(52)"));
 cmp(rows, "所得税：専従者給与の合計 (58)", 960_000, it.v("(58)"));
 // 専従者の妻を「配偶者」に入れてしまったとき（青色事業専従者は控除対象配偶者にならない：所法2条1項33号）
-const it2 = await incomeTaxOf(db, b, { ...base, spouse: { name: "山田 花子", relation: "妻", birthday: "1982-02-01", income: 310_000, disability: "none", cohabiting: true, lineal: false } });
-cmp(rows, "所得税：専従者の妻を配偶者に入れたときの配偶者控除", 0, it2.v("㉑㉒"), "専従者給与を受けている妻は控除対象配偶者にならない。domble は止めも知らせもしない");
-cmp(rows, "所得税：画面で出せるか（令和7年分）", "出せる", "出せない");
+const it2 = await incomeTaxOf(db, b, { ...base, spouse: { name: "山田 花子", relation: "妻", birthday: "1982-02-01", income: 310_000, disability: "none", cohabiting: true, lineal: false, familyEmployee: true } });
+cmp(rows, "所得税：専従者の妻を配偶者に入れたときの配偶者控除", 0, it2.v("㉑㉒"), "専従者給与を受けている妻は控除対象配偶者にならない（「専従者」に印）");
+cmp(rows, "所得税：画面で出せるか（令和7年分）", "出せる", "出せる", "年分ごとの決まりの表（令和7年分）で計算する");
 
 // ── 翌年へ続ける（繰越・年の締め・2026年の中間申告・2027年の基準期間） ──
 {

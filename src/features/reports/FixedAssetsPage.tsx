@@ -18,7 +18,7 @@ import { closingBalances } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
 import {
-  depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, SMALL_LIMIT, SMALL_YEAR_LIMIT, smallTotalOfYear, validateAsset,
+  depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear, validateAsset,
   type DepreciationMethod, type FixedAsset,
 } from "../../lib/depreciation";
 import * as repo from "../../db/repo";
@@ -323,7 +323,7 @@ const AssetModal = ({ asset, blue, onClose, onSaved }: { asset: FixedAsset | nul
             <select className="input" value={method} onChange={(e) => changeMethod(e.target.value as DepreciationMethod)}>
               <option value="straight">{METHOD_LABEL.straight}</option>
               <option value="lump3">{METHOD_LABEL.lump3}（{yen(EXPENSE_LIMIT)}〜{yen(LUMP3_LIMIT)}円未満）</option>
-              <option value="small" disabled={!blue}>{METHOD_LABEL.small}（{yen(SMALL_LIMIT)}円未満・青色申告）</option>
+              <option value="small" disabled={!blue}>{METHOD_LABEL.small}（{smallLimitFor(acquired) ? `${yen(smallLimitFor(acquired)!)}円未満` : "令和11年3月までの取得"}・青色申告）</option>
             </select>
           </label>
           <label className="field">

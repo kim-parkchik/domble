@@ -7,7 +7,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { simplifiedReturn, standardReturn, thirtyReturn, twentyReturn, type TaxBase } from "./taxReturn";
-import { buildTaxXtx, xtxProblem } from "./taxXtx";
+import { buildTaxXtx, xtxProblem, xtxVersionFor } from "./taxXtx";
 import { filerProblems, formXml, isValidMyNumber, itXml, normalizeEtaxInfo, toKatakana, warekiXml, type EtaxFiler, type EtaxInfo } from "./etax";
 
 const base = (x: Partial<TaxBase>): TaxBase => ({
@@ -30,8 +30,9 @@ let n = 0;
 const validate = (xml: string) => {
   const file = join(dir, `t${n++}.xtx`);
   writeFileSync(file, xml);
-  const procedure = xml.match(/<(RSH\d{4}) /)![1];
-  const p = Bun.spawnSync(["xmllint", "--noout", "--schema", join(SPEC, `${procedure}-260.xsd`), file]);
+  // 手続と版（VR="26.0.0" → RSH0010-260.xsd）で XSD を選ぶ
+  const [, procedure, vr] = xml.match(/<(RSH\d{4}) VR="([\d.]+)"/)!;
+  const p = Bun.spawnSync(["xmllint", "--noout", "--schema", join(SPEC, `${procedure}-${vr.replace(/\./g, "").slice(0, 3)}.xsd`), file]);
   return p.exitCode === 0 ? "" : p.stderr.toString();
 };
 const val = (xml: string, t: string) => xml.match(new RegExp(`<${t}>(?:<kubun_CD>)?([^<]*)<`))?.[1];
@@ -243,12 +244,36 @@ test("年の途中から課税事業者：課税期間の初日", () => {
   expect(warekiXml("2019-04-30")).toContain("<gen:era>4</gen:era><gen:yy>31</gen:yy>");
 });
 
-test("書き出せないもの：3割特例・令和7年分以前", () => {
+test("書き出せないもの：3割特例・令和6年分以前", () => {
   const b = base({ sales: { 8: 0, 10: 1_100_000 } });
   expect(xtxProblem(thirtyReturn(b, opts), 2027)).toMatch(/3割特例/);
   expect(() => buildTaxXtx(thirtyReturn(b, opts), filer, { ...period, from: "2027-01-01", to: "2027-12-31" })).toThrow(/3割特例/);
-  expect(xtxProblem(twentyReturn(b, opts), 2025)).toMatch(/令和8年/);
+  expect(xtxProblem(twentyReturn(b, opts), 2024)).toMatch(/令和7年/);
+  expect(xtxProblem(twentyReturn(b, opts), 2025)).toBeNull();
   expect(xtxProblem(twentyReturn(b, opts), 2026)).toBeNull();
+});
+
+describe("年分ごとの手続の版", () => {
+  const r7 = { from: "2025-01-01", to: "2025-12-31", createdOn: "2026-02-01" };
+  test("令和7年分は版 23.2.0 で書き出し、その版の XSD に合う（一般用・簡易課税用、本則・簡易・2割特例）", () => {
+    const b = base({ sales: { 8: 1_080_000, 10: 2_200_000 }, purchase: { 8: 540_000, 10: 1_100_000 } });
+    const cases = [
+      buildTaxXtx(standardReturn(b, opts), filer, r7),
+      buildTaxXtx(simplifiedReturn(b, opts), filer, r7),
+      buildTaxXtx(twentyReturn(b, opts), filer, r7),
+      buildTaxXtx(twentyReturn(b, opts, "簡易課税用"), filer, r7),
+    ];
+    for (const xml of cases) {
+      expect(xml).toMatch(/<RSH00[13]0 VR="23\.2\.0"/);
+      expect(validate(xml)).toBe("");
+    }
+    expect(cases[0]).toContain("<KAZEI_KIKAN_FROM ID=\"KAZEI_KIKAN_FROM\"><gen:era>5</gen:era><gen:yy>7</gen:yy>");
+  });
+  test("表に無い新しい年分は、いちばん新しい版で書き出す（知らせる）", () => {
+    expect(xtxVersionFor(2025)).toEqual({ version: "23.2.0", fallback: false });
+    expect(xtxVersionFor(2026)).toEqual({ version: "26.0.0", fallback: false });
+    expect(xtxVersionFor(2027)).toEqual({ version: "26.0.0", fallback: true });
+  });
 });
 
 test("申告者の情報の確かめ", () => {

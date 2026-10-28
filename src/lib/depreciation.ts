@@ -24,7 +24,17 @@ export const METHOD_LABEL: Record<DepreciationMethod, string> = {
 
 /** 一括償却資産・少額減価償却資産にできる取得価額の上限（この額未満） */
 export const LUMP3_LIMIT = 200_000;
-export const SMALL_LIMIT = 300_000;
+/**
+ * 少額減価償却資産の取得価額の上限（この額未満）。取得日で変わる（国税庁 No.2100、令和8年度税制改正）
+ *  令和8年3月31日までの取得：30万円未満、令和8年4月1日〜令和11年3月31日の取得：40万円未満。令和11年4月1日以後の取得は特例なし
+ */
+export const SMALL_LIMITS: { from: string; to: string; limit: number }[] = [
+  { from: "0000-01-01", to: "2026-03-31", limit: 300_000 },
+  { from: "2026-04-01", to: "2029-03-31", limit: 400_000 },
+];
+/** その取得日の上限（特例の期限を過ぎていれば null） */
+export const smallLimitFor = (acquiredOn: string): number | null =>
+  SMALL_LIMITS.find((x) => acquiredOn >= x.from && acquiredOn <= x.to)?.limit ?? null;
 /** 少額減価償却資産の、1年の取得価額の合計の上限 */
 export const SMALL_YEAR_LIMIT = 3_000_000;
 /** これ未満なら、資産にせず消耗品費などで落とせる */
@@ -146,7 +156,13 @@ export const validateAsset = (a: Omit<FixedAsset, "id">, opts: { blue: boolean }
   if (!Number.isInteger(a.business_rate) || a.business_rate < 0 || a.business_rate > 100) return "事業専用割合は 0〜100 の整数で入れてください";
   if (a.method === "straight" && (!Number.isInteger(a.useful_life) || a.useful_life < 2 || a.useful_life > 100)) return "耐用年数は 2〜100 の整数で入れてください";
   if (a.method === "lump3" && a.cost >= LUMP3_LIMIT) return `一括償却資産にできるのは取得価額 ${LUMP3_LIMIT.toLocaleString()}円未満のものです`;
-  if (a.method === "small" && a.cost >= SMALL_LIMIT) return `少額減価償却資産にできるのは取得価額 ${SMALL_LIMIT.toLocaleString()}円未満のものです`;
+  if (a.method === "small") {
+    const limit = smallLimitFor(a.acquired_on);
+    if (limit === null) return "少額減価償却資産の特例は、令和11年3月31日までに取得したものだけです";
+    if (a.cost >= limit) {
+      return `少額減価償却資産にできるのは取得価額 ${limit.toLocaleString()}円未満のものです（${a.acquired_on < "2026-04-01" ? "令和8年3月31日までの取得" : "令和8年4月1日以後の取得"}）`;
+    }
+  }
   if (a.method === "small" && !opts.blue) return "少額減価償却資産の特例は、青色申告のときだけ使えます";
   if (a.disposed_on && a.disposed_on < a.used_on) return "売却・除却した日は、使い始めた日より後にしてください";
   if ((a.opening_year === null) !== (a.opening_book_value === null)) return "期首の未償却残高は、年と金額の両方を入れてください";

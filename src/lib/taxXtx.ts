@@ -19,14 +19,30 @@ const PROCEDURES = {
   一般用: { procedure: "RSH0010", name: "消費税及び地方消費税申告(一般・個人)", first: "SHA010" },
   簡易課税用: { procedure: "RSH0030", name: "消費税及び地方消費税申告(簡易課税・個人)", first: "SHA020" },
 } as const;
-const PROCEDURE_VERSION = "26.0.0";
-/** この版で書き出せる最初の年分 */
-export const XTX_FIRST_YEAR = 2026;
+/**
+ * 年分ごとの手続の版（spec/etax/shohi の RSH0010-<版>.xsd・RSH0030-<版>.xsd）。中の様式（第一表・付表）は同じ版を使う
+ *  令和7年分 = 23.2.0（令和5年10月1日以後終了課税期間用の様式）、令和8年分 = 26.0.0
+ * 表に無い新しい年分は、いちばん新しい版で書き出して知らせる（国税庁が新しい版を出したら表に足す）
+ */
+export const XTX_VERSIONS: { year: number; version: string }[] = [
+  { year: 2025, version: "23.2.0" },
+  { year: 2026, version: "26.0.0" },
+];
+/** この表で書き出せる最初の年分 */
+export const XTX_FIRST_YEAR = Math.min(...XTX_VERSIONS.map((v) => v.year));
+
+/** その年分の手続の版。表に無い新しい年分は、いちばん新しい版（fallback = true） */
+export const xtxVersionFor = (year: number): { version: string; fallback: boolean } => {
+  const exact = XTX_VERSIONS.find((v) => v.year === year);
+  if (exact) return { version: exact.version, fallback: false };
+  const latest = [...XTX_VERSIONS].sort((a, b) => b.year - a.year)[0];
+  return { version: latest.version, fallback: true };
+};
 
 /** 書き出せない理由（書き出せるなら null） */
 export const xtxProblem = (r: TaxReturn, year: number): string | null => {
   if (r.method === "thirty") return "3割特例の付表は国税庁の様式がまだ出ていないため、e-Tax のデータは書き出せません";
-  if (year < XTX_FIRST_YEAR) return `e-Tax のデータは令和8年（${XTX_FIRST_YEAR}年）分からの様式で書き出します。それより前の年分には対応していません`;
+  if (year < XTX_FIRST_YEAR) return `e-Tax のデータは令和${XTX_FIRST_YEAR - 2018}年（${XTX_FIRST_YEAR}年）分から書き出せます。それより前の年分には対応していません`;
   return null;
 };
 
@@ -217,7 +233,7 @@ export const buildTaxXtx = (r: TaxReturn, filer: EtaxFiler, o: XtxOptions): stri
   return documentXml({
     namespace: NAMESPACE,
     procedure: p.procedure,
-    procedureVersion: PROCEDURE_VERSION,
+    procedureVersion: xtxVersionFor(Number(o.from.slice(0, 4))).version,
     it: itXml(filer, { procedure: p.procedure, procedureName: p.name, from: o.from, to: o.to, shinkokuKbn: 1, refund: r.total < 0 }),
     forms,
   });

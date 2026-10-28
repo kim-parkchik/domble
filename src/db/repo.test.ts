@@ -233,7 +233,7 @@ describe("固定資産台帳・減価償却（repo）", () => {
     await repo.saveAsset(db, a, { ...base, business_rate: 70 });
     await repo.saveAsset(db, a, { ...base, business_rate: 70 }); // 変わらなければ記録しない
     await expect(repo.saveAsset(db, null, { ...base, account_id: id("消耗品費") })).rejects.toThrow(/資産の科目/);
-    await expect(repo.saveAsset(db, null, { ...base, method: "small", cost: 300_000 })).rejects.toThrow(/300,000円未満/);
+    await expect(repo.saveAsset(db, null, { ...base, method: "small", cost: 400_000 })).rejects.toThrow(/400,000円未満/); // 令和8年4月以後の取得
     expect((await repo.getAssets(db)).map((x) => [x.name, x.business_rate])).toEqual([["パソコン", 70]]);
     expect(await repo.accountUsage(db, id("工具器具備品"))).toBe(1);
     await repo.deleteAsset(db, a);

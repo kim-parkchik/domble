@@ -169,7 +169,7 @@ cmp(rows, "所得税：税額 ㉜", 8_700, v("㉜"));
 cmp(rows, "所得税：復興特別所得税 ㊺", 182, v("㊺"));
 cmp(rows, "所得税：源泉徴収税額 ㊾", 367_560, v("㊾"));
 cmp(rows, "所得税：還付される税金", 358_678, v(`(53)`));
-cmp(rows, "所得税：画面で出せるか（令和7年分）", "出せる", "出せない", "IncomeTaxPage は 2026年より前の年を「令和8年分から対応」として表示しない（computeIncomeTax を直接呼んだ値を右に出している）");
+cmp(rows, "所得税：画面で出せるか（令和7年分）", "出せる", "出せる", "年分ごとの決まりの表（令和7年分）で計算する");
 
 // 源泉徴収税額を帳簿（事業主貸の補助科目「源泉所得税」）から拾えるか
 const withheldBooks = f.lines.filter((l) => l.sub_account_id === sWith).reduce((s, l) => s + (l.side === "debit" ? l.amount : -l.amount), 0);

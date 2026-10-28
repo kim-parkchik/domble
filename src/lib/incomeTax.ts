@@ -1,12 +1,15 @@
 /**
- * 所得税及び復興特別所得税の確定申告書（第一表・第二表）の数字（純粋関数）。令和8年分の制度・様式（案）の欄番号
+ * 所得税及び復興特別所得税の確定申告書（第一表・第二表）の数字（純粋関数）。欄番号は令和7年分の様式と令和8年分の様式（案）で同じ
+ *
+ * 年分で変わる決まり（基礎控除・給与所得控除・扶養親族などの所得要件・勤労学生・生命保険料控除の特例）は INCOME_TAX_RULES の年分ごとの表に持つ。
+ * 表に無い年分は、いちばん近い年分の表で計算し、そのことを notes で知らせる（決まりが定まる前の年も、仮の数字を出せるように）
  *
  * 対象：事業所得（営業等。帳簿と決算書から）・給与所得・雑所得（公的年金等・業務・その他）
- *  - 給与所得控除は令和8・9年分の特例（最低保障 74万円。190万円超 220万円以下は国税庁の表の特例）。660万円未満は「年末調整等のための給与所得控除後の給与等の金額の表」と同じ計算
+ *  - 給与所得控除は年分の表の最低保障（令和7年分 65万円、令和8・9年分 74万円と 190万円超 220万円以下の特例の段）。660万円未満は「年末調整等のための給与所得控除後の給与等の金額の表」と同じ計算
  *  - 公的年金等控除は年齢（その年12月31日現在で65歳以上か）と、公的年金等以外の合計所得金額（1,000万円・2,000万円）で決める
  *  - 雑所得の損失は雑所得の中だけで差し引く。事業所得の損失はほかの所得から差し引く（純損失が残る場合の損失申告は扱わない）
- * 所得控除：社会保険料・小規模企業共済等掛金・生命保険料（令和8年分の23歳未満の扶養親族がいる場合の特例を含む）・地震保険料・寄附金・医療費（またはセルフメディケーション税制）・
- *   寡婦・ひとり親・勤労学生・障害者・配偶者（特別）・扶養・特定親族特別控除・基礎控除（令和8・9年分の特例）
+ * 所得控除：社会保険料・小規模企業共済等掛金・生命保険料（令和8年分からの23歳未満の扶養親族がいる場合の特例を含む）・地震保険料・寄附金・医療費（またはセルフメディケーション税制）・
+ *   寡婦・ひとり親・勤労学生・障害者・配偶者（特別）・扶養・特定親族特別控除（令和7年分から）・基礎控除
  * 税額：課税される所得金額（千円未満切り捨て）× 税率、住宅借入金等特別控除（計算明細書の額を入れる）、復興特別所得税（基準所得税額 × 2.1%。1円未満切り捨て）、
  *   源泉徴収税額・予定納税額を差し引いて、納める税金（百円未満切り捨て）または還付される税金
  * 扱わないもの：不動産・利子・配当・譲渡・一時所得、分離課税、損失申告、雑損控除、所得金額調整控除、配当控除などほかの税額控除、災害減免、外国税額控除、白色申告の専従者控除
@@ -189,13 +192,65 @@ export const ageAt = (birthday: string, year: number): number | null => {
   return year - Number(birthday.slice(0, 4)) + (birthday.slice(5) === "01-01" ? 1 : 0);
 };
 
-/** 給与所得の金額（令和8・9年分。所得金額調整控除・特定支出控除は扱わない） */
-export const salaryIncome = (x: number): number => {
-  if (x < 741_000) return 0;
-  if (x < 2_191_000) return x - 740_000;
-  if (x < 2_193_000) return 1_451_000;
-  if (x < 2_196_000) return 1_453_000;
-  if (x < 2_200_000) return 1_456_000;
+// ────────────────────────────────────────────
+// 年分ごとの決まり
+// ────────────────────────────────────────────
+
+export interface IncomeTaxRules {
+  /** 年分（西暦） */
+  year: number;
+  /** 基礎控除：合計所得金額の上限ごとの額（上から順に見る。最後より多ければ 0） */
+  basic: [number, number][];
+  /** 給与所得控除の最低保障額（給与所得 = 収入 − この額。この額 + 1,000円 未満なら 0） */
+  salaryMin: number;
+  /** 最低保障の計算をやめる収入（これ以上は 4千円単位の表の計算）と、そのあいだの特例の段（[この収入未満, 給与所得]） */
+  salaryFlatUntil: number;
+  salarySteps: [number, number][];
+  /** 扶養親族・同一生計配偶者の所得要件（合計所得金額がこの額以下） */
+  dependentLimit: number;
+  /** 勤労学生の所得要件 */
+  studentLimit: number;
+  /** 23歳未満の扶養親族がいる場合の生命保険料控除の特例（新生命保険料の上限 6万円）があるか */
+  lifeUnder23: boolean;
+}
+
+/** 国税庁「源泉所得税の改正のあらまし（令和8年4月）」・令和7年分の確定申告の手引き */
+export const INCOME_TAX_RULES: IncomeTaxRules[] = [
+  {
+    year: 2025,
+    basic: [[1_320_000, 950_000], [3_360_000, 880_000], [4_890_000, 680_000], [6_550_000, 630_000], [23_500_000, 580_000],
+      [24_000_000, 480_000], [24_500_000, 320_000], [25_000_000, 160_000]],
+    salaryMin: 650_000, salaryFlatUntil: 1_900_000, salarySteps: [],
+    dependentLimit: 580_000, studentLimit: 850_000, lifeUnder23: false,
+  },
+  {
+    year: 2026,
+    basic: [[4_890_000, 1_040_000], [6_550_000, 670_000], [23_500_000, 620_000], [24_000_000, 480_000], [24_500_000, 320_000], [25_000_000, 160_000]],
+    // 令和8・9年分の特例：最低保障 74万円、190万円超 220万円以下は国税庁の表の特例の段
+    salaryMin: 740_000, salaryFlatUntil: 2_191_000, salarySteps: [[2_193_000, 1_451_000], [2_196_000, 1_453_000], [2_200_000, 1_456_000]],
+    dependentLimit: 620_000, studentLimit: 890_000, lifeUnder23: true,
+  },
+];
+
+/** 和暦の年分の表示（2026 → 令和8年分） */
+export const reiwaYear = (year: number) => `令和${year - 2018}年分`;
+
+/** その年分の決まり。表に無ければいちばん近い年分（fallback = true） */
+export const rulesFor = (year: number): { rules: IncomeTaxRules; fallback: boolean } => {
+  const exact = INCOME_TAX_RULES.find((r) => r.year === year);
+  if (exact) return { rules: exact, fallback: false };
+  const sorted = [...INCOME_TAX_RULES].sort((a, b) => a.year - b.year);
+  return { rules: year < sorted[0].year ? sorted[0] : sorted[sorted.length - 1], fallback: true };
+};
+const LATEST = Math.max(...INCOME_TAX_RULES.map((r) => r.year));
+
+/** 給与所得の金額（所得金額調整控除・特定支出控除は扱わない） */
+export const salaryIncome = (x: number, year = LATEST): number => {
+  const r = rulesFor(year).rules;
+  if (x < r.salaryMin + 1_000) return 0;
+  if (x < r.salaryFlatUntil) return x - r.salaryMin;
+  const step = r.salarySteps.find(([max]) => x < max);
+  if (step) return step[1];
   if (x < 6_600_000) {
     const a = floorTo(x / 4, 1000);
     return x < 3_600_000 ? (a * 28) / 10 - 80_000 : (a * 32) / 10 - 440_000;
@@ -268,31 +323,19 @@ export const medicalDeduction = (m: IncomeTaxInput["medical"], totalIncome: numb
 export const donationDeduction = (total: number, totalIncome: number) =>
   Math.max(Math.min(total, Math.floor((Math.max(totalIncome, 0) * 40) / 100)) - 2_000, 0);
 
-/** 基礎控除（令和8・9年分。合計所得金額で決まる） */
-export const basicDeduction = (income: number) => {
-  if (income <= 4_890_000) return 1_040_000;
-  if (income <= 6_550_000) return 670_000;
-  if (income <= 23_500_000) return 620_000;
-  if (income <= 24_000_000) return 480_000;
-  if (income <= 24_500_000) return 320_000;
-  if (income <= 25_000_000) return 160_000;
-  return 0;
-};
+/** 基礎控除（合計所得金額で決まる） */
+export const basicDeduction = (income: number, year = LATEST) => rulesFor(year).rules.basic.find(([max]) => income <= max)?.[1] ?? 0;
 
-/** 扶養親族・同一生計配偶者の所得要件（令和8年分） */
-export const DEPENDENT_LIMIT = 620_000;
-/** 勤労学生の所得要件（令和8年分。令和7年分は 85万円） */
-export const STUDENT_LIMIT = 890_000;
 const SPECIAL_LIMIT = 1_330_000;
 const SPECIFIC_LIMIT = 1_230_000;
 
-/** 配偶者特別控除（配偶者の合計所得金額 62万円超 133万円以下。本人の合計所得金額 900万・950万・1,000万円以下で3段階） */
+/** 配偶者特別控除（配偶者の合計所得金額が所得要件超 133万円以下。本人の合計所得金額 900万・950万・1,000万円以下で3段階） */
 const SPOUSE_SPECIAL: [number, number, number, number][] = [
   [950_000, 380_000, 260_000, 130_000], [1_000_000, 360_000, 240_000, 120_000], [1_050_000, 310_000, 210_000, 110_000],
   [1_100_000, 260_000, 180_000, 90_000], [1_150_000, 210_000, 140_000, 70_000], [1_200_000, 160_000, 110_000, 60_000],
   [1_250_000, 110_000, 80_000, 40_000], [1_300_000, 60_000, 40_000, 20_000], [1_330_000, 30_000, 20_000, 10_000],
 ];
-/** 特定親族特別控除（19歳以上23歳未満で合計所得金額 62万円超 123万円以下） */
+/** 特定親族特別控除（19歳以上23歳未満で合計所得金額が所得要件超 123万円以下） */
 const SPECIFIC_RELATIVE: [number, number][] = [
   [850_000, 630_000], [900_000, 610_000], [950_000, 510_000], [1_000_000, 410_000], [1_050_000, 310_000],
   [1_100_000, 210_000], [1_150_000, 110_000], [1_200_000, 60_000], [1_230_000, 30_000],
@@ -310,7 +353,7 @@ export const spouseDeduction = (s: Relative | null, ownIncome: number, year: num
   if (!s || s.familyEmployee || ownIncome > 10_000_000) return none;
   const tier = ownIncome <= 9_000_000 ? 0 : ownIncome <= 9_500_000 ? 1 : 2;
   const elderly = (ageAt(s.birthday, year) ?? 0) >= 70;
-  if (s.income <= DEPENDENT_LIMIT) return { kind: "spouse", amount: (elderly ? [480_000, 320_000, 160_000] : [380_000, 260_000, 130_000])[tier], elderly };
+  if (s.income <= rulesFor(year).rules.dependentLimit) return { kind: "spouse", amount: (elderly ? [480_000, 320_000, 160_000] : [380_000, 260_000, 130_000])[tier], elderly };
   if (s.income > SPECIAL_LIMIT) return none;
   const row = SPOUSE_SPECIAL.find(([max]) => s.income <= max)!;
   return { kind: "special", amount: row[1 + tier], elderly: false };
@@ -327,7 +370,7 @@ export const dependentDeduction = (d: Relative, year: number): { kind: Dependent
   const age = ageAt(d.birthday, year);
   // 事業専従者は扶養親族・特定親族にならない
   if (d.familyEmployee) return { kind: "familyEmployee", amount: 0, age };
-  if (d.income > DEPENDENT_LIMIT) {
+  if (d.income > rulesFor(year).rules.dependentLimit) {
     if (age !== null && age >= 19 && age < 23 && d.income <= SPECIFIC_LIMIT) {
       return { kind: "specificRelative", amount: SPECIFIC_RELATIVE.find(([max]) => d.income <= max)![1], age };
     }
@@ -411,6 +454,11 @@ export const fieldNo = (n: number) => (n <= 50 ? [...NOS][n] : `(${n})`);
 
 export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, year: number): IncomeTaxResult => {
   const notes: string[] = [];
+  const { rules, fallback } = rulesFor(year);
+  if (fallback) {
+    notes.push(`${reiwaYear(year)}の決まりはまだ domble に入っていないため、${reiwaYear(rules.year)}の決まり（基礎控除・給与所得控除・所得要件など）で計算した仮の数字です。ソフトの更新で直ります。`);
+  }
+  const DEPENDENT_LIMIT = rules.dependentLimit;
   const white = biz.filingType === "white";
   const blue = white ? 0 : Math.min(BLUE_DEDUCTION_LIMIT[biz.filingType], Math.max(0, biz.incomeBeforeBlue));
   if (white) notes.push("白色申告の事業専従者控除と収支内訳書には対応していません。事業所得は決算書の所得金額（専従者給与を経費にした額）のままです。");
@@ -421,7 +469,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const miscBizIn = sum(input.misc.filter((r) => r.kind === "business").map((r) => r.income));
   const miscOtherIn = sum(input.misc.filter((r) => r.kind === "other").map((r) => r.income));
   const r1 = biz.incomeBeforeBlue - blue;
-  const r6 = salaryIncome(salaryIn);
+  const r6 = salaryIncome(salaryIn, rules.year);
   const r8 = sum(input.misc.filter((r) => r.kind === "business").map((r) => r.income - r.expenses));
   const r9 = sum(input.misc.filter((r) => r.kind === "other").map((r) => r.income - r.expenses));
   // 公的年金等以外の合計所得金額（雑所得の損失はほかの所得から引けない）
@@ -439,7 +487,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const r13 = sum(input.socialInsurance.map((r) => r.amount));
   const r14 = sum(input.smallBusiness.map((r) => r.amount));
   const dependents = input.dependents.map((d) => ({ d, ...dependentDeduction(d, year) }));
-  const under23 = dependents.some((x) => !x.d.familyEmployee && x.d.income <= DEPENDENT_LIMIT && x.age !== null && x.age < 23);
+  const under23 = rules.lifeUnder23 && dependents.some((x) => !x.d.familyEmployee && x.d.income <= DEPENDENT_LIMIT && x.age !== null && x.age < 23);
   const r15 = lifeInsuranceDeduction(input.life, under23);
   const r16 = quakeDeduction(input.quake);
   let r17 = 0;
@@ -449,7 +497,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   }
   let student = 0;
   if (input.student) {
-    if (r12 > STUDENT_LIMIT) notes.push(`合計所得金額が${STUDENT_LIMIT / 10_000}万円を超えているため、勤労学生控除は受けられません。`);
+    if (r12 > rules.studentLimit) notes.push(`合計所得金額が${rules.studentLimit / 10_000}万円を超えているため、勤労学生控除は受けられません。`);
     else student = 270_000;
   }
   const spouse = spouseDeduction(input.spouse, r12, year);
@@ -463,7 +511,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const r19 = student + sum(disabled);
   const r23 = sum(dependents.filter((x) => x.kind !== "specificRelative").map((x) => x.amount));
   const r24 = sum(dependents.filter((x) => x.kind === "specificRelative").map((x) => x.amount));
-  const r25 = basicDeduction(r12);
+  const r25 = basicDeduction(r12, rules.year);
   const r26 = r13 + r14 + r15 + r16 + r17 + r19 + spouse.amount + r23 + r24 + r25;
   const r28 = medicalDeduction(input.medical, total);
   const r29 = donationDeduction(sum(input.donations.map((d) => d.amount)), total);
@@ -504,7 +552,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "㋗", label: "雑（その他）", value: miscOtherIn },
     { no: "", label: "所得金額等", value: null, head: true },
     { no: "①", label: "事業（営業等）", value: r1, note: white ? "決算書の所得金額" : `青色申告特別控除 ${blue.toLocaleString()}円を差し引いた額` },
-    { no: "⑥", label: "給与", value: r6, note: "給与所得控除後の金額（令和8年分）" },
+    { no: "⑥", label: "給与", value: r6, note: `給与所得控除後の金額（${reiwaYear(rules.year)}）` },
     { no: "⑦", label: "雑（公的年金等）", value: r7, note: pensionIn ? `公的年金等控除（${(age ?? 0) >= 65 ? "65歳以上" : "65歳未満"}）後の金額` : undefined },
     { no: "⑧", label: "雑（業務）", value: r8 },
     { no: "⑨", label: "雑（その他）", value: r9 },
@@ -520,7 +568,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "㉑㉒", label: spouseLabel, value: spouse.amount },
     { no: "㉓", label: "扶養控除", value: r23 },
     { no: "㉔", label: "特定親族特別控除", value: r24 },
-    { no: "㉕", label: "基礎控除", value: r25, note: "令和8年分（合計所得金額に応じた額）" },
+    { no: "㉕", label: "基礎控除", value: r25, note: `${reiwaYear(rules.year)}（合計所得金額に応じた額）` },
     { no: "㉖", label: "⑬から㉕までの計", value: r26 },
     { no: "㉘", label: input.medical.kind === "self" ? "医療費控除（セルフメディケーション税制）" : "医療費控除", value: r28 },
     { no: "㉙", label: "寄附金控除", value: r29 },

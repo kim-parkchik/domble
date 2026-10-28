@@ -1,8 +1,8 @@
 /**
  * 所得税：確定申告書（第一表・第二表）の数字（計算は lib/incomeTax.ts）
  *  - 入力：帳簿から出せないもの（給与・公的年金等・雑所得、源泉徴収、所得控除、配偶者・扶養親族、住宅借入金等特別控除、予定納税額）。年度ごとに保存
- *  - 第一表・第二表：事業所得は帳簿と決算書から。欄番号は令和8年分の様式（案）
- *  - 令和8年分（2026年）から。e-Tax 用のデータ（.xtx）の書き出しはまだ
+ *  - 第一表・第二表：事業所得は帳簿と決算書から。欄番号は令和7年分の様式と令和8年分の様式（案）で同じ
+ *  - 決まりは年分の表（lib/incomeTax.ts の INCOME_TAX_RULES）。表に無い年分は、いちばん近い年分の決まりで計算して知らせる。e-Tax 用のデータ（.xtx）の書き出しはまだ
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Plus, Printer, Save, Trash2, Undo2, Wand2 } from "lucide-react";
@@ -14,14 +14,12 @@ import { closingBalances, summarizeIncome } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
 import {
-  computeIncomeTax, dependentDeduction, DEPENDENT_KIND_LABEL, DISABILITIES, emptyRelative, EMPTY_INCOME_TAX_INPUT, spouseDeduction,
+  computeIncomeTax, dependentDeduction, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES, emptyRelative, EMPTY_INCOME_TAX_INPUT, spouseDeduction,
   type BusinessFigures, type Disability, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PayerRow, type PremiumRow, type Relative,
 } from "../../lib/incomeTax";
 import * as repo from "../../db/repo";
 
 type View = "input" | "first" | "second";
-/** 対応している最初の年分 */
-const FIRST_YEAR = 2026;
 
 const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
 const emptyPayer = (): PayerRow => ({ item: "", payer: "", payerId: "", income: 0, withheld: 0 });
@@ -91,14 +89,6 @@ export const IncomeTaxPage = () => {
     }
   };
 
-  if (year < FIRST_YEAR) {
-    return (
-      <div className="page">
-        <PageHeader title="所得税" note={`${year}年分`} />
-        <section className="sheet"><p className="empty-note">所得税の申告書は、令和8年分（{FIRST_YEAR}年）から対応しています。</p></section>
-      </div>
-    );
-  }
 
   const pay = result.rows.find((r) => r.key === "pay")?.value ?? 0;
   const refund = result.rows.find((r) => r.key === "refund")?.value ?? 0;
@@ -222,7 +212,10 @@ const PREMIUM_COLS = (placeholder: string): Col<PremiumRow>[] => [
 const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
   x: IncomeTaxInput; set: <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => void; setX: (f: (p: IncomeTaxInput) => IncomeTaxInput) => void;
   result: IncomeTaxResult; year: number; disabled: boolean; drawings: boolean; onPick: () => void;
-}) => (
+}) => {
+  const { rules } = rulesFor(year);
+  const man = (n: number) => `${n / 10_000}万円`;
+  return (
   <div className="it-input">
     <Section title="本人">
       <div className="field-row wrap">
@@ -273,7 +266,7 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       {drawings && <button type="button" className="btn ghost sm it-pick" onClick={onPick} disabled={disabled}><Wand2 size={14} /> 事業主貸の補助科目から入れる</button>}
     </Section>
 
-    <Section title="生命保険料・地震保険料" note="控除証明書の「本年中の支払額」（剰余金・割戻金を差し引いた額）。新＝平成24年以後の契約、旧＝平成23年以前の契約。23歳未満の扶養親族がいれば、新生命保険料は上限6万円で計算します（令和8年分）。">
+    <Section title="生命保険料・地震保険料" note={`控除証明書の「本年中の支払額」（剰余金・割戻金を差し引いた額）。新＝平成24年以後の契約、旧＝平成23年以前の契約。${rules.lifeUnder23 ? "23歳未満の扶養親族がいれば、新生命保険料は上限6万円で計算します（令和8年分から）。" : ""}`}>
       <div className="field-row wrap it-amounts">
         {([["newLife", "新生命保険料"], ["oldLife", "旧生命保険料"], ["care", "介護医療保険料"], ["newPension", "新個人年金保険料"], ["oldPension", "旧個人年金保険料"]] as [keyof IncomeTaxInput["life"], string][]).map(([k, label]) => (
           <label key={k} className="field">
@@ -319,7 +312,7 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       />
     </Section>
 
-    <Section title="配偶者" note="配偶者の合計所得金額が62万円以下なら配偶者控除、62万円超133万円以下なら配偶者特別控除です（本人の合計所得金額が1,000万円以下のとき）。給与だけなら、給与所得控除後の金額が合計所得金額です。専従者給与を受けている人（事業専従者）は、配偶者控除・扶養控除の対象になりません（「専従者」に印）。">
+    <Section title="配偶者" note={`配偶者の合計所得金額が${man(rules.dependentLimit)}以下なら配偶者控除、${man(rules.dependentLimit)}超133万円以下なら配偶者特別控除です（本人の合計所得金額が1,000万円以下のとき）。給与だけなら、給与所得控除後の金額が合計所得金額です。専従者給与を受けている人（事業専従者）は、配偶者控除・扶養控除の対象になりません（「専従者」に印）。`}>
       {x.spouse ? (
         <RelativesEditor rows={[x.spouse]} onChange={([s]) => set("spouse", s ?? null)} year={year} ownIncome={result.totalIncome} spouse disabled={disabled} />
       ) : (
@@ -327,7 +320,7 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       )}
     </Section>
 
-    <Section title="扶養親族" note="生計を一にする親族（16歳未満の子も、障害者控除と生命保険料の特例のために入れてください）。合計所得金額が62万円以下なら扶養控除、19歳以上23歳未満で62万円超123万円以下なら特定親族特別控除です。">
+    <Section title="扶養親族" note={`生計を一にする親族（16歳未満の子も、障害者控除${rules.lifeUnder23 ? "と生命保険料の特例" : ""}のために入れてください）。合計所得金額が${man(rules.dependentLimit)}以下なら扶養控除、19歳以上23歳未満で${man(rules.dependentLimit)}超123万円以下なら特定親族特別控除です（${reiwaYear(rules.year)}の決まり）。`}>
       <RelativesEditor rows={x.dependents} onChange={(v) => setX((p) => ({ ...p, dependents: v }))} year={year} ownIncome={result.totalIncome} disabled={disabled} />
     </Section>
 
@@ -344,7 +337,8 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       </div>
     </Section>
   </div>
-);
+  );
+};
 
 const RelativesEditor = ({ rows, onChange, year, ownIncome, spouse, disabled }: {
   rows: Relative[]; onChange: (rows: Relative[]) => void; year: number; ownIncome: number; spouse?: boolean; disabled: boolean;
@@ -421,7 +415,7 @@ const FirstTable = ({ result, year }: { result: IncomeTaxResult; year: number })
       </tbody>
     </table>
     <p className="field-note">
-      欄番号は令和8年分の様式（案）のものです。数字の入っていない欄（農業・不動産・利子・配当・譲渡・一時所得、雑損控除、配当控除などの税額控除、災害減免額、外国税額控除）は domble では扱いません。
+      欄番号は令和7年分の様式と令和8年分の様式（案）で同じです。数字の入っていない欄（農業・不動産・利子・配当・譲渡・一時所得、雑損控除、配当控除などの税額控除、災害減免額、外国税額控除）は domble では扱いません。
       確定申告書等作成コーナーや e-Tax に書き写すときに使ってください。
     </p>
   </div>

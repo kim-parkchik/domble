@@ -70,7 +70,12 @@ describe("入力の確かめ", () => {
 
   test("一括・少額の上限、少額は青色申告だけ、期首の未償却残高", () => {
     expect(validateAsset(asset({ method: "lump3", cost: 200_000 }), blue)).toMatch(/200,000円未満/);
-    expect(validateAsset(asset({ method: "small", cost: 300_000 }), blue)).toMatch(/300,000円未満/);
+    expect(validateAsset(asset({ method: "small", cost: 300_000, acquired_on: "2026-03-10", used_on: "2026-03-10" }), blue)).toMatch(/300,000円未満/);
+    // 令和8年4月1日以後の取得は 40万円未満、令和11年4月1日以後は特例なし
+    expect(validateAsset(asset({ method: "small", cost: 350_000, acquired_on: "2026-03-31", used_on: "2026-03-31" }), blue)).toMatch(/300,000円未満.*3月31日まで/);
+    expect(validateAsset(asset({ method: "small", cost: 350_000, acquired_on: "2026-04-01", used_on: "2026-04-01" }), blue)).toBeNull();
+    expect(validateAsset(asset({ method: "small", cost: 400_000, acquired_on: "2026-04-01", used_on: "2026-04-01" }), blue)).toMatch(/400,000円未満/);
+    expect(validateAsset(asset({ method: "small", cost: 100_000, acquired_on: "2029-04-01", used_on: "2029-04-01" }), blue)).toMatch(/令和11年3月31日まで/);
     expect(validateAsset(asset({ method: "small", cost: 200_000 }), { blue: false })).toMatch(/青色申告/);
     expect(validateAsset(asset({ opening_year: 2027, opening_book_value: null }), blue)).toMatch(/両方/);
     expect(validateAsset(asset({ opening_year: 2027, opening_book_value: 300_000 }), blue)).toMatch(/取得価額以下/);

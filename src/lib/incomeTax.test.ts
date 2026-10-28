@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   ageAt, basicDeduction, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, incomeTaxOn, lifeInsuranceDeduction,
-  medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
+  medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, rulesFor, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
 } from "./incomeTax";
 
 const cell = (r: IncomeTaxResult, no: string) => r.rows.find((x) => x.no === no)!.value;
@@ -199,6 +199,49 @@ describe("事業専従者・勤労学生", () => {
     const none: BusinessFigures = { revenue: 0, incomeBeforeBlue: 0, filingType: "blue65", familySalary: 0 };
     expect(cell(computeIncomeTax(input(1_630_000), none, 2026), "⑲⑳")).toBe(270_000);
     expect(cell(computeIncomeTax(input(1_631_000), none, 2026), "⑲⑳")).toBe(0);
+  });
+});
+
+describe("年分の切り替え（令和7年分と令和8年分）", () => {
+  const none: BusinessFigures = { revenue: 0, incomeBeforeBlue: 0, filingType: "blue65", familySalary: 0 };
+  test("給与所得控除：令和7年分は最低 65万円、令和8年分は 74万円と特例の段", () => {
+    expect(salaryIncome(1_000_000, 2025)).toBe(350_000);
+    expect(salaryIncome(651_000, 2025)).toBe(1_000);
+    expect(salaryIncome(650_999, 2025)).toBe(0);
+    expect(salaryIncome(1_899_999, 2025)).toBe(1_249_999);
+    expect(salaryIncome(1_900_000, 2025)).toBe(1_250_000);
+    expect(salaryIncome(2_195_000, 2025)).toBe(1_454_400); // 4千円単位の表：548,000 × 2.8 − 80,000
+    expect(salaryIncome(1_000_000, 2026)).toBe(260_000);
+    expect(salaryIncome(5_000_000, 2025)).toBe(salaryIncome(5_000_000, 2026));
+  });
+  test("基礎控除：令和7年分は 95万・88万・68万・63万・58万円", () => {
+    expect([1_320_000, 1_320_001, 3_360_001, 4_890_001, 6_550_001].map((x) => basicDeduction(x, 2025))).toEqual([950_000, 880_000, 680_000, 630_000, 580_000]);
+    expect(basicDeduction(3_000_000, 2026)).toBe(1_040_000);
+  });
+  test("所得要件：令和7年分は 58万円（60万円の配偶者は配偶者特別控除、親は扶養控除なし）", () => {
+    const wife = { ...emptyRelative("妻"), birthday: "1986-05-01", income: 600_000 };
+    expect(spouseDeduction(wife, 5_000_000, 2025)).toMatchObject({ kind: "special", amount: 380_000 });
+    expect(spouseDeduction(wife, 5_000_000, 2026)).toMatchObject({ kind: "spouse", amount: 380_000 });
+    const parent = { ...emptyRelative("父"), birthday: "1960-05-01", income: 600_000 };
+    expect(dependentDeduction(parent, 2025).kind).toBe("none");
+    expect(dependentDeduction(parent, 2026).kind).toBe("general");
+  });
+  test("令和7年分の申告書：勤労学生 85万円、生命保険料控除の23歳未満の特例なし", () => {
+    const student = { ...EMPTY_INCOME_TAX_INPUT, student: true, salaries: [{ item: "", payer: "", payerId: "", income: 1_510_000, withheld: 0 }] };
+    // 給与 151万円 → 給与所得 86万円：令和7年分は受けられない、令和8年分（151万 − 74万 = 77万）は受けられる
+    expect(cell(computeIncomeTax(student, none, 2025), "⑲⑳")).toBe(0);
+    expect(cell(computeIncomeTax(student, none, 2026), "⑲⑳")).toBe(270_000);
+    const life = { ...EMPTY_INCOME_TAX_INPUT, life: { ...EMPTY_INCOME_TAX_INPUT.life, newLife: 100_000 }, dependents: [{ ...emptyRelative("子"), birthday: "2016-05-01" }] };
+    expect(cell(computeIncomeTax(life, none, 2025), "⑮")).toBe(40_000);
+    expect(cell(computeIncomeTax(life, none, 2026), "⑮")).toBe(55_000);
+    expect(computeIncomeTax(life, none, 2025).rows.find((r) => r.no === "㉕")!.note).toMatch(/令和7年分/);
+  });
+  test("表に無い年分は、いちばん近い年分の決まりで計算して知らせる", () => {
+    const r = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, none, 2027);
+    expect(r.notes.join()).toMatch(/令和9年分の決まりはまだ.*令和8年分の決まり/);
+    expect(cell(r, "㉕")).toBe(1_040_000);
+    expect(computeIncomeTax(EMPTY_INCOME_TAX_INPUT, none, 2024).notes.join()).toMatch(/令和6年分の決まりはまだ.*令和7年分の決まり/);
+    expect(rulesFor(2026)).toMatchObject({ fallback: false, rules: { year: 2026 } });
   });
 });
 

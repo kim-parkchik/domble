@@ -15,7 +15,7 @@ import { methodProblem } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
 import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings, filerProblems } from "../../lib/etax";
-import { buildTaxXtx, xtxProblem } from "../../lib/taxXtx";
+import { buildTaxXtx, xtxProblem, xtxVersionFor } from "../../lib/taxXtx";
 import { buildTaxBase, computeReturn, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn, type ReturnMethod, type TaxForm } from "../../lib/taxReturn";
 import * as repo from "../../db/repo";
 import { MyNumberDialog } from "../../components/MyNumberDialog";
@@ -199,6 +199,9 @@ export const TaxReturnView = () => {
               e-Tax 用のデータ（.xtx）は、e-Taxソフト（WEB版）の「作成済みデータの利用」で読み込み、内容を確かめて送信します。個人番号は書き出すときに入れます。
               {shown.total < 0 && (filer.refund ? "還付になるので、事業者設定の還付先も書きます。" : "還付になりますが、事業者設定に還付先が入っていません。")}
               {current && method !== current && <b> この年の設定（{METHOD_LABEL[current]}）とは違う方式です。</b>}
+              {xtxVersionFor(year).fallback && (
+                <b> 令和{year - 2018}年分の e-Tax の版はまだ domble に入っていないため、いちばん新しい版（{xtxVersionFor(year).version}）で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください。</b>
+              )}
             </span>
           )}
         </div>
