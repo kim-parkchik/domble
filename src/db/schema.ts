@@ -441,6 +441,50 @@ export const SCHEMA: string[] = [
   );`,
 
   /**
+   * 銀行・カードの明細の取り込み（lib/bankImport.ts）。どれも帳簿そのものではないので履歴には残さない（仕訳にしたときに仕訳の履歴に残る）
+   * 口座は科目と補助科目（補助なしは 0）。仕訳・科目を消しても困らないよう、外部キーは張らない
+   *  - bank_formats：口座ごとの CSV の列の対応（ColumnMap の JSON）
+   *  - bank_lines：読み込んだ明細。status は pending（未登録）/ done（仕訳にした。entry_id）/ skipped（取り込まない）。
+   *    fingerprint（日付・増減・金額・摘要と何個目か）が同じ明細は2回入れない
+   *  - bank_rules：摘要に keyword を含む明細に入れる相手科目など（direction：increase / decrease / any。target_account_id が NULL ならどの口座にも）
+   */
+  `CREATE TABLE IF NOT EXISTS bank_formats (
+    account_id INTEGER NOT NULL,
+    sub_account_id INTEGER NOT NULL DEFAULT 0,
+    mapping TEXT NOT NULL,
+    PRIMARY KEY (account_id, sub_account_id)
+  );`,
+  `CREATE TABLE IF NOT EXISTS bank_lines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL,
+    sub_account_id INTEGER NOT NULL DEFAULT 0,
+    date TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    side TEXT NOT NULL CHECK (side IN ('debit','credit')),
+    amount INTEGER NOT NULL CHECK (amount > 0),
+    balance INTEGER,
+    fingerprint TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','done','skipped')),
+    entry_id INTEGER,
+    file_name TEXT NOT NULL DEFAULT '',
+    imported_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
+    UNIQUE (account_id, sub_account_id, fingerprint)
+  );`,
+  `CREATE TABLE IF NOT EXISTS bank_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    keyword TEXT NOT NULL,
+    direction TEXT NOT NULL DEFAULT 'any' CHECK (direction IN ('any','increase','decrease')),
+    target_account_id INTEGER,
+    account_id INTEGER NOT NULL,
+    sub_account_id INTEGER,
+    tax_code TEXT,
+    invoice_kind TEXT,
+    counterparty_id INTEGER,
+    memo TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );`,
+
+  /**
    * 祝日（内閣府から取得したもの）と、事業者の休業日（年末年始休業など）。営業日の数え方に使う（lib/holidays.ts）
    * kind：fetched = 取得した祝日、custom = 事業者が足した休業日。内蔵の祝日（constants/holidays.ts）はここには入れない
    */

@@ -16,13 +16,14 @@ import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
 import { closedLabel, closedMonthOf, monthEnd, yearsToAutoClose } from "../lib/closing";
 import { isValidInvoiceNo, normalizeInvoiceNo, type CounterpartyInput } from "../lib/counterparty";
 import {
-  builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
+  builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isInvoiceKind, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
   useLabel, validateTaxYear,
 } from "../lib/tax";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
 import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
+import { columnMapProblem, parseColumnMap, type BankRule, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import { checkScanQuality, docClassOf, type DocClass, type ScanInputMethod } from "../lib/scan";
 import { lastHolidayYear, mergeHolidays, type Holiday } from "../lib/holidays";
@@ -427,6 +428,150 @@ const saveTaxPrevManual_ = async (db: Database, year: number, amount: number | n
     target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の中間申告の判定に使う前年（${year - 1}年）の確定消費税額`,
     old_value: text(before), new_value: text(amount),
   });
+};
+
+// ────────────────────────────────────────────
+// 銀行・カードの明細の取り込み（考え方は lib/bankImport.ts）
+//  口座は科目と補助科目（補助なしは 0 で持つ）。明細・ルール・列の対応は帳簿そのものではないので履歴に残さない
+//  仕訳にしたときは、仕訳の登録の履歴に「明細の取り込み（ファイル名）」と残る
+// ────────────────────────────────────────────
+export interface BankLineRow {
+  id: number;
+  account_id: number;
+  sub_account_id: number | null;
+  date: string;
+  description: string;
+  side: "debit" | "credit";
+  amount: number;
+  balance: number | null;
+  status: "pending" | "done" | "skipped";
+  entry_id: number | null;
+  file_name: string;
+  imported_at: string;
+}
+
+const subKeyOf = (subId: number | null) => subId ?? 0;
+
+export const getBankFormat = async (db: Database, accountId: number, subId: number | null) => {
+  const r = await db.select<{ mapping: string }[]>("SELECT mapping FROM bank_formats WHERE account_id = ? AND sub_account_id = ?", [accountId, subKeyOf(subId)]);
+  return parseColumnMap(r[0]?.mapping ?? null);
+};
+
+const saveBankFormat_ = async (db: Database, accountId: number, subId: number | null, map: ColumnMap) => {
+  const p = columnMapProblem(map);
+  if (p) throw new Error(p);
+  await db.execute(
+    "INSERT INTO bank_formats (account_id, sub_account_id, mapping) VALUES (?, ?, ?) ON CONFLICT (account_id, sub_account_id) DO UPDATE SET mapping = excluded.mapping",
+    [accountId, subKeyOf(subId), JSON.stringify(map)],
+  );
+};
+
+/** 明細を足す（前に読んだ明細＝指紋が同じものは足さない）。足した件数と、前に読んでいた件数 */
+const addBankLines_ = async (db: Database, accountId: number, subId: number | null, lines: StatementLine[], fileName: string) => {
+  let added = 0;
+  for (const l of lines) {
+    const r = await db.execute(
+      `INSERT OR IGNORE INTO bank_lines (account_id, sub_account_id, date, description, side, amount, balance, fingerprint, file_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [accountId, subKeyOf(subId), l.date, l.description, l.side, l.amount, l.balance, l.fingerprint, fileName],
+    );
+    added += r.rowsAffected;
+  }
+  return { added, known: lines.length - added };
+};
+
+/**
+ * 口座の明細（日付順）。仕訳にした明細のうち、仕訳を削除したものは未登録に戻す（厳密モードの削除済み・通常モードで消した仕訳）
+ */
+export const getBankLines = async (db: Database, accountId: number, subId: number | null): Promise<BankLineRow[]> => {
+  const rows = await db.select<(BankLineRow & { gone: number })[]>(
+    `SELECT b.id, b.account_id, NULLIF(b.sub_account_id, 0) AS sub_account_id, b.date, b.description, b.side, b.amount, b.balance, b.status, b.entry_id,
+            b.file_name, b.imported_at, (b.status = 'done' AND (e.id IS NULL OR e.is_deleted = 1)) AS gone
+       FROM bank_lines b LEFT JOIN journal_entries e ON e.id = b.entry_id
+      WHERE b.account_id = ? AND b.sub_account_id = ? ORDER BY b.date, b.id`,
+    [accountId, subKeyOf(subId)],
+  );
+  return rows.map(({ gone, ...r }) => (gone ? { ...r, status: "pending" as const, entry_id: null } : r));
+};
+
+/** 口座ごとの未登録の明細の数（キーは「科目ID|補助科目ID（無ければ 0）」） */
+export const getPendingBankCounts = async (db: Database) => {
+  const rows = await db.select<{ account_id: number; sub_account_id: number; n: number }[]>(
+    `SELECT b.account_id, b.sub_account_id, COUNT(*) AS n FROM bank_lines b LEFT JOIN journal_entries e ON e.id = b.entry_id
+      WHERE b.status = 'pending' OR (b.status = 'done' AND (e.id IS NULL OR e.is_deleted = 1)) GROUP BY b.account_id, b.sub_account_id`,
+  );
+  return new Map(rows.map((r) => [`${r.account_id}|${r.sub_account_id}`, r.n]));
+};
+
+/** 前に明細から作った仕訳と、もとの明細の摘要（推測に使う） */
+export const getBankHistory = async (db: Database, accountId: number, subId: number | null) =>
+  (await db.select<{ entry_id: number; description: string }[]>(
+    "SELECT entry_id, description FROM bank_lines WHERE account_id = ? AND sub_account_id = ? AND status = 'done' AND entry_id IS NOT NULL",
+    [accountId, subKeyOf(subId)],
+  )).map((r) => ({ entryId: r.entry_id, description: r.description }));
+
+/** 取り込まない・未登録に戻す */
+const setBankLinesStatus_ = async (db: Database, ids: number[], status: "pending" | "skipped") => {
+  for (const id of ids) {
+    await db.execute("UPDATE bank_lines SET status = ?, entry_id = NULL WHERE id = ? AND (status != 'done' OR entry_id IS NULL OR entry_id NOT IN (SELECT id FROM journal_entries WHERE is_deleted = 0))", [status, id]);
+  }
+};
+
+/** 明細を仕訳にする（まとめて。1つのトランザクションなので、途中で失敗したら1件も残らない） */
+const registerBankLines_ = async (
+  db: Database, items: { lineId: number; date: string; lines: JournalLine[]; counterpartyId: number | null }[], source: string,
+) => {
+  const ids: number[] = [];
+  for (const it of items) {
+    const r = await db.select<{ status: string; entry_id: number | null; live: number }[]>(
+      "SELECT b.status, b.entry_id, (e.id IS NOT NULL AND e.is_deleted = 0) AS live FROM bank_lines b LEFT JOIN journal_entries e ON e.id = b.entry_id WHERE b.id = ?",
+      [it.lineId],
+    );
+    if (!r[0]) throw new Error("明細が見つかりません");
+    if (r[0].status === "done" && r[0].live) throw new Error("この明細はもう仕訳にしています");
+    const entryId = await createEntry_(db, it.date, it.lines, it.counterpartyId, `明細の取り込み（${source}）`);
+    await db.execute("UPDATE bank_lines SET status = 'done', entry_id = ? WHERE id = ?", [entryId, it.lineId]);
+    ids.push(entryId);
+  }
+  return ids;
+};
+
+export const getBankRules = (db: Database) =>
+  db.select<BankRule[]>(
+    `SELECT id, keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, sort_order
+       FROM bank_rules ORDER BY sort_order, id`,
+  );
+
+/** ルールを保存する（id が 0 なら足す）。足したルールの id */
+const saveBankRule_ = async (db: Database, r: Omit<BankRule, "sort_order"> & { sort_order?: number }) => {
+  const keyword = r.keyword.normalize("NFKC").trim();
+  if (!keyword) throw new Error("摘要に含む言葉を入れてください");
+  if (keyword.length > 50) throw new Error("摘要に含む言葉は50文字までです");
+  if (!["any", "increase", "decrease"].includes(r.direction)) throw new Error("入金・出金の区分が正しくありません");
+  if (!r.account_id) throw new Error("相手科目を選んでください");
+  if (r.tax_code !== null && !isTaxCode(r.tax_code)) throw new Error("税区分が正しくありません");
+  if (r.invoice_kind !== null && !isInvoiceKind(r.invoice_kind)) throw new Error("インボイス区分が正しくありません");
+  const memo = r.memo.trim().slice(0, 200);
+  const vals = [keyword, r.direction, r.target_account_id, r.account_id, r.sub_account_id, r.tax_code, r.invoice_kind, r.counterparty_id, memo];
+  if (r.id) {
+    await db.execute(
+      `UPDATE bank_rules SET keyword = ?, direction = ?, target_account_id = ?, account_id = ?, sub_account_id = ?, tax_code = ?, invoice_kind = ?,
+              counterparty_id = ?, memo = ? WHERE id = ?`,
+      [...vals, r.id],
+    );
+    return r.id;
+  }
+  const next = await db.select<{ n: number }[]>("SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM bank_rules");
+  const res = await db.execute(
+    `INSERT INTO bank_rules (keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [...vals, r.sort_order ?? next[0].n],
+  );
+  return Number(res.lastInsertId);
+};
+
+const deleteBankRule_ = async (db: Database, id: number) => {
+  await db.execute("DELETE FROM bank_rules WHERE id = ?", [id]);
 };
 
 // ────────────────────────────────────────────
@@ -2225,6 +2370,12 @@ export const setEBookMode = inTx(setEBookMode_, () => "保存方式の設定", {
 export const saveSettings = inTx(saveSettings_, () => "事業者設定の保存", { perm: "settings" });
 export const saveTaxYear = inTx(saveTaxYear_, (t) => `${t.from_year}年の消費税の設定`, { perm: "settings" });
 export const saveTaxBaseManual = inTx(saveTaxBaseManual_, (year) => `${year}年の基準期間の課税売上高`, { perm: "settings" });
+export const saveBankFormat = inTx(saveBankFormat_, () => "明細の列の対応", { perm: "entry" });
+export const addBankLines = inTx(addBankLines_, (_a, _s, lines, file) => `明細 ${lines.length} 件の読み込み（${file}）`, { perm: "entry" });
+export const setBankLinesStatus = inTx(setBankLinesStatus_, (ids, status) => `明細 ${ids.length} 件を${status === "skipped" ? "取り込まない" : "未登録に戻す"}`, { perm: "entry" });
+export const registerBankLines = inTx(registerBankLines_, (items, source) => `明細 ${items.length} 件の仕訳への登録（${source}）`, { perm: "entry" });
+export const saveBankRule = inTx(saveBankRule_, (r) => `明細のルール「${r.keyword}」`, { perm: "entry" });
+export const deleteBankRule = inTx(deleteBankRule_, (id) => `明細のルール #${id} の削除`, { perm: "entry" });
 export const setAccountStatementLine = inTx(setAccountStatementLine_, (id) => `勘定科目 #${id} の決算書の欄`, { perm: "master" });
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });

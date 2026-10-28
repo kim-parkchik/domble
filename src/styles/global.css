@@ -442,7 +442,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .setup-card .link-btn { align-self: center; color: var(--muted); }
 
 /* ---------- モーダル・トースト ---------- */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(16,30,50,.38); display: grid; place-items: center; padding: 24px; z-index: 50; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(16,30,50,.38); display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 24px; z-index: 50; }
 .modal { width: 100%; background: var(--paper); border-radius: 6px; box-shadow: 0 20px 60px -20px rgba(0,0,0,.45); max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--rule); }
 .modal-head h2 { font-family: var(--font-title); font-size: 17px; font-weight: 600; }
@@ -775,3 +775,22 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .btn.icon { padding-left: 6px; padding-right: 6px; }
 /* 勘定科目の表：列が多いので、狭い画面では横に送る（科目名の列をつぶさない） */
 .accounts-table { min-width: 1080px; }
+/* 銀行・カードの明細の取り込み */
+.book-import { margin-left: 4px; }
+.bank-import { display: flex; flex-direction: column; gap: 10px; }
+.bank-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bank-account { font-size: 13px; }
+.bank-head .seg { margin-left: auto; }
+.bank-scroll { max-height: 56vh; }
+.bank-table td { padding: 3px 4px; white-space: normal; overflow: visible; vertical-align: top; }
+.bank-table tr.bank-off td { color: #8b97a4; }
+.bank-desc { font-size: 12px; word-break: break-all; }
+.bank-dup { background: #fdf0d8; color: #8a5a00; }
+.bank-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bank-foot .muted { flex: 1 1 320px; font-size: 12px; }
+.bank-map .field { flex: 0 1 180px; min-width: 140px; }
+.bank-rules { display: flex; flex-direction: column; gap: 10px; }
+.bank-rule-form { padding: 10px 12px; background: #f4f7fb; border-radius: 4px; }
+.bank-table { min-width: 1120px; }
+.bank-import { min-width: 0; }
+.bank-rules > .btn { align-self: flex-start; }

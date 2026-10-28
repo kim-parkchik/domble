@@ -4,7 +4,7 @@
  * 入力した行は「この科目 ⇔ 相手科目」の2行の仕訳として保存されます。
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CornerDownLeft, Landmark, Settings2 } from "lucide-react";
+import { CornerDownLeft, FileUp, Landmark, Settings2 } from "lucide-react";
 import type { Page } from "../../App";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
@@ -18,6 +18,7 @@ import { defaultDateInYear, shortDate, todayIso, yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
 import { cashbookTabs } from "../../lib/cashbook";
 import { CashbookTabsModal } from "./CashbookTabsModal";
+import { BankImportModal } from "./BankImportModal";
 import * as repo from "../../db/repo";
 import { subKey, type InvoiceKind, type JournalLine, type PurchaseUse, type TaxCode } from "../../lib/types";
 import { splitByRate } from "../../lib/homeUse";
@@ -31,7 +32,7 @@ const columnLabels = (code: string, normal: "debit" | "credit") => {
 };
 
 export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears } = useAppContext();
+  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion } = useAppContext();
   const { lines, opening, subOpening, loading } = useYearData();
   const toast = useToast();
 
@@ -60,6 +61,12 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     setBookSub(undefined);
   };
   const [editing, setEditing] = useState<number | null>(null);
+  // 銀行・カードの明細の取り込み（未登録の明細の数を、科目ごとにタブの横に出す）
+  const [importing, setImporting] = useState(false);
+  const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    repo.getPendingBankCounts(db).then(setPendingCounts).catch(console.error);
+  }, [db, dataVersion, importing]);
 
   const account = accountMap.get(accountId)!;
   const labels = columnLabels(account.code, account.normal_side);
@@ -231,6 +238,13 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
         <button className="book-edit" onClick={() => setEditingTabs(true)} title="帳簿のタブを追加・削除・並べ替え">
           <Settings2 size={14} /> タブの編集
         </button>
+        <button className="book-edit book-import" onClick={() => setImporting(true)} title="銀行・カードの明細（CSV）を読み込んで仕訳にする">
+          <FileUp size={14} /> 明細の取り込み
+          {(() => {
+            const n = [...pendingCounts].filter(([k]) => k.startsWith(`${accountId}|`)).reduce((t, [, v]) => t + v, 0);
+            return n > 0 ? <span className="count-badge info" title="未登録の明細">{n}</span> : null;
+          })()}
+        </button>
       </div>
 
       <section className="sheet sheet-fill">
@@ -355,6 +369,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       </section>
 
       {editing && <EntryEditModal entryId={editing} onClose={() => setEditing(null)} />}
+      {importing && <BankImportModal account={account} initialSub={bookSub} onClose={() => setImporting(false)} />}
       {editingTabs && (
         <CashbookTabsModal
           tabs={tabs}

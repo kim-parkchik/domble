@@ -1187,6 +1187,64 @@ describe("中間申告（repo）", () => {
   });
 });
 
+describe("銀行・カードの明細（repo）", () => {
+  const sl = (date: string, side: "debit" | "credit", amount: number, description: string, n = 1) => ({
+    row: 0, date, description, side, amount, balance: null, fingerprint: `${date}|${side}|${amount}|${description}|${n}`,
+  });
+
+  test("同じ明細は2回入れない。仕訳にすると履歴に「明細の取り込み」と残り、仕訳を消すと未登録に戻る", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const bank = id("普通預金");
+    const first = [sl("2026-10-01", "debit", 330_000, "ﾌﾘｺﾐ"), sl("2026-10-05", "credit", 5_500, "デンキ")];
+    expect(await repo.addBankLines(db, bank, null, first, "a.csv")).toEqual({ added: 2, known: 0 });
+    expect(await repo.addBankLines(db, bank, null, [...first, sl("2026-10-06", "credit", 1_100, "ｽｲﾄﾞｳ")], "b.csv")).toEqual({ added: 1, known: 2 });
+    expect((await repo.getPendingBankCounts(db)).get(`${bank}|0`)).toBe(3);
+
+    const rows = await repo.getBankLines(db, bank, null);
+    const electric = rows.find((r) => r.description === "デンキ")!;
+    const entryLines: JournalLine[] = [
+      { row_no: 1, side: "debit", account_id: id("水道光熱費"), sub_account_id: null, amount: 5_500, memo: "電気代" },
+      { row_no: 1, side: "credit", account_id: bank, sub_account_id: null, amount: 5_500, memo: "電気代" },
+    ];
+    const [entryId] = await repo.registerBankLines(db, [{ lineId: electric.id, date: electric.date, lines: entryLines, counterpartyId: null }], "a.csv");
+    expect((await repo.getBankLines(db, bank, null)).find((r) => r.id === electric.id)).toMatchObject({ status: "done", entry_id: entryId });
+    expect((await repo.getHistory(db, entryId))[0].reason).toBe("明細の取り込み（a.csv）");
+    expect(await repo.getBankHistory(db, bank, null)).toEqual([{ entryId, description: "デンキ" }]);
+    await expect(repo.registerBankLines(db, [{ lineId: electric.id, date: electric.date, lines: entryLines, counterpartyId: null }], "a.csv")).rejects.toThrow(/もう仕訳/);
+
+    await repo.deleteEntry(db, entryId, "取り消し");
+    expect((await repo.getBankLines(db, bank, null)).find((r) => r.id === electric.id)).toMatchObject({ status: "pending", entry_id: null });
+
+    const water = rows.find((r) => r.description === "ｽｲﾄﾞｳ")!;
+    await repo.setBankLinesStatus(db, [water.id], "skipped");
+    expect((await repo.getBankLines(db, bank, null)).find((r) => r.id === water.id)!.status).toBe("skipped");
+    expect((await repo.getPendingBankCounts(db)).get(`${bank}|0`)).toBe(2);
+  });
+
+  test("列の対応は口座ごと。ルールは確かめてから保存する", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const map = { headerRow: 0, date: 0, description: [1], mode: "signed" as const, increase: null, decrease: null, amount: 2, invert: false, balance: null };
+    await repo.saveBankFormat(db, id("未払金"), null, map);
+    expect(await repo.getBankFormat(db, id("未払金"), null)).toEqual(map);
+    expect(await repo.getBankFormat(db, id("普通預金"), null)).toBeNull();
+    await expect(repo.saveBankFormat(db, id("未払金"), null, { ...map, amount: null })).rejects.toThrow(/金額の列/);
+
+    const rule = { id: 0, keyword: " デンキ ", direction: "decrease" as const, target_account_id: null, account_id: id("水道光熱費"), sub_account_id: null, tax_code: "purchase10" as const, invoice_kind: "qualified" as const, counterparty_id: null, memo: "電気代" };
+    const ruleId = await repo.saveBankRule(db, rule);
+    expect(await repo.getBankRules(db)).toMatchObject([{ id: ruleId, keyword: "デンキ", sort_order: 1 }]);
+    await repo.saveBankRule(db, { ...rule, id: ruleId, memo: "電気料金" });
+    expect((await repo.getBankRules(db))[0].memo).toBe("電気料金");
+    await expect(repo.saveBankRule(db, { ...rule, keyword: " " })).rejects.toThrow(/言葉/);
+    await expect(repo.saveBankRule(db, { ...rule, tax_code: "x" as never })).rejects.toThrow(/税区分/);
+    await repo.deleteBankRule(db, ruleId);
+    expect(await repo.getBankRules(db)).toEqual([]);
+  });
+});
+
 describe("決算書の欄（repo）", () => {
   test("科目ごとに選べて履歴に残る。null で自動に戻す。売上の科目・ほかの部分の欄は選べない", async () => {
     const { db } = strict;
