@@ -80,6 +80,9 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
   }, [db, account.id, subId, dataVersion, reload]);
 
   const pending = rows.filter((r) => r.status === "pending");
+  // 相手科目が消えた・使わないにしたルールは推測に使わない（そのまま仕訳にすると登録できないため）
+  const { accountMap } = useAppContext();
+  const liveRules = useMemo(() => rules.filter((r) => accountMap.get(r.account_id)?.is_active), [rules, accountMap]);
   const skipped = rows.filter((r) => r.status === "skipped");
 
   // ── 行ごとの中身（推測で始める。読み直しても、手で変えた行はそのまま） ──
@@ -91,7 +94,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
       for (const r of pending) {
         const old = prev.get(r.id);
         if (old) { next.set(r.id, old); continue; }
-        const g = guessLine(r, account, rules, history);
+        const g = guessLine(r, account, liveRules, history);
         const dup = findBookDuplicate(r, allLines, account.id, subId, used);
         if (dup) used.add(dup);
         next.set(r.id, {
@@ -102,7 +105,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, rules, history, allLines]);
+  }, [rows, liveRules, history, allLines]);
   const patch = (id: number, p: Partial<Draft>) => setDrafts((m) => new Map(m).set(id, { ...m.get(id)!, ...p }));
 
   /** ルールを当て直す（手で変えた行も、ルールに合えば書き換える） */
@@ -110,7 +113,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
     const next = new Map(drafts);
     let n = 0;
     for (const r of pending) {
-      const g = guessLine(r, account, rules, new Map());
+      const g = guessLine(r, account, liveRules, new Map());
       const d = next.get(r.id);
       if (g.source !== "rule" || !d) continue;
       next.set(r.id, { ...d, counterId: g.counterId, counterSubId: g.counterSubId, tax: { code: g.taxCode, invoice: g.invoice, cls: null, use: null }, memo: g.memo, counterpartyId: g.counterpartyId, source: "rule", checked: !d.dupEntry });
@@ -443,6 +446,12 @@ const ReadView = ({ account, subId, accountName, disabled, onRead }: {
                   {parsed.problems.length} 行を読めません（列の対応を確かめてください）：
                   {parsed.problems.slice(0, 5).map((p) => `${p.row}行目 ${p.message}`).join("／")}
                 </div>
+              )}
+              {parsed.balanceCheck && parsed.balanceCheck.reversed > parsed.balanceCheck.matched && (
+                <p className="notice" role="alert">
+                  残高の列と金額の向きが合いません（{parsed.balanceCheck.compared} 行のうち {parsed.balanceCheck.reversed} 行は、{labels.inc}と{labels.dec}を逆にすると合います）。
+                  列の対応（{labels.inc}・{labels.dec}、または「＋を{labels.dec}として読む」）を確かめてください。
+                </p>
               )}
               <p className="import-summary">
                 <b>{parsed.lines.length}</b> 件の明細

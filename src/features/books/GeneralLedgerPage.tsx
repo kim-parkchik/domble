@@ -105,6 +105,7 @@ export const GeneralLedgerPage = () => {
             <table className="ledger">
               <colgroup>
                 <col style={{ width: 64 }} />
+                <col style={{ width: 56 }} />
                 <col style={{ width: "17%" }} />
                 <col />
                 <col style={{ width: "14%" }} />
@@ -114,6 +115,7 @@ export const GeneralLedgerPage = () => {
               <thead>
                 <tr>
                   <th>日付</th>
+                  <th className="num" title="伝票番号（仕訳日記帳の No. と同じ）">No.</th>
                   <th>相手科目</th>
                   <th>摘要</th>
                   <th className="num dr">借方</th>
@@ -123,7 +125,7 @@ export const GeneralLedgerPage = () => {
               </thead>
               <tbody>
                 <tr className="carried">
-                  <td />
+                  <td colSpan={2} />
                   <td colSpan={4}>{from === 1 ? "前期より繰越" : "前月より繰越"}</td>
                   <td className="num">{yen(carried)}</td>
                 </tr>
@@ -132,6 +134,7 @@ export const GeneralLedgerPage = () => {
                   return (
                   <tr key={`${r.entry_id}-${i}`} className="clickable" onClick={() => setEditing(r.entry_id)}>
                     <td>{shortDate(r.date)}</td>
+                    <td className="num muted">{r.entry_id}</td>
                     <td>{r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter}</td>
                     <td className="memo">
                       {sub === undefined && r.subId && <span className="sub-tag">{subMap.get(r.subId)?.name}</span>}
@@ -149,12 +152,12 @@ export const GeneralLedgerPage = () => {
                   );
                 })}
                 {rows.length === 0 && (
-                  <tr className="empty-row"><td colSpan={6}>この期間の動きはありません。</td></tr>
+                  <tr className="empty-row"><td colSpan={7}>この期間の動きはありません。</td></tr>
                 )}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={3} className="total-label">期間合計</td>
+                  <td colSpan={4} className="total-label">期間合計</td>
                   <td className="num">{yen(sum.dr)}</td>
                   <td className="num">{yen(sum.cr)}</td>
                   <td className="num">{yen(rows.length ? rows[rows.length - 1].balance : carried)}</td>

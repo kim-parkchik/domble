@@ -45,6 +45,29 @@ describe("列の推測と読み取り", () => {
     ]);
     expect(p.skipped).toBe(1);
   });
+  test("よくある見出しの形：カードの利用金額と○月支払金額、預け入れ・引き出し、支払い金額・預かり金額、入出金の1列", () => {
+    const card = parseCsv("ご利用日,ご利用店名,利用金額,2月支払金額\n2026/10/03,AMAZON,3300,3300");
+    expect(guessColumns(card)).toMatchObject({ mode: "signed", amount: 2, description: [1] });
+    expect(parseStatement("ご利用日,ご利用店名,利用金額,2月支払金額\n2026/10/03,AMAZON,3300,3300", guessColumns(card)!, cardAccount).lines[0]).toMatchObject({ side: "credit", amount: 3300 });
+    const a = "日付,摘要,お引出し,お預け入れ,残高\n2026/10/01,ｷﾕｳﾖ,,110000,210000\n2026/10/02,ﾃﾞﾝｷ,5500,,204500";
+    expect(guessColumns(parseCsv(a))).toMatchObject({ mode: "split", increase: 3, decrease: 2 });
+    expect(parseStatement(a, guessColumns(parseCsv(a))!, bankAccount).lines.map((l) => [l.side, l.amount])).toEqual([["debit", 110_000], ["credit", 5_500]]);
+    const b = "日付,内容,支払い金額,預かり金額\n2026/10/01,ｶﾞｽ,440,\n2026/10/02,ﾌﾘｺﾐ,,20000";
+    expect(guessColumns(parseCsv(b))).toMatchObject({ mode: "split", increase: 3, decrease: 2 });
+    const c = "日付,摘要,入出金(円),残高\n2026/10/01,ﾌﾘｺﾐ,20000,120000\n2026/10/02,ﾃﾞﾝｷ,-5500,114500";
+    expect(guessColumns(parseCsv(c))).toMatchObject({ mode: "signed", amount: 2 });
+    const pc = parseStatement(c, guessColumns(parseCsv(c))!, bankAccount);
+    expect(pc.lines.map((l) => [l.side, l.amount])).toEqual([["debit", 20_000], ["credit", 5_500]]);
+    expect(pc.balanceCheck).toEqual({ compared: 1, matched: 1, reversed: 0 });
+  });
+  test("残高の列と金額の向きを照らす（新しい順の CSV でも。逆に読んでいれば reversed が多い）", () => {
+    const desc = "日付,摘要,入金,出金,残高\n2026/10/03,c,,100,9800\n2026/10/02,b,,100,9900\n2026/10/01,a,1000,,10000";
+    const m = guessColumns(parseCsv(desc))!;
+    const ok = parseStatement(desc, m, bankAccount).balanceCheck!;
+    expect([ok.compared, ok.matched, ok.reversed < ok.matched]).toEqual([2, 2, true]);
+    const bad = parseStatement(desc, { ...m, increase: m.decrease, decrease: m.increase }, bankAccount).balanceCheck!;
+    expect([bad.reversed, bad.reversed > bad.matched]).toEqual([2, true]);
+  });
   test("読めない日付・金額は行番号つきで返す", () => {
     const p = parseStatement("日付,摘要,金額\n2026/13/01,x,100\n2026/10/01,y,abc", { headerRow: 0, date: 0, description: [1], mode: "signed", increase: null, decrease: null, amount: 2, invert: false, balance: null }, bankAccount);
     expect(p.problems).toEqual([{ row: 2, message: "日付を読めません：2026/13/01" }, { row: 3, message: "金額を読めません：abc" }]);

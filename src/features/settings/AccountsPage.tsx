@@ -95,7 +95,7 @@ export const AccountsPage = () => {
 
   const remove = async (a: Account) => {
     if ((await repo.accountUsage(db, a.id)) > 0) {
-      toast("この科目は仕訳・期首残高・家事按分の設定で使われているので削除できません。使わない場合は「使う」のチェックを外してください。", "error");
+      toast(`${repo.ACCOUNT_IN_USE}。`, "error");
       return;
     }
     const templates = await repo.templatesUsing(db, { accountId: a.id });
@@ -363,7 +363,7 @@ const SubAccountsModal = ({ account, renameLocked, onClose }: { account: Account
 
   const remove = async (id: number, name: string) => {
     if ((await repo.subUsage(db, id)) > 0) {
-      toast("この補助科目は使われているので削除できません。「使う」のチェックを外してください。", "error");
+      toast("この補助科目は仕訳・期首残高・銀行やカードの明細・明細のルールで使われているので削除できません。「使う」のチェックを外してください。", "error");
       return;
     }
     const templates = await repo.templatesUsing(db, { subId: id });

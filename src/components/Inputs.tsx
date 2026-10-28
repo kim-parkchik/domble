@@ -158,26 +158,33 @@ interface DateInputProps extends NavProps {
   value: string;
   onChange: (iso: string) => void;
   year: number;
+  /** 打った日付が読めるか（読めない間は value が前の日付のままなので、登録の前に止めるのに使う） */
+  onValidity?: (ok: boolean) => void;
 }
 
-export const DateInput = ({ value, onChange, year, ...rest }: DateInputProps) => {
+export const DateInput = ({ value, onChange, year, onValidity, ...rest }: DateInputProps) => {
   const [text, setText] = useState(shortDate(value));
   const [invalid, setInvalid] = useState(false);
+  const mark = (bad: boolean) => {
+    setInvalid(bad);
+    onValidity?.(!bad);
+  };
 
   useEffect(() => {
     setText(shortDate(value));
-    setInvalid(false);
+    mark(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const commit = () => {
     const month = Number(value.slice(5, 7)) || 1;
     const iso = parseDateInput(text, year, month);
     if (iso && iso.startsWith(`${year}-`)) {
-      setInvalid(false);
+      mark(false);
       setText(shortDate(iso));
       if (iso !== value) onChange(iso);
     } else {
-      setInvalid(true);
+      mark(true);
     }
   };
 
@@ -199,29 +206,34 @@ export const DateInput = ({ value, onChange, year, ...rest }: DateInputProps) =>
  * 年をまたいでよい日付（証憑の取引年月日など）。
  * 2025/12/20・20251220 のように年まで打てる。年を省くと表示中の年度
  */
-export const FullDateInput = ({ value, onChange, year, ...rest }: DateInputProps) => {
+export const FullDateInput = ({ value, onChange, year, onValidity, ...rest }: DateInputProps) => {
   const show = (iso: string) => (iso ? iso.replace(/-/g, "/") : "");
   const [text, setText] = useState(show(value));
   const [invalid, setInvalid] = useState(false);
+  const mark = (bad: boolean) => {
+    setInvalid(bad);
+    onValidity?.(!bad);
+  };
 
   useEffect(() => {
     setText(show(value));
-    setInvalid(false);
+    mark(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const commit = () => {
     if (!text.trim()) {
-      setInvalid(false);
+      mark(false);
       if (value) onChange("");
       return;
     }
     const iso = parseDateInput(text, year, Number(value.slice(5, 7)) || 1);
     if (iso) {
-      setInvalid(false);
+      mark(false);
       setText(show(iso));
       if (iso !== value) onChange(iso);
     } else {
-      setInvalid(true);
+      mark(true);
     }
   };
 

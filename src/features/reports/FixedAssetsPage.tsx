@@ -287,8 +287,17 @@ const AssetModal = ({ asset, blue, onClose, onSaved }: { asset: FixedAsset | nul
     opening_book_value: hasOpening ? openingValue ?? null : null, disposed_on: disposed || null, memo,
   });
 
+  /** 日付の欄に読めない日付が入っているもの（そのままだと前の日付で保存されるので止める） */
+  const [badDates, setBadDates] = useState<Set<string>>(new Set());
+  const markDate = (key: string) => (ok: boolean) => setBadDates((s) => {
+    const n = new Set(s);
+    if (ok) n.delete(key);
+    else n.add(key);
+    return n;
+  });
   const submit = async () => {
     setError("");
+    if (badDates.size) return setError("日付が正しくありません（2026/4/15 のように入れてください）");
     const a = input();
     const e = validateAsset(a, { blue });
     if (e) return setError(e);
@@ -327,11 +336,11 @@ const AssetModal = ({ asset, blue, onClose, onSaved }: { asset: FixedAsset | nul
         <div className="field-row">
           <label className="field">
             <span>取得日</span>
-            <FullDateInput value={acquired} onChange={setAcquired} year={year} aria-label="取得日" />
+            <FullDateInput value={acquired} onChange={setAcquired} year={year} aria-label="取得日" onValidity={markDate("acquired")} />
           </label>
           <label className="field">
             <span>事業に使い始めた日（空なら取得日）</span>
-            <FullDateInput value={used} onChange={setUsed} year={year} aria-label="事業に使い始めた日" />
+            <FullDateInput value={used} onChange={setUsed} year={year} aria-label="事業に使い始めた日" onValidity={markDate("used")} />
           </label>
         </div>
         <div className="field-row">
@@ -375,7 +384,7 @@ const AssetModal = ({ asset, blue, onClose, onSaved }: { asset: FixedAsset | nul
         <div className="field-row">
           <label className="field">
             <span>売却・除却した日（あれば）</span>
-            <FullDateInput value={disposed} onChange={setDisposed} year={year} aria-label="売却・除却した日" />
+            <FullDateInput value={disposed} onChange={setDisposed} year={year} aria-label="売却・除却した日" onValidity={markDate("disposed")} />
           </label>
           <label className="field">
             <span>備考（任意）</span>

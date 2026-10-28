@@ -79,8 +79,17 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
     setDupOf(await repo.findEvidenceByHash(db, await sha256Hex(bytes)));
   };
 
+  /** 日付の欄に読めない日付が入っているもの（そのままだと前の日付で保存されるので止める） */
+  const [badDates, setBadDates] = useState<Set<string>>(new Set());
+  const markDate = (key: string) => (ok: boolean) => setBadDates((s) => {
+    const n = new Set(s);
+    if (ok) n.delete(key);
+    else n.add(key);
+    return n;
+  });
   const submit = async () => {
     setError("");
+    if (badDates.size) return setError("日付が正しくありません（2026/4/15 のように入れてください）");
     if (withFile && !file) return setError("ファイルを選んでください");
     const err = validateEvidenceMeta(m);
     if (err) return setError(err);
@@ -175,7 +184,7 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
         )}
         <label className="field">
           <span>取引年月日</span>
-          <FullDateInput value={m.txn_date} onChange={(v) => set("txn_date", v)} year={year} aria-label="取引年月日" />
+          <FullDateInput value={m.txn_date} onChange={(v) => set("txn_date", v)} year={year} aria-label="取引年月日" onValidity={markDate("txn")} />
         </label>
         <label className="field">
           <span>取引金額（円）</span>
@@ -185,7 +194,7 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
       <div className="field-row">
         <label className="field" style={{ maxWidth: 220 }}>
           <span>{scan ? "受領日（紙を受け取った日・必須）" : "受領日（受け取った日・任意）"}</span>
-          <FullDateInput value={m.received_date ?? ""} onChange={(v) => set("received_date", v)} year={year} aria-label="受領日" />
+          <FullDateInput value={m.received_date ?? ""} onChange={(v) => set("received_date", v)} year={year} aria-label="受領日" onValidity={markDate("received")} />
         </label>
         {scan && deadline && (
           <div className={`field scan-deadline${late ? " late" : ""}`}>

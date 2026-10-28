@@ -33,9 +33,13 @@ export interface ColumnMap {
 const HEADER_WORDS = {
   date: /^(日付|年月日|取引日|お取引日|お取引日付|取引年月日|利用日|ご利用日|ご利用年月日|利用年月日|入出金日|日時|date)$/i,
   description: /(摘要|お取引内容|取引内容|内容|ご利用店名|利用店名|ご利用先|利用先|ご利用場所|明細|お支払先|取引先|description)/i,
-  increase: /(入金|お預入|預入|お預り|預り金額|ご入金|credit)/i,
-  decrease: /(出金|お引出|引出|お支払金額|支払金額|払戻|お引落|引落|debit)/i,
-  amount: /(金額|ご利用金額|利用金額|お支払額|取引額|amount)/i,
+  increase: /(入金|預入|預け入れ|預入れ|お預り|お預かり|預かり|預り|受入|受け入れ|credit)/i,
+  decrease: /(出金|引出|引き出し|引出し|支払金額|支払い金額|支払額|払戻|払出|払い出し|引落|引き落とし|debit)/i,
+  amount: /(金額|お支払額|取引額|amount)/i,
+  /** 入金と出金を1列で持つ見出し（＋が入金） */
+  signed: /(入出金|入払|出入金)/,
+  /** カードの利用の金額（「○月支払金額」などより先に使う） */
+  usage: /(利用金額|ご利用額|利用額)/,
   balance: /(残高|balance)/i,
 };
 
@@ -50,16 +54,24 @@ export const guessColumns = (rows: string[][]): ColumnMap | null => {
     if (date < 0) continue;
     const balance = find(HEADER_WORDS.balance);
     const used = [date, balance];
+    const base = { headerRow: r, date, invert: false, balance: balance >= 0 ? balance : null, increase: null, decrease: null };
+    const desc = (skip: number[]) => {
+      const d = find(HEADER_WORDS.description, skip);
+      return d >= 0 ? [d] : [];
+    };
+    // 「入出金」のような1列、カードの「利用金額」は金額1列（＋が増える側）として読む
+    const signed = find(HEADER_WORDS.signed, used);
+    const usage = signed < 0 ? find(HEADER_WORDS.usage, used) : -1;
+    const one = signed >= 0 ? signed : usage;
+    if (one >= 0) return { ...base, description: desc([...used, one]), mode: "signed", amount: one };
     const increase = find(HEADER_WORDS.increase, used);
     const decrease = find(HEADER_WORDS.decrease, [...used, increase]);
     const amount = find(HEADER_WORDS.amount, [...used, increase, decrease]);
-    const description = find(HEADER_WORDS.description, [...used, increase, decrease, amount]);
     if (increase < 0 && decrease < 0 && amount < 0) continue;
     const split = increase >= 0 || decrease >= 0;
     return {
-      headerRow: r, date, description: description >= 0 ? [description] : [], mode: split ? "split" : "signed",
+      ...base, description: desc([...used, increase, decrease, amount]), mode: split ? "split" : "signed",
       increase: split && increase >= 0 ? increase : null, decrease: split && decrease >= 0 ? decrease : null, amount: split ? null : amount,
-      invert: false, balance: balance >= 0 ? balance : null,
     };
   }
   return null;
@@ -150,7 +162,34 @@ export interface ParsedStatement {
   problems: { row: number; message: string }[];
   /** 金額が 0・空の行（飛ばした） */
   skipped: number;
+  /**
+   * 残高の列との照らし合わせ（残高の列があるとき）：前の行の残高 ± 金額 ＝ その行の残高 になる行の数（matched）と、
+   * 符号が逆なら合う行の数（reversed）。reversed が多ければ、入金と出金（増える側・減る側）を逆に読んでいる
+   */
+  balanceCheck: { compared: number; matched: number; reversed: number } | null;
 }
+
+/**
+ * 残高の列と金額の向きを照らす。CSV は古い順・新しい順のどちらもあるので、両方で数えて合うほうを使う
+ *  古い順：残高[i] − 残高[i−1] ＝ 増減[i]、新しい順：残高[i−1] − 残高[i] ＝ 増減[i−1]
+ */
+const checkBalances = (lines: StatementLine[], account: Pick<Account, "normal_side">): ParsedStatement["balanceCheck"] => {
+  const signed = (l: StatementLine) => (l.side === account.normal_side ? l.amount : -l.amount);
+  let compared = 0;
+  const count = { asc: 0, desc: 0, ascRev: 0, descRev: 0 };
+  for (let i = 1; i < lines.length; i++) {
+    const [a, b] = [lines[i - 1], lines[i]];
+    if (a.balance === null || b.balance === null) continue;
+    compared++;
+    const d = b.balance - a.balance;
+    if (d === signed(b)) count.asc++;
+    if (d === -signed(b)) count.ascRev++;
+    if (-d === signed(a)) count.desc++;
+    if (-d === -signed(a)) count.descRev++;
+  }
+  if (!compared) return null;
+  return { compared, matched: Math.max(count.asc, count.desc), reversed: Math.max(count.ascRev, count.descRev) };
+};
 
 /** 摘要の比べ方（全角半角・空白・大文字小文字の違いを無視） */
 export const normDescription = (s: string) => s.normalize("NFKC").replace(/\s/g, "").toLowerCase();
@@ -192,7 +231,7 @@ export const parseStatement = (text: string, map: ColumnMap, account: Pick<Accou
     seen.set(key, n);
     lines.push({ row: i + 1, date, description, side, amount, balance: bal === null || Number.isNaN(bal) ? null : bal, fingerprint: `${key}|${n}` });
   }
-  return { lines, problems, skipped };
+  return { lines, problems, skipped, balanceCheck: checkBalances(lines, account) };
 };
 
 // ────────────────────────────────────────────

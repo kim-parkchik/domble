@@ -137,6 +137,8 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
   /** 登録のたびに取引先の欄を空に戻すためのキー */
   const [cpKey, setCpKey] = useState(0);
   const [error, setError] = useState("");
+  /** 日付の欄に読めない日付が入っているか（そのままだと前の日付で登録されるので止める） */
+  const [dateBad, setDateBad] = useState(false);
 
   useEffect(() => {
     if (!date.startsWith(`${year}-`)) setDate(firstDate());
@@ -155,6 +157,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     setError("");
     // 決算整理だけを見ているときは、年度末の決算整理仕訳として登録する
     const entryDate = adjustmentOnly ? yearEnd(year) : date;
+    if (!adjustmentOnly && dateBad) return setError(`日付が正しくありません（${year}年の日付を入れてください）`);
     if (isDateClosed(entryDate)) return setError("締めた月には登録できません（事業者設定で締めを戻してください）");
     if (bookSubs.length > 0 && bookSub === undefined) return setError("上の補助科目を選んでから入力してください（補助科目を使わないときは「補助なし」）");
     if (!counterId) return setError("相手科目を選んでください");
@@ -262,6 +265,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
           <table className="ledger book-table">
             <colgroup>
               <col style={{ width: 72 }} />
+              <col style={{ width: 52 }} />
               <col style={{ width: "16%" }} />
               <col style={{ width: 136 }} />
               <col />
@@ -272,6 +276,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
             <thead>
               <tr>
                 <th>日付</th>
+                <th className="num" title="伝票番号（仕訳日記帳の No. と同じ）">No.</th>
                 <th>相手科目</th>
                 <th className="tax-th">税区分</th>
                 <th>摘要</th>
@@ -282,13 +287,14 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
             </thead>
             <tbody>
               <tr className="carried">
-                <td />
+                <td colSpan={2} />
                 <td colSpan={5}>{from === 1 ? "前期より繰越" : adjustmentOnly ? "12月より繰越" : "前月より繰越"}</td>
                 <td className="num">{yen(carried)}</td>
               </tr>
               {rows.map((r, i) => (
                 <tr key={`${r.entry_id}-${i}`} className="clickable" onClick={() => setEditing(r.entry_id)} title="クリックで修正">
                   <td>{shortDate(r.date)}</td>
+                  <td className="num muted">{r.entry_id}</td>
                   <td>{r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter}</td>
                   <td className={`tax-cell${taxOfRow(r).text === "未設定" || taxOfRow(r).text.endsWith("区分不明") ? " tax-missing" : ""}`} title={taxOfRow(r).title}>{taxOfRow(r).text}</td>
                   <td className="memo">
@@ -303,7 +309,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                 </tr>
               ))}
               {!loading && rows.length === 0 && (
-                <tr className="empty-row"><td colSpan={7}>まだ取引がありません。下の行から入力を始めてください。</td></tr>
+                <tr className="empty-row"><td colSpan={8}>まだ取引がありません。下の行から入力を始めてください。</td></tr>
               )}
             </tbody>
           </table>
@@ -313,6 +319,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
           <table className="ledger book-table">
             <colgroup>
               <col style={{ width: 72 }} />
+              <col style={{ width: 52 }} />
               <col style={{ width: "16%" }} />
               <col style={{ width: 136 }} />
               <col />
@@ -325,8 +332,9 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                 <td>
                   {adjustmentOnly
                     ? <span className="adjust-date" title="決算整理仕訳は年度末の日付で登録します">12/31</span>
-                    : <DateInput value={date} onChange={setDate} year={year} onKeyDown={nav} aria-label="日付" />}
+                    : <DateInput value={date} onChange={setDate} year={year} onKeyDown={nav} aria-label="日付" onValidity={(ok) => setDateBad(!ok)} />}
                 </td>
+                <td />
                 <td><AccountWithSub accountId={counterId} subId={counterSubId} onAccount={(v) => { setCounterId(v); setCounterSubId(null); setCounterTax({ code: null, invoice: null, cls: null, use: null }); }} onSub={setCounterSubId} onKeyDown={nav} label="相手科目" /></td>
                 <td>
                   {/* 入金なら相手科目は貸方、出金なら借方 */}

@@ -68,14 +68,17 @@ describe("画質の確認", () => {
   test("解像度が足りない・重要書類が白黒なら NG", () => {
     const low = checkScanQuality(jpeg({ width: 800, height: 1100, comps: 3, dpi: 96 }), "important", false);
     expect(low.ok).toBe(false);
-    expect(low.problems[0]).toMatch(/96dpi/);
+    expect(low.problems[0]).toMatch(/96dpi.*1,100×800/);
     expect(checkScanQuality(jpeg({ width: 1654, height: 2339, comps: 1, dpi: 200 }), "important", false).problems.join()).toMatch(/カラー/);
     expect(checkScanQuality(jpeg({ width: 1654, height: 2339, comps: 1, dpi: 200 }), "general", false).ok).toBe(true);
   });
 
-  test("dpi が書かれていない写真は画素数で判断（A4 で約388万画素）", () => {
+  test("dpi が書かれていない・72dpi と書かれた写真は、画素数を A4 の 200dpi 相当（2,338×1,654）の辺ごとに判断", () => {
     expect(checkScanQuality(jpeg({ width: 3024, height: 4032, comps: 3 }), "important", false).ok).toBe(true); // 約1200万画素
-    expect(checkScanQuality(jpeg({ width: 1000, height: 1300, comps: 3 }), "important", false).problems[0]).toMatch(/130万画素/);
+    expect(checkScanQuality(jpeg({ width: 4032, height: 3024, comps: 3, dpi: 72 }), "important", false).ok).toBe(true);
+    expect(checkScanQuality(jpeg({ width: 1000, height: 1300, comps: 3 }), "important", false).problems[0]).toMatch(/1,300×1,000/);
+    // 総画素数は足りても、短い辺が足りなければ NG
+    expect(checkScanQuality(jpeg({ width: 4000, height: 980, comps: 3 }), "important", false).ok).toBe(false);
   });
 
   test("中身を読めない形式は自己申告", () => {

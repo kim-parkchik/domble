@@ -107,10 +107,13 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
 
   const removeRow = (i: number) => setRows((rs) => padRows(rs.filter((_, j) => j !== i)));
 
+  /** 日付の欄に読めない日付が入っているか（そのままだと前の日付で登録されるので止める） */
+  const [dateBad, setDateBad] = useState(false);
   const submit = async () => {
     if (locked) return;
     const c = checkVoucher(rows);
     const errs = [...c.errors];
+    if (dateBad && !adjustment) errs.unshift(`日付が正しくありません（${year}年の日付を入れてください）`);
     if (cpUnknown) errs.push("取引先が一覧にありません。「取引先に追加」で登録するか、欄を空にしてください");
     if (errs.length) {
       setErrors(errs);
@@ -169,7 +172,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
       <div className="voucher-top">
         <label className="field-inline">
           <span>日付</span>
-          <DateInput value={date} onChange={setDate} year={year} onKeyDown={nav} autoFocus={!entryId} aria-label="日付" disabled={adjustment} />
+          <DateInput value={date} onChange={setDate} year={year} onKeyDown={nav} autoFocus={!entryId} aria-label="日付" disabled={adjustment} onValidity={(ok) => setDateBad(!ok)} />
         </label>
         <label className="check" title="年度末（12月31日）の決算整理仕訳として登録します。帳簿入力では 12月 のあとの「決算整理」に出ます">
           <input type="checkbox" checked={adjustment} onChange={(e) => toggleAdjustment(e.target.checked)} /> 決算整理仕訳

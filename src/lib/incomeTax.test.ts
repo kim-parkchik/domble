@@ -173,6 +173,35 @@ describe("申告書（第一表）", () => {
   });
 });
 
+describe("事業専従者・勤労学生", () => {
+  const biz = (familySalary: number): BusinessFigures => ({ revenue: 8_000_000, incomeBeforeBlue: 3_650_000, filingType: "blue65", familySalary });
+
+  test("事業専従者は配偶者控除・扶養控除・障害者控除の対象にならない。生命保険料の23歳未満の特例にも数えない", () => {
+    const input: IncomeTaxInput = {
+      ...EMPTY_INCOME_TAX_INPUT,
+      life: { ...EMPTY_INCOME_TAX_INPUT.life, newLife: 100_000 },
+      spouse: { ...emptyRelative("妻"), birthday: "1986-05-01", disability: "normal", familyEmployee: true },
+      dependents: [{ ...emptyRelative("子"), birthday: "2006-05-01", familyEmployee: true }],
+    };
+    const r = computeIncomeTax(input, biz(1_200_000), 2026);
+    expect([cell(r, "㉑㉒"), cell(r, "㉓"), cell(r, "⑲⑳"), cell(r, "⑮"), cell(r, "(57)")]).toEqual([0, 0, 0, 40_000, 0]);
+    expect(r.second.relatives.map((x) => x.kind)).toEqual(["対象外（事業専従者）", "対象外（事業専従者）"]);
+    expect(r.notes.join()).not.toMatch(/専従者」に印/);
+  });
+  test("専従者給与があるのに、配偶者・扶養親族に専従者の印が無ければ知らせる", () => {
+    const input = { ...EMPTY_INCOME_TAX_INPUT, spouse: { ...emptyRelative("妻"), birthday: "1986-05-01" } };
+    expect(computeIncomeTax(input, biz(1_200_000), 2026).notes.join()).toMatch(/専従者」に印/);
+    expect(computeIncomeTax(input, biz(0), 2026).notes.join()).not.toMatch(/専従者」に印/);
+  });
+  test("勤労学生の所得要件は 89万円（令和8年分）", () => {
+    const input = (income: number): IncomeTaxInput => ({ ...EMPTY_INCOME_TAX_INPUT, student: true, salaries: [{ item: "", payer: "", payerId: "", income, withheld: 0 }] });
+    // 給与 163万円 → 給与所得 89万円（受けられる）、163万1千円 → 89万1千円（受けられない）
+    const none: BusinessFigures = { revenue: 0, incomeBeforeBlue: 0, filingType: "blue65", familySalary: 0 };
+    expect(cell(computeIncomeTax(input(1_630_000), none, 2026), "⑲⑳")).toBe(270_000);
+    expect(cell(computeIncomeTax(input(1_631_000), none, 2026), "⑲⑳")).toBe(0);
+  });
+});
+
 describe("入力の確かめ", () => {
   test("形を整え、おかしな金額・日付は理由を返す", () => {
     const n = normalizeIncomeTaxInput({ birthday: " 1980-01-01 ", socialInsurance: [{ kind: " 国民年金 ", amount: "200000" }] });

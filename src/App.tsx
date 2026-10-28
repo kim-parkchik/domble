@@ -187,7 +187,9 @@ export default function App() {
       // バックアップは読み取り専用：ファイルのメモリ上の写しを開き、開いたときの記録・整理（書き込み）は何もしない
       const readOnly = isBackupFile(path);
       repo.setReadOnly(readOnly);
-      const { db, triggersBefore } = await openDatabase(path, readOnly, unlock);
+      const { db, triggersBefore, backupError } = await openDatabase(path, readOnly, unlock);
+      // 開いたときの自動バックアップに失敗したら知らせる（ディスクの空き・書類フォルダの権限など）
+      if (backupError) toast(`帳簿を開く前のバックアップを作れませんでした：${backupError}（帳簿はそのまま使えます）`, "error");
       setLocked(null);
       repo.setActor(null);
       let interrupted: string[] = [];

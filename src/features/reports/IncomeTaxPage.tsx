@@ -319,7 +319,7 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       />
     </Section>
 
-    <Section title="配偶者" note="配偶者の合計所得金額が62万円以下なら配偶者控除、62万円超133万円以下なら配偶者特別控除です（本人の合計所得金額が1,000万円以下のとき）。給与だけなら、給与所得控除後の金額が合計所得金額です。">
+    <Section title="配偶者" note="配偶者の合計所得金額が62万円以下なら配偶者控除、62万円超133万円以下なら配偶者特別控除です（本人の合計所得金額が1,000万円以下のとき）。給与だけなら、給与所得控除後の金額が合計所得金額です。専従者給与を受けている人（事業専従者）は、配偶者控除・扶養控除の対象になりません（「専従者」に印）。">
       {x.spouse ? (
         <RelativesEditor rows={[x.spouse]} onChange={([s]) => set("spouse", s ?? null)} year={year} ownIncome={result.totalIncome} spouse disabled={disabled} />
       ) : (
@@ -353,7 +353,7 @@ const RelativesEditor = ({ rows, onChange, year, ownIncome, spouse, disabled }: 
   const kindOf = (r: Relative) => {
     if (spouse) {
       const s = spouseDeduction(r, ownIncome, year);
-      return s.kind === "spouse" ? `配偶者控除 ${yen(s.amount)}円` : s.kind === "special" ? `配偶者特別控除 ${yen(s.amount)}円` : "控除なし";
+      return s.kind === "spouse" ? `配偶者控除 ${yen(s.amount)}円` : s.kind === "special" ? `配偶者特別控除 ${yen(s.amount)}円` : r.familyEmployee ? "控除なし（事業専従者）" : "控除なし";
     }
     const d = dependentDeduction(r, year);
     return `${DEPENDENT_KIND_LABEL[d.kind]}${d.amount ? ` ${yen(d.amount)}円` : ""}`;
@@ -365,7 +365,7 @@ const RelativesEditor = ({ rows, onChange, year, ownIncome, spouse, disabled }: 
           <thead>
             <tr>
               <th>氏名</th><th style={{ width: 80 }}>続柄</th><th style={{ width: 140 }}>生年月日</th><th className="num" style={{ width: 120 }}>合計所得金額</th>
-              <th style={{ width: 110 }}>障害者</th><th style={{ width: 56 }}>同居</th>{!spouse && <th style={{ width: 70 }}>直系尊属</th>}<th>控除</th><th style={{ width: 40 }} />
+              <th style={{ width: 110 }}>障害者</th><th style={{ width: 56 }}>同居</th>{!spouse && <th style={{ width: 70 }}>直系尊属</th>}<th style={{ width: 56 }} title="青色事業専従者として給与を受ける人・白色の事業専従者">専従者</th><th>控除</th><th style={{ width: 40 }} />
             </tr>
           </thead>
           <tbody>
@@ -382,6 +382,7 @@ const RelativesEditor = ({ rows, onChange, year, ownIncome, spouse, disabled }: 
                 </td>
                 <td className="center"><input type="checkbox" checked={r.cohabiting} onChange={(e) => update(i, { cohabiting: e.target.checked })} disabled={disabled} aria-label="同居" /></td>
                 {!spouse && <td className="center"><input type="checkbox" checked={r.lineal} onChange={(e) => update(i, { lineal: e.target.checked })} disabled={disabled} aria-label="直系尊属" /></td>}
+                <td className="center"><input type="checkbox" checked={r.familyEmployee} onChange={(e) => update(i, { familyEmployee: e.target.checked })} disabled={disabled} aria-label="事業専従者" /></td>
                 <td className="muted">{kindOf(r)}</td>
                 <td>
                   <button type="button" className="btn ghost sm icon" onClick={() => onChange(rows.filter((_, j) => j !== i))} disabled={disabled} aria-label="消す" title="消す"><Trash2 size={14} /></button>

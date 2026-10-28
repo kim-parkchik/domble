@@ -23,7 +23,7 @@ export const EntryEditModal = ({ entryId, onClose }: { entryId: number; onClose:
   const deleted = entry?.is_deleted === 1;
 
   return (
-    <Modal title={deleted ? `削除済みの仕訳（No.${entryId}）` : strict ? "仕訳の訂正" : "仕訳の修正"} onClose={onClose} width={1080}>
+    <Modal title={deleted ? `削除済みの仕訳（No.${entryId}）` : strict ? `仕訳の訂正（No.${entryId}）` : `仕訳の修正（No.${entryId}）`} onClose={onClose} width={1080}>
       {!entry ? (
         <p className="muted">読み込んでいます…</p>
       ) : deleted ? (

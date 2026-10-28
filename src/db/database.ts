@@ -75,18 +75,22 @@ export const pruneBackups = async (path: string, keep: number) => {
  */
 export const openDatabase = async (
   path: string, readonly = false, unlock: Unlock = {},
-): Promise<{ db: Database; triggersBefore: string[]; encryption: EncryptionStatus }> => {
-  // 開く前に丸ごと複製しておく（暗号化した帳簿は暗号化されたまま複製される）。
-  // パスワードを聞いて開き直すとき（unlock.secret あり）は、最初に試したときに複製済みなので重ねて作らない
-  if (!readonly && isBookFile(path) && unlock.secret === undefined) {
+): Promise<{ db: Database; triggersBefore: string[]; encryption: EncryptionStatus; backupError: string }> => {
+  const { db, encryption } = await Database.load(path, readonly, unlock);
+
+  // 列の追加などの前に、丸ごと複製しておく（暗号化した帳簿は暗号化されたまま複製される）。
+  // 前回、保存の途中でソフトが止まっていると、本体に書きかけが残り、元に戻す内容が -journal に残っている。
+  // SQLite は開いて最初に読んだときに元に戻すので、一度読んでから複製する（開く前に本体だけを複製すると、壊れた複製になる）
+  let backupError = "";
+  if (!readonly && isBookFile(path)) {
     try {
+      await db.select("SELECT count(*) AS n FROM sqlite_master");
       await backup(path);
     } catch (e) {
+      backupError = String(e).replace(/^Error: /, "");
       console.warn("バックアップに失敗しました", e);
     }
   }
-
-  const { db, encryption } = await Database.load(path, readonly, unlock);
 
   await db.execute("PRAGMA foreign_keys = ON;");
   // テーブル → 列の追加（古いファイル向け） → トリガー の順に作る
@@ -119,7 +123,7 @@ export const openDatabase = async (
     );
   }
 
-  return { db, triggersBefore, encryption };
+  return { db, triggersBefore, encryption, backupError };
 };
 
 // ── 最近使ったファイル（Webview の localStorage に保存） ──

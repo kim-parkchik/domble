@@ -12,6 +12,7 @@ import type { JournalLine } from "../lib/types";
 import { subKey } from "../lib/types";
 import { depreciationLines } from "../lib/depreciation";
 import { taxYearOf } from "../lib/tax";
+import { emptyRow } from "../lib/accounting";
 import { EMPTY_INCOME_TAX_INPUT } from "../lib/incomeTax";
 
 const makeDb = (mode: "strict" | "standard") => {
@@ -495,6 +496,32 @@ describe("勘定科目の削除（repo）", () => {
     await repo.setAccountActive(db, acc.id, false);
   });
 
+  test("明細のルール・明細・定型仕訳で使っている科目・補助科目・取引先は、使用件数に入る", async () => {
+    const { db } = makeDb("standard");
+    const code = repo.nextAccountCode(await repo.getAccounts(db, 2026), "expense")!;
+    await repo.createAccount(db, { code, name: "保守料", kana: "", category: "expense" });
+    const accts = await repo.getAccounts(db, 2026);
+    const acc = accts.find((a) => a.name === "保守料")!;
+    const bank = accts.find((a) => a.name === "普通預金")!;
+    const cp = await repo.createCounterparty(db, { name: "株式会社B", kana: "", invoice_no: "", memo: "" });
+    const rule = { id: 0, keyword: "ﾎｼﾕ", direction: "decrease" as const, target_account_id: null, account_id: acc.id, sub_account_id: null, tax_code: null, invoice_kind: null, counterparty_id: cp, memo: "" };
+    await repo.saveBankRule(db, rule);
+    expect(await repo.accountUsage(db, acc.id)).toBe(1);
+    await expect(repo.deleteAccount(db, acc.id)).rejects.toThrow(/明細のルール/);
+    expect(await repo.counterpartyUsage(db, cp)).toBe(1);
+    await expect(repo.deleteCounterparty(db, cp)).rejects.toThrow(/明細のルール/);
+
+    const cp2 = await repo.createCounterparty(db, { name: "株式会社C", kana: "", invoice_no: "", memo: "" });
+    await repo.createTemplate(db, "保守", [{ ...emptyRow(), debitAccountId: acc.id, debitAmount: 1000, creditAccountId: bank.id, creditAmount: 1000 }], cp2);
+    expect(await repo.counterpartyUsage(db, cp2)).toBe(1);
+
+    await repo.createSub(db, bank.id, "C銀行");
+    const sub = (await repo.getSubAccounts(db, 2026)).find((x) => x.name === "C銀行")!;
+    expect(await repo.subUsage(db, sub.id)).toBe(0);
+    await repo.addBankLines(db, bank.id, sub.id, [{ row: 1, date: "2026-10-01", description: "x", side: "debit", amount: 100, balance: null, fingerprint: "f1" }], "a.csv");
+    expect(await repo.subUsage(db, sub.id)).toBe(1);
+  });
+
   test("使っていない科目は削除できる", async () => {
     const { db } = makeDb("standard");
     const code = repo.nextAccountCode(await repo.getAccounts(db, 2026), "expense")!;
@@ -960,9 +987,9 @@ describe("ユーザーの備考（repo）", () => {
 
 describe("スキャナ保存（repo）", () => {
   /** 200dpi・カラーの JPEG の頭（中身の画像は無くてよい） */
-  const scanJpeg = (comps = 3, dpi = 200) => new Uint8Array([
+  const scanJpeg = (comps = 3, dpi = 200, h = 2339, w = 1654) => new Uint8Array([
     0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 1, dpi >> 8, dpi & 255, dpi >> 8, dpi & 255, 0, 0,
-    0xff, 0xc0, 0x00, 8 + 3 * comps, 8, 2339 >> 8, 2339 & 255, 1654 >> 8, 1654 & 255, comps, ...Array(3 * comps).fill(1), 0xff, 0xd9, Date.now() & 255,
+    0xff, 0xc0, 0x00, 8 + 3 * comps, 8, h >> 8, h & 255, w >> 8, w & 255, comps, ...Array(3 * comps).fill(1), 0xff, 0xd9, Date.now() & 255,
   ]);
   const scanMeta = { ...meta, doc_type: "領収書", received_date: "2026-10-20" };
 
@@ -971,7 +998,7 @@ describe("スキャナ保存（repo）", () => {
     await expect(repo.createEvidence(std.db, scanMeta, { name: "a.jpg", bytes: scanJpeg() }, "scan")).rejects.toThrow(/厳密モード/);
     const { db } = strict;
     await expect(repo.createEvidence(db, { ...scanMeta, received_date: "" }, { name: "a.jpg", bytes: scanJpeg() }, "scan")).rejects.toThrow(/受領日/);
-    await expect(repo.createEvidence(db, scanMeta, { name: "low.jpg", bytes: scanJpeg(3, 96) }, "scan")).rejects.toThrow(/96dpi/);
+    await expect(repo.createEvidence(db, scanMeta, { name: "low.jpg", bytes: scanJpeg(3, 96, 1100, 800) }, "scan")).rejects.toThrow(/96dpi/);
     await expect(repo.createEvidence(db, scanMeta, { name: "gray.jpg", bytes: scanJpeg(1) }, "scan")).rejects.toThrow(/カラー/);
     // PDF は自己申告が要る
     await expect(repo.createEvidence(db, scanMeta, { name: "a.pdf", bytes: pdf("s") }, "scan")).rejects.toThrow(/自動で確かめられません/);

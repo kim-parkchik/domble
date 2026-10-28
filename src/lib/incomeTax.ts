@@ -66,6 +66,8 @@ export interface Relative {
   cohabiting: boolean;
   /** 本人または配偶者の直系尊属か（父母・祖父母など。同居老親等） */
   lineal: boolean;
+  /** 事業専従者か（青色事業専従者として給与を受ける人・白色の事業専従者）。配偶者控除・扶養控除・障害者控除などの対象にならない */
+  familyEmployee: boolean;
 }
 
 export interface IncomeTaxInput {
@@ -99,7 +101,7 @@ export interface IncomeTaxInput {
 }
 
 export const emptyRelative = (relation = ""): Relative => ({
-  name: "", relation, birthday: "", income: 0, disability: "none", cohabiting: true, lineal: false,
+  name: "", relation, birthday: "", income: 0, disability: "none", cohabiting: true, lineal: false, familyEmployee: false,
 });
 
 export const EMPTY_INCOME_TAX_INPUT: IncomeTaxInput = {
@@ -140,7 +142,7 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
   });
   const relative = (r: Partial<Relative>, label: string): Relative => ({
     name: text(r.name), relation: text(r.relation, 20), birthday: date(r.birthday, label),
-    income: amount(r.income, `${label}の合計所得金額`), disability: disability(r.disability), cohabiting: r.cohabiting !== false, lineal: !!r.lineal,
+    income: amount(r.income, `${label}の合計所得金額`), disability: disability(r.disability), cohabiting: r.cohabiting !== false, lineal: !!r.lineal, familyEmployee: !!r.familyEmployee,
   });
   const list = <T,>(v: unknown, f: (r: never, i: number) => T): T[] => (Array.isArray(v) ? v.slice(0, 50).map((r, i) => f((r ?? {}) as never, i)) : []);
   const life = (x.life ?? {}) as Partial<IncomeTaxInput["life"]>;
@@ -279,6 +281,8 @@ export const basicDeduction = (income: number) => {
 
 /** 扶養親族・同一生計配偶者の所得要件（令和8年分） */
 export const DEPENDENT_LIMIT = 620_000;
+/** 勤労学生の所得要件（令和8年分。令和7年分は 85万円） */
+export const STUDENT_LIMIT = 890_000;
 const SPECIAL_LIMIT = 1_330_000;
 const SPECIFIC_LIMIT = 1_230_000;
 
@@ -303,7 +307,7 @@ export interface SpouseResult {
 
 export const spouseDeduction = (s: Relative | null, ownIncome: number, year: number): SpouseResult => {
   const none: SpouseResult = { kind: null, amount: 0, elderly: false };
-  if (!s || ownIncome > 10_000_000) return none;
+  if (!s || s.familyEmployee || ownIncome > 10_000_000) return none;
   const tier = ownIncome <= 9_000_000 ? 0 : ownIncome <= 9_500_000 ? 1 : 2;
   const elderly = (ageAt(s.birthday, year) ?? 0) >= 70;
   if (s.income <= DEPENDENT_LIMIT) return { kind: "spouse", amount: (elderly ? [480_000, 320_000, 160_000] : [380_000, 260_000, 130_000])[tier], elderly };
@@ -312,15 +316,17 @@ export const spouseDeduction = (s: Relative | null, ownIncome: number, year: num
   return { kind: "special", amount: row[1 + tier], elderly: false };
 };
 
-export type DependentKind = "minor" | "general" | "specific" | "elderly" | "elderlyParent" | "specificRelative" | "none";
+export type DependentKind = "minor" | "general" | "specific" | "elderly" | "elderlyParent" | "specificRelative" | "none" | "familyEmployee";
 export const DEPENDENT_KIND_LABEL: Record<DependentKind, string> = {
   minor: "16歳未満（扶養控除なし）", general: "一般の控除対象扶養親族", specific: "特定扶養親族（19歳以上23歳未満）", elderly: "老人扶養親族（70歳以上）",
-  elderlyParent: "同居老親等", specificRelative: "特定親族特別控除", none: "対象外（所得が多い）",
+  elderlyParent: "同居老親等", specificRelative: "特定親族特別控除", none: "対象外（所得が多い）", familyEmployee: "対象外（事業専従者）",
 };
 
 /** 扶養親族ごとの扶養控除・特定親族特別控除 */
 export const dependentDeduction = (d: Relative, year: number): { kind: DependentKind; amount: number; age: number | null } => {
   const age = ageAt(d.birthday, year);
+  // 事業専従者は扶養親族・特定親族にならない
+  if (d.familyEmployee) return { kind: "familyEmployee", amount: 0, age };
   if (d.income > DEPENDENT_LIMIT) {
     if (age !== null && age >= 19 && age < 23 && d.income <= SPECIFIC_LIMIT) {
       return { kind: "specificRelative", amount: SPECIFIC_RELATIVE.find(([max]) => d.income <= max)![1], age };
@@ -433,7 +439,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const r13 = sum(input.socialInsurance.map((r) => r.amount));
   const r14 = sum(input.smallBusiness.map((r) => r.amount));
   const dependents = input.dependents.map((d) => ({ d, ...dependentDeduction(d, year) }));
-  const under23 = dependents.some((x) => x.d.income <= DEPENDENT_LIMIT && x.age !== null && x.age < 23);
+  const under23 = dependents.some((x) => !x.d.familyEmployee && x.d.income <= DEPENDENT_LIMIT && x.age !== null && x.age < 23);
   const r15 = lifeInsuranceDeduction(input.life, under23);
   const r16 = quakeDeduction(input.quake);
   let r17 = 0;
@@ -443,15 +449,16 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   }
   let student = 0;
   if (input.student) {
-    if (r12 > 850_000) notes.push("合計所得金額が85万円を超えているため、勤労学生控除は受けられません。");
+    if (r12 > STUDENT_LIMIT) notes.push(`合計所得金額が${STUDENT_LIMIT / 10_000}万円を超えているため、勤労学生控除は受けられません。`);
     else student = 270_000;
   }
   const spouse = spouseDeduction(input.spouse, r12, year);
   // 障害者控除：本人・同一生計配偶者・扶養親族（16歳未満を含む）
-  const sameHousehold = input.spouse && input.spouse.income <= DEPENDENT_LIMIT ? [input.spouse] : [];
+  // 同一生計配偶者・扶養親族には、事業専従者は入らない
+  const sameHousehold = input.spouse && !input.spouse.familyEmployee && input.spouse.income <= DEPENDENT_LIMIT ? [input.spouse] : [];
   const disabled = [
     disabilityAmount(input.disability, false),
-    ...[...sameHousehold, ...input.dependents.filter((d) => d.income <= DEPENDENT_LIMIT)].map((d) => disabilityAmount(d.disability, d.cohabiting)),
+    ...[...sameHousehold, ...input.dependents.filter((d) => !d.familyEmployee && d.income <= DEPENDENT_LIMIT)].map((d) => disabilityAmount(d.disability, d.cohabiting)),
   ];
   const r19 = student + sum(disabled);
   const r23 = sum(dependents.filter((x) => x.kind !== "specificRelative").map((x) => x.amount));
@@ -484,6 +491,9 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const r52 = third > 0 ? floorTo(third, 100) : 0;
   const r53 = third < 0 ? -third : 0;
 
+  if (biz.familySalary > 0 && [input.spouse, ...input.dependents].some((r) => r && !r.familyEmployee) && ![input.spouse, ...input.dependents].some((r) => r?.familyEmployee)) {
+    notes.push("帳簿に専従者給与があります。事業専従者を配偶者・扶養親族の欄に入れているときは「専従者」に印を付けてください（配偶者控除・扶養控除の対象になりません）。");
+  }
   const spouseLabel = spouse.kind === "special" ? "配偶者特別控除" : spouse.elderly ? "配偶者控除（老人控除対象配偶者）" : "配偶者控除";
   const rows: IncomeTaxRow[] = [
     { no: "", label: "収入金額等", value: null, head: true },
@@ -537,7 +547,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   ];
 
   const relatives = [
-    ...(input.spouse ? [{ ...input.spouse, kind: spouse.kind ? spouseLabel : "対象外（所得が多い）" }] : []),
+    ...(input.spouse ? [{ ...input.spouse, kind: spouse.kind ? spouseLabel : input.spouse.familyEmployee ? "対象外（事業専従者）" : "対象外（所得が多い）" }] : []),
     ...dependents.map((x) => ({ ...x.d, kind: DEPENDENT_KIND_LABEL[x.kind] })),
   ].map((r) => ({ name: r.name, relation: r.relation, birthday: r.birthday, kind: r.kind, disability: r.disability, cohabiting: r.cohabiting }));
 

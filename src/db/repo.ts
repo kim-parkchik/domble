@@ -781,14 +781,20 @@ const setAccountStatementLine_ = async (db: Database, id: number, line: string |
 };
 const autoLineLabel = (a: Account) => (autoLine(a) === EXTRA_LINE ? "追加の欄" : autoLine(a));
 
-/** 科目の使用件数（仕訳・期首残高・家事按分の設定・固定資産台帳） */
+/** 使われている科目を削除しようとしたときの知らせ */
+export const ACCOUNT_IN_USE = "この科目は仕訳・期首残高・家事按分の設定・固定資産台帳・銀行やカードの明細・明細のルールで使われているので削除できません。使わない場合は「使う」のチェックを外してください";
+
+/** 科目の使用件数（仕訳・期首残高・家事按分の設定・固定資産台帳・銀行やカードの明細と列の対応・明細のルール。定型仕訳は削除のときに外す） */
 export const accountUsage = async (db: Database, id: number) => {
   const r = await db.select<{ n: number }[]>(
     `SELECT (SELECT COUNT(*) FROM journal_lines WHERE account_id = ?)
           + (SELECT COUNT(*) FROM opening_balances WHERE account_id = ?)
           + (SELECT COUNT(*) FROM home_use_rates WHERE account_id = ?)
-          + (SELECT COUNT(*) FROM fixed_assets WHERE account_id = ?) AS n`,
-    [id, id, id, id],
+          + (SELECT COUNT(*) FROM fixed_assets WHERE account_id = ?)
+          + (SELECT COUNT(*) FROM bank_lines WHERE account_id = ?)
+          + (SELECT COUNT(*) FROM bank_formats WHERE account_id = ?)
+          + (SELECT COUNT(*) FROM bank_rules WHERE account_id = ? OR target_account_id = ?) AS n`,
+    [id, id, id, id, id, id, id, id],
   );
   return r[0].n;
 };
@@ -868,7 +874,7 @@ const updateAccount_ = async (db: Database, id: number, data: Omit<AccountInputD
 
 /** 追加した科目で、一度も使っていないものだけ削除できる（使ったものは非表示にする） */
 const deleteAccount_ = async (db: Database, id: number) => {
-  if ((await accountUsage(db, id)) > 0) throw new Error("この科目は仕訳・期首残高・家事按分の設定で使われているので削除できません。非表示にしてください");
+  if ((await accountUsage(db, id)) > 0) throw new Error(ACCOUNT_IN_USE);
   const label = await accountLabel(db, id);
   // 定型仕訳からこの科目（とその補助科目）の部分を外す
   const templates = await cleanTemplates_(db, { accountId: id });
@@ -944,8 +950,11 @@ const setSubActive_ = async (db: Database, id: number, active: boolean) => {
 export const subUsage = async (db: Database, id: number) => {
   const r = await db.select<{ n: number }[]>(
     `SELECT (SELECT COUNT(*) FROM journal_lines WHERE sub_account_id = ?)
-          + (SELECT COUNT(*) FROM opening_balances WHERE sub_account_id = ?) AS n`,
-    [id, id],
+          + (SELECT COUNT(*) FROM opening_balances WHERE sub_account_id = ?)
+          + (SELECT COUNT(*) FROM bank_lines WHERE sub_account_id = ?)
+          + (SELECT COUNT(*) FROM bank_formats WHERE sub_account_id = ?)
+          + (SELECT COUNT(*) FROM bank_rules WHERE sub_account_id = ?) AS n`,
+    [id, id, id, id, id],
   );
   return r[0].n;
 };
@@ -1020,18 +1029,21 @@ const setCounterpartyActive_ = async (db: Database, id: number, active: boolean)
 };
 
 /** 使用件数（仕訳・証憑） */
+/** 取引先の使用件数（仕訳・証憑・定型仕訳・明細のルール） */
 export const counterpartyUsage = async (db: Database, id: number) => {
   const r = await db.select<{ n: number }[]>(
     `SELECT (SELECT COUNT(*) FROM journal_entries WHERE counterparty_id = ?)
-          + (SELECT COUNT(*) FROM evidences WHERE counterparty_id = ?) AS n`,
-    [id, id],
+          + (SELECT COUNT(*) FROM evidences WHERE counterparty_id = ?)
+          + (SELECT COUNT(*) FROM journal_templates WHERE counterparty_id = ?)
+          + (SELECT COUNT(*) FROM bank_rules WHERE counterparty_id = ?) AS n`,
+    [id, id, id, id],
   );
   return r[0].n;
 };
 
 /** 一度も使っていない取引先だけ削除できる（使ったものは非表示にする） */
 const deleteCounterparty_ = async (db: Database, id: number) => {
-  if ((await counterpartyUsage(db, id)) > 0) throw new Error("この取引先は使われているので削除できません。非表示にしてください");
+  if ((await counterpartyUsage(db, id)) > 0) throw new Error("この取引先は仕訳・証憑・定型仕訳・明細のルールで使われているので削除できません。非表示にしてください");
   const label = await counterpartyName(db, id);
   await db.execute("DELETE FROM counterparties WHERE id = ?", [id]);
   await logMaster(db, { target_type: "counterparty", target_id: id, action: "delete", fiscal_year: await currentYear(db), label, old_value: label, new_value: "" });

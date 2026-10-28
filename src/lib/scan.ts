@@ -3,7 +3,7 @@
  * 紙で受け取った書類をスキャナ（スマートフォンのカメラを含む）で読み取って保存するときの要件の確認。
  * 令和6年1月1日以後の要件にそって、次を確かめる
  *  - 入力期間：受け取ってからの期限（早期入力方式：おおむね7営業日／業務処理サイクル方式：最長2か月＋おおむね7営業日）
- *  - 画質：解像度 200dpi 以上（カメラは画素数で判断：A4 なら約388万画素以上）、
+ *  - 画質：解像度 200dpi 以上（dpi が書かれていない・200 未満なら画素数で判断：A4 なら 2,338×1,654 画素以上）、
  *          重要書類はカラー（赤・緑・青 各256階調以上）、一般書類はグレースケールでもよい
  *  - 帳簿との相互関連性：重要書類だけ（仕訳とひも付ける）
  * タイムスタンプは、訂正・削除の履歴が残る仕組み（厳密モード）で入力期間内に保存したことが確かめられることで代える
@@ -155,8 +155,8 @@ export const readImageInfo = (bytes: Uint8Array): ImageInfo | null => {
   return null;
 };
 
-/** A4 を 200dpi で読み取ったときの画素数の目安（約388万画素） */
-export const A4_200DPI_PIXELS = 3_880_000;
+/** A4 を 200dpi で読み取ったときの長い辺・短い辺の画素数（国税庁 一問一答（スキャナ保存）問26） */
+export const A4_200DPI_SIDES = { long: 2_338, short: 1_654 };
 
 export interface QualityCheck {
   /** auto：ファイルの中身で確かめた／declared：自己申告（中身を読めない形式） */
@@ -168,7 +168,7 @@ export interface QualityCheck {
 
 /**
  * 画質の確認。JPEG・PNG は中身で確かめる。それ以外（PDF・HEIC など）は自己申告（declared）に頼る
- *  - 解像度：dpi が書かれていれば 200dpi 以上。書かれていなければ画素数（A4 で約388万画素以上）
+ *  - 解像度：200dpi 以上と書かれているか、画素数が A4 の 200dpi 相当（長い辺 2,338・短い辺 1,654 画素）以上
  *  - 色：重要書類は各色8ビット以上のカラー。一般書類はグレースケール（8ビット以上）でもよい
  */
 export const checkScanQuality = (bytes: Uint8Array, docClass: DocClass, declared: boolean): QualityCheck => {
@@ -180,10 +180,15 @@ export const checkScanQuality = (bytes: Uint8Array, docClass: DocClass, declared
     };
   }
   const problems: string[] = [];
-  if (info.dpi !== null) {
-    if (info.dpi < 200) problems.push(`解像度が ${info.dpi}dpi です（200dpi 以上が必要）`);
-  } else if (info.width * info.height < A4_200DPI_PIXELS) {
-    problems.push(`画素数が ${Math.round((info.width * info.height) / 10000)}万画素です（A4 なら約388万画素以上が必要）`);
+  // 200dpi 以上と書かれていれば足りる。書かれていない・200 未満（写真の 72dpi など、画像の解像度を表さないことが多い）なら、
+  // 画素数を A4 の 200dpi 相当（長い辺 2,338・短い辺 1,654 画素。それぞれを満たす）で確かめる（一問一答（スキャナ保存）問26）
+  const [long, short] = [Math.max(info.width, info.height), Math.min(info.width, info.height)];
+  const sidesOk = long >= A4_200DPI_SIDES.long && short >= A4_200DPI_SIDES.short;
+  if (!(info.dpi !== null && info.dpi >= 200) && !sidesOk) {
+    problems.push(
+      `${info.dpi !== null ? `解像度が ${info.dpi}dpi で、` : ""}画素数が ${long.toLocaleString()}×${short.toLocaleString()} です`
+        + "（A4 の書類なら 200dpi 相当の 2,338×1,654 画素以上が必要）",
+    );
   }
   if (docClass === "important" && (info.color !== "color" || info.bits < 8)) {
     problems.push("重要書類はカラー（赤・緑・青 各256階調以上）で読み取る必要があります");
