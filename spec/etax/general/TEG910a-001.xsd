@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/general" 
+xmlns="http://xml.e-tax.nta.go.jp/XSD/general"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+elementFormDefault="qualified" attributeFormDefault="unqualified"
+version="1.0"> 
+
+<xsd:annotation>
+<xsd:documentation>
+共通ボキャブラリ
+version:β2.1
+Date:2021年04月27日
+</xsd:documentation>
+</xsd:annotation>
+
+<xsd:include schemaLocation="General.xsd"/>
+
+<xsd:group name="n-yyGroup">
+<xsd:sequence>
+<xsd:element name="era">
+<xsd:simpleType>
+<xsd:annotation>
+<xsd:appinfo>年号</xsd:appinfo>
+</xsd:annotation>
+<xsd:restriction base="xsd:string">
+<xsd:enumeration value="明治"/>
+<xsd:enumeration value="大正"/>
+<xsd:enumeration value="昭和"/>
+<xsd:enumeration value="平成"/>
+<xsd:enumeration value="令和"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+<xsd:element name="yy">
+<xsd:simpleType>
+<xsd:annotation>
+<xsd:appinfo>年</xsd:appinfo>
+</xsd:annotation>
+<xsd:restriction base="xsd:nonNegativeInteger">
+<xsd:pattern value="\d?\d"/>
+<xsd:maxInclusive value="99"/>
+<xsd:minInclusive value="1"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="n-yymmdd">
+<xsd:annotation>
+<xsd:appinfo>日付（受付発行用）</xsd:appinfo>
+</xsd:annotation>
+<xsd:sequence>
+<xsd:group ref="n-yyGroup"/>
+<xsd:group ref="mmGroup"/>
+<xsd:group ref="ddGroup"/>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="n-yymm">
+<xsd:annotation>
+<xsd:appinfo>年月（受付発行用）</xsd:appinfo>
+</xsd:annotation>
+<xsd:sequence>
+<xsd:group ref="n-yyGroup"/>
+<xsd:group ref="mmGroup"/>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:complexType name="n-yy">
+<xsd:annotation>
+<xsd:appinfo>年（受付発行用）</xsd:appinfo>
+</xsd:annotation>
+<xsd:sequence>
+<xsd:group ref="n-yyGroup"/>
+</xsd:sequence>
+</xsd:complexType>
+
+</xsd:schema>

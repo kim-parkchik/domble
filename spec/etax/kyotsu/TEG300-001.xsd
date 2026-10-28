@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　退職所得の源泉徴収票・特別徴収票(平成19年以降用)
+version：1.1
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="TEG300-1-1VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/><xsd:enumeration value="1.1"/></xsd:restriction></xsd:simpleType>
+<!-- Root Element Definition -->
+<xsd:element name="TEG300" type="TEG300-1-1type"/>
+
+<xsd:complexType name="TEG300-1-1type">
+<xsd:sequence>
+
+<xsd:element name="XAA00000" type="XAA00000-1-1Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"表題"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAB00000" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="XAC00000" type="XAC00000-1-1type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払を受ける者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00000" type="XAD00000-1-1type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収票・特別徴収票の明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="XAE00000" type="XAE00000-1-1type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職所得控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAF00000" type="XAF00000-1-1type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"勤続年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAG00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"就職年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAH00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="XAI00000" type="XAI00000-1-1type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（摘要）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAJ00000" type="XAJ00000-1-1type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="1" maxOccurs="1"/>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="TEG300-1-1VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+
+<xsd:complexType name="XAC00000-1-1type">
+<xsd:sequence>
+
+<xsd:element name="XAC00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は居所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年1月1日の住所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAC00030" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAC00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="XAC00050" type="XAC00050-1-1Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"役職名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAC00060" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="XAD00000-1-1type">
+<xsd:sequence>
+
+<xsd:element name="XAD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税法第201条第1項第1号並びに地方税法第50条の6第1項第1号及び第328条の6第1項第1号適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="XAD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別徴収税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="XAD00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税法第201条第1項第2号並びに地方税法第50条の6第1項第2号及び第328条の6第1項第2号適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="XAD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別徴収税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="XAD00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税法第201条第3項並びに地方税法第50条の6第2項及び第328条の6第2項適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="XAD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別徴収税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="XAD00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAD00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="XAI00000-1-1type">
+<xsd:sequence>
+
+<xsd:element name="XAI00010" type="XAI00010-1-1Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"摘要の内容"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAI00020" type="XAI00020-1-1Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電子交付"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="XAJ00000-1-1type">
+<xsd:sequence>
+
+<xsd:element name="XAJ00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（居所）又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAJ00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="XAJ00030" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="XAA00000-1-1Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="XAC00050-1-1Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="XAE00000-1-1Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="XAF00000-1-1Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="XAI00010-1-1Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="XAI00020-1-1Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="XAE00000-1-1type">
+<xsd:simpleContent>
+<xsd:extension base="XAE00000-1-1Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="XAF00000-1-1type">
+<xsd:simpleContent>
+<xsd:extension base="XAF00000-1-1Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

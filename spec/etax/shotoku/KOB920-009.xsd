@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：認定ＮＰＯ法人等寄附金特別控除額の計算明細書
+version：9.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB920-9-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="9.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB920-9-0group">
+<xsd:sequence>
+<xsd:element name="KOB920">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="IPA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IPD00000" type="IPD00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1 寄附金の区分等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00000" type="IPE00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2 認定NPO法人等寄附金特別控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB920-9-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="IPD00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="IPD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附金の区分等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IPD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定NPO法人等寄附金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)以外の寄附金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)+(2)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IPD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)*40%"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPD00070" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"認定NPO法人等寄附金の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IPD00080" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPD00090" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IPE00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="IPE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(5)-(2)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)と(6)のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2千円-(2)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((7)-(8))*40%"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00050" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の所得税の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(10)*25%"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)-公益社団法人等寄附金特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IPE00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定NPO法人等寄附金特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

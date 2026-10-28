@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：退職給与引当金に関する明細書
+version：3.0
+Date：2005年08月04日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB230-3-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="3.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB230-3-0group">
+<xsd:sequence>
+<xsd:element name="KOB230">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BWA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BWC00000" type="BWC00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職給与引当金の計算内訳"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00000" type="BWD00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職年金制度へ移行した場合の累積限度額の計算内訳"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB230-3-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BWC00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="BWC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中の退職給与発生額基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BWC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年末退職給与の要支給額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上のうち退職金共済契約等若しくは適格退職年金契約等に基づく給付金又は確定給付企業年金規約に基づく給付金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　（（１）－（２））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年末退職給与の要支給額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上のうち退職金共済契約等若しくは適格退職年金契約等に基づく給付金又は確定給付企業年金規約に基づく給付金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　（（４）－（５））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"再差引金額　（（３）－（６））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BWC00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"給与総額基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BWC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年末使用人の給与総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上の６／１００相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BWC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）と（９）のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"累積限度額基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BWC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年末退職給与の要支給額（（３）の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00144" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上の　２０／１００相当額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BWC00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BWC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職年金制度へ移行した場合の累積限度額（下記の（L)の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年末における前年から繰り越された退職給与引当金
+の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（（１２）又は（１３）の金額）－（１４）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BWC00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分退職給与引当金繰入限度額（（10）と（15）のいずれか少ない方の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年繰り入れた退職給与引当金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BWD00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="BWD00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移行年"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00020" type="BWD00020-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移行年の翌年１月１日から本年末までの期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移行年の年末における前年から繰り越された退職給与引当金
+の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移行年分における調整前累積限度額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BWD00050" type="BWD00050-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"累積限度割合（分子）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前累積限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BWD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移行年分における調整前累積限度超過額（（C)－（D））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（E）又は（E）*（７－（Ｂ））／７"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移行年の翌年からその年までに支出した過去勤務掛金額等の
+合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（G）-（E）*（B）／７（赤字のときは０）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00104" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分調整前累積限度額　（（３）*　２０／１００）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BWD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分調整前累積限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BWD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分調整後累積限度額　（（Ｉ）＋（（Ｆ）－（Ｈ）））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年末における前年から繰り越された退職給与引当金の額（（１４）の
+金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BWD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（Ｊ）と（Ｋ）のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="BWD00020-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BWD00050-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="BWD00020-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="BWD00020-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BWD00050-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="BWD00050-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　オープン型証券投資信託収益の分配の支払通知書(平成21年以降用)
+version：1.0
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="TEG500-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+<!-- Root Element Definition -->
+<xsd:element name="TEG500" type="TEG500-1-0type"/>
+
+<xsd:complexType name="TEG500-1-0type">
+<xsd:sequence>
+
+<xsd:element name="VAA00000" type="VAA00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"表題"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAB00000" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="VAC00000" type="VAC00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払を受ける者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAD00000" type="VAD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分配の明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="VAE00000" type="VAE00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"受益権の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAF00000" type="VAF00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"受益権の口数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAG00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払確定又は支払年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAH00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"信託契約の終了又は一部解約の日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="VAI00000" type="VAI00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（摘要）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAJ00000" type="VAJ00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAK00000" type="VAK00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払の取扱者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="1" maxOccurs="1"/>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="TEG500-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+
+<xsd:complexType name="VAC00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="VAC00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（居所）又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAC00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="VAD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="VAD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収益の分配"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="VAD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"受益権１口当たりの分配金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="VAD00030" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="VAD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分配金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="VAD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別分配金"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="VAD00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"受益権１口当たりの分配金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="VAD00080" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="VAD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分配金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="VAD00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="VAD00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"受益権１口当たりの分配金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="VAD00120" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="VAD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分配金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="VAI00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="VAI00010" type="VAI00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"摘要の内容"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAI00020" type="VAI00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電子交付"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="VAJ00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="VAJ00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAJ00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAJ00030" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="VAK00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="VAK00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAK00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="VAK00030" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="VAA00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="VAE00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="VAF00000-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="VAI00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="VAI00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="VAF00000-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="VAF00000-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

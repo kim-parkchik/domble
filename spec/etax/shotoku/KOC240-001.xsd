@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：譲渡所得の特例の適用を受ける場合の不動産に係る不動産番号等の明細書
+version：1.0
+Date：2021年09月03日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC240-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC240-1-0group">
+<xsd:sequence>
+<xsd:element name="KOC240">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="KZA00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出先税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZB00000" type="gen:TEISYUTSU_DAYref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZC00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KZD00000" type="KZD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZE00000" type="KZE00000-1-0type" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"１　特例の適用を受ける不動産に係る不動産番号等　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZF00000" type="KZF00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　買換資産等を取得する見込みがあるとして、譲渡所得の特例の適用を受ける申告をしていた場合におけるその申告書の提出状況"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC240-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KZD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="KZD00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZD00020" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZD00030" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZD00040" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZD00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KZD00060" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZD00070" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KZE00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="KZE00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産の種別"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KZE00020" type="KZE00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZE00030" type="KZE00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"建物"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KZE00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KZE00050" type="KZE00050-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZE00060" type="KZE00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"震"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZE00070" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"条文　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KZE00080" type="KZE00080-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZE00090" type="KZE00090-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KZE00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KZE00110" type="KZE00110-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡資産"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZE00120" type="KZE00120-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換(代替・交換取得)資産"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KZE00130" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在及び地番又は家屋番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZE00140" type="KZE00140-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KZF00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="KZF00010" type="KZF00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出先税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZF00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KZF00030" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="KZE00020-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KZE00030-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KZE00050-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KZE00060-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="KZE00080-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KZE00090-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="KZE00110-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KZE00120-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="KZE00140-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KZF00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="KZE00080-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="KZE00080-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KZE00090-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="KZE00090-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：住宅取得資金に係る借入金の年末残高等証明書
+version：1.0
+Date：2020年06月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="TEG900-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+<!-- Root Element Definition -->
+<xsd:element name="TEG900" type="TEG900-1-0type"/>
+
+<xsd:complexType name="TEG900-1-0type">
+<xsd:sequence>
+<xsd:element name="WIA00000" type="WIA00000-1-0type">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIB00000" type="WIB00000-1-0type">
+<xsd:annotation>
+<xsd:appinfo>"（住宅借入金等に係る債権者等）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIC00000" type="WIC00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【参考事項等】"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="1" maxOccurs="1"/>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="TEG900-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+
+<xsd:complexType name="WIA00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WIA00010">
+<xsd:annotation>
+<xsd:appinfo>"住宅取得資金の借入れ等をしている者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WIA00020" type="gen:address">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00030" type="gen:name">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WIA00040" maxOccurs="10">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WIA00050" type="WIA00050-1-0Rtype">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の内訳"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00060">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WIA00070" type="gen:kingaku">
+<xsd:annotation>
+<xsd:appinfo>"年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00080">
+<xsd:annotation>
+<xsd:appinfo>"当初金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WIA00090" type="gen:yymmdd">
+<xsd:annotation>
+<xsd:appinfo>"当初借入年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00100" type="gen:kingaku">
+<xsd:annotation>
+<xsd:appinfo>"当初金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WIA00110">
+<xsd:annotation>
+<xsd:appinfo>"償還期間又は賦払期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WIA00120" type="gen:yymm">
+<xsd:annotation>
+<xsd:appinfo>"償還期間又は賦払期間（自）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00130" type="gen:yymm">
+<xsd:annotation>
+<xsd:appinfo>"償還期間又は賦払期間（至）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00140" type="WIA00140-1-0type">
+<xsd:annotation>
+<xsd:appinfo>"償還期間又は賦払期間（年）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00150" type="WIA00150-1-0type">
+<xsd:annotation>
+<xsd:appinfo>"償還期間又は賦払期間（月）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WIA00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用家屋の取得の対価等の額又は増改築等に要した費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（摘要）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WIA00180" type="WIA00180-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00190" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者名１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00200" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者名２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00210" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者名３"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00220" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者名４"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00230" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者名５"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00240" type="WIA00240-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"死亡時一括償還"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00250" type="WIA00250-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"据置期間（年）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00260" type="WIA00260-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"据置期間（月）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00270" type="WIA00270-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前払賃料融資額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"融資額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WIA00290" type="gen:yymmdd">
+<xsd:annotation>
+<xsd:appinfo>"残高基準日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIA00300" type="gen:yymmdd">
+<xsd:annotation>
+<xsd:appinfo>"証明年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WIB00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WIB00010" type="gen:address">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIB00020" type="gen:name">
+<xsd:annotation>
+<xsd:appinfo>"名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIB00030" type="WIB00030-1-0Rtype">
+<xsd:annotation>
+<xsd:appinfo>"（事業免許番号等）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WIC00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WIC00010" type="gen:bango" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債権者等の法人番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIC00020" type="WIC00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債権者等の支店名等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIC00030" type="WIC00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連絡先"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIC00040" type="WIC00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIC00050" type="WIC00050-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"発行回数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WIC00060" type="WIC00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="WIA00050-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="WIA00140-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WIA00150-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="WIA00180-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="WIA00240-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="WIA00250-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WIA00260-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="WIA00270-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="WIB00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WIC00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WIC00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WIC00040-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WIC00050-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WIC00060-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="500"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="WIA00140-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WIA00140-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WIA00150-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WIA00150-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WIA00250-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WIA00250-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WIA00260-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WIA00260-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WIC00050-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WIC00050-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

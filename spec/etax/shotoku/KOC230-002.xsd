@@ -1,0 +1,1375 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：国外転出等の時に譲渡又は決済があったものとみなされる対象資産の明細書(兼納税猶予の特例の適用を受ける場合の対象資産の明細書)&lt;確定申告書付表&gt;【国外転出(相続)時課税(所法60条の3)用】
+version：2.0
+Date：2021年09月03日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC230-2-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="2.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC230-2-0group">
+<xsd:sequence>
+<xsd:element name="KOC230">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOC230-1" type="KOC230-1-2-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"１面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOC230-2" type="KOC230-2-2-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"２面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOC230-3" type="KOC230-3-2-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"３面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC230-2-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOC230-1-2-0type">
+<xsd:sequence>
+
+<xsd:element name="KYA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYB00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYB00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYB00030" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYB00040" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYB00050" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYB00060" type="gen:SHOKUGYOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYB00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYB00080" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYB00090" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　国外転出等の日及び国外転出等の日前10年以内における国内在住期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYC00010" type="KYC00010-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国外転出の場合（所法60条の２）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYC00030" type="KYC00030-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税猶予の適用の有無"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00040" type="KYC00040-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国外転出等の日（又は国外転出の予定日）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00050" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国外転出の日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国外転出の予定日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（国外転出の予定日から起算して３月前の日）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国外転出等の日前10年以内における国内在住期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYC00090" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00100" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYC00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"贈与、相続又は遺贈の場合（所法60条の３）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYC00120" type="KYC00120-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税猶予の適用の有無"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00130" type="KYC00130-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国外転出等の日（又は国外転出の予定日）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00140" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"贈与の日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00150" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続開始の日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国外転出等の日前10年以内における国内在住期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYC00170" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYC00180" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYD00000" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"２　譲渡又は決済があったものとみなされる対象資産の移転を受けた受贈者又は相続人等の氏名及び住所（又は居所）　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYD00010" type="KYD00010-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYD00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYD00030" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（又は居所）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　譲渡又は決済があったものとみなされる対象資産の収入金額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合課税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得（営業等）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYE00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYE00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYE00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYE00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離課税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYE00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYE00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"先物取引"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYE00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYE00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"４　確定申告期限までに移転等した対象資産の収入金額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合課税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得（営業等）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYF00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYF00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYF00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYF00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離課税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYF00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYF00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"先物取引"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYF00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（差金等決済に係る利益又は損失の額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYF00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOC230-2-2-0type">
+<xsd:sequence>
+
+<xsd:element name="KYG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"５　相続等の時に有している又は契約を締結している対象資産の明細（非居住者である相続人等に移転したもの）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続人等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYG00040" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"（１）　非居住者である相続人等に移転した対象資産のうち、下記（２）及び（３）以外のもの　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00050" type="KYG00050-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00060" type="KYG00060-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銘柄等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00070" type="KYG00070-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00080" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"価額等（収入金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00110" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得等年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00130" type="KYG00130-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00140" type="KYG00140-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYG00150" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"（２）　非居住者である相続人等に移転した対象資産のうち、非居住者である相続人等が確定申告期限までに移転等したもの（下記（３）を除く。）　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00160" type="KYG00160-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00170" type="KYG00170-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銘柄等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00180" type="KYG00180-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00190" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"価額等（収入金額）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00210" type="KYG00210-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00230" type="KYG00230-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYG00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"価額等（収入金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00260" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得等年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00280" type="KYG00280-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00290" type="KYG00290-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYG00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転等の日及び減額又は取消の有無"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00310" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転等の日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00320" type="KYG00320-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"減額又は取消"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYG00330" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"（３）　非居住者である相続人等に移転した対象資産のうち、譲渡による所得が非課税のもの　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYG00340" type="KYG00340-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00350" type="KYG00350-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銘柄等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00360" type="KYG00360-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00370" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"価額等（収入金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYG00400" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得等年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYG00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYH00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１億円の判定　相続等の時に有している又は契約を締結している対象資産の価額等の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYI00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税法第151条の５（遺産分割等があった場合の期限後申告等の特例）の適用がある場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYI00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"遺産分割等の事由"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYI00020" type="KYI00020-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所法第151条の６第１項第＿号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYI00030" type="KYI00030-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（所令第273条の２第＿号）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYI00040" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"遺産分割等の年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOC230-3-2-0type">
+<xsd:sequence>
+
+<xsd:element name="KYJ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"６　相続等の時に有している又は契約を締結している対象資産の明細（「５」以外のもの）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYJ00010" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名（被相続人）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYJ00020" minOccurs="0" maxOccurs="22">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KYJ00030" type="KYJ00030-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYJ00040" type="KYJ00040-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銘柄等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYJ00050" type="KYJ00050-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYJ00060" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KYJ00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"価額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KYJ00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:complexType name="KYC00010-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYC00030-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYC00040-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYC00120-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYC00130-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYD00010-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="KYG00050-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00060-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00070-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="KYG00130-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYG00140-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="KYG00160-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00170-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00180-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00210-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00230-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="KYG00280-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYG00290-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KYG00320-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="KYG00340-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00350-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYG00360-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYI00020-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYI00030-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYJ00030-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="25"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYJ00040-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="25"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KYJ00050-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="KYI00020-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="KYI00020-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KYI00030-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="KYI00030-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

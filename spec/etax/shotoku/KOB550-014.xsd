@@ -1,0 +1,2560 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：先物取引に係る雑所得等の金額の計算明細書
+version：14.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB550-14-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="14.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB550-14-0group">
+<xsd:sequence>
+<xsd:element name="KOB550">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="DGA00000" type="DGA00000-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="DGB00000" type="DGB00000-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="DGC00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="DGD00000" type="DGD00000-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"商品先物取引に係る雑所得等の金額の計算明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB550-14-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="DGB00000-14-0type">
+<xsd:sequence>
+
+<xsd:element name="DGB00010" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DGD00000-14-0type">
+<xsd:sequence>
+
+<xsd:element name="DGD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の経費項目名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00040" type="DGD00040-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目（７）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00050" type="DGD00050-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目（８）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00060" type="DGD00060-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目（９）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（A）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取引の内容"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00090" type="DGD00090-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00100" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決済年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00102" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00104" type="DGD00104-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00106" type="DGD00106-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00108" type="DGD00108-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00110" type="DGD00110-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00120" type="DGD00120-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決済の方法"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00132" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00134" type="DGD00134-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00136" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00138" type="DGD00138-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00141" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00142" type="DGD00142-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00143" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00144" type="DGD00144-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00145" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00146" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00147" type="DGD00147-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00148" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00149" type="DGD00149-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00152" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00154" type="DGD00154-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00156" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00158" type="DGD00158-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00172" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00174" type="DGD00174-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00176" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00178" type="DGD00178-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00181" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00182" type="DGD00182-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00183" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00184" type="DGD00184-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00185" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00196" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00202" type="DGD00202-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00208" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00214" type="DGD00214-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00222" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00224" type="DGD00224-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00226" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00228" type="DGD00228-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00232" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00234" type="DGD00234-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00236" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00238" type="DGD00238-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00242" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00244" type="DGD00244-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00246" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00248" type="DGD00248-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00252" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00254" type="DGD00254-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00256" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00258" type="DGD00258-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00262" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00264" type="DGD00264-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00266" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00268" type="DGD00268-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（B）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取引の内容"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00300" type="DGD00300-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00310" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決済年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00312" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00314" type="DGD00314-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00316" type="DGD00316-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00318" type="DGD00318-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00320" type="DGD00320-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00330" type="DGD00330-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決済の方法"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00340" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00342" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00344" type="DGD00344-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00346" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00348" type="DGD00348-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00351" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00352" type="DGD00352-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00353" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00354" type="DGD00354-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00355" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00356" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00357" type="DGD00357-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00358" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00359" type="DGD00359-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00362" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00364" type="DGD00364-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00366" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00368" type="DGD00368-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00380" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00382" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00384" type="DGD00384-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00386" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00388" type="DGD00388-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00391" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00392" type="DGD00392-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00393" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00394" type="DGD00394-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00395" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00400" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00406" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00412" type="DGD00412-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00418" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00424" type="DGD00424-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00432" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00434" type="DGD00434-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00436" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00438" type="DGD00438-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00440" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00442" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00444" type="DGD00444-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00446" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00448" type="DGD00448-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00452" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00454" type="DGD00454-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00456" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00458" type="DGD00458-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00462" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00464" type="DGD00464-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00466" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00468" type="DGD00468-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00470" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00472" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00474" type="DGD00474-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00476" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00478" type="DGD00478-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00490" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（C）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00500" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取引の内容"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00510" type="DGD00510-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00520" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決済年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00522" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00524" type="DGD00524-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00526" type="DGD00526-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00528" type="DGD00528-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00530" type="DGD00530-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00540" type="DGD00540-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決済の方法"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00550" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00552" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00554" type="DGD00554-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00556" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00558" type="DGD00558-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00560" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00561" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00562" type="DGD00562-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00563" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00564" type="DGD00564-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00565" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00566" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00567" type="DGD00567-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00568" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00569" type="DGD00569-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00570" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00572" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00574" type="DGD00574-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00576" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00578" type="DGD00578-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00580" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00590" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00592" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00594" type="DGD00594-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00596" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00598" type="DGD00598-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00600" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00601" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00602" type="DGD00602-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00603" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00604" type="DGD00604-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00605" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00610" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00616" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00622" type="DGD00622-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00628" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00634" type="DGD00634-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00640" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00642" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00644" type="DGD00644-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00646" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00648" type="DGD00648-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00650" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00652" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00654" type="DGD00654-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00656" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00658" type="DGD00658-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00660" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00662" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00664" type="DGD00664-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00666" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00668" type="DGD00668-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00670" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00672" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00674" type="DGD00674-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00676" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00678" type="DGD00678-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00680" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00682" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00684" type="DGD00684-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00686" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00688" type="DGD00688-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00690" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00700" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00710" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00712" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00714" type="DGD00714-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00716" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00718" type="DGD00718-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00720" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差金等決済に係る利益又は損失の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00721" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00722" type="DGD00722-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00723" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00724" type="DGD00724-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00725" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00726" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00727" type="DGD00727-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00728" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00729" type="DGD00729-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00730" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00732" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00734" type="DGD00734-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00736" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00738" type="DGD00738-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00740" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00750" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00752" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00754" type="DGD00754-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00756" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00758" type="DGD00758-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00760" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"手数料等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00761" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00762" type="DGD00762-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00763" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00764" type="DGD00764-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00765" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）に係る取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00770" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00776" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00782" type="DGD00782-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00788" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00794" type="DGD00794-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00800" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（７）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00802" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00804" type="DGD00804-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00806" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00808" type="DGD00808-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00810" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（８）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00812" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00814" type="DGD00814-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00816" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00818" type="DGD00818-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00820" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額（９）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00822" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00824" type="DGD00824-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00826" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00828" type="DGD00828-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00830" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00832" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00834" type="DGD00834-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00836" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00838" type="DGD00838-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00840" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00842" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DGD00844" type="DGD00844-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00846" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DGD00848" type="DGD00848-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DGD00850" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="DGA00000-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="DGD00040-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00050-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00060-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00090-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="18"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00104-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00106-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00108-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00110-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00120-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00134-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00138-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00142-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00144-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00147-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00149-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00154-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00158-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00174-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00178-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00182-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00184-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00202-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00214-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00224-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00228-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00234-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00238-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00244-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00248-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00254-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00258-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00264-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00268-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00300-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="18"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00314-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00316-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00318-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00320-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00330-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00344-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00348-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00352-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00354-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00357-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00359-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00364-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00368-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00384-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00388-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00392-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00394-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00412-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00424-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00434-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00438-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00444-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00448-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00454-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00458-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00464-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00468-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00474-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00478-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00510-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="18"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00524-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00526-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00528-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00530-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00540-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00554-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00558-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00562-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00564-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00567-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00569-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00574-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00578-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00594-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00598-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00602-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00604-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00622-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00634-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00644-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00648-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00654-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00658-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00664-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00668-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00674-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00678-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00684-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00688-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00714-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00718-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00722-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00724-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00727-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00729-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00734-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00738-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00754-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00758-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00762-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00764-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00782-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00794-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00804-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00808-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00814-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00818-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00824-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00828-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00834-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00838-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00844-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DGD00848-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="DGD00106-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="DGD00106-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DGD00110-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="DGD00110-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DGD00316-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="DGD00316-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DGD00320-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="DGD00320-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DGD00526-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="DGD00526-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DGD00530-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="DGD00530-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：肉用牛の売却による所得の税額計算書(兼確定申告書付表)
+version：17.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB040-17-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="17.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB040-17-0group">
+<xsd:sequence>
+<xsd:element name="KOB040">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BDA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BDC00000" type="BDC00000-17-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１．申告書に記載する農業所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00000" type="BDF00000-17-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２．課税総所得金額に対する税額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB040-17-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BDC00000-17-0type">
+<xsd:sequence>
+
+<xsd:element name="BDC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"農業所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BDC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者控除額（白色申告者のみ入力）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BDC00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）のうち、特定の肉用牛の売却による所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BDC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額（Ａ）（２）の内書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者控除額（白色申告者のみ入力）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BDC00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）－（２）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BDC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者控除額（白色申告者のみ入力）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BDF00000-17-0type">
+<xsd:sequence>
+
+<xsd:element name="BDF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税総所得金額に対する税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配当控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"投資税額等控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（特定増改築等）住宅借入金等特別控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"政党等寄附金等特別控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅耐震改修特別控除等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"免税対象飼育牛以外の特定の肉用牛の売却による収入金額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１１）*５％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BDF00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１０）＋（１２）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

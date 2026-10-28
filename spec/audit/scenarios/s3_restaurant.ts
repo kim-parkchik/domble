@@ -11,7 +11,8 @@
  * 動かし方：bun spec/audit/scenarios/s3_restaurant.ts（リポジトリの直下で）
  */
 import {
-  makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, cmp, printTable, repo, YEAR, type Cmp,
+  makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo, YEAR,
+  type Cmp,
 } from "./common";
 import { EMPTY_INCOME_TAX_INPUT, type IncomeTaxInput } from "../../../src/lib/incomeTax";
 import { parseCsv } from "../../../src/lib/csv";
@@ -251,6 +252,27 @@ cmp(rows, "所得税：専従者給与の合計 (58)", 960_000, it.v("(58)"));
 // 専従者の妻を「配偶者」に入れてしまったとき（青色事業専従者は控除対象配偶者にならない：所法2条1項33号）
 const it2 = await incomeTaxOf(db, b, { ...base, spouse: { name: "山田 花子", relation: "妻", birthday: "1982-02-01", income: 310_000, disability: "none", cohabiting: true, lineal: false, familyEmployee: true } });
 cmp(rows, "所得税：専従者の妻を配偶者に入れたときの配偶者控除", 0, it2.v("㉑㉒"), "専従者給与を受けている妻は控除対象配偶者にならない（「専従者」に印）");
+
+// 所得税の e-Tax のデータ（申告書＋青色申告決算書）。専従者は決算書の書き込み（続柄・年齢・従事月数・仕事の内容）から
+for (const [k, v] of [["relation", "妻"], ["age", "43"], ["months", "12"], ["work", "毎日・調理補助と会計"]]) await repo.saveStatementNote(db, YEAR, `family:sub:${sHanako}:${k}`, v);
+await setFiler(db, { occupation: "飲食店", office_address: "東京都渋谷区道玄坂2-2-2", office_phone: "03-9999-0000", union_name: "渋谷飲食組合" });
+const x = await incomeXtxOf(db, b, {
+  ...base, residentTax: "special", businessTax: { otherPrefecture: false, change: "", changeDate: "" },
+  spouse: { name: "山田 花子", relation: "妻", birthday: "1982-02-01", income: 310_000, disability: "none", cohabiting: true, lineal: false, familyEmployee: true },
+}, { self: "123456789018", dep0: "123456789018", family0: "123456789018" });
+cmp(rows, "所得税の e-Tax のデータ：書き出せるか", "書き出せる", x.problems.length ? "出せない" : "書き出せる", x.problems.join(" / "));
+cmp(rows, "所得税の e-Tax のデータ：手続 RKO0010 の XSD に合う", "", x.invalid.slice(0, 300));
+cmp(rows, "xtx：第3期分の納める税金 (52)（ABB00750）", "132500", xtxVal(x.xml, "ABB00750"));
+cmp(rows, "xtx：専従者給与の合計 (58)（ABB00790）", "960000", xtxVal(x.xml, "ABB00790"));
+cmp(rows, "xtx：第二表 事業専従者の氏名（ABE00020）", "山田 花子", xtxVal(x.xml, "ABE00020"));
+cmp(rows, "xtx：第二表 従事月数・程度・仕事の内容（ABE00060）", "12月・毎日・調理補助と会計", xtxVal(x.xml, "ABE00060"));
+cmp(rows, "xtx：第二表 配偶者の欄（専従者の妻は書かない）", "書かない", xtxVal(x.xml, "ABY00020") ?? "書かない");
+cmp(rows, "xtx：第二表 事業専従者の生年月日（配偶者の欄に入れた生年月日から）", "昭和57年2月1日", /<ABE00030><gen:era>3<\/gen:era><gen:yy>57<\/gen:yy><gen:mm>2<\/gen:mm><gen:dd>1<\/gen:dd><\/ABE00030>/.test(x.xml) ? "昭和57年2月1日" : "書いていない");
+cmp(rows, "xtx：第二表 親族（子）の氏名（ABY00160）", "山田 一郎", xtxVal(x.xml, "ABY00160"));
+cmp(rows, "xtx：決算書 専従者給与の内訳の合計（AMF01480）", "960000", xtxVal(x.xml, "AMF01480"));
+cmp(rows, "xtx：決算書 期末商品棚卸高（AMF00150）", String(f.layout.sections.cogs.find((r) => r.label === "期末商品（製品）棚卸高")?.amount ?? 0), xtxVal(x.xml, "AMF00150"));
+cmp(rows, "xtx：決算書 利子割引料（AMF00330）", String(f.layout.sections.expense.find((r) => r.label === "利子割引料")?.amount ?? 0), xtxVal(x.xml, "AMF00330"));
+cmp(rows, "xtx：貸借対照表 資産の期末合計（AMG00440）＝負債・資本の期末合計（AMG00760）", xtxVal(x.xml, "AMG00440"), xtxVal(x.xml, "AMG00760"));
 cmp(rows, "所得税：画面で出せるか（令和7年分）", "出せる", "出せる", "年分ごとの決まりの表（令和7年分）で計算する");
 
 // ── 翌年へ続ける（繰越・年の締め・2026年の中間申告・2027年の基準期間） ──

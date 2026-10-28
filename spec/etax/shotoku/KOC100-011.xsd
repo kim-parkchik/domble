@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：特定中小会社が発行した株式の取得に要した金額等の控除の明細書
+version：11.0
+Date：2024年08月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC100-11-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="11.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC100-11-0group">
+<xsd:sequence>
+<xsd:element name="KOC100">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="EMF00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMG00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="EMB00000" type="EMB00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMC00000" type="EMC00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMH00000" type="EMH00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１ 適用する特例の選択"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMD00000" type="EMD00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２ その年中の株式の異動の状況"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EME00000" type="EME00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３ 控除対象特定株式の取得に要した金額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC100-11-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="EMB00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EMB00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMB00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（前住所）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMB00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EMB00040" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMB00050" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EMB00060" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMB00070" type="gen:SHOKUGYOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EMC00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EMC00010" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMC00020" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EMH00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EMH00005" type="EMH00005-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措置法第37条の13第1項第＿号＿を適用する場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMH00010" type="EMH00010-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措置法第37条の13第1項第＿号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMH00012" type="EMH00012-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措置法第37条の13第1項第＿号＿"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMH00040" type="EMH00040-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措置法第37条の13の2第1項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMH00015" type="EMH00015-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措置法第41条の18の4を適用する場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMH00020" type="EMH00020-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措置法第41条の18の4第1項第＿号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMH00030" type="EMH00030-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧震災特例法第13条の3の規定により適用される旧措置法第41条の19"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EMD00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EMD00010" type="EMD00010-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銘柄"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年中の払込みによる取得の状況"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EMD00030" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EMD00040" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMD00050" type="EMD00050-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"株数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EMD00060" type="EMD00060-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EMD00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年中の譲渡又は贈与による異動の状況"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EMD00080" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EMD00090" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EMD00100" type="EMD00100-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"株数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EMD00110" type="EMD00110-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EME00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EME00010" type="EME00010-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年中に払込みにより取得をした特定株式の数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EME00020" type="EME00020-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年中に譲渡又は贈与した(1)の特定株式と同一銘柄株式の数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EME00030" type="EME00030-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象特定株式の数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EME00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)の特定株式の取得に要した金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EME00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象特定株式の取得に要した金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="EMH00005-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EMH00010-11-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EMH00012-11-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EMH00040-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EMH00015-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EMH00020-11-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EMH00030-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EMD00010-11-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EMD00050-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EMD00060-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EMD00100-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EMD00110-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EME00010-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EME00020-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EME00030-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="EMH00010-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EMH00010-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EMH00020-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EMH00020-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EMD00050-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EMD00050-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EMD00060-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EMD00060-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EMD00100-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EMD00100-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EMD00110-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EMD00110-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EME00010-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EME00010-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EME00020-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EME00020-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EME00030-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EME00030-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

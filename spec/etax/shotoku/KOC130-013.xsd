@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：居住用財産の譲渡損失の損益通算及び繰越控除の対象となる金額の計算書(  年分)【租税特別措置法第41条の5用】
+version：13.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC130-13-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="13.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC130-13-0group">
+<xsd:sequence>
+<xsd:element name="KOC130">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BMA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMA00010" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BMB00000" type="BMB00000-13-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="BMC00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例の計算の基礎となる居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離課税の対象となる土地建物等の譲渡所得の金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益通算の特例の対象となる居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BMD00000" type="BMD00000-13-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用財産の譲渡損失の繰越基準額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BME00000" type="BME00000-13-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年以後に繰り越される居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC130-13-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BMB00000-13-0type">
+<xsd:sequence>
+
+<xsd:element name="BMB00002" type="BMB00002-13-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税地区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMB00004" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMB00006" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所以外の居所又は事業所等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMB00008" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMB00010" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BMD00000-13-0type">
+<xsd:sequence>
+
+<xsd:element name="BMD00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の純損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例の対象とされない金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BMD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分が青色申告の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BMD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分が白色申告の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BMD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用財産の譲渡損失の繰越基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BME00000-13-0type">
+<xsd:sequence>
+
+<xsd:element name="BME00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年以後に繰り越される居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BME00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した土地等の面積が５００平米を超えるときの計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BME00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）の金額と（７）の金額のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BME00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等に係る特定損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BME00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BME00060" type="BME00060-13-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等の面積（分子）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BME00070" type="BME00070-13-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等の面積（分母）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="BMB00002-13-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="5"/><xsd:enumeration value="6"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="BME00060-13-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BME00070-13-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="BME00060-13-0type">
+<xsd:simpleContent>
+<xsd:extension base="BME00060-13-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BME00070-13-0type">
+<xsd:simpleContent>
+<xsd:extension base="BME00070-13-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

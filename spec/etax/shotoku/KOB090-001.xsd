@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：特定の基準所得金額の課税の特例に関する適用判定表 兼 税額計算書
+version：1.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB090-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB090-1-0group">
+<xsd:sequence>
+<xsd:element name="KOB090">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="DDA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="DDC00000" type="DDC00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　基準所得金額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00000" type="DDD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　特例適用判定・税額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB090-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="DDC00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="DDC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合課税の所得金額の計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離課税の所得金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DDC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DDC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"軽減分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DDC00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DDC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"軽課分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DDC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の配当等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"先物取引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DDC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基準所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DDD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="DDD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用判定"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DDD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(13)－3.3億円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(14)*22.5％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"通常の「所得税及び復興特別所得税の額」"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告不要制度を適用しようとする所得に係る源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"租税特別措置法第41条の19の基準所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(15)－(18)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DDD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DDD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用の場合の所得税の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(20)*2.1％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(申告不要制度を適用しないで計算した)租税特別措置法第41条の19の基準所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(15)－(22)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DDD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(20)＋(23)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：損益の通算の計算書
+version：5.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOA080-5-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="5.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOA080-5-0group">
+<xsd:sequence>
+<xsd:element name="KOA080">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="ARA00010" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARA00020" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="ARB00000" type="ARB00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１．経常所得の損益の通算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARC00000" type="ARC00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２．譲渡一時所得の損益の通算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00000" type="ARD00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３．損益の通算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOA080-5-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="ARB00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="ARB00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ARC00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="ARC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(A)差引金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離　特定損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(B)通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00310" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離　特定損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARC00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00450" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(C)特別控除額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00460" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00470" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00490" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00500" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00510" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00520" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARC00600" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(D)譲渡・一時所得の通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARC00630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期　総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARC00640" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期　分離　特定損失"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARC00670" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARC00680" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ARD00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="ARD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(A)通算前"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離　特定損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(B)第１次通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離　特定損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(C)第２次通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離　特定損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00440" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00500" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(D)第３次通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00510" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00520" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00530" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00560" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00570" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00580" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離　特定損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00610" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00620" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00640" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ARD00700" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(E)所得金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ARD00710" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00740" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡　短期　総合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00750" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期　分離　特定損失"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00780" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合　一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00790" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00800" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ARD00810" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

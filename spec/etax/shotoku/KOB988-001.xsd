@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：債務免除を受けた場合の経済的利益の総収入金額不算入に関する明細書
+version：1.0
+Date：2014年09月02日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB988-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB988-1-0group">
+<xsd:sequence>
+<xsd:element name="KOB988">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JSA00000" type="JSA00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="JSB00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSC00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="JSD00000" type="JSD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB988-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="JSA00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="JSA00010" type="JSA00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産所得用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSA00020" type="JSA00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSA00030" type="JSA00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林所得用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSA00040" type="JSA00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JSD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="JSD00010" type="JSD00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債務の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債権者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JSD00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JSD00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債務の免除を受けた理由"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JSD00060" type="JSD00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"破産法の免責許可の決定があったため"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00070" type="JSD00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"民事再生法の再生計画認可の決定があったため"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00080" type="JSD00080-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00090" type="JSD00090-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他(＿)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JSD00100" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債務の免除を受けた日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債務の免除により受ける経済的な利益の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"債務の免除を受けた年における損失の金額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JSD00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"右の所得の金額の計算上生じた損失の金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JSD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JSD00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総所得金額、退職所得金額又は山林所得金額の計算上控除する純損失の金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JSD00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"純損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総所得金額、退職所得金額及び山林所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)と(12)のいずれか少ない金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JSD00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JSD00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額に算入する金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JSD00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額に算入されない金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="JSA00010-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="JSA00020-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="JSA00030-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="JSA00040-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="JSD00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="JSD00060-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="JSD00070-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="JSD00080-1-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="JSD00090-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="60"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

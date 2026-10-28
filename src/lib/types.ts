@@ -211,6 +211,13 @@ export interface Settings {
   /** ゆうちょ銀行：貯金記号番号（上5桁・下8桁まで） */
   yucho_symbol: string;
   yucho_number: string;
+  /** 青色申告決算書の欄：事業所の所在地（住所と違うときだけ）・加入団体名 */
+  office_address: string;
+  union_name: string;
+  /** 依頼している税理士等（確定申告書・決算書に書く。氏名・事務所の所在地・電話番号。無ければ空） */
+  agent_name: string;
+  agent_address: string;
+  agent_phone: string;
   fiscal_year: number;
   filing_type: FilingType;
   industry: string;

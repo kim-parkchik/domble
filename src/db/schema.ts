@@ -656,6 +656,12 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "account_no", "TEXT NOT NULL DEFAULT ''"],
   ["settings", "yucho_symbol", "TEXT NOT NULL DEFAULT ''"],
   ["settings", "yucho_number", "TEXT NOT NULL DEFAULT ''"],
+  // 青色申告決算書の欄（事業所の所在地・加入団体名）と、依頼している税理士等
+  ["settings", "office_address", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "union_name", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "agent_name", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "agent_address", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "agent_phone", "TEXT NOT NULL DEFAULT ''"],
   // 本則課税の個別対応方式：課税仕入の明細の用途区分（taxable 課税対応 / nontaxable 非課税対応 / common 共通対応）と科目の初期値、
   // 年度ごとの控除の方式（individual 個別対応方式 / lump 一括比例配分方式）
   ["journal_lines", "purchase_use", "TEXT CHECK (purchase_use IN ('taxable','nontaxable','common'))"],

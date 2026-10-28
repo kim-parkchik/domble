@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：特別試験研究費に係る所得税額の特別控除に関する明細書
+version：3.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB815-3-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="3.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB815-3-0group">
+<xsd:sequence>
+<xsd:element name="KOB815">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="UWA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="UWC00000" type="UWC00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWD00000" type="UWD00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別試験研究費の額の明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB815-3-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="UWC00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="UWC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象済特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引対象特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上のうち税額控除割合が30％である試験研究に係る特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00045" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(３)のうち税額控除割合が25％である試験研究に係る特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別研究税額控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額超過構成額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税額の特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="UWD00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="UWD00010" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="UWD00020" type="UWD00020-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措法第10条第７項旧措法第10条第６項各号の該当号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWD00030" type="UWD00030-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別試験研究の内容"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="UWD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(14)の計のうち(12)が第１号である特別試験研究に係る特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="UWD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(14)の計のうち(12)が第２号である特別試験研究に係る特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="UWD00020-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="UWD00030-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="80"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

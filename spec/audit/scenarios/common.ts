@@ -24,6 +24,10 @@ import { prevTaxInfo, interimPlan } from "../../../src/lib/taxInterim";
 import { buildTaxSummary, taxChecks } from "../../../src/lib/taxSummary";
 import { taxYearOf } from "../../../src/lib/tax";
 import { buildTaxXtx, xtxProblem } from "../../../src/lib/taxXtx";
+import { buildBlueStatement } from "../../../src/lib/blueStatement";
+import { buildIncomeTaxXtx, incomeXtxProblems } from "../../../src/lib/incomeTaxXtx";
+import { ETAX_FIELDS, filerFromSettings } from "../../../src/lib/etax";
+import { isYearCompliant } from "../../../src/lib/ebook";
 export { ROOT };
 
 export const YEAR = 2025;
@@ -232,6 +236,47 @@ export const incomeTaxOf = async (db: Database, b: Book, input: IncomeTaxInput) 
   const v = (no: string) => r.rows.find((x) => x.no === no)?.value ?? null;
   return { r, v, biz };
 };
+
+/**
+ * 所得税の e-Tax のデータ（IncomeTaxPage の書き出しと同じ：buildBlueStatement → buildIncomeTaxXtx）
+ * xmllint で手続 RKO0010 の XSD に照らした結果（合っていれば ""）も返す
+ */
+export const incomeXtxOf = async (db: Database, b: Book, input: IncomeTaxInput, numbers: Record<string, string> = {}) => {
+  const it = await incomeTaxOf(db, b, input);
+  const f = await yearFigures(db, b);
+  const notes = await repo.getStatementNotes(db, YEAR);
+  const subs = await repo.getSubAccounts(db, YEAR);
+  const cps = await repo.getCounterparties(db);
+  const statement = buildBlueStatement({
+    year: YEAR, accounts: f.accounts, opening: f.opening, lines: f.lines, notes, assets: await repo.getAssets(db),
+    homeUseRates: await repo.getHomeUseRates(db, YEAR),
+    excludeEntryIds: [await repo.getHomeUseRun(db, YEAR), await repo.getDepreciationRun(db, YEAR)].filter((x): x is number => x !== null),
+    payeeName: (r) => (r.counterpartyId ? cps.find((c) => c.id === r.counterpartyId)?.name ?? "" : r.subId ? subs.find((x) => x.id === r.subId)?.name ?? "" : "（支払先の指定なし）"),
+    deductionLimit: BLUE_DEDUCTION_LIMIT[f.settings.filing_type],
+  });
+  const src = {
+    year: YEAR, filer: filerFromSettings(f.settings), input, result: it.r, biz: it.biz, statement, settings: f.settings,
+    bookKeeping: (isYearCompliant(f.settings, YEAR) && notes["ebook:filed"] ? 1 : 2) as 1 | 2, numbers, createdOn: "2026-02-20",
+  };
+  const problems = incomeXtxProblems(src);
+  if (problems.length) return { xml: "", problems, invalid: "", statement };
+  const xml = buildIncomeTaxXtx(src);
+  const dir = (await import("node:fs")).mkdtempSync(`${(await import("node:os")).tmpdir()}/domble-it-`);
+  const file = `${dir}/t.xtx`;
+  (await import("node:fs")).writeFileSync(file, xml);
+  const xsd = new URL("../../etax/shotoku/RKO0010-250.xsd", import.meta.url).pathname;
+  const p = Bun.spawnSync(["xmllint", "--noout", "--schema", xsd, file]);
+  return { xml, problems, invalid: p.exitCode === 0 ? "" : p.stderr.toString(), statement };
+};
+/** 申告者の情報（氏名・住所と e-Tax の欄）を入れる。x で上書きできる */
+export const setFiler = async (db: Database, x: Partial<Record<(typeof ETAX_FIELDS)[number], string>> = {}) => {
+  await db.execute("UPDATE settings SET owner_name = ?, postal_code = ?, address = ? WHERE id = 1", ["山田 太郎", "150-0002", "東京都渋谷区渋谷1-2-3"]);
+  const s = await repo.getSettings(db);
+  const info = Object.fromEntries(ETAX_FIELDS.map((k) => [k, s[k]])) as Record<(typeof ETAX_FIELDS)[number], string>;
+  await repo.saveEtaxInfo(db, { ...info, etax_user_id: "1234567890123456", tax_office: "01141", phone: "03-1234-5678", owner_kana: "ヤマダ タロウ", occupation: "自営業", ...x } as never);
+};
+/** xtx の欄の値（最初に出てくるもの） */
+export const xtxVal = (xml: string, tag: string) => xml.match(new RegExp(`<${tag}>(?:<kubun_CD>)?([^<]*)<`))?.[1] ?? null;
 
 /** 比べの表の1行 */
 export interface Cmp { item: string; expected: number | string | null; actual: number | string | null; note?: string }

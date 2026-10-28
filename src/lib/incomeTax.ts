@@ -73,9 +73,28 @@ export interface Relative {
   familyEmployee: boolean;
 }
 
+/**
+ * 寄附金の住民税での区分（第二表「住民税・事業税に関する事項」の寄附金税額控除）
+ * furusato 都道府県・市区町村への寄附（ふるさと納税など。特例控除対象） ／ community 共同募金・日赤その他 ／
+ * pref 都道府県が条例で指定 ／ city 市区町村が条例で指定 ／ both 都道府県と市区町村の両方が条例で指定 ／ "" 住民税の控除なし
+ */
+export type DonationLocal = "" | "furusato" | "community" | "pref" | "city" | "both";
+export const DONATION_LOCALS: [DonationLocal, string][] = [
+  ["", "住民税の控除なし"], ["furusato", "ふるさと納税など"], ["community", "共同募金・日赤など"],
+  ["pref", "都道府県の条例指定"], ["city", "市区町村の条例指定"], ["both", "都道府県・市区町村の条例指定"],
+];
+
+export interface Donation {
+  name: string;
+  amount: number;
+  local: DonationLocal;
+}
+
 export interface IncomeTaxInput {
   /** 本人の生年月日（YYYY-MM-DD。公的年金等控除の年齢に使う） */
   birthday: string;
+  /** 翌年1月1日の住所（今の住所と違うときだけ。年分ごと） */
+  jan1Address: string;
   /** 寡婦・ひとり親 */
   widow: "none" | "widow" | "single_parent";
   student: boolean;
@@ -94,13 +113,17 @@ export interface IncomeTaxInput {
   quake: { quake: number; oldLong: number };
   /** normal = 医療費控除 ／ self = セルフメディケーション税制（どちらか一方） */
   medical: { kind: "normal" | "self"; paid: number; reimbursed: number };
-  donations: { name: string; amount: number }[];
+  donations: Donation[];
   spouse: Relative | null;
   dependents: Relative[];
   /** 住宅借入金等特別控除額（計算明細書で計算した額） */
   housingLoan: number;
   /** 予定納税額（第1期分・第2期分の合計） */
   prepaid: number;
+  /** 住民税：給与・公的年金等以外の所得に係る住民税の徴収方法（special 特別徴収 ／ self 自分で納付 ／ "" 書かない） */
+  residentTax: "" | "special" | "self";
+  /** 事業税：他の都道府県に事務所等があるか、その年の中途の開業・廃業（日付 YYYY-MM-DD） */
+  businessTax: { otherPrefecture: boolean; change: "" | "open" | "close"; changeDate: string };
 }
 
 export const emptyRelative = (relation = ""): Relative => ({
@@ -108,13 +131,14 @@ export const emptyRelative = (relation = ""): Relative => ({
 });
 
 export const EMPTY_INCOME_TAX_INPUT: IncomeTaxInput = {
-  birthday: "", widow: "none", student: false, disability: "none",
+  birthday: "", jan1Address: "", widow: "none", student: false, disability: "none",
   businessWithholding: [], salaries: [], pensions: [], misc: [],
   socialInsurance: [], smallBusiness: [],
   life: { newLife: 0, oldLife: 0, newPension: 0, oldPension: 0, care: 0 },
   quake: { quake: 0, oldLong: 0 },
   medical: { kind: "normal", paid: 0, reimbursed: 0 },
   donations: [], spouse: null, dependents: [], housingLoan: 0, prepaid: 0,
+  residentTax: "", businessTax: { otherPrefecture: false, change: "", changeDate: "" },
 };
 
 const MAX_AMOUNT = 100_000_000_000;
@@ -151,8 +175,13 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
   const life = (x.life ?? {}) as Partial<IncomeTaxInput["life"]>;
   const quake = (x.quake ?? {}) as Partial<IncomeTaxInput["quake"]>;
   const medical = (x.medical ?? {}) as Partial<IncomeTaxInput["medical"]>;
+  const biz = (x.businessTax ?? {}) as Partial<IncomeTaxInput["businessTax"]>;
+  const change = biz.change === "open" || biz.change === "close" ? biz.change : "";
+  const changeDate = change ? text(biz.changeDate, 10) : "";
+  if (changeDate && !isIsoDate(changeDate)) problems.push("事業税の開業・廃業の日付が正しくありません");
   const out: IncomeTaxInput = {
     birthday: date(x.birthday, "本人"),
+    jan1Address: text(x.jan1Address),
     widow: x.widow === "widow" || x.widow === "single_parent" ? x.widow : "none",
     student: !!x.student,
     disability: disability(x.disability),
@@ -170,11 +199,15 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
     },
     quake: { quake: amount(quake.quake, "地震保険料"), oldLong: amount(quake.oldLong, "旧長期損害保険料") },
     medical: { kind: medical.kind === "self" ? "self" : "normal", paid: amount(medical.paid, "医療費"), reimbursed: amount(medical.reimbursed, "保険金などで補填される金額") },
-    donations: list(x.donations, (r: { name?: string; amount?: number }, i) => ({ name: text(r.name), amount: amount(r.amount, `寄附金 ${i + 1}行目`) })),
+    donations: list(x.donations, (r: Partial<Donation>, i) => ({
+      name: text(r.name), amount: amount(r.amount, `寄附金 ${i + 1}行目`), local: DONATION_LOCALS.some(([v]) => v === r.local) ? r.local! : "",
+    })),
     spouse: x.spouse ? relative(x.spouse, "配偶者") : null,
     dependents: list(x.dependents, (r: Partial<Relative>, i) => relative(r, `扶養親族 ${i + 1}人目`)),
     housingLoan: amount(x.housingLoan, "住宅借入金等特別控除額"),
     prepaid: amount(x.prepaid, "予定納税額"),
+    residentTax: x.residentTax === "special" || x.residentTax === "self" ? x.residentTax : "",
+    businessTax: { otherPrefecture: !!biz.otherPrefecture, change, changeDate },
   };
   return problems.length ? problems[0] : out;
 };

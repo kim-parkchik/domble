@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　雑損控除に係る領収書等の記載事項
+version：1.0
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOE060-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOE060-1-0group">
+<xsd:sequence>
+<xsd:element name="KOE060">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="IFA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IFC00000" type="IFC00000-1-0type" minOccurs="0" maxOccurs="15">
+<xsd:annotation>
+<xsd:appinfo>"災害関連支出の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFD00000" type="IFD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="IFE00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IFF00000" type="IFF00000-1-0type" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"被害届け受理証明書またはり災証明書など　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOE060-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="IFC00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="IFC00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFC00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFC00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IFD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="IFD00010" type="IFD00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IFF00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="IFF00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"証明年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFF00020" type="IFF00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"証明書の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IFF00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"証明者の名称（発行機関名等）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="IFD00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IFF00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

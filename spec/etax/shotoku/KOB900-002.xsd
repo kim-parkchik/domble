@@ -1,0 +1,580 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：相続等に係る生命保険契約等に基づく年金の雑所得の金額の計算書(本表・別表1)
+version：2.0
+Date：2019年09月04日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB900-2-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="2.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB900-2-0group">
+<xsd:sequence>
+<xsd:element name="KOB900">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOB900-1" type="KOB900-1-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB900-2" type="KOB900-2-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB900-2-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOB900-1-2-0type">
+<xsd:sequence>
+
+<xsd:element name="INA00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INA00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INA00020" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INA00030" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="INB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　保険契約等に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INB00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の支払開始年"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INB00020" type="INB00020-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の残存期間等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INB00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の支払総額(見込額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INB00040" type="INB00040-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の支払総額(見込額)に占める保険料又は掛金の総額の割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="INC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　所得金額の計算の基礎となる事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INC00010" type="INC00010-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の残存期間等に応じた割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((3)*(5))"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INC00030" type="INC00030-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の残存期間等に応じた単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１単位当たりの金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IND00000" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"３　各年分の雑所得の金額の計算　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IND00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告又は更正の請求を行う年分"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IND00020" type="IND00020-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((9)-(1)+1)"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IND00030" type="IND00030-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IND00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払年金対応額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IND00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IND00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金が月払等の場合"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IND00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"剰余金等の金額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IND00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IND00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費の額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IND00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得の金額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB900-2-2-0type">
+<xsd:sequence>
+
+<xsd:element name="INE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【別表１】　本表(2)及び本表(3)の年数等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INE00010" type="INE00010-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の残存期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INE00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続等の時(年金の支払開始日)の年齢に応じた別表２により求めた年数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INE00030" type="INE00030-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年齢"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INE00040" type="INE00040-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="INE00050" type="INE00050-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保証残存期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INE00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"〔算式〕"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の支払総額(見込額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INE00080" type="INE00080-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"bとcのいずれか長い年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INE00090" type="INE00090-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"bとcのいずれか短い年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INE00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本表(3)に入力する金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="INF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【別表４】　本表(7)の単位数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本表(2)の年数が11年以上の場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INF00020" type="INF00020-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)の年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INF00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((2)の年数-【調整年数】)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="INF00040" type="INF00040-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)の年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="INF00050" type="INF00050-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【調整年数】"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="INF00060" type="INF00060-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ING00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【別表５】　本表(12)の金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ING00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各年の年金支払額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ING00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１単位当たりの金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ING00030" type="ING00030-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ING00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本表(12)に入力する金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="INB00020-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INB00040-2-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INC00010-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INC00030-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IND00020-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IND00030-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INE00010-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INE00030-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INE00040-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INE00050-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INE00080-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INE00090-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INF00020-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INF00040-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INF00050-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="INF00060-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ING00030-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="INB00020-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INB00020-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INB00040-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INB00040-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INC00010-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INC00010-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INC00030-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INC00030-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IND00020-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="IND00020-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IND00030-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="IND00030-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INE00010-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INE00010-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INE00030-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INE00030-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INE00040-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INE00040-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INE00050-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INE00050-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INE00080-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INE00080-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INE00090-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INE00090-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INF00020-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INF00020-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INF00040-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INF00040-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INF00050-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INF00050-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="INF00060-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="INF00060-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ING00030-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="ING00030-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

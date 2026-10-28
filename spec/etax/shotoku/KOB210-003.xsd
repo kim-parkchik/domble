@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：国庫補助金等の総収入金額不算入に関する明細書
+version：3.0
+Date：2023年09月05日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB210-3-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="3.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB210-3-0group">
+<xsd:sequence>
+<xsd:element name="KOB210">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BUA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUC00000" type="BUC00000-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国庫補助金等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUM00000" type="BUM00000-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国庫補助金等を交付した者　区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUD00000" type="BUD00000-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国庫補助金等を交付した者　名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUE00000" type="BUE00000-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付の目的"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUH00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受けた国庫補助金等の額又は国庫補助金等の交付に代わるべきものとして交付を受けた資産の価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUO00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち各種所得の金額の計算上、総収入金額に算入されない金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUI00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受けた年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUN00000" type="BUN00000-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国庫補助金等の交付に代わるべきものとして資産の交付を受けた事由"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BUJ00000" type="BUJ00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUK00000" type="BUK00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受けた年の１２月３１日までに、国庫補助金等の返還を要しないことが確定しない場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="BUL00000" type="BUL00000-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他参考事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB210-3-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BUJ00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="BUJ00010" type="BUJ00010-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受けた国庫補助金等をもって取得又は改良をした固定資産に関する明細　種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUJ00015" type="BUJ00015-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受けた国庫補助金等をもって取得又は改良をした固定資産に関する明細　細目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUJ00020" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国庫補助金等の返還を要しないことが確定した日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BUK00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="BUK00010" type="BUK00010-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国庫補助金等の交付の条件"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUK00020" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国庫補助金等をもって取得又は改良等をする固定資産について、取得又は改良予定年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUK00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得に要する金額の見込額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BUK00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"見込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUK00050" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BUK00060" type="BUK00060-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BUK00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="BUC00000-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="BUM00000-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="BUD00000-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BUE00000-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BUN00000-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="125"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BUJ00010-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="44"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BUJ00015-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="22"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BUK00010-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BUK00060-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BUL00000-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="60"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

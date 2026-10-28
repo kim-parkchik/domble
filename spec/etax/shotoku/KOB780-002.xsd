@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：リース譲渡に係る収入金額及び費用の額の総収入金額及び必要経費算入に関する明細書
+version：2.0
+Date：2009年08月27日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB780-2-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="2.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB780-2-0group">
+<xsd:sequence>
+<xsd:element name="KOB780">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="JFA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="JFC00000" type="JFC00000-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB780-2-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="JFC00000-2-0type">
+<xsd:sequence>
+
+<xsd:element name="JFC00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00020" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース譲渡を行った年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00030" type="JFC00030-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース譲渡を行ったリース資産の名称等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース譲渡の対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース譲渡の原価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利息相当額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利息相当額の前年分からの繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分に帰せられる利息相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利息相当額の翌年分への繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"元本相当額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"元本相当額の前年分からの繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分に帰せられる元本相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"元本相当額の翌年分への繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"費用の額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"原価の額の前年分からの繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分に帰せられる原価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"原価の額の翌年分への繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00240" type="JFC00240-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00250" type="JFC00250-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース期間の月数のうち本年分における月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00300" type="JFC00300-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース譲渡を行ったリース資産の名称等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース譲渡の対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース譲渡の原価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00340" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利息相当額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利息相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分に帰せられる利息相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利息相当額の翌年分への繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00380" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"元本相当額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分のリース譲渡に係る元本相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分に帰せられる元本相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"元本相当額の翌年分への繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00430" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"費用の額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00440" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分のリース譲渡に係る原価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分に帰せられる原価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"原価の額の翌年分への繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00470" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00480" type="JFC00480-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00490" type="JFC00490-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"リース期間の月数のうち本年分における月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JFC00260" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JFC00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額の計算　本年分の総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JFC00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"費用の額の計算　本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="JFC00030-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JFC00240-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JFC00250-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JFC00300-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JFC00480-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JFC00490-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="JFC00240-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="JFC00240-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JFC00250-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="JFC00250-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JFC00480-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="JFC00480-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JFC00490-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="JFC00490-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

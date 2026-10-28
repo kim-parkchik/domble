@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：農業経営基盤強化準備金の必要経費算入及び認定計画に定めるところに従い取得した農用地等に係る必要経費算入に関する明細書
+version：4.0
+Date：2015年08月31日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB770-4-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="4.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB770-4-0group">
+<xsd:sequence>
+<xsd:element name="KOB770">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="HOA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="HOC00000" type="HOC00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　農業経営基盤強化準備金の必要経費算入に関する明細書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00000" type="HOD00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　認定計画等に定めるところに従い取得した農用地等に係る必要経費算入に関する明細書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB770-4-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="HOC00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="HOC00010" type="HOC00010-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付金等の該当号　第（＿）号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付金等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費算入額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）のうち認定計画等に記載された農用地等の取得に充てるための金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOC00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"農業経営基盤強化準備金の取崩しに関する明細書"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"農業経営基盤強化準備金の取崩しに関する明細書　１"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00090" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の各年分の準備金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"５年を経過した場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"任意取崩し等の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）及び（８）以外の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOC00150" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"農業経営基盤強化準備金の取崩しに関する明細書　２　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00160" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の各年分の準備金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"任意取崩し等の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）及び（８）以外の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOC00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOC00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOC00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00255" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の各年分の準備金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOC00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"５年を経過した場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"任意取崩し等の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOC00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）及び（８）以外の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOC00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="HOD00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="HOD00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細書　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOD00020" type="HOD00020-4-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した農用地等の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00030" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した農用地等の取得価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"個別資産の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した農用地等の取得価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"準備金等総収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HOD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"５年を経過した農業経営基盤強化準備金の金額の総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"任意取崩し等の農業経営基盤強化準備金の金額の総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）のうち準備金として積み立てられなかった交付金等の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"準備金等総収入金額　計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HOD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HOD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="HOC00010-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HOD00020-4-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="HOC00010-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="HOC00010-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,917 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年末調整のための住宅借入金等特別控除証明書(令和5年以降居住開始用)(令和8年10月以降提出用)
+version：1.0
+Date：2025年06月06日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="TEG918-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+<!-- Root Element Definition -->
+<xsd:element name="TEG918" type="TEG918-1-0type"/>
+
+<xsd:complexType name="TEG918-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WXA00000" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告書兼計算明細書年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXB00000" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"証明書年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXC00000" type="WXC00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"再交付表示"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="WXD00000" type="WXD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年末調整のための住宅借入金等特別控除証明書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="WXE00000" type="WXE00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総ページ数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXF00000" type="WXF00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"証明額確認区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXG00000" type="WXG00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"お問い合わせ番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXH00000" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年末調整年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="WXI00000" type="WXI00000-1-0type" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="1" maxOccurs="1"/>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="TEG918-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+
+<xsd:complexType name="WXD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WXD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXD00020" type="WXD00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00030" type="WXD00030-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00040" type="WXD00040-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号３"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00050" type="WXD00050-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号４"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00060" type="WXD00060-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号５"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00070" type="WXD00070-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号６"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00080" type="WXD00080-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名郵便番号７"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXD00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名住所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXD00100" type="WXD00100-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名住所１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00110" type="WXD00110-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名住所２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00120" type="WXD00120-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名住所３"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXD00130" type="WXD00130-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あて名氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00140" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"発行年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00150" type="WXD00150-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税務署名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXD00160" type="WXD00160-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税務署長名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WXI00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WXI00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"給与所得者の住宅借入金等特別控除申告書兼住宅借入金等特別控除計算明細書"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築又は購入に係る借入金等の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00040" type="WXI00040-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅のみ　連帯債務割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00050" type="WXI00050-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等のみ　連帯債務割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00060" type="WXI00060-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅及び土地等　連帯債務割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00070" type="WXI00070-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築等に係る借入金等の計算　連帯債務割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）*「居住用割合」"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築又は購入に係る借入金等の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00100" type="WXI00100-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅のみ　居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00110" type="WXI00110-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等のみ　居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00120" type="WXI00120-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅及び土地等　居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00130" type="WXI00130-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築等に係る借入金等の計算　居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高等　最高限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00160" type="WXI00160-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除率"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"最高限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年間所得の見積額　＿万円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"重複適用を受ける場合の（特定増改築等）住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"最高限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年末調整のための住宅借入金等特別控除証明書"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00240" type="WXI00240-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"適用種別"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（証明事項）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00260" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日１"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00270" type="WXI00270-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築特定取得括弧１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00280" type="WXI00280-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築特定取得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00290" type="WXI00290-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築特定取得括弧２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00300" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00310" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00330" type="WXI00330-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築家屋計表示"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00350" type="WXI00350-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00360" type="WXI00360-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得対価等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00390" type="WXI00390-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00400" type="WXI00400-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00410" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日２"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00420" type="WXI00420-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築特定取得括弧１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00430" type="WXI00430-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築特定取得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00440" type="WXI00440-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築特定取得括弧２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00450" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00460" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築等に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00470" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00480" type="WXI00480-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00490" type="WXI00490-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00500" type="WXI00500-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅の区分等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00510" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00520" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅のみ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00530" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等のみ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅及び土地等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00550" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"備考"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WXI00560" type="WXI00560-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"備考１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00570" type="WXI00570-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"備考２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WXI00580" type="WXI00580-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"備考３"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00590" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（参考）適用初年分の控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WXI00600" type="WXI00600-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"ページ数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="WXC00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="3"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00030-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00040-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00050-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00060-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00070-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00080-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00100-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00110-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00120-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00130-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00150-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="5"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXD00160-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXE00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="2"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXF00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXG00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00040-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00050-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00060-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00070-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00100-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00110-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00120-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00130-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00160-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00240-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00270-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00280-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00290-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00330-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00350-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00360-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00390-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00400-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00420-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00430-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00440-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00480-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00490-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00500-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="21"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00560-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="21"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00570-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="21"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00580-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="21"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WXI00600-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="2"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="WXI00040-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00040-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00050-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00050-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00060-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00060-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00070-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00070-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00100-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00100-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00110-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00110-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00120-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00120-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00130-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00130-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00350-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00350-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00360-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00360-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00390-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00390-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00400-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00400-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00480-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00480-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="WXI00490-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WXI00490-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

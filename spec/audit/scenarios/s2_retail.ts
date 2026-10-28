@@ -12,7 +12,8 @@
  * 動かし方：bun spec/audit/scenarios/s2_retail.ts（リポジトリの直下で）
  */
 import {
-  makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, cmp, printTable, repo, YEAR, type Cmp,
+  makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo, YEAR,
+  type Cmp,
 } from "./common";
 import { EMPTY_INCOME_TAX_INPUT, type IncomeTaxInput } from "../../../src/lib/incomeTax";
 
@@ -188,6 +189,20 @@ cmp(rows, "所得税：税額 ㉜", 38_350, it.v("㉜"));
 cmp(rows, "所得税：復興特別所得税 ㊺", 805, it.v("㊺"));
 cmp(rows, "所得税：納める税金", 39_100, it.v("(52)"));
 cmp(rows, "所得税：画面で出せるか（令和7年分）", "出せる", "出せる", "年分ごとの決まりの表（令和7年分）で計算する");
+
+// 所得税の e-Tax のデータ（申告書＋青色申告決算書。売上原価と棚卸資産）
+await setFiler(db, { occupation: "小売業" });
+const x = await incomeXtxOf(db, b, input, { self: "123456789018" });
+const cogs = (label: string) => String(f.layout.sections.cogs.find((r) => r.label === label)?.amount ?? 0);
+cmp(rows, "所得税の e-Tax のデータ：書き出せるか", "書き出せる", x.problems.length ? "出せない" : "書き出せる", x.problems.join(" / "));
+cmp(rows, "所得税の e-Tax のデータ：手続 RKO0010 の XSD に合う", "", x.invalid.slice(0, 300));
+cmp(rows, "xtx：第3期分の納める税金 (52)（ABB00750）", "39100", xtxVal(x.xml, "ABB00750"));
+cmp(rows, "xtx：決算書 期首商品棚卸高（AMF00120）", cogs("期首商品（製品）棚卸高"), xtxVal(x.xml, "AMF00120"));
+cmp(rows, "xtx：決算書 仕入金額（AMF00130）", cogs("仕入金額（製品製造原価）"), xtxVal(x.xml, "AMF00130"));
+cmp(rows, "xtx：決算書 期末商品棚卸高（AMF00150）", cogs("期末商品（製品）棚卸高"), xtxVal(x.xml, "AMF00150"));
+cmp(rows, "xtx：決算書 差引原価（AMF00160）", String(f.pl.cogs), xtxVal(x.xml, "AMF00160"));
+cmp(rows, "xtx：決算書 2ページの仕入金額の計（AMF00990）＝仕入金額", cogs("仕入金額（製品製造原価）"), xtxVal(x.xml, "AMF00990"));
+cmp(rows, "xtx：貸借対照表 資産の期末合計（AMG00440）＝負債・資本の期末合計（AMG00760）", xtxVal(x.xml, "AMG00440"), xtxVal(x.xml, "AMG00760"));
 
 printTable("例2 雑貨の小売店（簡易課税・第一種と第二種・青色65万円）", rows);
 console.log("\n消費税の確認の一覧：", t.issues.map((i) => `[${i.level}] ${i.title}`).join(" / ") || "なし");

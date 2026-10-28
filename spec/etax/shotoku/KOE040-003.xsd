@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　社会保険料等に係る控除証明書等の記載事項
+version：3.0
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOE040-3-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="3.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOE040-3-0group">
+<xsd:sequence>
+<xsd:element name="KOE040">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="IDA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IDC00000" type="IDC00000-3-0type" minOccurs="0" maxOccurs="6">
+<xsd:annotation>
+<xsd:appinfo>"社会保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDD00000" type="IDD00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="IDE00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IDF00000" type="IDF00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小規模企業共済等掛金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00000" type="IDG00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"生命保険料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDH00000" type="IDH00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地震保険料等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOE040-3-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="IDC00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IDC00010" type="IDC00010-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"社会保険の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IDD00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IDD00010" type="IDD00010-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IDF00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IDF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"独立行政法人中小企業基盤整備機構の共済契約の掛金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDF00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"企業型年金・個人型年金加入者掛金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDF00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"心身障害者扶養共済制度に関する掛金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払掛金の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IDG00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IDG00150" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"新生命保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00160" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険会社等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00190" type="IDG00190-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00010" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"旧生命保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険会社等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00050" type="IDG00050-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00220" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"新個人年金保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00230" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険会社等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00260" type="IDG00260-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00080" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"旧個人年金保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00090" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険会社等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00120" type="IDG00120-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00290" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"介護医療保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00300" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険会社等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDG00330" type="IDG00330-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDG00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDG00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IDH00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IDH00010" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"地震保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDH00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険会社等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDH00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDH00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDH00050" type="IDH00050-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDH00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDH00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDH00080" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"旧長期損害保険料　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDH00090" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険会社等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDH00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDH00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IDH00120" type="IDH00120-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IDH00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料（分配を受けた剰余金等の控除後の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IDH00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払保険料の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="IDC00010-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDD00010-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDG00190-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDG00050-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDG00260-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDG00120-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDG00330-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDH00050-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IDH00120-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

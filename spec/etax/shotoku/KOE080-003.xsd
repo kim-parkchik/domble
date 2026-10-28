@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　住宅取得資金に係る借入金の年末残高等証明書の記載事項
+version：3.0
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOE080-3-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="3.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOE080-3-0group">
+<xsd:sequence>
+<xsd:element name="KOE080">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="IHA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IHD00000" type="IHD00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の内訳"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHE00000" type="IHE00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHF00000" type="IHF00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償還期間又は賦払期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="IHG00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"証明年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHH00000" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等に係る債権者等の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHI00000" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等に係る債権者等の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOE080-3-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="IHD00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IHD00010" type="IHD00010-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　住宅のみ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHD00020" type="IHD00020-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　土地等のみ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHD00030" type="IHD00030-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　住宅及び土地等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IHE00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IHE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHE00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当初金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IHE00030" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IHF00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IHF00010" type="gen:yymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自　年月"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHF00020" type="gen:yymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至　年月"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHF00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年　月から年　月までの　年　月間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IHF00040" type="IHF00040-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IHF00050" type="IHF00050-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"月間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="IHD00010-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="IHD00020-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="IHD00030-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="IHF00040-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IHF00050-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="IHF00040-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IHF00040-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IHF00050-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IHF00050-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

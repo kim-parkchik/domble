@@ -1,0 +1,738 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：資産に係る控除対象外消費税額等の必要経費算入に関する明細書
+version：19.0
+Date：2023年09月05日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB110-19-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="19.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB110-19-0group">
+<xsd:sequence>
+<xsd:element name="KOB110">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOB110-1" type="KOB110-1-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産に係る控除対象外消費税額等の必要経費算入に関する明細書（一面）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB110-2" type="KOB110-2-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産に係る控除対象外消費税額等の必要経費算入に関する明細書（二面）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB110-19-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOB110-1-19-0type">
+<xsd:sequence>
+
+<xsd:element name="BKA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKB00000" type="BKB00000-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKC00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年に生じた資産に係る控除対象外消費税額等の必要経費算入額等の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKD00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税仕入れ等の税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象仕入税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象外消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）のうち資産に係るものの金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）のうち資産に係るもの以外のものの金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税の課税売上割合（分子）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00065" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税の課税売上割合（分母）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰延消費税額等の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち棚卸資産に係るものの合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00085" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち特定課税仕入れに係るものの合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち－の資産に係るものの金額が２０万円未満のものの合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKD00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１０）のうち本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKD00120" type="BKD00120-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年において事業所得等を生ずべき業務を行っていた期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年分以後の年分に繰り越す繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年に生じた繰延消費税額等の必要経費算入額等の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年に生じた繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１３）のうち前年から繰り越された繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKE00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１４）のうち本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKE00040" type="BKE00040-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年において事業所得等を生ずべき業務を行っていた期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKE00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKE00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年分以後の年分に繰り越す繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2年前に生じた繰延消費税額等の必要経費算入額等の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2年前に生じた繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKF00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１７）のうち前年から繰り越された繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKF00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１８）のうち本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKF00040" type="BKF00040-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年において事業所得等を生ずべき業務を行っていた期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKF00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年分以後の年分に繰り越す繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3年前に生じた繰延消費税額等の必要経費算入額等の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKG00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3年前に生じた繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKG00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２１）のうち前年から繰り越された繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKG00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２２）のうち本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKG00040" type="BKG00040-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年において事業所得等を生ずべき業務を行っていた期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKG00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKG00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年分以後の年分に繰り越す繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKH00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"4年前に生じた繰延消費税額等の必要経費算入額等の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKH00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"4年前に生じた繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKH00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２５）のうち前年から繰り越された繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKH00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２６）のうち本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKH00040" type="BKH00040-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その年において事業所得等を生ずべき業務を行っていた期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKH00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKH00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年分以後の年分に繰り越す繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKI00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"5年前に生じた繰延消費税額等の必要経費算入額等の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKI00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"5年前に生じた繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKI00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２９）のうち前年から繰り越された繰延消費税額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKI00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２９）*分子／６０"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKI00040" type="BKI00040-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子：その年において事業所得等を生ずべき業務を行っていた期間の月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKI00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKI00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３０）のうち本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB110-2-19-0type">
+<xsd:sequence>
+
+<xsd:element name="BKJ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年に生じた課税仕入れ等の税額等及び控除対象仕入税額等の内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税仕入れ等の税額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率（5%）適用分　消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率（5%）適用分　地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率（8%）適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"10%・標準税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"8%・軽減税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（課税仕入れ等）経過措置（8割控除）適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"10%・標準税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"8%・軽減税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象仕入税額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率（5%）適用分　消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率（5%）適用分　地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旧税率（8%）適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"10%・標準税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"8%・軽減税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00350" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（控除対象仕入）経過措置（8割控除）適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"10%・標準税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00390" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"8%・軽減税率適用分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BKJ00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BKJ00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方消費税相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BKJ00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="BKB00000-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BKD00120-19-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BKE00040-19-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BKF00040-19-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BKG00040-19-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BKH00040-19-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BKI00040-19-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="BKD00120-19-0type">
+<xsd:simpleContent>
+<xsd:extension base="BKD00120-19-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BKE00040-19-0type">
+<xsd:simpleContent>
+<xsd:extension base="BKE00040-19-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BKF00040-19-0type">
+<xsd:simpleContent>
+<xsd:extension base="BKF00040-19-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BKG00040-19-0type">
+<xsd:simpleContent>
+<xsd:extension base="BKG00040-19-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BKH00040-19-0type">
+<xsd:simpleContent>
+<xsd:extension base="BKH00040-19-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BKI00040-19-0type">
+<xsd:simpleContent>
+<xsd:extension base="BKI00040-19-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

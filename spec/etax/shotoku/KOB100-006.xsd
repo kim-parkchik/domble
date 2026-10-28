@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：特定証券投資信託に係る配当控除額の計算書
+version：6.0
+Date：2016年08月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB100-6-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="6.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB100-6-0group">
+<xsd:sequence>
+<xsd:element name="KOB100">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BJA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BJB00000" type="BJB00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJC00000" type="BJC00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配当所得の区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00000" type="BJD00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配当控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB100-6-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BJB00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="BJB00010" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BJC00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="BJC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税総所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配当所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）のうち配当控除の対象となるもの"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BJC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"剰余金の配当等に係る配当所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJC00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定証券投資信託の収益の分配に係る配当所得の金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BJC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外貨建等証券投資信託以外に係る金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外貨建等証券投資信託に係る金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BJD00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="BJD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）にかかる控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BJD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）－（４）－（５）－１千万円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）－（６）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）*10％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（（３）－（７））*5％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BJD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）にかかる控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BJD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）－（５）－１千万円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）－（10）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（11）*5％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（（４）－（11））*2.5％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BJD00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（５）にかかる控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BJD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）－１千万円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（５）－（14）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（15）*2.5％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BJD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（（５）－（15））*1.25％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BJD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配当控除額((8)+(9)+(12)+(13)+(16)+(17))"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

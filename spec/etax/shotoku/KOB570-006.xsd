@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分セルフメディケーション税制の明細書
+version：6.0
+Date：2024年08月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB570-6-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="6.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB570-6-0group">
+<xsd:sequence>
+<xsd:element name="KOB570">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="KMA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMF00000" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KMC00000" type="KMC00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　申告する方の健康の保持増進及び疾病の予防への取組"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMD00000" type="KMD00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　特定一般用医薬品等購入費の明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KME00000" type="KME00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB570-6-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KMC00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="KMC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取組内容"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMC00020" type="KMC00020-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"健康診査"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMC00030" type="KMC00030-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"予防接種"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMC00040" type="KMC00040-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"定期健康診断"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMC00050" type="KMC00050-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定健康診査"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMC00060" type="KMC00060-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"がん検診"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMC00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他取組内容"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMC00080" type="KMC00080-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMC00090" type="KMC00090-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（＿）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KMC00100" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"発行者名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KMD00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="KMD00010" minOccurs="0" maxOccurs="18">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMD00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"薬局などの支払先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMD00030" type="KMD00030-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医薬品の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払った金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）のうち生命保険や社会保険などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KMD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMD00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払った金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMD00090" type="KMD00090-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KMD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KMD00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）のうち生命保険や社会保険などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMD00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KMD00140" type="KMD00140-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KMD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KMD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KME00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="KME00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払った金額（合計）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KME00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険金などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KME00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額（A－B）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KME00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医療費控除額（C－12,000円）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="KMC00020-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KMC00030-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KMC00040-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KMC00050-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KMC00060-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KMC00080-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="KMC00090-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KMD00030-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KMD00090-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KMD00140-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

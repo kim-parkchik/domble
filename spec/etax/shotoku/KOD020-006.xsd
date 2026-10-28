@@ -1,0 +1,819 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：山林所得収支内訳書(計算明細書)　(課税事業者用)
+version：6.0
+Date：2016年08月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOD020-6-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="6.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOD020-6-0group">
+<xsd:sequence>
+<xsd:element name="KOD020">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELA00000" type="ELA00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELB00000" type="ELB00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00000" type="ELC00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00000" type="ELD00000-6-0type" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOD020-6-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="ELA00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ELA00005" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELA00007" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELA00020" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELA00030" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELA00040" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELA00050" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ELB00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ELB00010" type="gen:DAIRI_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELB00020" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELB00030" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ELC00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ELC00010" type="ELC00010-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消費税等の経理方式"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡価額の総額（収入金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額に算入される消費税等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"伐採費など"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"伐採費、運搬費、譲渡費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者控除額のうち（４）に相当する部分の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費、管理費など"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率による場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELC00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率によらない場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"植林費、取得に要した経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"管理費その他の育成費用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（５）以外の専従者控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELC00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被災事業用資産の損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00184" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00187" type="ELC00187-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費に算入される消費税等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"森林計画特別控除"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率の適用を受ける場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率の適用を受けない場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１８）と（１９）のうち低い方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELC00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額(上段)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00263" type="ELC00263-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額(下段)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00265" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELC00270" type="ELC00270-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELC00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELC00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="ELD00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="ELD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00020" type="ELD00020-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条１"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00030" type="ELD00030-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条２"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した山林の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00050" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林の所在地番"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00060" type="ELD00060-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"面積"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00070" type="ELD00070-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"皆伐・間伐の区分"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00080" type="ELD00080-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"樹種"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00090" type="ELD00090-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"樹齢"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00100" type="ELD00100-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本数"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00110" type="ELD00110-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00130" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は所在地"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00140" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00150" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した年月日"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00160" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡山林を植林・購入した時期"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00165" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡価額の総額（収入金額）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00167" type="ELD00167-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額に算入される消費税等の額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計１"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"伐採費など"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00205" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"伐採費、運搬費、譲渡費用の額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00207" type="ELD00207-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者控除額のうち（４）に相当する部分の金額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費、管理費など"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00260" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率による場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費の額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率によらない場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"植林費、取得に要した経費"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"管理費その他の育成費用"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（５）以外の専従者控除額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被災事業用資産の損失の金額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00334" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00337" type="ELD00337-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費に算入される消費税等の額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計２"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"森林計画特別控除"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率の適用を受ける場合"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00390" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"概算経費率の適用を受けない場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ELD00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額基準額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得基準額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１８）と（１９）のうち低い方の金額"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ELD00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額(上段)"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ELD00440" type="ELD00440-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額(下段)"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="ELC00010-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ELC00187-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELC00263-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELC00270-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00020-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00030-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00060-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="ELD00070-6-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ELD00080-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="14"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00090-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00100-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00110-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00167-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00207-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00337-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ELD00440-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="ELD00020-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="ELD00020-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ELD00060-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="ELD00060-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ELD00090-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="ELD00090-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ELD00100-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="ELD00100-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ELD00110-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="ELD00110-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

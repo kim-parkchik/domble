@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：福島再開投資等準備金に関する明細書
+version：1.0
+Date：2015年08月31日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB994-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB994-1-0group">
+<xsd:sequence>
+<xsd:element name="KOB994">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="KDA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDC00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"福島県知事の認定を受けた日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KDD00000" type="KDD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="KDE00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年積立額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KDF00000" type="KDF00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立限度額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="KDG00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立限度超過額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KDH00000" type="KDH00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"累積限度超過額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDI00000" type="KDI00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB994-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KDD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="KDD00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDD00020" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KDF00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="KDF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"投資予定額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDF00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"定額基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDF00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年末までに必要経費に算入された額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"累積限度基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KDH00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="KDH00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"累積限度超過基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDH00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の福島再開投資等準備金の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDH00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年のその他の場合による総収入金額に算入する額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDH00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引福島再開投資等準備金の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDH00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年累積限度超過額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KDI00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="KDI00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の福島再開投資等準備金の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDI00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KDI00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の場合による総収入金額に算入する額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDI00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"累積限度超過額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDI00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別償却実施額の総収入金額算入額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KDI00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別償却実施額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDI00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別償却実施額の総収入金額に算入する額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KDI00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３年間均等取崩額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KDI00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基準年の12月31日における福島再開投資等準備金の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDI00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３年間均等取崩額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KDI00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KDI00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年積立額のうち必要経費に算入する額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KDI00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年末の福島再開投資等準備金の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

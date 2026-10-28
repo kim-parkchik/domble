@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general"
+xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:som="http://xml.e-tax.nta.go.jp/XSD/somu"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ elementFormDefault="qualified" attributeFormDefault="unqualified"
+ version="1.0" > 
+
+<xsd:annotation>
+<xsd:documentation>
+所得税及び復興特別所得税申告
+version:25.0.1 Date: 2025年12月23日
+</xsd:documentation>
+</xsd:annotation>
+
+<!-- import and include-->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/TEG910a-001.xsd"/>
+<xsd:include schemaLocation="../general/ITdefinition.xsd"/>
+<xsd:include schemaLocation="../general/CATALOG.xsd"/>
+<xsd:include schemaLocation="KOA020-023.xsd"/>
+<xsd:include schemaLocation="KOA060-006.xsd"/>
+<xsd:include schemaLocation="KOA050-017.xsd"/>
+<xsd:include schemaLocation="KOA070-016.xsd"/>
+<xsd:include schemaLocation="KOA080-005.xsd"/>
+<xsd:include schemaLocation="KOA090-016.xsd"/>
+<xsd:include schemaLocation="KOA110-012.xsd"/>
+<xsd:include schemaLocation="KOA120-009.xsd"/>
+<xsd:include schemaLocation="KOA130-009.xsd"/>
+<xsd:include schemaLocation="KOA140-006.xsd"/>
+<xsd:include schemaLocation="KOA210-011.xsd"/>
+<xsd:include schemaLocation="KOA220-008.xsd"/>
+<xsd:include schemaLocation="KOA230-010.xsd"/>
+<xsd:include schemaLocation="KOA240-008.xsd"/>
+<xsd:include schemaLocation="KOA250-006.xsd"/>
+<xsd:include schemaLocation="KOB010-011.xsd"/>
+<xsd:include schemaLocation="KOB040-017.xsd"/>
+<xsd:include schemaLocation="KOB060-006.xsd"/>
+<xsd:include schemaLocation="KOB070-007.xsd"/>
+<xsd:include schemaLocation="KOB100-006.xsd"/>
+<xsd:include schemaLocation="KOB110-019.xsd"/>
+<xsd:include schemaLocation="KOB120-001.xsd"/>
+<xsd:include schemaLocation="KOB130-021.xsd"/>
+<xsd:include schemaLocation="KOB131-014.xsd"/>
+<xsd:include schemaLocation="KOB140-006.xsd"/>
+<xsd:include schemaLocation="KOB200-017.xsd"/>
+<xsd:include schemaLocation="KOB210-003.xsd"/>
+<xsd:include schemaLocation="KOB220-001.xsd"/>
+<xsd:include schemaLocation="KOB230-003.xsd"/>
+<xsd:include schemaLocation="KOB240-016.xsd"/>
+<xsd:include schemaLocation="KOB245-007.xsd"/>
+<xsd:include schemaLocation="KOB270-003.xsd"/>
+<xsd:include schemaLocation="KOB280-007.xsd"/>
+<xsd:include schemaLocation="KOB300-003.xsd"/>
+<xsd:include schemaLocation="KOB330-004.xsd"/>
+<xsd:include schemaLocation="KOB360-006.xsd"/>
+<xsd:include schemaLocation="KOB405-001.xsd"/>
+<xsd:include schemaLocation="KOB440-005.xsd"/>
+<xsd:include schemaLocation="KOB540-021.xsd"/>
+<xsd:include schemaLocation="KOB550-014.xsd"/>
+<xsd:include schemaLocation="KOB560-018.xsd"/>
+<xsd:include schemaLocation="KOB565-018.xsd"/>
+<xsd:include schemaLocation="KOB570-006.xsd"/>
+<xsd:include schemaLocation="KOB575-006.xsd"/>
+<xsd:include schemaLocation="KOB690-002.xsd"/>
+<xsd:include schemaLocation="KOB750-010.xsd"/>
+<xsd:include schemaLocation="KOB760-011.xsd"/>
+<xsd:include schemaLocation="KOB770-004.xsd"/>
+<xsd:include schemaLocation="KOB790-012.xsd"/>
+<xsd:include schemaLocation="KOB780-002.xsd"/>
+<xsd:include schemaLocation="KOB810-002.xsd"/>
+<xsd:include schemaLocation="KOB976-001.xsd"/>
+<xsd:include schemaLocation="KOB815-003.xsd"/>
+<xsd:include schemaLocation="KOB827-006.xsd"/>
+<xsd:include schemaLocation="KOB835-006.xsd"/>
+<xsd:include schemaLocation="KOB840-003.xsd"/>
+<xsd:include schemaLocation="KOB890-003.xsd"/>
+<xsd:include schemaLocation="KOB900-002.xsd"/>
+<xsd:include schemaLocation="KOB920-009.xsd"/>
+<xsd:include schemaLocation="KOB930-010.xsd"/>
+<xsd:include schemaLocation="KOB940-002.xsd"/>
+<xsd:include schemaLocation="KOB950-003.xsd"/>
+<xsd:include schemaLocation="KOB960-002.xsd"/>
+<xsd:include schemaLocation="KOB961-001.xsd"/>
+<xsd:include schemaLocation="KOB982-001.xsd"/>
+<xsd:include schemaLocation="KOB983-005.xsd"/>
+<xsd:include schemaLocation="KOB984-008.xsd"/>
+<xsd:include schemaLocation="KOB997-001.xsd"/>
+<xsd:include schemaLocation="KOB998-001.xsd"/>
+<xsd:include schemaLocation="KOB995-001.xsd"/>
+<xsd:include schemaLocation="KOB996-004.xsd"/>
+<xsd:include schemaLocation="KOB986-001.xsd"/>
+<xsd:include schemaLocation="KOC010-011.xsd"/>
+<xsd:include schemaLocation="KOC020-008.xsd"/>
+<xsd:include schemaLocation="KOC036-005.xsd"/>
+<xsd:include schemaLocation="KOC038-002.xsd"/>
+<xsd:include schemaLocation="KOC039-001.xsd"/>
+<xsd:include schemaLocation="KOC040-013.xsd"/>
+<xsd:include schemaLocation="KOC050-019.xsd"/>
+<xsd:include schemaLocation="KOC210-004.xsd"/>
+<xsd:include schemaLocation="KOC240-001.xsd"/>
+<xsd:include schemaLocation="KOC220-001.xsd"/>
+<xsd:include schemaLocation="KOC070-009.xsd"/>
+<xsd:include schemaLocation="KOC080-019.xsd"/>
+<xsd:include schemaLocation="KOC090-004.xsd"/>
+<xsd:include schemaLocation="KOC100-011.xsd"/>
+<xsd:include schemaLocation="KOC110-020.xsd"/>
+<xsd:include schemaLocation="KOB988-001.xsd"/>
+<xsd:include schemaLocation="KOB989-001.xsd"/>
+<xsd:include schemaLocation="KOB977-004.xsd"/>
+<xsd:include schemaLocation="KOB993-005.xsd"/>
+<xsd:include schemaLocation="KOB994-001.xsd"/>
+<xsd:include schemaLocation="KOB974-003.xsd"/>
+<xsd:include schemaLocation="KOB975-004.xsd"/>
+<xsd:include schemaLocation="KOB670-004.xsd"/>
+<xsd:include schemaLocation="KOB090-001.xsd"/>
+<xsd:include schemaLocation="KOC130-013.xsd"/>
+<xsd:include schemaLocation="KOC140-011.xsd"/>
+<xsd:include schemaLocation="KOC150-008.xsd"/>
+<xsd:include schemaLocation="KOC160-011.xsd"/>
+<xsd:include schemaLocation="KOC250-001.xsd"/>
+<xsd:include schemaLocation="KOC180-006.xsd"/>
+<xsd:include schemaLocation="KOC190-005.xsd"/>
+<xsd:include schemaLocation="KOC230-002.xsd"/>
+<xsd:include schemaLocation="KOC200-008.xsd"/>
+<xsd:include schemaLocation="KOD010-006.xsd"/>
+<xsd:include schemaLocation="KOD020-006.xsd"/>
+<xsd:include schemaLocation="KOE040-003.xsd"/>
+<xsd:include schemaLocation="KOE050-004.xsd"/>
+<xsd:include schemaLocation="KOE060-001.xsd"/>
+<xsd:include schemaLocation="KOE070-005.xsd"/>
+<xsd:include schemaLocation="KOE080-003.xsd"/>
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu" schemaLocation="../kyotsu/RKO0010a-250.xsd"/>
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/somu" schemaLocation="../somu/SOZ-001.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="RKO0010-250-1VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="25.0.0"/><xsd:enumeration value="25.0.1"/></xsd:restriction></xsd:simpleType>
+
+<xsd:complexType name="TETSUZUKItype">
+<xsd:complexContent>
+<xsd:restriction base="gen:procedure">
+<xsd:sequence>
+<xsd:element name="procedure_CD">
+<xsd:simpleType>
+<xsd:restriction base="gen:procedure_CD">
+<xsd:enumeration value="RKO0010"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+<xsd:element name="procedure_NM" minOccurs="0">
+<xsd:simpleType>
+<xsd:restriction base="gen:str">
+<xsd:maxLength value="200"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+</xsd:sequence>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="SHINKOKU_KBNtype">
+<xsd:complexContent>
+<xsd:restriction base="gen:kubun2">
+<xsd:sequence>
+<xsd:element name="kubun_CD">
+<xsd:simpleType>
+<xsd:restriction base="xsd:nonNegativeInteger">
+<xsd:pattern value="\d?\d"/>
+</xsd:restriction></xsd:simpleType>
+</xsd:element>
+<xsd:element name="kubun_NM" minOccurs="0">
+<xsd:simpleType>
+<xsd:restriction base="gen:str">
+<xsd:maxLength value="30"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+</xsd:sequence>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="KEISANSHO_KBNtype">
+<xsd:complexContent>
+<xsd:restriction base="gen:kubun2">
+<xsd:sequence>
+<xsd:element name="kubun_CD">
+<xsd:simpleType>
+<xsd:restriction base="xsd:nonNegativeInteger">
+<xsd:pattern value="\d?\d"/>
+</xsd:restriction></xsd:simpleType>
+</xsd:element>
+<xsd:element name="kubun_NM" minOccurs="0">
+<xsd:simpleType>
+<xsd:restriction base="gen:str">
+<xsd:maxLength value="30"/>
+</xsd:restriction>
+</xsd:simpleType>
+</xsd:element>
+</xsd:sequence>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+
+<!-- Root Element Definition --><xsd:element name="DATA">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="RKO0010" type="RKO0010-250-1type"/>
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="0" maxOccurs="unbounded"/>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID"/></xsd:complexType>
+</xsd:element>
+<!-- Procedure Definition -->
+<xsd:complexType name="RKO0010-250-1type">
+<xsd:sequence>
+<xsd:element name="CATALOG" type="CATALOGtype">
+<xsd:annotation>
+<xsd:appinfo>管理部</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CONTENTS" type="RKO0010-250-1contentsType">
+<xsd:annotation>
+<xsd:appinfo>内容部分</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID" use="required"/><xsd:attribute name="VR" type="RKO0010-250-1VRtype" use="required"/>
+</xsd:complexType>
+<xsd:complexType name="RKO0010-250-1contentsType"><xsd:sequence>
+<!-- IT部-->
+<xsd:element name="IT" type="ITtype"/>
+<!-- 帳票個別部分 -->
+<xsd:choice minOccurs="0">
+<xsd:group ref="KOA020-23-0group" maxOccurs="1"/>
+<xsd:group ref="KOA060-6-0group" maxOccurs="unbounded"/>
+</xsd:choice>
+<xsd:group ref="KOA050-17-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOA070-16-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOA080-5-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOA090-16-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOA110-12-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOA120-9-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOA130-9-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOA140-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOA210-11-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOA220-8-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOA230-10-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOA240-8-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOA250-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB010-11-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB040-17-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB060-6-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB070-7-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB100-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB110-19-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB120-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB130-21-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB131-14-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB140-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB200-17-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB210-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB220-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB230-3-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB240-16-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB245-7-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB270-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB280-7-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB300-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB330-4-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB360-6-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB405-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB440-5-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB540-21-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB550-14-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB560-18-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB565-18-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB570-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB575-6-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB690-2-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB750-10-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB760-11-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB770-4-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB790-12-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB780-2-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB810-2-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB976-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB815-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB827-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB835-6-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB840-3-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB890-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB900-2-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB920-9-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB930-10-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB940-2-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB950-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB960-2-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB961-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB982-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB983-5-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB984-8-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB997-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB998-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB995-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB996-4-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB986-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC010-11-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC020-8-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC036-5-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC038-2-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC039-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC040-13-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC050-19-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC210-4-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC240-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC220-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC070-9-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC080-19-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOC090-4-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC100-11-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC110-20-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB988-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB989-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB977-4-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB993-5-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB994-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB974-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB975-4-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOB670-4-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOB090-1-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOC130-13-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOC140-11-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC150-8-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC160-11-0group" minOccurs="0" maxOccurs="1"/>
+<xsd:group ref="KOC250-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC180-6-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC190-5-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC230-2-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOC200-8-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOD010-6-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOD020-6-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOE040-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOE050-4-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOE060-1-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOE070-5-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="KOE080-3-0group" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:group ref="kyo:TEZ310-9-0group" minOccurs="0" maxOccurs="unbounded"/>
+
+<xsd:element name="TENPU" minOccurs="0">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element ref="som:SOZ042" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="som:SOZ052" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG101" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG102" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG103" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG104" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG105" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG106" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG107" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG108" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG109" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG158" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG159" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG202" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG203" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG204" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG300" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG400" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG401" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG402" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG403" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG404" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG405" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG406" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG407" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG408" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG500" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG501" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG600" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG601" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG602" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG700" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG800" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG810" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG820" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG821" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG822" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG830" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG840" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG850" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG900" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG901" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG910" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG911" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG912" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG913" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG916" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG917" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG918" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="kyo:TEG919" minOccurs="0" maxOccurs="unbounded"/>
+<xsd:element ref="som:SOZ074" minOccurs="0" maxOccurs="unbounded"/>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID" use="required"/>
+</xsd:complexType>
+</xsd:element>
+
+
+<!-- 送付書 -->
+<xsd:group ref="kyo:TEA060-15-0group" minOccurs="0"/>
+</xsd:sequence>
+<xsd:attribute name="id" type="xsd:ID" use="required"/>
+
+
+</xsd:complexType>
+</xsd:schema>

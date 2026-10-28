@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：特定復興産業集積区域において被災雇用者等を雇用した場合の所得税額の特別控除、企業立地促進区域等において避難対象雇用者等を雇用した場合の所得税額の特別控除又は避難解除区域等において避難対象雇用者等を雇用した場合の所得税額の特別控除に関する明細書
+version：5.0
+Date：2021年09月03日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB983-5-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="5.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB983-5-0group">
+<xsd:sequence>
+<xsd:element name="KOB983">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="AWA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="AWC00000" type="AWC00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB983-5-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="AWC00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="AWC00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定地方公共団体の指定を受けた日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年の適用期間内における被災雇用者等に対して支給する給与等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上のうち必要経費に算入される額(3)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00033" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"福島県知事等の認定、指定又は確認を受けた日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00035" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年の適用期間内における避難対象雇用者等に対して支給する給与等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00038" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上のうち必要経費に算入される額(6)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税額の特別控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AWC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の事業所得に係る所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額超過構成額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AWC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税額の特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

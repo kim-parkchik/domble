@@ -142,6 +142,7 @@ export const getSettings = async (db: Database): Promise<Settings> => {
     `SELECT business_name, owner_name, postal_code, address, invoice_no, invoice_registered_on, etax_user_id, tax_office, phone, owner_kana,
             business_kana, occupation, householder_name, householder_relation, jan1_address, office_phone, refund_mode, bank_name, bank_kind,
             branch_name, branch_kind, deposit_kind, account_no, yucho_symbol, yucho_number,
+            office_address, union_name, agent_name, agent_address, agent_phone,
             industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at
        FROM settings WHERE id = 1`,
   );
@@ -332,7 +333,8 @@ const saveEtaxInfo_ = async (db: Database, x: EtaxInfo) => {
   await db.execute(
     `UPDATE settings SET etax_user_id = ?, tax_office = ?, phone = ?, owner_kana = ?, business_kana = ?, occupation = ?, householder_name = ?,
             householder_relation = ?, jan1_address = ?, office_phone = ?, refund_mode = ?, bank_name = ?, bank_kind = ?, branch_name = ?, branch_kind = ?,
-            deposit_kind = ?, account_no = ?, yucho_symbol = ?, yucho_number = ? WHERE id = 1`,
+            deposit_kind = ?, account_no = ?, yucho_symbol = ?, yucho_number = ?, office_address = ?, union_name = ?, agent_name = ?, agent_address = ?,
+            agent_phone = ? WHERE id = 1`,
     ETAX_FIELDS.map((k) => n[k]),
   );
 };

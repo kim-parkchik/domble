@@ -2,20 +2,30 @@
  * 所得税：確定申告書（第一表・第二表）の数字（計算は lib/incomeTax.ts）
  *  - 入力：帳簿から出せないもの（給与・公的年金等・雑所得、源泉徴収、所得控除、配偶者・扶養親族、住宅借入金等特別控除、予定納税額）。年度ごとに保存
  *  - 第一表・第二表：事業所得は帳簿と決算書から。欄番号は令和7年分の様式と令和8年分の様式（案）で同じ
- *  - 決まりは年分の表（lib/incomeTax.ts の INCOME_TAX_RULES）。表に無い年分は、いちばん近い年分の決まりで計算して知らせる。e-Tax 用のデータ（.xtx）の書き出しはまだ
+ *  - 決まりは年分の表（lib/incomeTax.ts の INCOME_TAX_RULES）。表に無い年分は、いちばん近い年分の決まりで計算して知らせる
+ *  - 確定申告書（第一表・第二表）と青色申告決算書を e-Tax のデータ（.xtx）で書き出す（作るのは lib/incomeTaxXtx.ts。決算書の数字は lib/blueStatement.ts）。
+ *    個人番号は書き出すときに入れてもらう（本人・配偶者・親族・事業専従者。保存しない）
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Plus, Printer, Save, Trash2, Undo2, Wand2 } from "lucide-react";
+import { FileDown, Plus, Printer, Save, Trash2, Undo2, Wand2 } from "lucide-react";
+import { save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { AmountInput } from "../../components/Inputs";
 import { useToast } from "../../components/Toast";
 import { closingBalances, summarizeIncome } from "../../lib/accounting";
-import { yen } from "../../lib/format";
+import { todayIso, yen } from "../../lib/format";
+import { filerFromSettings } from "../../lib/etax";
+import { isYearCompliant } from "../../lib/ebook";
+import { buildBlueStatement } from "../../lib/blueStatement";
+import { buildIncomeTaxXtx, incomeXtxNotices, incomeXtxProblems, myNumberPersons, type IncomeTaxXtxSource } from "../../lib/incomeTaxXtx";
+import { MyNumberDialog } from "../../components/MyNumberDialog";
 import { CODE } from "../../constants/accounts";
 import {
-  computeIncomeTax, dependentDeduction, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES, emptyRelative, EMPTY_INCOME_TAX_INPUT, spouseDeduction,
-  type BusinessFigures, type Disability, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PayerRow, type PremiumRow, type Relative,
+  BLUE_DEDUCTION_LIMIT, computeIncomeTax, dependentDeduction, fieldNo, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES, DONATION_LOCALS, emptyRelative,
+  EMPTY_INCOME_TAX_INPUT, spouseDeduction,
+  type BusinessFigures, type Disability, type Donation, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PayerRow, type PremiumRow, type Relative,
 } from "../../lib/incomeTax";
 import * as repo from "../../db/repo";
 
@@ -29,7 +39,7 @@ const SOCIAL_WORDS = /国民健康保険|国保|国民年金|介護保険|後期
 const SMALL_WORDS = /小規模企業共済|iDeCo|イデコ|確定拠出年金|心身障害者扶養共済/i;
 
 export const IncomeTaxPage = () => {
-  const { db, year, accounts, settings, subMap, isClosed, can, dataVersion, bump } = useAppContext();
+  const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump } = useAppContext();
   const { lines, opening } = useYearData();
   const toast = useToast();
   const [view, setView] = useState<View>("input");
@@ -93,6 +103,45 @@ export const IncomeTaxPage = () => {
   const pay = result.rows.find((r) => r.key === "pay")?.value ?? 0;
   const refund = result.rows.find((r) => r.key === "refund")?.value ?? 0;
 
+  // e-Tax のデータ（.xtx）：確定申告書と青色申告決算書
+  const filer = filerFromSettings(settings);
+  const xtxProblems = incomeXtxProblems({ year, filer, input: x, result, biz });
+  const [exportSrc, setExportSrc] = useState<IncomeTaxXtxSource | null>(null);
+  const prepareExport = async () => {
+    try {
+      const [notes, assets, homeRun, depRun] = await Promise.all([
+        repo.getStatementNotes(db, year), repo.getAssets(db), repo.getHomeUseRun(db, year), repo.getDepreciationRun(db, year),
+      ]);
+      const statement = buildBlueStatement({
+        year, accounts, opening, lines, notes, assets, homeUseRates,
+        excludeEntryIds: [homeRun, depRun].filter((v): v is number => v !== null),
+        payeeName: (r) => r.counterpartyId ? counterparties.find((c) => c.id === r.counterpartyId)?.name ?? "（取引先）" : r.subId ? subMap.get(r.subId)?.name ?? "（補助科目）" : "（支払先の指定なし）",
+        deductionLimit: BLUE_DEDUCTION_LIMIT[settings.filing_type],
+      });
+      setExportSrc({
+        year, filer, input: x, result, biz, statement, settings, numbers: {}, createdOn: todayIso(),
+        bookKeeping: isYearCompliant(settings, year) && notes["ebook:filed"] ? 1 : 2,
+      });
+    } catch (e) {
+      toast(`書き出せませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+  const exportXtx = async (numbers: Record<string, string>) => {
+    const src = exportSrc;
+    setExportSrc(null);
+    if (!src) return;
+    try {
+      const xml = buildIncomeTaxXtx({ ...src, numbers });
+      const path = await saveDialog({ defaultPath: `所得税申告_${year}年分.xtx`, filters: [{ name: "e-Tax のデータ", extensions: ["xtx"] }] });
+      if (!path) return;
+      await writeTextFile(path, xml);
+      toast("e-Tax のデータを書き出しました");
+    } catch (e) {
+      toast(`書き出せませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+  const publicRefund = (result.rows.find((r) => r.no === fieldNo(53))?.value ?? 0) > 0 && filer.refund?.kind === "public";
+
   return (
     <div className="page">
       <PageHeader title="所得税" note={`${year}年分 所得税及び復興特別所得税の確定申告書の数字。事業所得は帳簿と決算書から出します。`}>
@@ -112,7 +161,26 @@ export const IncomeTaxPage = () => {
         {changed && <span className="muted">保存していない変更があります</span>}
         <button className="btn ghost" onClick={() => saved && setX(saved)} disabled={!changed}><Undo2 size={16} /> 戻す</button>
         <button className="btn primary" onClick={save} disabled={!admin || !changed}><Save size={16} /> 保存する</button>
+        <button
+          className="btn ghost" onClick={prepareExport} disabled={changed || xtxProblems.length > 0}
+          title={changed ? "保存してから書き出してください" : xtxProblems.join("。")}
+        >
+          <FileDown size={16} /> e-Tax 用に書き出す
+        </button>
       </div>
+      {exportSrc && (
+        <MyNumberDialog
+          persons={[{ key: "self", label: settings.owner_name || "本人", required: publicRefund }, ...myNumberPersons(exportSrc)]}
+          note={[
+            publicRefund ? "公金受取口座で還付を受けるので、本人の個人番号が要ります。" : "入れない人は、個人番号の欄が空になります。",
+            ...incomeXtxNotices(exportSrc).map((n) => `${n}。`),
+          ].join("")}
+          onSubmit={exportXtx} onClose={() => setExportSrc(null)}
+        />
+      )}
+      {xtxProblems.length > 0 && !changed && (
+        <p className="field-note print-skip it-xtx-note">e-Tax 用に書き出すには：{xtxProblems.join("。")}。</p>
+      )}
 
       <section className="sheet sheet-fill">
         <div className="scroll-y">
@@ -241,6 +309,10 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
           <input type="checkbox" checked={x.student} onChange={(e) => set("student", e.target.checked)} disabled={disabled} /> 勤労学生
         </label>
       </div>
+      <label className="field">
+        <span>{reiwaYear(year + 1).replace("年分", "年")}1月1日の住所（今の住所と違うときだけ）</span>
+        <input className="input" value={x.jan1Address} maxLength={100} onChange={(e) => set("jan1Address", e.target.value)} disabled={disabled} />
+      </label>
     </Section>
 
     <Section title="事業所得（営業等）の源泉徴収" note="報酬・料金などで源泉徴収された収入を、支払者ごとに入れます（支払調書や請求書の控えから）。事業所得の金額そのものは、帳簿と決算書から出します。">
@@ -305,10 +377,14 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       </div>
     </Section>
 
-    <Section title="寄附金（ふるさと納税など）" note="寄附金の合計から2千円を引いた額（総所得金額等の40%まで）を控除します。ワンストップ特例は確定申告をすると使えなくなるので、その分もここに入れてください。">
+    <Section title="寄附金（ふるさと納税など）" note="寄附金の合計から2千円を引いた額（総所得金額等の40%まで）を控除します。ワンストップ特例は確定申告をすると使えなくなるので、その分もここに入れてください。「住民税の寄附金税額控除」は、第二表の住民税の欄に書く区分です（ふるさと納税など＝都道府県・市区町村への寄附。条例指定は、住所地の都道府県・市区町村が条例で指定した寄附金）。">
       <RowsEditor
-        rows={x.donations} cols={[{ key: "name", label: "寄附先の名称等", kind: "text" }, { key: "amount", label: "寄附金", kind: "amount", width: 150 }]}
-        onChange={(v) => set("donations", v)} make={() => ({ name: "", amount: 0 })} addLabel="寄附先を足す" disabled={disabled}
+        rows={x.donations}
+        cols={[
+          { key: "name", label: "寄附先の名称等", kind: "text" }, { key: "amount", label: "寄附金", kind: "amount", width: 150 },
+          { key: "local", label: "住民税の寄附金税額控除", kind: "select", width: 260, options: DONATION_LOCALS },
+        ] satisfies Col<Donation>[]}
+        onChange={(v) => set("donations", v)} make={(): Donation => ({ name: "", amount: 0, local: "" })} addLabel="寄附先を足す" disabled={disabled}
       />
     </Section>
 
@@ -333,6 +409,36 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
         <label className="field">
           <span>予定納税額（第1期分・第2期分）</span>
           <Amount value={x.prepaid} onChange={(n) => set("prepaid", n)} disabled={disabled} />
+        </label>
+      </div>
+    </Section>
+
+    <Section title="住民税・事業税に関する事項" note="第二表の「住民税・事業税に関する事項」に書きます。住民税の徴収方法は、給与・公的年金等以外の所得（事業所得など）に係る住民税を、給与から差し引くか、自分で納付するかです。ふるさと納税などの寄附金は、上の寄附金の欄で住民税の区分を選びます。事業税の開業・廃業は、その年の中途に開業・廃業したときだけ入れます（決算書の事業期間にも使います）。">
+      <div className="field-row wrap">
+        <label className="field" style={{ maxWidth: 260 }}>
+          <span>住民税の徴収方法</span>
+          <select className="input" value={x.residentTax} onChange={(e) => set("residentTax", e.target.value as IncomeTaxInput["residentTax"])} disabled={disabled}>
+            <option value="">書かない</option>
+            <option value="special">特別徴収（給与から差し引き）</option>
+            <option value="self">自分で納付</option>
+          </select>
+        </label>
+        <label className="field" style={{ maxWidth: 180 }}>
+          <span>事業税：開業・廃業</span>
+          <select className="input" value={x.businessTax.change} onChange={(e) => set("businessTax", { ...x.businessTax, change: e.target.value as IncomeTaxInput["businessTax"]["change"] })} disabled={disabled}>
+            <option value="">なし</option>
+            <option value="open">開業</option>
+            <option value="close">廃業</option>
+          </select>
+        </label>
+        {x.businessTax.change && (
+          <label className="field" style={{ maxWidth: 180 }}>
+            <span>{x.businessTax.change === "open" ? "開業" : "廃業"}した日</span>
+            <input className="input" type="date" value={x.businessTax.changeDate} onChange={(e) => set("businessTax", { ...x.businessTax, changeDate: e.target.value })} disabled={disabled} />
+          </label>
+        )}
+        <label className="check" style={{ alignSelf: "flex-end" }}>
+          <input type="checkbox" checked={x.businessTax.otherPrefecture} onChange={(e) => set("businessTax", { ...x.businessTax, otherPrefecture: e.target.checked })} disabled={disabled} /> 他の都道府県に事務所等がある
         </label>
       </div>
     </Section>
@@ -495,7 +601,7 @@ const SecondTable = ({ result, x, familySalary }: { result: IncomeTaxResult; x: 
       <p className="it-plain">専従者給与の合計額：{yen(familySalary)}円（氏名・従事月数は決算書の「月別売上・給料など」に書き込んだもの）</p>
 
       <p className="field-note">
-        個人番号は domble に保存しません（e-Tax 用のデータを書き出すときに入れる予定です）。住民税・事業税に関する事項は、確定申告書等作成コーナーや e-Tax で入れてください。
+        個人番号は domble に保存しません（e-Tax 用のデータを書き出すときに入れます）。住民税・事業税に関する事項は、入力の「住民税・事業税に関する事項」で入れたものを書き出します。
       </p>
     </div>
   );

@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：認定住宅等新築等特別税額控除額の計算明細書
+version：6.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB835-6-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="6.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB835-6-0group">
+<xsd:sequence>
+<xsd:element name="KOB835">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="JRA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="JRC00000" type="JRC00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　共有者の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRD00000" type="JRD00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　認定住宅等に係る事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRE00000" type="JRE00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　税額控除限度額の計算等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00000" type="JRF00000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"４　本年分で差し引く認定住宅等新築等特別税額控除額の計算等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB835-6-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="JRC00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="JRC00010" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRC00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRC00030" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRC00040" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JRD00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="JRD00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRD00020" type="JRD00020-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総床面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRD00030" type="JRD00030-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)のうち居住用部分の床面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JRD00050" type="JRD00050-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRD00060" type="JRD00060-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JRD00070" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JRD00080" type="JRD00080-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JRE00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="JRE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"標準的なかかり増し費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの持分に相当する費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRE00030" type="JRE00030-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用部分に相当する費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRE00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(9)と(10)のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年から繰り越された控除未済税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JRF00000-6-0type">
+<xsd:sequence>
+
+<xsd:element name="JRF00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税総所得金額に対する税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配当控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"投資税額等控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"政党等寄附金等特別控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅耐震改修特別控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅特定改修特別税額控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((14)－(15)－(16)－(17)－(18)－(19)－(20))"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定住宅等新築等特別税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JRF00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年に繰り越す控除未済税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="JRD00020-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JRD00030-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JRD00050-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JRD00060-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JRD00080-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JRE00030-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="JRD00020-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="JRD00020-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JRD00030-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="JRD00030-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JRD00050-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="JRD00050-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JRD00060-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="JRD00060-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JRE00030-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="JRE00030-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

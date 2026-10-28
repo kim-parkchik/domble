@@ -1,0 +1,1043 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：地方活力向上地域等において雇用者の数が増加した場合の所得税額の特別控除に関する明細書
+version：4.0
+Date：2024年08月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB977-4-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="4.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB977-4-0group">
+<xsd:sequence>
+<xsd:element name="KOB977">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="DXK00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXL00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="DXM00000" type="DXM00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定地方活力向上地域等特定業務施設整備計画に関する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00000" type="DXN00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所基準雇用者数に係る本年税額控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXO00000" type="DXO00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数に係る本年税額控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXP00000" type="DXP00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基準雇用者数に関する明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00000" type="DXQ00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数に関する明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB977-4-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="DXM00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="DXM00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXM00015" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新設特定業務施設の事業供用日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXM00030" type="DXM00030-4-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業実施地域"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DXN00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="DXN00010" type="DXN00010-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00020" type="DXN00020-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00030" type="DXN00030-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整地方事業所基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00040" type="DXN00040-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定新規雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00050" type="DXN00050-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定新規雇用者基礎数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00060" type="DXN00060-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転型特定新規雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00070" type="DXN00070-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転型特定新規雇用者基礎数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00080" type="DXN00080-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新規雇用者総数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00090" type="DXN00090-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定非新規雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00100" type="DXN00100-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定非新規雇用者基礎数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00110" type="DXN00110-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転型地方事業所基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00120" type="DXN00120-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転型新規雇用者総数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00130" type="DXN00130-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転型特定非新規雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00140" type="DXN00140-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"移転型特定非新規雇用者基礎数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00150" type="DXN00150-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"対象移転型特定非新規雇用者基礎数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額超過構成額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXN00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DXO00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="DXO00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基準年"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXO00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXO00080" type="DXO00080-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXO00090" type="DXO00090-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXO00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXO00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別税額控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXO00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引本年税額基準額残額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXO00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXO00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額超過構成額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXO00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXO00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税額の特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DXP00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="DXP00010" type="DXP00010-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"適用年の12月31日における雇用者の数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXP00020" type="DXP00020-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"適用年の前年12月31日における雇用者の数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXP00030" type="DXP00030-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(32)のうち適用年の12月31日において高年齢雇用者に該当する者の数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXP00040" type="DXP00040-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DXQ00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="DXQ00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00020" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"適用年"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)が令和６年３月31日以前である場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数の基礎となる地方事業所基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00050" type="DXQ00050-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00060" type="DXQ00060-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)が令和６年４月１日以後である場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措法第10条の５第３項第16号イに掲げる数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00090" type="DXQ00090-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00100" type="DXQ00100-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措法第10条の５第３項第16号ロに掲げる数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00120" type="DXQ00120-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00130" type="DXQ00130-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数の基礎となる雇用者の数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00150" type="DXQ00150-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00160" type="DXQ00160-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)が令和６年３月31日以前である場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数の基礎となる地方事業所基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00200" type="DXQ00200-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00210" type="DXQ00210-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)が令和６年４月１日以後である場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措法第10条の５第３項第16号イに掲げる数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00240" type="DXQ00240-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00250" type="DXQ00250-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00260" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"措法第10条の５第３項第16号ロに掲げる数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00270" type="DXQ00270-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00280" type="DXQ00280-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数の基礎となる雇用者の数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00300" type="DXQ00300-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00310" type="DXQ00310-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DXQ00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方事業所特別基準雇用者数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DXQ00330" type="DXQ00330-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DXQ00340" type="DXQ00340-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="DXM00030-4-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00010-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00020-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00030-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00040-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00050-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00060-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00070-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00080-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00090-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00100-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00110-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00120-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00130-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00140-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXN00150-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXO00080-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXO00090-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXP00010-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXP00020-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXP00030-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXP00040-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00050-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00060-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00090-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00100-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00120-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00130-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00150-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00160-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00200-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00210-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00240-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00250-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00270-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00280-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00300-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00310-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00330-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DXQ00340-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="DXN00010-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00010-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00020-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00020-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00030-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00030-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00040-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00040-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00050-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00050-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00060-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00060-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00070-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00070-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00080-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00080-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00090-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00090-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00100-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00100-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00110-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00110-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00120-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00120-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00130-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00130-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00140-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00140-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXN00150-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXN00150-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXO00080-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXO00080-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXO00090-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXO00090-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXP00010-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXP00010-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXP00020-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXP00020-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXP00030-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXP00030-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXP00040-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXP00040-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00050-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00050-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00060-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00060-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00090-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00090-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00100-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00100-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00120-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00120-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00130-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00130-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00150-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00150-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00160-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00160-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00200-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00200-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00210-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00210-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00240-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00240-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00250-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00250-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00270-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00270-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00280-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00280-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00300-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00300-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00310-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00310-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00330-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00330-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DXQ00340-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="DXQ00340-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

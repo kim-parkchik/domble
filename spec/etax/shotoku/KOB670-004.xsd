@@ -1,0 +1,784 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：公的年金等に係る雑所得以外の合計所得金額の計算書
+version：4.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB670-4-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="4.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB670-4-0group">
+<xsd:sequence>
+<xsd:element name="KOB670">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BBA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BBC00000" type="BBC00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00000" type="BBD00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2　損益の通算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00000" type="BBE00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3　公的年金等に係る雑所得以外の合計所得金額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB670-4-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BBC00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="BBC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　公的年金等に係る雑所得以外の経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　山林"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00340" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　退職"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00380" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"E"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00390" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00430" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00440" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00470" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の配当等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00490" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00500" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBC00510" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"F　先物取引等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBC00520" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00530" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「譲渡」の通算後"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBC00540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BBD00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="BBD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"通算前"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　公的年金等に係る雑所得以外の経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期　総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離譲渡(特定損失額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第1次通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　公的年金等に係る雑所得以外の経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期　総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離譲渡(特定損失額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第2次通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　公的年金等に係る雑所得以外の経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期　総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離譲渡(特定損失額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　退職"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00310" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第3次通算後"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　公的年金等に係る雑所得以外の経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00340" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期　総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離譲渡(特定損失額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　退職"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00420" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A　公的年金等に係る雑所得以外の経常所得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00440" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00450" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BBD00460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期　総合譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00470" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期　分離譲渡(特定損失額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡・一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00490" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"C　山林"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBD00500" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D　退職"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BBD00510" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損失額又は所得金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BBE00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="BBE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(9)欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(10)欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(12)欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(13)欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BBE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"公的年金等に係る雑所得以外の合計所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

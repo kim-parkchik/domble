@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：相続財産の取得費に加算される相続税の計算明細書(平成27年1月1日以後相続開始用)
+version：2.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC038-2-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="2.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC038-2-0group">
+<xsd:sequence>
+<xsd:element name="KOC038">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="KBA00000" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡者（住所）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡者（氏名）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBC00000" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人（住所）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBD00000" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人（氏名）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBE00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続の開始があった日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBF00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税の申告書を提出した日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBG00000" type="KBG00000-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税の申告書の提出先"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KBH00000" type="KBH00000-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続財産の取得費に加算される相続税額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00000" type="KBI00000-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"贈与税額控除又は相次相続控除を受けている場合の（C）の相続税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC038-2-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KBH00000-2-0type">
+<xsd:sequence>
+
+<xsd:element name="KBH00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBH00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した相続財産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBH00030" type="KBH00030-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00040" type="KBH00040-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00050" type="KBH00050-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利用状況"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBH00070" type="KBH00070-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00080" type="KBH00080-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00090" type="KBH00090-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00100" type="KBH00100-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00110" type="KBH00110-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KBH00120" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した年月日"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税評価額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBH00140" type="KBH00140-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00160" type="KBH00160-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KBH00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費に加算される相続税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBH00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBH00200" type="KBH00200-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00220" type="KBH00220-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本書き"</xsd:appinfo>
+<xsd:appinfo>horizontal</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KBH00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税の課税価格"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBH00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KBI00000-2-0type">
+<xsd:sequence>
+
+<xsd:element name="KBI00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税の申告書第１表の（２２）の小計の額がある場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBI00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"暦年課税分の贈与税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相次相続控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続時精算課税分の贈与税額控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KBI00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税の申告書第１表の（２２）の小計の額がない場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBI00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算出税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税額の2割加算が行われる場合の加算金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBI00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配偶者の税額軽減額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"未成年者控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"障害者控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医療法人持分税額控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KBI00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KBI00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KBI00200" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KBI00210" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="KBG00000-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00030-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="60"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00040-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="14"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00050-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="7"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00070-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00080-2-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00090-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00100-2-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00110-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00140-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00160-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00200-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KBH00220-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="KBH00080-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="KBH00080-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KBH00100-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="KBH00100-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：株式の異動明細書
+version：4.0
+Date：2023年09月05日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC090-4-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="4.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC090-4-0group">
+<xsd:sequence>
+<xsd:element name="KOC090">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BIH00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BIB00000" type="BIB00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIC00000" type="BIC00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="BID00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIE00000" type="BIE00000-4-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銘柄"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BIF00000" type="BIF00000-4-0type" minOccurs="0" maxOccurs="10">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="BIG00000" type="BIG00000-4-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他参考となるべき事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC090-4-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BIB00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="BIB00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIB00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（前住所）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIB00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BIB00040" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIB00050" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BIB00060" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIB00070" type="gen:SHOKUGYOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BIC00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="BIC00010" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIC00020" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BIF00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="BIF00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"異動年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00020" type="BIF00020-4-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"異動事由"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手方の氏名・名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手方の住所・所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00050" type="BIF00050-4-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手方との関係"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00060" type="BIF00060-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"異動した株数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00070" type="BIF00070-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得又は譲渡の単価"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00090" type="BIF00090-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"異動後の株式の総数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00100" type="BIF00100-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定残株数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BIF00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１株当たりの取得費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="BIE00000-4-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BIF00020-4-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BIF00050-4-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BIF00060-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BIF00070-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BIF00090-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BIF00100-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:minInclusive value="0"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BIG00000-4-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="300"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="BIF00060-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="BIF00060-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BIF00070-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="BIF00070-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BIF00090-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="BIF00090-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BIF00100-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="BIF00100-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,2455 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：譲渡所得の内訳書(確定申告書付表)【総合譲渡用】
+version：8.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC020-8-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="8.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC020-8-0group">
+<xsd:sequence>
+<xsd:element name="KOC020">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOC020-1" type="KOC020-1-8-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"1面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOC020-2" type="KOC020-2-8-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"2面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC020-8-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOC020-1-8-0type">
+<xsd:sequence>
+
+<xsd:element name="EBA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBA00010" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBB00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBB00030" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBB00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBB00050" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBB00060" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBB00070" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBB00080" type="gen:SHOKUGYOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBC00010" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBC00020" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡（売却）された資産について"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡された資産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00020" type="EBD00020-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00030" type="EBD00030-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00040" type="EBD00040-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利用状況"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00410" type="EBD00410-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00420" type="EBD00420-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00430" type="EBD00430-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00050" type="EBD00050-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00060" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBD00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡先（買主）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00110" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（所在地）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00120" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名（名称）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00130" type="gen:shokugyo" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00140" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売買契約の日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00150" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"引き渡した日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00160" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"登記、登録等の日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBD00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"参考事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売却理由"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00220" type="EBD00220-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買主から頼まれたため"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00230" type="EBD00230-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"他の資産を購入するため"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00240" type="EBD00240-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業資金を捻出するため"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00250" type="EBD00250-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借入金を返済するため"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00260" type="EBD00260-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00300" type="EBD00300-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他（理由）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBD00310" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"代金の受領状況"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00320" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"代金の受領　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00330" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBD00350" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"未収金"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBD00360" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBD00440" type="EBD00440-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00460" type="EBD00460-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBD00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡（売却）された資産の購入代金などについて"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入に要した費用"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入に要した費用（譲渡資産の購入代金）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入先・支払先等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（所在地）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00050" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名（名称）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBE00060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入・支払年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00260" type="EBE00260-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00280" type="EBE00280-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入・支払価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBE00080" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"購入に要した費用（追加項目分）　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00090" type="EBE00090-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"費用の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入先・支払先等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00110" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（所在地）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00120" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名（名称）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBE00130" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入・支払年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00290" type="EBE00290-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00310" type="EBE00310-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"購入・支払価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBE00320" type="EBE00320-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00340" type="EBE00340-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBE00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の購入価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償却費相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBE00240" type="EBE00240-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00350" type="EBE00350-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00370" type="EBE00370-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBE00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡（売却）するために支払った費用について"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBF00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"譲渡に要した費用　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBF00020" type="EBF00020-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"費用の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBF00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（所在地）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00050" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名（名称）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBF00060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00090" type="EBF00090-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00110" type="EBF00110-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBF00120" type="EBF00120-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00140" type="EBF00140-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBF00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡費用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00030" type="EBG00030-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文の区分（所法）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00040" type="EBG00040-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文の区分（措法）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00050" type="EBG00050-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段　条1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00060" type="EBG00060-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段　条2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00070" type="EBG00070-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段　条1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00080" type="EBG00080-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段　条2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00440" type="EBG00440-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00460" type="EBG00460-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00120" type="EBG00120-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00470" type="EBG00470-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00490" type="EBG00490-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00500" type="EBG00500-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00510" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00520" type="EBG00520-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00530" type="EBG00530-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00550" type="EBG00550-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00560" type="EBG00560-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00570" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00580" type="EBG00580-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00165" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　上段合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00590" type="EBG00590-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00600" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00610" type="EBG00610-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00175" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00178" type="EBG00178-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00620" type="EBG00620-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00640" type="EBG00640-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00650" type="EBG00650-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00660" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00670" type="EBG00670-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00185" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00680" type="EBG00680-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00690" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00700" type="EBG00700-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00710" type="EBG00710-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00720" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00730" type="EBG00730-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00195" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"長期"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00220" type="EBG00220-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文の区分（所法）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00230" type="EBG00230-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文の区分（措法）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00240" type="EBG00240-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段　条1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00250" type="EBG00250-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段　条2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00260" type="EBG00260-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段　条1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00270" type="EBG00270-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段　条2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00740" type="EBG00740-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00750" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00760" type="EBG00760-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00310" type="EBG00310-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00770" type="EBG00770-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00780" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00790" type="EBG00790-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00800" type="EBG00800-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00810" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00820" type="EBG00820-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00830" type="EBG00830-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00840" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00850" type="EBG00850-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00860" type="EBG00860-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00870" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00880" type="EBG00880-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　上段合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00890" type="EBG00890-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00900" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00910" type="EBG00910-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00380" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBG00390" type="EBG00390-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00920" type="EBG00920-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00930" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00940" type="EBG00940-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBG00950" type="EBG00950-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00960" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00970" type="EBG00970-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00980" type="EBG00980-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00990" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG01000" type="EBG01000-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG01010" type="EBG01010-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG01020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG01030" type="EBG01030-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBG00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOC020-2-8-0type">
+<xsd:sequence>
+
+<xsd:element name="EBH00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換（交換・代替）資産として取得された（される）資産について"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBH00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換資産等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBH00020" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"買換資産等　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBH00030" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00040" type="EBH00040-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00050" type="EBH00050-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00060" type="EBH00060-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"用途"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"契約（予定）年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00080" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得（予定）年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00090" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"使用開始（予定）日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBH00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得された（される）資産の購入代金などについて"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBH00210" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"取得された（される）資産の購入代金等　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBH00220" type="EBH00220-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"費用の内容"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBH00240" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（所在地）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00250" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名（名称）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBH00260" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBH00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBH00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換（交換取得・代替）資産の取得価額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBI00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBI00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定の事業用資産の買換え（交換）の場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBI00020" type="EBI00020-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期・長期の区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00030" type="EBI00030-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段　条1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00040" type="EBI00040-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段　条2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00050" type="EBI00050-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段　条1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00060" type="EBI00060-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段　条2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBI00090" type="EBI00090-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00100" type="EBI00100-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"中段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBI00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBI00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"固定資産の交換・収用代替の場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBI00210" type="EBI00210-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"短期・長期の区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00220" type="EBI00220-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文の区分（所法）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00230" type="EBI00230-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文の区分（措法）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00240" type="EBI00240-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段　条１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00250" type="EBI00250-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段　条１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EBI00280" type="EBI00280-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00290" type="EBI00290-8-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"中段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"下段"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EBI00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EBI00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="EBD00020-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="60"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00030-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="18"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00040-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="18"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00410-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00420-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="18"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00430-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00050-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="18"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EBD00220-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBD00230-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBD00240-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBD00250-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBD00260-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EBD00300-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00440-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBD00460-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00260-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00280-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00090-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00290-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00310-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00320-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00340-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00240-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00350-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBE00370-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBF00020-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBF00090-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBF00110-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBF00120-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBF00140-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EBG00030-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBG00040-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EBG00050-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00060-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00070-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00080-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00440-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00460-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00120-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00470-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00490-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00500-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00520-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00530-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00550-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00560-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00580-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00590-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00610-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00178-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00620-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00640-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00650-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00670-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00680-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00700-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00710-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00730-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EBG00220-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBG00230-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EBG00240-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00250-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00260-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00270-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00740-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00760-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00310-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00770-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00790-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00800-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00820-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00830-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00850-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00860-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00880-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00890-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00910-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00390-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00920-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00940-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00950-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00970-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG00980-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG01000-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG01010-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBG01030-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBH00040-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBH00050-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBH00060-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBH00220-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EBI00020-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EBI00030-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00040-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00050-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00060-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00090-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00100-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EBI00210-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBI00220-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EBI00230-8-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EBI00240-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00250-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00280-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EBI00290-8-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="EBG00050-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00050-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBG00060-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00060-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBG00070-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00070-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBG00080-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00080-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBG00240-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00240-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBG00250-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00250-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBG00260-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00260-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBG00270-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBG00270-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBI00030-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBI00030-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBI00040-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBI00040-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBI00050-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBI00050-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBI00060-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBI00060-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBI00240-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBI00240-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EBI00250-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="EBI00250-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,699 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分の有限責任事業組合の組合事業に係る所得に関する計算書
+version：2.0
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB690-2-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="2.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB690-2-0group">
+<xsd:sequence>
+<xsd:element name="KOB690">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOB690-1" type="KOB690-1-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"有限責任事業組合の組合事業に係る所得に関する計算書(一面)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB690-2" type="KOB690-2-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(付表)組合事業に係る事業所得等の必要経費不算入損失額の計算書(二面)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB690-2-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOB690-1-2-0type">
+<xsd:sequence>
+
+<xsd:element name="HEA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEB00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税務署名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEC00000" type="gen:TEISYUTSU_DAYref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HED00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　住所及び氏名等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HED00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所(又は居所)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HED00020" type="HED00020-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税地区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HED00030" type="gen:zipcode" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HED00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HED00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(納税地)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HED00060" type="gen:NOZEISHA_ZIPref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HED00070" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HED00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HED00090" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HED00100" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HED00110" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2　組合に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEE00010" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEE00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合の主たる事務所の所在地"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEE00030" type="gen:zipcode" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEE00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEE00050" type="HEE00050-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合事業の内容"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEE00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合の計算期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEE00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEE00080" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3　組合事業から生じた各種所得の内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"営業等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"農業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加所得1"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00200" type="HEF00200-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加所得名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加所得2"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEF00250" type="HEF00250-2-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"追加所得名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEF00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEF00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得、不動産所得、山林所得の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"4　調整出資金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEG00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"出資の価額の合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEG00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年以前に終了した計算期間の終了の時までの合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEG00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に終了した計算期間の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEG00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEG00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各種所得金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEG00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年以前に終了した計算期間の終了の時までの合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEG00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に終了した計算期間の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEG00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEG00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合からの分配額の合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEG00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年以前に終了した計算期間の終了の時までの合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEG00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に終了した計算期間の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEG00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEG00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整出資金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEH00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"5　調整出資金額超過損失額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEH00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整出資金額超過損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEI00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEI00010" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEI00020" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB690-2-2-0type">
+<xsd:sequence>
+
+<xsd:element name="HEJ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　調整出資金額超過損失額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEJ00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整出資金額超過損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEK00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2　必要経費不算入損失額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEK00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得の損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち事業所得(営業等)の損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち事業所得(農業)の損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((3)＋(4))"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産所得の損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林所得の損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得、不動産所得、山林所得の損失額の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEK00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"営業等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEK00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得(営業等)に係る必要経費不算入損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合事業に係る青色申告決算書(一般用)の(43)(収支内訳書(一般用)の(21))の金額＋(9)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEK00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"農業"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEK00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所得(農業)に係る必要経費不算入損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合事業に係る青色申告決算書(農業所得用)の(46)(収支内訳書(農業所得用)の(17))の金額＋(11)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEK00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEK00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産所得に係る必要経費不算入損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合事業に係る青色申告決算書(不動産所得用)の(21)(収支内訳書(不動産所得用)の(15))の金額＋(13)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HEK00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HEK00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"山林所得に係る必要経費不算入損失額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HEK00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"組合事業に係る山林所得収支内訳書の(17)(山林所得収支内訳書(課税事業者用)の(21))の金額＋(15)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:complexType name="HED00020-2-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="HEE00050-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="120"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HEF00200-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HEF00250-2-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

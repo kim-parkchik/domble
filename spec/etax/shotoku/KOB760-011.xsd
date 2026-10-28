@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：一般試験研究費に係る所得税額の特別控除に関する明細書
+version：11.0
+Date：2024年08月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB760-11-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="11.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB760-11-0group">
+<xsd:sequence>
+<xsd:element name="KOB760">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="HMA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="HMC00000" type="HMC00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB760-11-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="HMC00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="HMC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"同上のうち特別試験研究費以外の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（1）のうち一般試験研究費の額に係る税額控除の対象とする特別試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除対象試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00015" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和８年分以前の場合の試験研究費割合の計算　平均売上金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00020" type="HMC00020-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和８年分以前の場合の試験研究費割合の計算　試験研究費割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HMC00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増減試験研究費割合の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="HMC00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"比較試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増減試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00230" type="HMC00230-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増減試験研究費割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HMC00255" type="HMC00255-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除割合の計算　(6)&gt;10％の場合の控除割増率"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00290" type="HMC00290-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除割合の計算　(9)&gt;12％かつ令和８年分以前の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00300" type="HMC00300-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除割合の計算　(10)及び(12)以外の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00260" type="HMC00260-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除割合の計算　税額控除割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="HMC00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税額控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00280" type="HMC00280-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額基準額の計算　令和８年分以前の場合　(6)&gt;10％の場合の特例加算割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00320" type="HMC00320-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額基準額の計算　令和８年分以前の場合　(9)&gt;４％の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00330" type="HMC00330-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額基準額の計算　令和８年分以前の場合　(9)&lt;マイナス４％の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額基準額の計算　本年税額基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年税額控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整前事業所得税額超過構成額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="HMC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税額の特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="HMC00020-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00230-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00255-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00290-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00300-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00260-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00280-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00320-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="HMC00330-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="HMC00020-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00020-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00230-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00230-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00255-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00255-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00290-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00290-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00300-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00300-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00260-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00260-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00280-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00280-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00320-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00320-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="HMC00330-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="HMC00330-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

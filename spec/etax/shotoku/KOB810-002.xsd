@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：試験研究を行った場合の所得税額の特別控除における平均売上金額及び比較試験研究費の額の計算に関する明細書
+version：2.0
+Date：2020年08月31日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB810-2-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="2.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB810-2-0group">
+<xsd:sequence>
+<xsd:element name="KOB810">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="JIA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JIB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="JIC00000" type="JIC00000-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　平均売上金額の計算に関する明細書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JID00000" type="JID00000-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2　比較試験研究費の額の計算に関する明細書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB810-2-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="JIC00000-2-0type">
+<xsd:sequence>
+
+<xsd:element name="JIC00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"売上調整年分　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JIC00020" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JIC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JIC00040" type="JIC00040-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業を営んでいた月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JIC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"改定売上金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JIC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JIC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JIC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"平均売上金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JID00000-2-0type">
+<xsd:sequence>
+
+<xsd:element name="JID00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"調整対象年分　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JID00020" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JID00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JID00040" type="JID00040-2-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業を営んでいた月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JID00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"改定試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JID00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JID00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"比較試験研究費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="JIC00040-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JID00040-2-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="JIC00040-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="JIC00040-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="JID00040-2-0type">
+<xsd:simpleContent>
+<xsd:extension base="JID00040-2-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

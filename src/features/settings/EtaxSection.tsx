@@ -111,10 +111,34 @@ export const EtaxSection = () => {
             <input className="input" value={x.office_phone} inputMode="tel" maxLength={20} onChange={(e) => set("office_phone", e.target.value)} disabled={!admin} />
           </label>
         </div>
-        <label className="field">
-          <span>1月1日の住所（今の住所と違うときだけ）</span>
-          <input className="input" value={x.jan1_address} maxLength={100} onChange={(e) => set("jan1_address", e.target.value)} disabled={!admin} />
-        </label>
+        <p className="field-note">1月1日の住所（今の住所と違うときだけ）は、年分ごとに「所得税」の入力で入れます。</p>
+
+        <h3 className="sheet-sub">青色申告決算書の欄・依頼している税理士等</h3>
+        <div className="field-row wrap">
+          <label className="field">
+            <span>事業所の所在地（住所と違うときだけ）</span>
+            <input className="input" value={x.office_address} maxLength={100} onChange={(e) => set("office_address", e.target.value)} disabled={!admin} />
+          </label>
+          <label className="field" style={{ maxWidth: 260 }}>
+            <span>加入団体名</span>
+            <input className="input" value={x.union_name} placeholder="例：〇〇青色申告会" maxLength={20} onChange={(e) => set("union_name", e.target.value)} disabled={!admin} />
+          </label>
+        </div>
+        <div className="field-row wrap">
+          <label className="field" style={{ maxWidth: 220 }}>
+            <span>税理士等の氏名（名称）</span>
+            <input className="input" value={x.agent_name} maxLength={30} onChange={(e) => set("agent_name", e.target.value)} disabled={!admin} />
+          </label>
+          <label className="field">
+            <span>事務所の所在地</span>
+            <input className="input" value={x.agent_address} maxLength={100} onChange={(e) => set("agent_address", e.target.value)} disabled={!admin} />
+          </label>
+          <label className="field" style={{ maxWidth: 200 }}>
+            <span>電話番号</span>
+            <input className="input" value={x.agent_phone} inputMode="tel" maxLength={20} onChange={(e) => set("agent_phone", e.target.value)} disabled={!admin} />
+          </label>
+        </div>
+        <p className="field-note">税理士等に依頼していなければ空のままにします。依頼していれば、確定申告書の税理士署名欄と決算書の「依頼税理士等」の欄に書きます。</p>
 
         <h3 className="sheet-sub">還付される税金の受取場所</h3>
         <label className="field" style={{ maxWidth: 320 }}>

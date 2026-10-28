@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分医療費控除の明細書【内訳書】(兼 医療費通知の記載事項)
+version：18.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB560-18-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="18.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB560-18-0group">
+<xsd:sequence>
+<xsd:element name="KOB560">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="DHA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="DHB00000" type="DHB00000-18-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHE00000" type="DHE00000-18-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　医療費通知に関する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00000" type="DHC00000-18-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　医療費(上記１以外)の明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHD00000" type="DHD00000-18-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB560-18-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="DHB00000-18-0type">
+<xsd:sequence>
+
+<xsd:element name="DHB00015" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHB00020" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DHE00000-18-0type">
+<xsd:sequence>
+
+<xsd:element name="DHE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医療費通知に記載された医療費の額（自己負担額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）のうちその年中に実際に支払った医療費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）のうち生命保険や社会保険（高額療養費など）などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DHC00000-18-0type">
+<xsd:sequence>
+
+<xsd:element name="DHC00010" minOccurs="0" maxOccurs="16">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医療を受けた方の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00050" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"病院・薬局などの支払先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医療費の区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00230" type="DHC00230-18-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療・治療"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00240" type="DHC00240-18-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医薬品購入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00250" type="DHC00250-18-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"介護保険サービス"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00260" type="DHC00260-18-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の医療費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DHC00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払った医療費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DHC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち生命保険や社会保険（高額療養費など）などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DHC00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２の次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払った医療費の額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00170" type="DHC00170-18-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DHC00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち生命保険や社会保険（高額療養費など）などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00200" type="DHC00200-18-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DHC00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２の合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払った医療費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DHC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）のうち生命保険や社会保険（高額療養費など）などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DHC00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医療費の合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DHC00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"A"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHC00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"B"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="DHD00000-18-0type">
+<xsd:sequence>
+
+<xsd:element name="DHD00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払った医療費（合計）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険金などで補填される金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額（A－B）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"D*０．０５"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"Eと10万円のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DHD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"医療費控除額（C－F）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="DHC00230-18-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="DHC00240-18-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="DHC00250-18-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="DHC00260-18-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="DHC00170-18-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DHC00200-18-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

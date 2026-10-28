@@ -1,0 +1,2837 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　(特定増改築等)住宅借入金等特別控除額の計算明細書(重複適用分)
+version：14.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB131-14-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="14.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB131-14-0group">
+<xsd:sequence>
+<xsd:element name="KOB131">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOB131-1" type="KOB131-1-14-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額の計算明細書(一面)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB131-2" type="KOB131-2-14-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額の計算(二面)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB131-3" type="KOB131-3-14-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"(付表)連帯債務がある場合の住宅借入金等の年末残高の計算明細書(三面)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB131-14-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOB131-1-14-0type">
+<xsd:sequence>
+
+<xsd:element name="ASA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　住所及び氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASB00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASB00020" type="gen:NOZEISHA_ZIPref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00030" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00040" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASB00050" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASB00060" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(共有者の氏名)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASC00010" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00030" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASC00040" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2　新築又は購入した家屋等に係る事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASD00020" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"契約日契約区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASD00115" type="ASD00115-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"契約区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00130" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"契約日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASD00023" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"補助金等控除前の取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00027" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受ける補助金等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00040" type="ASD00040-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総(床)面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00050" type="ASD00050-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち居住用部分の(床)面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASD00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00073" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"補助金等控除前の取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00077" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受ける補助金等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00090" type="ASD00090-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総(床)面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASD00100" type="ASD00100-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"うち居住用部分の(床)面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3　増改築等をした部分に係る事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASE00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住開始年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"契約日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00013" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"補助金等控除前の増改築等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00017" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付を受ける補助金等の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(ソ)のうち居住用部分の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE00080" type="ASE00080-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増改築等をした家屋の総床面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASE30000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産番号"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASE30010" type="ASE30010-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE30020" type="ASE30020-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASE20000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"5　家屋の取得対価の額又は増改築等の費用の額に課されるべき消費税額等に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASE20010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASE20013" type="ASE20013-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"なし又は5％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE20016" type="ASE20016-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"8％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASE20019" type="ASE20019-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"10％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASE20020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税率が10％の場合に(ウ)、(ソ)に含まれる消費税額及び地方消費税額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"4　家屋や土地等の取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(A)家屋"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00030" type="ASF00030-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00040" type="ASF00040-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00043" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((オ)、(コ)、(チ))*(1)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00047" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅取得等資金の贈与の特例を受けた金額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの持分に係る取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(B)土地等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00080" type="ASF00080-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00090" type="ASF00090-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00093" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((オ)、(コ)、(チ))*(1)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00097" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅取得等資金の贈与の特例を受けた金額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの持分に係る取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(C)合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00113" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((オ)、(コ)、(チ))*(1)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00117" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅取得等資金の贈与の特例を受けた金額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの持分に係る取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(D)増改築等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASF00150" type="ASF00150-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00160" type="ASF00160-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00163" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((オ)、(コ)、(チ))*(1)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00167" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅取得等資金の贈与の特例を受けた金額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASF00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの持分に係る取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASF00175" type="ASF00175-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"6　特例対象個人に係る事項等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"7　居住用部分の家屋又は土地等に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASG00005" type="ASG00005-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築、購入及び増改築等に係る住宅借入金等の年末残高　区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(E)住宅のみ"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASG00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築、購入及び増改築等に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00030" type="ASG00030-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務に係るあなたの負担割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)と(7)のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00060" type="ASG00060-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用部分に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASG00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(F)土地等のみ"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASG00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築、購入及び増改築等に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00100" type="ASG00100-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務に係るあなたの負担割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)と(7)のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00130" type="ASG00130-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用部分に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASG00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(G)住宅及び土地等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASG00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築、購入及び増改築等に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00170" type="ASG00170-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務に係るあなたの負担割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)と(7)のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00200" type="ASG00200-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用部分に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASG00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(H)増改築等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASG00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"新築、購入及び増改築等に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00250" type="ASG00250-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務に係るあなたの負担割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)と(7)のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00310" type="ASG00310-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASG00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用部分に係る住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASG00355" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASL00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"8　特定の増改築等に係る事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASL00105" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"高齢者等居住改修工事等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASL00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"断熱改修工事等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASL00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定断熱改修工事等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASL00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定多世帯同居改修工事等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASL00225" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定耐久性向上改修工事等の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASL00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定の増改築等工事の費用の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASL00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたの持分に係る特定の増改築等工事の費用の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASL00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定増改築等住宅借入金等、特定断熱改修住宅借入金等又は特定多世帯同居改修住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASM00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"9　(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASM00015" type="ASM00015-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASM00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASM00042" type="ASM00042-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"8％・10％同一年中取得"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASM00044" type="ASM00044-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋・増改築等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASM00046" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(ウ)又は(ソ)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASM00048" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(A)の(4)又は(D)の(4)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASM00050" type="ASM00050-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"重複適用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASM00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"二面の(23)の(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASI10000" type="ASI10000-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"10　控除証明書の交付を要しない場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASI20000" type="ASI20000-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電子交付希望区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB131-2-14-0type">
+<xsd:sequence>
+
+<xsd:element name="ASN00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASO00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASP00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅借入金等の年末残高の合計額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASP00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASQ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の住宅に係る住宅借入金等特別控除の適用"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASQ00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年中に居住の用に供した場合　住宅の取得等が(特例)特別特例取得に該当するとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASQ00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASQ00343" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和6年中又は令和7年中に入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASQ00346" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASQ00350" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和4年中又は令和5年中に入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASQ00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASQ00370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　中古住宅又は増改築等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASQ00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASQ00290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"平成28年1月1日から令和3年12月31日までの間に居住の用に供した場合　住宅の取得等が(特別)特定取得に該当するとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASQ00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASQ00310" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"平成28年1月1日から令和3年12月31日までの間に居住の用に供した場合　住宅の取得等が(特別)特定取得に該当しないとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASQ00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定住宅等の新築取得等に係る住宅借入金等特別控除の特例を選択　認定長期優良住宅又は認定低炭素住宅"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年中に居住の用に供した場合　住宅の取得等が(特例)特別特例取得に該当するとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS00133" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和6年中又は令和7年中に特例対象個人以外が入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS00136" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和4年中若しくは令和5年中に入居又は令和6年中若しくは令和7年中に特例対象個人が入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　中古住宅"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"平成28年1月1日から令和3年12月31日までの間に居住の用に供した場合　住宅の取得等が(特別)特定取得に該当するとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"平成28年1月1日から令和3年12月31日までの間に居住の用に供した場合　住宅の取得等が(特別)特定取得に該当しないとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS10000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定住宅等の新築取得等に係る住宅借入金等特別控除の特例を選択　ZEH水準省エネ住宅"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS10003" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和6年中又は令和7年中に特例対象個人以外が入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS10006" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS10010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和4年中若しくは令和5年中に入居又は令和6年中若しくは令和7年中に特例対象個人が入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS10020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS10030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　中古住宅"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS10040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS20000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定住宅等の新築取得等に係る住宅借入金等特別控除の特例を選択　省エネ基準適合住宅"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS20003" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和6年中又は令和7年中に特例対象個人以外が入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS20006" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS20010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和4年中若しくは令和5年中に入居又は令和6年中若しくは令和7年中に特例対象個人が入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS20020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASS20030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　中古住宅"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASS20040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AST00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"高齢者等居住改修工事等に係る特定増改築等住宅借入金等特別控除を選択"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AST00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和3年中に居住の用に供した場合　住宅の増改築等が特定取得に該当するとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AST00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AST00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(19)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AST00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AST00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和3年中に居住の用に供した場合　住宅の増改築等が特定取得に該当しないとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AST00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AST00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(19)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AST00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASU00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"断熱改修工事等に係る特定増改築等住宅借入金等特別控除を選択"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASU00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和3年中に居住の用に供した場合　住宅の増改築等が特定取得に該当するとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASU00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASU00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(19)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASU00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASU00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和3年中に居住の用に供した場合　住宅の増改築等が特定取得に該当しないとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASU00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASU00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(19)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASU00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASA80000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"多世帯同居改修工事等に係る特定増改築等住宅借入金等特別控除を選択"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA80010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和3年中に居住の用に供した場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA80020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(11)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASA80030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(19)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASA80040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASA50000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"震災特例法の住宅の再取得等に係る住宅借入金等特別控除の控除額の特例を選択"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA50070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年中に居住の用に供した場合　住宅の取得等が(特例)特別特例取得に該当するとき"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA50080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASA50083" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和6年中若しくは令和7年中にその他の住宅に入居又は令和6年中若しくは令和7年中に特例対象個人以外が認定住宅等に入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA50086" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASA50090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　新築住宅又は買取再販住宅　令和4年中若しくは令和5年中に入居又は令和6年中若しくは令和7年中に特例対象個人が認定住宅等に入居"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA50100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASA50110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和4年1月1日から令和7年12月31日までの間に居住の用に供した場合　中古住宅又は増改築等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA50120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASA50050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"平成28年1月1日から令和3年12月31日までの間に居住の用に供した場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA50060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASN10000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(再び居住の用に供したことに係る事項)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASN10010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"転居年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASN10020" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"再居住開始年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASN10030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住の用に供していない期間の家屋の用途"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASN10040" type="ASN10040-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"賃貸の用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASN10050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住の用に供していない期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASN10060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASN10070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASN10080" type="ASN10080-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"空家"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASN10090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASN10100" type="ASN10100-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASN10110" type="ASN10110-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(＿)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASN10120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その家屋に係る(特定増改築等)住宅借入金等特別控除の適用"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASN10130" type="ASN10130-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"再び居住の用に供したことにより、(特定増改築等)住宅借入金等特別控除の再適用を受ける"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASN10140" type="ASN10140-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"再び居住の用に供したことにより、初めてその家屋に係る(特定増改築等)住宅借入金等特別控除の適用を受ける"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASA60000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"重複適用を受ける場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASA60010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定増改築等)住宅借入金等特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASN20000" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"不動産番号が一面に入力しきれない場合　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASN20010" type="ASN20010-14-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"不動産番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB131-3-14-0type">
+<xsd:sequence>
+
+<xsd:element name="ASW10000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　各共有者の取得した資産に係る取得対価の額等の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(A)あなた"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10020" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者(共有者)の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋(増改築等)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10060" type="ASX10060-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10070" type="ASX10070-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の持分に係る家屋の取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10110" type="ASX10110-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10120" type="ASX10120-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の持分に係る土地等の取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の取得した資産に係る取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産に係る資金の状況"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の自己資金負担額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借入金"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の単独債務による当初借入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当該債務に係る住宅借入金等に係る年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(B)共有者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10210" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者(共有者)の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋(増改築等)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10250" type="ASX10250-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10260" type="ASX10260-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の持分に係る家屋の取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10300" type="ASX10300-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10310" type="ASX10310-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の持分に係る土地等の取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の取得した資産に係る取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10340" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産に係る資金の状況"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の自己資金負担額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借入金"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の単独債務による当初借入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当該債務に係る住宅借入金等に係る年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10390" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(C)共有者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10400" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務者(共有者)の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10410" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10420" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋(増改築等)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10430" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10440" type="ASX10440-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10450" type="ASX10450-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の持分に係る家屋の取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10470" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10480" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の共有持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10490" type="ASX10490-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10500" type="ASX10500-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10510" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の持分に係る土地等の取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10520" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の取得した資産に係る取得対価の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10530" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産に係る資金の状況"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の自己資金負担額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10550" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借入金"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10560" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の単独債務による当初借入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10570" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当該債務に係る住宅借入金等に係る年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10580" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(D)合計等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10590" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10600" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家屋の取得対価の額(増改築等の費用の額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10610" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地等の取得対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASX10620" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得した資産に係る資金の状況"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の自己資金負担額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10640" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借入金"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASX10650" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の単独債務による当初借入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10660" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務による当初借入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASX10670" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当該債務に係る住宅借入金等に係る年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASY10000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2　各共有者の住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASY10010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(A)あなた"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASY10020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の負担すべき連帯債務による借入金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10030" type="ASY10030-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務による借入金に係る各共有者の負担割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務による借入金に係る各共有者の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASY10060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(B)共有者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASY10070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の負担すべき連帯債務による借入金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10080" type="ASY10080-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務による借入金に係る各共有者の負担割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務による借入金に係る各共有者の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="ASY10110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(C)共有者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="ASY10120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の負担すべき連帯債務による借入金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10130" type="ASY10130-14-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務による借入金に係る各共有者の負担割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"連帯債務による借入金に係る各共有者の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="ASY10150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各共有者の住宅借入金等の年末残高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:complexType name="ASD00115-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ASD00040-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASD00050-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASD00090-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASD00100-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASE00080-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASE30010-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASE30020-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="ASE20013-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASE20016-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASE20019-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ASF00030-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASF00040-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASF00080-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASF00090-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASF00150-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASF00160-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASF00175-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:enumeration value="1"/><xsd:enumeration value="7"/><xsd:enumeration value="8"/><xsd:enumeration value="9"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="ASG00005-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ASG00030-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASG00060-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASG00100-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASG00130-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASG00170-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASG00200-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASG00250-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASG00310-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASM00015-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="ASM00042-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ASM00044-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="2"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="ASM00050-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASI10000-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASI20000-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASN10040-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASN10080-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASN10100-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ASN10110-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="ASN10130-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="ASN10140-14-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="ASN20010-14-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10060-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10070-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10110-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10120-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10250-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10260-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10300-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10310-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10440-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10450-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10490-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASX10500-14-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASY10030-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASY10080-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="ASY10130-14-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="ASD00040-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASD00040-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASD00050-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASD00050-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASD00090-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASD00090-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASD00100-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASD00100-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASE00080-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASE00080-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASF00030-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASF00030-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASF00040-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASF00040-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASF00080-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASF00080-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASF00090-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASF00090-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASF00150-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASF00150-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASF00160-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASF00160-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASF00175-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASF00175-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00030-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00030-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00060-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00060-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00100-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00100-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00130-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00130-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00170-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00170-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00200-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00200-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00250-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00250-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASG00310-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASG00310-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASM00015-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASM00015-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASM00044-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASM00044-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10060-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10060-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10070-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10070-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10110-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10110-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10120-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10120-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10250-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10250-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10260-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10260-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10300-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10300-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10310-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10310-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10440-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10440-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10450-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10450-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10490-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10490-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASX10500-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASX10500-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASY10030-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASY10030-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASY10080-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASY10080-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="ASY10130-14-0type">
+<xsd:simpleContent>
+<xsd:extension base="ASY10130-14-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　寄附金の受領証等の記載事項
+version：5.0
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOE070-5-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="5.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOE070-5-0group">
+<xsd:sequence>
+<xsd:element name="KOE070">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="IGA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IGC00000" type="IGC00000-5-0type" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"特定寄附金の内訳（２～４に掲げる寄附金を除く。）　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGD00000" type="IGD00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定寄附金の内訳（２～４に掲げる寄附金を除く。）　次葉合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGE00000" type="IGE00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定寄附金の内訳（２～４に掲げる寄附金を除く。）　合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGF00000" type="IGF00000-5-0type" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"政党等寄附金の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGG00000" type="IGG00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"政党等寄附金の内訳　次葉合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGH00000" type="IGH00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"政党等寄附金の内訳　合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGO00000" type="IGO00000-5-0type" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"認定NPO法人等寄附金の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGP00000" type="IGP00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定NPO法人等寄附金の内訳　次葉合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGQ00000" type="IGQ00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定NPO法人等寄附金の内訳　合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGR00000" type="IGR00000-5-0type" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"公益社団法人等寄附金の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGS00000" type="IGS00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"公益社団法人等寄附金の内訳　次葉合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGT00000" type="IGT00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"公益社団法人等寄附金の内訳　合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOE070-5-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="IGC00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGC00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGC00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGC00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGD00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGD00010" type="IGD00010-5-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGE00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGF00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGF00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGF00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGF00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGF00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGG00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGG00010" type="IGG00010-5-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGG00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGH00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGH00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGO00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGO00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGO00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGO00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGO00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGP00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGP00010" type="IGP00010-5-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGP00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGQ00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGQ00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGR00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGR00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGR00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGR00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGR00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGS00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGS00010" type="IGS00010-5-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IGS00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IGT00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="IGT00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="IGD00010-5-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IGG00010-5-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IGP00010-5-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IGS00010-5-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

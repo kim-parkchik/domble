@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu" 
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+elementFormDefault="qualified" attributeFormDefault="unqualified"
+version="1.0"> 
+
+
+<!-- Include -->
+<xsd:include schemaLocation="../kyotsu/TEZ310-009.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEA060-015.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG101-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG102-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG103-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG104-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG105-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG106-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG107-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG108-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG109-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG158-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG159-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG202-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG203-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG204-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG300-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG400-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG401-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG402-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG403-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG404-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG405-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG406-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG407-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG408-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG500-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG501-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG600-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG601-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG602-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG700-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG800-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG810-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG820-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG821-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG822-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG830-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG840-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG850-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG900-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG901-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG910-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG911-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG912-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG913-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG916-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG917-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG918-001.xsd"/>
+<xsd:include schemaLocation="../kyotsu/TEG919-001.xsd"/>
+</xsd:schema>

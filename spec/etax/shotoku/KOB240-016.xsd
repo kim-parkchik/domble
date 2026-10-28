@@ -1,0 +1,1768 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：外国税額控除に関する明細書(居住者用)
+version：16.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB240-16-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="16.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB240-16-0group">
+<xsd:sequence>
+<xsd:element name="KOB240">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOB240-1" type="KOB240-1-16-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"外国税額控除に関する明細書(居住者用)(一面)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB240-2" type="KOB240-2-16-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国税額控除に関する明細書(居住者用)(ニ面)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB240-16-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOB240-1-16-0type">
+<xsd:sequence>
+
+<xsd:element name="BXK00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　外国所得税額の内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に納付する外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00020" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00030" type="BXF00030-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00040" type="BXF00040-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00050" type="BXF00050-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税種目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納付確定日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納付日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00080" type="BXF00080-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉・申告（賦課）の区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得の計算期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00100" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00110" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手国での課税標準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00130" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外貨"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"邦貨"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"左に係る外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00160" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外貨"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00162" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"邦貨　外書き"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00164" type="BXF00164-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00166" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00168" type="BXF00168-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"邦貨"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手国での課税標準"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"左に係る外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に減額された外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00220" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00230" type="BXF00230-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00240" type="BXF00240-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00250" type="BXF00250-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税種目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00260" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納付日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00270" type="BXF00270-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉・申告（賦課）の区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得の計算期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00290" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00300" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00310" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国税額控除の計算の基礎となった年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00320" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"減額されることとなった日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"減額された外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00340" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外貨"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"邦貨"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00360" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"減額された外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00380" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（A）の金額が（B）の金額より多い場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（A）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（B）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（C）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXF00420" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（A）の金額が（B）の金額より少ない場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXF00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（B）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00440" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（A）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXF00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（Ｄ）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2　本年の雑所得の総収入金額に算入すべき金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXG00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前3年以内の控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXG00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3年前"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXG00030" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(イ)から控除すべき(D)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(イ)－(ロ)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXG00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2年前"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXG00080" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(イ)から控除すべき(D)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(イ)－(ロ)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXG00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXG00130" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(イ)から控除すべき(D)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(イ)－(ロ)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXG00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXG00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(イ)から控除すべき(D)の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXG00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に納付する外国所得税額を超える減額外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXG00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(D)に充当された前3年以内の控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXG00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得の総収入金額に算入する金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB240-2-16-0type">
+<xsd:sequence>
+
+<xsd:element name="BXH00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3　所得税及び復興特別所得税の控除限度額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXH00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXH00015" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"復興特別所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXH00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXH00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整国外所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXH00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税の控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXH00045" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"復興特別所得税の控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"4  外国所得税額の繰越控除余裕額又は繰越控除限度超過額の計算の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の控除余裕額又は控除限度超過額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除限度額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00033" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"復興特別所得税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00037" type="BXI00037-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税　区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00047" type="BXI00047-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税　区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除余裕額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前3年以内の控除余裕額又は控除限度超過額の明細等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"3年前"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00160" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除余裕額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00180" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方税計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税の控除限度額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01290" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年1月1日時点の住所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01300" type="BXI01300-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"指定都市"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01310" type="BXI01310-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般市"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2年前"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00310" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除余裕額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00410" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00440" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方税計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00450" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00460" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00470" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01320" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税の控除限度額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01340" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年1月1日時点の住所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01350" type="BXI01350-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"指定都市"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01360" type="BXI01360-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般市"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00490" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00500" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00510" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除余裕額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00520" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00530" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00550" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00560" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00570" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00580" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00590" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00600" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00610" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00620" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地方税計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00640" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00650" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00660" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00670" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税の控除限度額等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01390" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年1月1日時点の住所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01400" type="BXI01400-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"指定都市"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01410" type="BXI01410-16-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般市"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00680" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00690" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除余裕額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00700" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00710" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00720" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00730" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00740" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00750" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00760" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00770" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00780" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00790" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00800" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00810" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00820" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00830" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00840" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00850" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00860" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00870" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00880" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00890" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00900" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00910" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除余裕額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00920" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00930" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00940" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00950" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI00960" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"道府県民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI00970" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00980" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI00990" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"市町村民税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXI01080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"控除限度超過額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXI01090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年繰越額及び本年発生額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年使用額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXI01110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BXJ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"5　外国税額控除額等の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BXJ00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税の控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00015" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"復興特別所得税の控除限度額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分配時調整外国税相当額控除後の所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分配時調整外国税相当額控除後の復興特別所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税の控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"復興特別所得税の控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所法第95条第1項による控除税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00035" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"復興財確法第14条第1項による控除税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所法第95条第2項による控除税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所法第95条第3項による控除税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国税額控除の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分配時調整外国税相当額控除可能額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BXJ00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国税額控除等の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="BXF00030-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00040-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00050-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00080-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00164-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00168-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00230-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00240-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00250-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BXF00270-16-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="BXI00037-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="BXI00047-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="BXI01300-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="BXI01310-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="BXI01350-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="BXI01360-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="BXI01400-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="BXI01410-16-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+
+
+</xsd:schema>

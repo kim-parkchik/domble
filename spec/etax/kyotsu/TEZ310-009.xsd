@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：死亡した者の  年分の所得税及び復興特別所得税の確定申告書付表(兼相続人の代表者指定届出書)
+version：9.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="TEZ310-9-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="9.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="TEZ310-9-0group">
+<xsd:sequence>
+<xsd:element name="TEZ310">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDA00000" type="CDA00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告書名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDB00000" type="CDB00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"死亡した者の住所・氏名等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDC00000" type="CDC00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"死亡した者の納める税金又は還付される税金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDD00000" type="CDD00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続人等の代表者の指定"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="CDE00000" type="CDE00000-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"限定承認の有無"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="CDF00000" type="CDF00000-9-0type" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"項目　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="TEZ310-9-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="CDA00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="CDA00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="CDB00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="CDB00005" type="gen:zipcode" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDB00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDB00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDB00030" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDB00040" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDB00050" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"死亡年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="CDC00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="CDC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税及び復興特別所得税の第３期分の税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="CDD00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="CDD00010" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続人等の代表者の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="CDF00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="CDF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続人等に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00015" type="gen:zipcode" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00040" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00050" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDF00055" type="gen:bango" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"個人番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業及び被相続人との続柄"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00070" type="CDF00070-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00080" type="CDF00080-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"続柄"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDF00090" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"生年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00100" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00120" type="CDF00120-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"法定・指定区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00130" type="CDF00130-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00140" type="CDF00140-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDF00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続財産の価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDF00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納める税金等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各人の納付税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各人の還付金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDF00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"還付される税金の受取場所"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銀行等の預金口座に振込みを希望する場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00210" type="CDF00210-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"銀行名等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00220" type="CDF00220-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金融機関区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00230" type="CDF00230-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支店名等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00240" type="CDF00240-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本支店区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00250" type="CDF00250-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"預金の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00260" type="CDF00260-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"口座番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDF00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"ゆうちょ銀行の口座に振込みを希望する場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00280" type="CDF00280-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"貯金口座の記号番号　上5桁"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CDF00290" type="CDF00290-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"貯金口座の記号番号　下8桁"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CDF00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便局等の窓口受取りを希望する場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CDF00310" type="CDF00310-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便局名等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="CDE00000-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="CDF00070-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="CDF00080-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="5"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="CDF00120-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="CDF00130-9-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="CDF00140-9-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="CDF00210-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="CDF00220-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="CDF00230-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="CDF00240-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="CDF00250-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/><xsd:enumeration value="5"/><xsd:enumeration value="6"/><xsd:enumeration value="9"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="CDF00260-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="CDF00280-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="5"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="CDF00290-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="8"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="CDF00310-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="CDF00130-9-0type">
+<xsd:simpleContent>
+<xsd:extension base="CDF00130-9-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="CDF00140-9-0type">
+<xsd:simpleContent>
+<xsd:extension base="CDF00140-9-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

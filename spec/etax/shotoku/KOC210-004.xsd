@@ -1,0 +1,901 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：譲渡所得の内訳書(確定申告書付表兼計算明細書)【土地・建物用】(第5面)
+version：4.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC210-4-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="4.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC210-4-0group">
+<xsd:sequence>
+<xsd:element name="KOC210">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="KJA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KJC00000" type="KJC00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00000" type="KJD00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人居住用家屋及びその敷地等について"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC210-4-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KJC00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="KJC00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"現住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJC00020" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJC00030" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJC00040" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号(連絡先)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KJD00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="KJD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人居住用家屋(一の建築物)及びその敷地等について"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00030" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00040" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00050" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"死亡年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00060" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"死亡の時における住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00080" type="gen:yymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00090" type="gen:yymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人居住用家屋(A)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00110" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00120" type="KJD00120-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"床面積・面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたが相続又は遺贈により取得した持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00140" type="KJD00140-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00150" type="KJD00150-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたが相続又は遺贈以外により取得した持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00170" type="KJD00170-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00180" type="KJD00180-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人居住用家屋の敷地の用に供されていた土地等(B)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00200" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00210" type="KJD00210-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"床面積・面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたが相続又は遺贈により取得した持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00230" type="KJD00230-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00240" type="KJD00240-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたが相続又は遺贈以外により取得した持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00260" type="KJD00260-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00270" type="KJD00270-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00280" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人居住用家屋の敷地の用に供されていた土地等(C)"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00290" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00300" type="KJD00300-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"床面積・面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00310" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたが相続又は遺贈により取得した持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00320" type="KJD00320-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00330" type="KJD00330-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00340" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなたが相続又は遺贈以外により取得した持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00350" type="KJD00350-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00360" type="KJD00360-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続の開始の直前においてその土地が用途上不可分の関係にある二以上の建築物のある一団の土地であった場合の被相続人居住用家屋以外の建築物の種類などについて"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00380" type="KJD00380-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一団の土地の面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00390" type="KJD00390-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一団の土地の面積のうち、あなたが被相続人から相続又は遺贈により取得し、譲渡した部分の面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00400" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人居住用家屋以外の建築物の種類・床面積"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00410" type="KJD00410-4-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類空白部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00420" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"床面積"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00430" type="KJD00430-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"離れ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00440" type="KJD00440-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"倉庫"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00450" type="KJD00450-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類空白部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00460" type="KJD00460-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"床面積の合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00470" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上記の建築物の所有者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00480" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00490" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00500" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00510" type="KJD00510-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被相続人居住用家屋の敷地等に該当する部分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00520" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"あなた以外の居住用家屋取得相続人がいる場合又はあなたが適用前譲渡をしている場合について"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00530" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"相続人　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00540" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用家屋取得相続人"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00550" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00560" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00570" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00580" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続の開始の時における被相続人居住用家屋又はその敷地等の持分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00590" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(A)家屋"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00600" type="KJD00600-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00610" type="KJD00610-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00620" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(B)敷地等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00630" type="KJD00630-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00640" type="KJD00640-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00650" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(C)敷地等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00660" type="KJD00660-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00670" type="KJD00670-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分母"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KJD00680" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"適用前譲渡"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KJD00690" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KJD00700" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡の対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="KJD00120-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00140-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00150-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00170-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00180-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00210-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00230-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00240-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00260-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00270-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00300-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00320-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00330-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00350-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00360-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00380-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00390-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00410-4-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00430-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00440-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00450-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00460-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00510-4-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00600-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00610-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00630-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00640-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00660-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KJD00670-4-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="KJD00120-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00120-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00140-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00140-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00150-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00150-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00170-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00170-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00180-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00180-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00210-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00210-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00230-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00230-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00240-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00240-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00260-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00260-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00270-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00270-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00300-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00300-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00320-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00320-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00330-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00330-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00350-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00350-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00360-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00360-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00380-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00380-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00390-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00390-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00430-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00430-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00440-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00440-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00450-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00450-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00460-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00460-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00510-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00510-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00600-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00600-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00610-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00610-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00630-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00630-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00640-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00640-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00660-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00660-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KJD00670-4-0type">
+<xsd:simpleContent>
+<xsd:extension base="KJD00670-4-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

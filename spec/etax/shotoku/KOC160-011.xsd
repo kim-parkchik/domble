@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：特定居住用財産の譲渡損失の損益通算及び繰越控除の対象となる金額の計算書(  年分)【租税特別措置法第41条の5の2用】
+version：11.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC160-11-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="11.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC160-11-0group">
+<xsd:sequence>
+<xsd:element name="KOC160">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BQA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQB00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BQC00000" type="BQC00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00000" type="BQD00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定居住用財産の譲渡損失の損益通算及び繰越控除の対象となる金額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC160-11-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BQC00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="BQC00010" type="BQC00010-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税地区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQC00020" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQC00030" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所以外の居所又は事業所等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQC00040" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQC00050" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BQD00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="BQD00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例の計算の基礎となる特定居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離課税の対象となる土地建物等の譲渡所得の金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡契約締結日の前日における住宅借入金等の金額から
+特定居住用財産の譲渡価額を控除した残額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損益通算の特例の対象となる特定居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の純損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分が青色申告の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分が白色申告の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定居住用財産の譲渡損失の繰越基準額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BQD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年以後に繰り越される特定居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="BQC00010-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="5"/><xsd:enumeration value="6"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+
+
+</xsd:schema>

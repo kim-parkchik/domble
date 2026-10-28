@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：やむを得ない事情がある場合の買換資産の取得期限承認申請書
+version：11.0
+Date：2023年09月05日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC010-11-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="11.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC010-11-0group">
+<xsd:sequence>
+<xsd:element name="KOC010">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="EAA00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAB00000" type="gen:TEISYUTSU_DAYref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="EAC00000" type="EAC00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAD00000" type="EAD00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した資産の明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00000" type="EAE00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"代わりに買い換える（取得する）予定の資産の明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAG00000" type="EAG00000-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC010-11-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="EAC00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EAC00010" type="gen:NOZEISHA_ZIPref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAC00020" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAC00025" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAC00030" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAC00040" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EAD00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EAD00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAD00020" type="EAD00020-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAD00030" type="EAD00030-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAD00050" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EAE00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EAE00010" type="EAE00010-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00020" type="EAE00020-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00025" type="EAE00025-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得資産の該当条項（第３７条第１項）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00030" type="EAE00030-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第３７条第１項の表の該当する号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00034" type="EAE00034-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第３７条第１項の表の該当する区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00035" type="EAE00035-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得資産の該当条項（第３７条の５第１項）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00043" type="EAE00043-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第３７条の５第１項の表の該当する区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00044" type="EAE00044-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得資産の該当条項（第１２条第１項）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00045" type="EAE00045-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第１２条第１項の表の該当する号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00047" type="EAE00047-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"第１２条第１項の表の該当する号（＿）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得価額の見積額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得予定年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00065" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"認定を受けようとする年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00070" type="EAE00070-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"やむを得ない事情の詳細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EAE00085" type="EAE00085-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"法名区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00090" type="EAE00090-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00100" type="EAE00100-11-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAE00110" type="EAE00110-11-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EAG00000-11-0type">
+<xsd:sequence>
+
+<xsd:element name="EAG00010" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EAG00020" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="EAD00020-11-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EAD00030-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EAE00010-11-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EAE00020-11-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EAE00025-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EAE00030-11-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EAE00034-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EAE00035-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EAE00043-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EAE00044-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EAE00045-11-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EAE00047-11-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EAE00070-11-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="400"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EAE00085-11-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EAE00090-11-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EAE00100-11-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="3"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EAE00110-11-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="EAD00030-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EAD00030-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EAE00020-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EAE00020-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EAE00030-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EAE00030-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EAE00045-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EAE00045-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EAE00090-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EAE00090-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EAE00110-11-0type">
+<xsd:simpleContent>
+<xsd:extension base="EAE00110-11-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

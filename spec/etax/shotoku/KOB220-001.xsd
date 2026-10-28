@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：返品調整引当金に関する明細書
+version：1.0
+Date：2004年12月22日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB220-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB220-1-0group">
+<xsd:sequence>
+<xsd:element name="KOB220">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="BVA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="BVC00000" type="BVC00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"返品率の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVD00000" type="BVD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の売買利益率の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVE00000" type="BVE00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰入限度額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="BVF00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分必要経費に算入した繰入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB220-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="BVC00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="BVC00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年及び前年における指定事業の棚卸資産の総売上高の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年及び前年における指定事業の棚卸資産の買戻しの額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVC00030" type="BVC00030-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"返品率（（２）／（１））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BVD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="BVD00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"指定事業の棚卸資産の総売上高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"指定事業の棚卸資産の買戻額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"指定事業の棚卸資産の販売による利益の総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVD00040" type="BVD00040-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売買利益率（（６）／（（４）－（５）））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="BVE00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="BVE00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"イ"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BVE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年末における指定事業分の売掛金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰入限度額(（８）*（３）*（７）)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="BVE00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"ロ"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="BVE00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年末以前２月間の指定事業の棚卸資産の総売上高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="BVE00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰入限度額(（10）*（３）*（７）)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+<xsd:simpleType name="BVC00030-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="BVD00040-1-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+<xsd:complexType name="BVC00030-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="BVC00030-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="BVD00040-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="BVD00040-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

@@ -107,7 +107,7 @@ export const StatementPage2 = ({ lines, income, deductionLimit }: { lines: FlatL
       <table className="ledger st-detail">
         <thead>
           <tr>
-            <th>氏名</th>{withRelation && <th>続柄</th>}<th className="num">年齢</th><th className="num">従事月数</th>
+            <th>氏名</th>{withRelation && <th>続柄</th>}<th className="num">年齢</th><th className="num">従事月数</th>{withRelation && <th className="screen-only">仕事の内容</th>}
             <th className="num">{withRelation ? "給料" : "給料賃金"}</th><th className="num">賞与</th><th className="num">合計</th><th className="num">源泉徴収税額</th>
           </tr>
         </thead>
@@ -118,6 +118,7 @@ export const StatementPage2 = ({ lines, income, deductionLimit }: { lines: FlatL
               {withRelation && <td><Note k={`${prefix}:${r.key}:relation`} notes={notes} onSaved={set} placeholder="続柄" short /></td>}
               <td><Note k={`${prefix}:${r.key}:age`} notes={notes} onSaved={set} placeholder="年齢" align="right" short /></td>
               <td><Note k={`${prefix}:${r.key}:months`} notes={notes} onSaved={set} placeholder="月数" align="right" short /></td>
+              {withRelation && <td className="screen-only"><Note k={`${prefix}:${r.key}:work`} notes={notes} onSaved={set} placeholder="例：毎日・経理" /></td>}
               <td className="num">{yen(r.gross - bonus(r))}</td>
               <td><Note k={`${prefix}:${r.key}:bonus`} notes={notes} onSaved={set} placeholder="賞与" align="right" /></td>
               <td className="num">{yen(r.gross)}</td>
@@ -127,7 +128,7 @@ export const StatementPage2 = ({ lines, income, deductionLimit }: { lines: FlatL
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={withRelation ? 4 : 3}>計</td>
+            <td colSpan={withRelation ? 4 : 3}>計</td>{withRelation && <td className="screen-only" />}
             <td className="num">{yen(rows.reduce((s, r) => s + r.gross - bonus(r), 0))}</td>
             <td className="num">{yen(rows.reduce((s, r) => s + bonus(r), 0))}</td>
             <td className="num">{yen(rows.reduce((s, r) => s + r.gross, 0))}</td>
@@ -162,6 +163,7 @@ export const StatementPage2 = ({ lines, income, deductionLimit }: { lines: FlatL
         {payTable(family, "family", true)}
         <p className="field-note screen-only">
           氏名は、仕訳の取引先か補助科目から出します（人ごとに補助科目を作っておくと分かれます）。賞与を入れると、合計のうち残りを給料にします。
+          専従者の「仕事の内容」（従事の程度と仕事の内容）は、確定申告書の第二表「事業専従者に関する事項」に書きます。
         </p>
 
         <h3 className="st-h">青色申告特別控除額の計算</h3>

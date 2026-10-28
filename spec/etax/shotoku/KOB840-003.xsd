@@ -1,0 +1,558 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：保険料を支払った場合等の課税の特例の届出書　保険料を支払った場合等の課税の特例の還付請求書
+version：3.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB840-3-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="3.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB840-3-0group">
+<xsd:sequence>
+<xsd:element name="KOB840">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLA00000" type="JLA00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"帳票名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="JLB00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出先税務署名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLC00000" type="gen:TEISYUTSU_DAYref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="JLD00000" type="JLD00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00000" type="JLE00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　基本事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00000" type="JLF00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　(特定社会)保険料に関する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLG00000" type="JLG00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　還付に関する事項"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLH00000" type="JLH00000-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB840-3-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="JLA00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="JLA00010" type="JLA00010-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険料を支払った場合等の課税の特例の届出書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLA00020" type="JLA00020-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険料を支払った場合等の課税の特例の還付請求書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JLD00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="JLD00010" type="gen:NOZEISHA_ZIPref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLD00020" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住(居)所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLD00030" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLD00050" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLD00060" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JLD00070" type="gen:SEIBETSUref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"性別"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLD00080" type="JLD00080-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国籍"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLD00090" type="gen:BIRTHDAYref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"生年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JLE00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="JLE00010" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国内において役務の提供を開始した日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住形態"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLE00030" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住者　居住者となった日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"非居住者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLE00050" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当初入国年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"在留期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLE00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00080" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JLE00090" type="JLE00090-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"在留資格"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00100" type="JLE00100-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手国の納税者番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00110" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手国の納税地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税管理人"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLE00130" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住(居)所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(フリガナ)氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLE00150" type="gen:n-kana" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLE00160" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JLE00170" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JLF00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="JLF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相手国法人との雇用契約"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLF00020" type="JLF00020-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"有"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00030" type="JLF00030-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"無"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JLF00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"日本での就労期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLF00050" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00060" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JLF00070" type="JLF00070-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税の特例を受けることができる事情の詳細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定社会)保険料"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLF00090" type="JLF00090-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00100" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払(控除)年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定社会)保険料の支払(控除)金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定社会)保険料の上限"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特例の対象となる(特定社会)保険料の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JLF00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(特定社会)保険料の金額の計算の基礎となった所得"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLF00150" type="JLF00150-3-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLF00170" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00180" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="JLF00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)に対する所得税及び復興特別所得税の源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払者"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="JLF00220" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住(居)所又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLF00230" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JLG00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="JLG00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２(3)*20.42％"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLG00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"還付請求金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLG00030" type="gen:KANPU_KINYUKIKANref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"還付される税金の受取場所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="JLH00000-3-0type">
+<xsd:sequence>
+
+<xsd:element name="JLH00010" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="JLH00020" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="JLA00010-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="JLA00020-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="JLD00080-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JLE00090-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JLE00100-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="JLF00020-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="JLF00030-3-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="JLF00070-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JLF00090-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="JLF00150-3-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

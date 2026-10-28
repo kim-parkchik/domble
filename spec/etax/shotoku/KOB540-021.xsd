@@ -1,0 +1,676 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：居住形態等に関する確認書
+version：21.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB540-21-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="21.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB540-21-0group">
+<xsd:sequence>
+<xsd:element name="KOB540">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOB540-1" type="KOB540-1-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住形態等に関する確認書（一面）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB540-2" type="KOB540-2-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は居所を有していた期間の確認表（二面）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB540-21-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOB540-1-21-0type">
+<xsd:sequence>
+
+<xsd:element name="DFA00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFA00010" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFA00015" type="gen:NOZEISHA_ZIPref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"郵便番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFA00020" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は居所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFA00030" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFA00040" type="DFA00040-21-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国籍"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFA00060" type="DFA00060-21-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"在留カード番号等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住形態等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　下記事項を入力してください。"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00020" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）　当初の入国年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00030" type="DFC00030-21-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）　在留資格"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00040" type="DFC00040-21-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）　在留期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFC00060" type="DFC00060-21-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　令和７年中に出国しましたか。"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　２の答えが「はい」の人は下の欄に入力してください。"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00078" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"（１）　出国の期間　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00082" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00086" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFC00090" type="DFC00090-21-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）　出国の目的"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFC00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"４　令和７年中の居住形態による期間区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）　非居住者期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00120" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00130" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFC00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）　非永住者期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00150" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00160" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFC00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）　永住者期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00180" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00190" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFC00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"５  ４（２）の非永住者期間があるときは、その期間中に国外に源泉のある所得はありますか。"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00210" type="DFC00210-21-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）　４（２）の非永住者期間があるときは、その期間中に国外に源泉のある所得はありますか。"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00230" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）　（１）の答えが「はい」の人は下の欄に入力してください。"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFC00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）　国外に源泉のある所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）　（１）のうち国内で支払われた金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFC00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（３）　（１）のうち国外から送金された金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB540-2-21-0type">
+<xsd:sequence>
+
+<xsd:element name="DFD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"平成27年1月1日から令和６年12月31日までにおいて国内に住所又は居所を有していた期間を入力してください。"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFD00010" minOccurs="0" maxOccurs="10">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は居所を有していた期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFD00030" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFD00040" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFD00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数・月数・日数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFD00060" type="DFD00060-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFD00070" type="DFD00070-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFD00080" type="DFD00080-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFD00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は居所を有していた期間の合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFD00100" type="DFD00100-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFD00110" type="DFD00110-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFD00120" type="DFD00120-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFE00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"令和７年において国内に住所又は居所を有していた期間を入力してください。"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFE00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFE00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は居所を有していた期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFE00030" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFE00040" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFE00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数・月数・日数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFE00060" type="DFE00060-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFE00070" type="DFE00070-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFE00080" type="DFE00080-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="DFE00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は居所を有していた期間の合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="DFE00100" type="DFE00100-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFE00110" type="DFE00110-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="DFE00120" type="DFE00120-21-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="DFA00040-21-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFA00060-21-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFC00030-21-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFC00040-21-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="DFC00060-21-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="DFC00090-21-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="DFC00210-21-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="DFD00060-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFD00070-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFD00080-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFD00100-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFD00110-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/><xsd:maxInclusive value="11"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFD00120-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/><xsd:maxInclusive value="29"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFE00060-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFE00070-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFE00080-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFE00100-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFE00110-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/><xsd:maxInclusive value="11"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="DFE00120-21-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/><xsd:maxInclusive value="29"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="DFD00060-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFD00060-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFD00070-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFD00070-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFD00080-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFD00080-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFD00100-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFD00100-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFD00110-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFD00110-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFD00120-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFD00120-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFE00060-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFE00060-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFE00070-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFE00070-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFE00080-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFE00080-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFE00100-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFE00100-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFE00110-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFE00110-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="DFE00120-21-0type">
+<xsd:simpleContent>
+<xsd:extension base="DFE00120-21-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

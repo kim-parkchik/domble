@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：公益社団法人等寄附金特別控除額の計算明細書
+version：10.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB930-10-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="10.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB930-10-0group">
+<xsd:sequence>
+<xsd:element name="KOB930">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="IQA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分1"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="IQD00000" type="IQD00000-10-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1 寄附金の区分等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00000" type="IQE00000-10-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2 公益社団法人等寄附金特別控除額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB930-10-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="IQD00000-10-0type">
+<xsd:sequence>
+
+<xsd:element name="IQD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附金の区分等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IQD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"公益社団法人等寄附金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)以外の寄附金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)+(2)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IQD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(4)*40%"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQD00070" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"公益社団法人等寄附金の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IQD00080" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附先の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQD00090" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"寄附年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="IQE00000-10-0type">
+<xsd:sequence>
+
+<xsd:element name="IQE00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(5)-(2)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(1)と(6)のいずれか少ない方の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"2千円-(2)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((7)-(8))*40%"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00050" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分2"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の所得税の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(10)*25%"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IQE00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"公益社団法人等寄附金特別控除額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

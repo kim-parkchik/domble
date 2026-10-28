@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：特定廃棄物最終処分場に係る特定災害防止準備金に関する明細書
+version：5.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB440-5-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="5.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB440-5-0group">
+<xsd:sequence>
+<xsd:element name="KOB440">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="CVA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVC00000" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定廃棄物最終処分場の所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVJ00000" type="CVJ00000-5-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定廃棄物最終処分場の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVK00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年の準備金積立額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="CVE00000" type="CVE00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立限度額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="CVL00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年必要経費に算入する特定災害防止準備金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="CVI00000" type="CVI00000-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年への繰越額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB440-5-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="CVE00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="CVE00143" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に独立行政法人環境再生保全機構に積み立てた維持管理積立金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVE00146" type="CVE00146-5-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立限度額　分子"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVE00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立限度額　金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="CVI00000-5-0type">
+<xsd:sequence>
+
+<xsd:element name="CVI00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の特定災害防止準備金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVI00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CVI00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"維持管理積立金の取戻しをした場合の総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVI00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(8)以外の場合による総収入金額算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CVI00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計(8)＋(9)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CVI00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年末の特定災害防止準備金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="CVJ00000-5-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="84"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="CVE00146-5-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="CVE00146-5-0type">
+<xsd:simpleContent>
+<xsd:extension base="CVE00146-5-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

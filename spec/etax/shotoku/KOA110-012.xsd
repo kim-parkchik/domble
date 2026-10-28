@@ -1,0 +1,1417 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分収支内訳書(一般用)
+version：12.0
+Date：2023年09月27日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOA110-12-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="12.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOA110-12-0group">
+<xsd:sequence>
+<xsd:element name="KOA110">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOA110-1" type="KOA110-1-12-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"１ページ目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOA110-2" type="KOA110-2-12-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"２ページ目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOA110-12-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOA110-1-12-0type">
+<xsd:sequence>
+
+<xsd:element name="AIQ00000" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"有限責任事業組合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIB00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIB00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIB00030" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIB00040" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIB00050" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIB00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIB00070" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自宅電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIB00080" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業所電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIB00090" type="gen:SHOKUGYOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"業種名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIB00100" type="gen:NOZEISHA_YAGOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"屋号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIB00110" type="AIB00110-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"加入団体名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"依頼税理士等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIC00010" type="gen:DAIRI_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事務所所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIC00020" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名（名称）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIC00030" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIE00000" type="gen:TEISYUTSU_DAYref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIR00000" type="AIR00000-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"「営業等」又は「雑（業務）」のいずれかを選択してください。"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIF00010" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業期間（自）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIF00020" type="gen:mmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業期間（至）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収支内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIG00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIG00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上（収入）金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"家事消費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIG00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上原価"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIG00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"期首商品（製品）棚卸高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"仕入金額（製品製造原価）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"期末商品（製品）棚卸高"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引原価"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIG00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIG00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"給料賃金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外注工賃"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"減価償却費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"貸倒金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"地代家賃"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"利子割引料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の経費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIG00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"租税公課"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"荷造運賃"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"水道光熱費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"旅費交通費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"通信費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"広告宣伝費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"接待交際費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"損害保険料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"修繕費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"消耗品費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"福利厚生費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00325" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"追加科目　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIG00010" type="AIG00010-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"科目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIG00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIG00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"経費計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIG00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者控除前の所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者控除"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00390" type="AIG00390-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額（特例表示）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00400" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額（上段）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIG00405" type="AIG00405-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額（下段）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIG00410" type="AIG00410-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費不算入損失額・措置法差額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"給料賃金の内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIH00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"給料賃金明細行　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIH00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00030" type="AIH00030-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年齢"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00040" type="AIH00040-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"従事月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"給料賃金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"賞与"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税及び復興特別所得税の源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIH00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIH00100" type="AIH00100-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"人数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00110" type="AIH00110-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"従事月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"給料賃金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"賞与"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税及び復興特別所得税の源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIH00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIH00170" type="AIH00170-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"延べ従事月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"給料賃金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"賞与"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIH00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税及び復興特別所得税の源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AII00000" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"税理士・弁護士等の報酬・料金の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AII00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の住所・氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AII00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AII00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AII00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中の報酬等の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AII00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"左のうち必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AII00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税及び復興特別所得税の源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIJ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業専従者の氏名等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIJ00010" minOccurs="0" maxOccurs="3">
+<xsd:annotation>
+<xsd:appinfo>"事業専従者明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIJ00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIJ00030" type="AIJ00030-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年齢"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIJ00040" type="gen:zokugara" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"続柄"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIJ00050" type="AIJ00050-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"従事月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIJ00052" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIJ00054" type="AIJ00054-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIJ00056" type="AIJ00056-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIJ00060" type="AIJ00060-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"延べ従事月数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOA110-2-12-0type">
+<xsd:sequence>
+
+<xsd:element name="AIK00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上（収入）金額の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIK00010" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"売上（収入）金額の明細行　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIK00020" type="AIK00020-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上先名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIK00030" type="AIK00030-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIK00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"登録番号（法人番号）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIK00080" type="AIK00080-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"登録番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIK00090" type="gen:bango" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"法人番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIK00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"売上（収入）金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIK00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上記以外の売上先の計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIK00055" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"右記(1)のうち軽減税率対象"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIK00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIL00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"仕入金額の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIL00010" minOccurs="0" maxOccurs="4">
+<xsd:annotation>
+<xsd:appinfo>"仕入金額の明細行　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIL00020" type="AIL00020-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"仕入先名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIL00030" type="AIL00030-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIL00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"登録番号（法人番号）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIL00080" type="AIL00080-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"登録番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIL00090" type="gen:bango" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"法人番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIL00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"仕入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIL00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上記以外の仕入先の計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIL00055" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"右記(6)のうち軽減税率対象"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIL00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIM00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"減価償却費の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIM00010" minOccurs="0" maxOccurs="6">
+<xsd:annotation>
+<xsd:appinfo>"減価償却資産の明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIM00020" type="AIM00020-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"減価償却資産の名称等（繰延資産を含む）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00030" type="AIM00030-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"面積又は数量"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00050" type="gen:yymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得年月"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00065" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（償却保証額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償却の基礎になる金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00080" type="AIM00080-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償却方法"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00090" type="AIM00090-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"耐用年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償却率又は改定償却率"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIM00110" type="AIM00110-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償却率又は改定償却率"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIM00140" type="AIM00140-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中の償却期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の普通償却費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別償却費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の償却費合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00180" type="AIM00180-12-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業専用割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"未償却残高（期末残高）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00210" type="AIM00210-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"摘要"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIM00211" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"次葉合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIM00212" type="AIM00212-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"項目名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00213" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の普通償却費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00214" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別償却費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00215" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の償却費合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00216" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00217" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"未償却残高（期末残高）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIM00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIM00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の普通償却費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特別償却費"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の償却費合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分の必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"未償却残高（期末残高）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIM00280" type="AIM00280-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"摘要"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIN00000" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"地代家賃の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIN00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の住所・氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIN00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIN00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIN00040" type="AIN00040-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"賃借物件"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIN00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中の賃借料・権利金等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIN00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"権利金"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIN00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"更新料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIN00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"賃借料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIN00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"左の賃借料のうち必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIO00000" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"利子割引料の内訳　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIO00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の住所・氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AIO00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIO00030" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払先の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIO00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"期末現在の借入金等の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIO00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中の利子割引料"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AIO00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"左のうち必要経費算入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AIP00000" type="AIP00000-12-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中における特殊事情"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="AIB00110-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="AIR00000-12-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="AIG00010-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIG00390-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="3"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIG00405-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIG00410-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIH00030-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="999"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIH00040-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIH00100-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="999"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIH00110-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="9999"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIH00170-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIJ00030-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="999"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIJ00050-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIJ00054-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIJ00056-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIJ00060-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIK00020-12-0Rtype">
+    <xsd:restriction base="gen:in-string">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIK00030-12-0Rtype">
+    <xsd:restriction base="gen:in-string">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIK00080-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIL00020-12-0Rtype">
+    <xsd:restriction base="gen:in-string">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIL00030-12-0Rtype">
+    <xsd:restriction base="gen:in-string">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIL00080-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="13"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00020-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="16"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00030-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00080-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00090-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="2"/><xsd:maxInclusive value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00110-12-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?"/><xsd:pattern value="[-]?\d?[.]\d"/><xsd:pattern value="[-]?\d?[.]\d\d"/><xsd:pattern value="[-]?\d?[.]\d\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00140-12-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="1"/><xsd:maxInclusive value="12"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00180-12-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00210-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00212-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIM00280-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIN00040-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="14"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AIP00000-12-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="500"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="AIH00030-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIH00030-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIH00040-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIH00040-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIH00100-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIH00100-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIH00110-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIH00110-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIH00170-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIH00170-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIJ00030-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIJ00030-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIJ00050-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIJ00050-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIJ00056-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIJ00056-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIJ00060-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIJ00060-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIM00090-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIM00090-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIM00110-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIM00110-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIM00140-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIM00140-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AIM00180-12-0type">
+<xsd:simpleContent>
+<xsd:extension base="AIM00180-12-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

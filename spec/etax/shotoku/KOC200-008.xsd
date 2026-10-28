@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：国外転出をする場合の譲渡所得等の特例等に係る納税猶予分の所得税及び復興特別所得税の額の計算書
+version：8.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC200-8-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="8.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC200-8-0group">
+<xsd:sequence>
+<xsd:element name="KOC200">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="KGA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KGB00000" type="KGB00000-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00000" type="KGC00000-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"適用資産等について国外転出時課税制度の適用がないものとした場合における本年分の税金の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGD00000" type="KGD00000-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税猶予税額の計算"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="KGE00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告期限までに納付する金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="KGG00000" type="KGG00000-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"遺産分割等があり修正申告をする場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC200-8-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KGB00000-8-0type">
+<xsd:sequence>
+
+<xsd:element name="KGB00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGB00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGB00030" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGB00040" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KGB00050" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGB00060" type="gen:SHOKUGYOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGB00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGB00080" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGB00090" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KGC00000-8-0type">
+<xsd:sequence>
+
+<xsd:element name="KGC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合課税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"事業（営業等）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合譲渡・一時"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告書第一表（２）から（６）　対応分　計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総合課税の所得金額　計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KGC00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"分離課税"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告書第三表（６７）から（７１）　対応分　計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の譲渡"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KGC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等の配当等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"先物取引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告書第三表（７６）（７７）　対応分　計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KGC00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得から差し引かれる金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00170" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"課税される所得金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGC00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（５）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（６）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（７）（８）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（９）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１０）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１１）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KGC00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"税金の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGC00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１３）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１４）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１５）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１６）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１７）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１８）　対応分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１９）から（２４）までの合計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税額から差し引かれる金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"災害減免額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00350" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"再差引所得税額（基準所得税額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"復興特別所得税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00370" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得税及び復興特別所得税の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGC00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外国税額控除等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KGD00000-8-0type">
+<xsd:sequence>
+
+<xsd:element name="KGD00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（申告書第一表（４６）－（４７）－（４８））の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（（３１）－（３２））の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税猶予分の所得税額等（（A）－（B））"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告書第一表（５２）欄の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税猶予税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="KGG00000-8-0type">
+<xsd:sequence>
+
+<xsd:element name="KGG00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"遺産分割等の事由"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KGG00020" type="KGG00020-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所法第151条の６第１項第＿号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGG00030" type="KGG00030-8-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（所令第273条の２第＿号）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="KGG00040" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"遺産分割等の事由が生じた年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGG00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"確定申告における納税猶予税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KGG00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"増加する納税猶予税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="KGG00020-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="KGG00030-8-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="KGG00020-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="KGG00020-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="KGG00030-8-0type">
+<xsd:simpleContent>
+<xsd:extension base="KGG00030-8-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

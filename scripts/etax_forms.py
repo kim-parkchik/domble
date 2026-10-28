@@ -11,15 +11,17 @@ import xml.etree.ElementTree as ET
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPEC = os.path.join(ROOT, "spec", "etax")
 XS = "{http://www.w3.org/2001/XMLSchema}"
-# 消費税の申告（個人）で使う様式と XSD
+# 消費税の申告（個人）・所得税の申告で使う様式と XSD
 FORMS = {
-    "SHA010": "SHA010-010.xsd",  # 第一表・第二表（一般用）
-    "SHA020": "SHA020-009.xsd",  # 第一表・第二表（簡易課税用）
-    "SHB017": "SHB017-002.xsd",  # 付表1-3
-    "SHB033": "SHB033-002.xsd",  # 付表2-3
-    "SHB047": "SHB047-001.xsd",  # 付表4-3
-    "SHB067": "SHB067-001.xsd",  # 付表5-3
-    "SHB070": "SHB070-001.xsd",  # 付表6
+    "SHA010": "shohi/SHA010-010.xsd",  # 第一表・第二表（一般用）
+    "SHA020": "shohi/SHA020-009.xsd",  # 第一表・第二表（簡易課税用）
+    "SHB017": "shohi/SHB017-002.xsd",  # 付表1-3
+    "SHB033": "shohi/SHB033-002.xsd",  # 付表2-3
+    "SHB047": "shohi/SHB047-001.xsd",  # 付表4-3
+    "SHB067": "shohi/SHB067-001.xsd",  # 付表5-3
+    "SHB070": "shohi/SHB070-001.xsd",  # 付表6
+    "KOA020": "shotoku/KOA020-023.xsd",  # 所得税の確定申告書（第一表〜第四表。domble は第一表・第二表）
+    "KOA210": "shotoku/KOA210-011.xsd",  # 青色申告決算書（一般用）
 }
 
 
@@ -39,7 +41,9 @@ def form_tree(path: str) -> tuple[str, str]:
             t = child.get("type") or ""
             kids = walk(ct) if ct is not None else walk(types[t]) if t in types else []
             # 中身のある要素だけを子に持つ型（グループ）は括弧で入れ子に。値の要素（金額・区分・参照）は名前だけ
-            out.append(f"{child.get('name')}({' '.join(kids)})" if kids and not is_value_type(t) else child.get("name"))
+            # くり返せる要素（maxOccurs が 2 以上）は名前のあとに *
+            name = child.get("name") + ("*" if child.get("maxOccurs") not in (None, "1") else "")
+            out.append(f"{name}({' '.join(kids)})" if kids and not is_value_type(t) else name)
         return out
 
     group = root.find(XS + "group")
@@ -73,7 +77,7 @@ def write_forms():
     ]
     versions = []
     for form, file in FORMS.items():
-        tree, version = form_tree(os.path.join(SPEC, "shohi", file))
+        tree, version = form_tree(os.path.join(SPEC, file))
         lines.append(f'  {form}: "{tree}",')
         versions.append(f'{form}: "{version}"')
     lines.append("};")

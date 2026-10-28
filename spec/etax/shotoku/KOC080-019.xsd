@@ -1,0 +1,1913 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：株式等に係る譲渡所得等の金額の計算明細書
+version：19.0
+Date：2025年08月15日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC080-19-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="19.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC080-19-0group">
+<xsd:sequence>
+<xsd:element name="KOC080">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOC080-1" type="KOC080-1-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOC080-2" type="KOC080-2-19-0type" minOccurs="0" maxOccurs="unbounded">
+<xsd:annotation>
+<xsd:appinfo>"２面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC080-19-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOC080-1-19-0type">
+<xsd:sequence>
+
+<xsd:element name="EHN00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHP00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHB00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHB00020" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（前住所）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHB00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（フリガナ）氏名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHB00040" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHB00050" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHB00060" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHB00070" type="gen:SHOKUGYOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"職業"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHC00010" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHC00020" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"1　所得金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00005" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費又は譲渡に要した費用等（項目）"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00010" type="EHD00010-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用項目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般株式等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00380" type="EHD00380-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00400" type="EHD00400-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00410" type="EHD00410-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00430" type="EHD00430-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00440" type="EHD00440-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00450" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00460" type="EHD00460-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費又は譲渡に要した費用等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00470" type="EHD00470-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00480" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00490" type="EHD00490-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00500" type="EHD00500-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00510" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00520" type="EHD00520-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00530" type="EHD00530-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00540" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00550" type="EHD00550-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00560" type="EHD00560-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00570" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00580" type="EHD00580-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD00620" type="EHD00620-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00640" type="EHD00640-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00650" type="EHD00650-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00660" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00670" type="EHD00670-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00680" type="EHD00680-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00690" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00700" type="EHD00700-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00740" type="EHD00740-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00750" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00760" type="EHD00760-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00770" type="EHD00770-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00780" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00790" type="EHD00790-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01170" type="EHD01170-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01190" type="EHD01190-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00800" type="EHD00800-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00810" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00820" type="EHD00820-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01200" type="EHD01200-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01220" type="EHD01220-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の収入　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00830" type="EHD00830-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00840" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00850" type="EHD00850-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01230" type="EHD01230-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01250" type="EHD01250-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD00240" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費又は譲渡に要した費用等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00860" type="EHD00860-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00870" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00880" type="EHD00880-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01260" type="EHD01260-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01280" type="EHD01280-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00890" type="EHD00890-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00900" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00910" type="EHD00910-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01290" type="EHD01290-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01310" type="EHD01310-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00920" type="EHD00920-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00930" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00940" type="EHD00940-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01320" type="EHD01320-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01340" type="EHD01340-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の費用　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00950" type="EHD00950-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00960" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00970" type="EHD00970-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01350" type="EHD01350-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01370" type="EHD01370-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"小計　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD01130" type="EHD01130-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定管理株式等のみなし譲渡損失の金額　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定管理株式等のみなし譲渡損失の金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01150" type="EHD01150-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定管理株式等のみなし譲渡損失の金額　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01380" type="EHD01380-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定管理株式等のみなし譲渡損失の金額　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定管理株式等のみなし譲渡損失の金額　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01400" type="EHD01400-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定管理株式等のみなし譲渡損失の金額　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定管理株式等のみなし譲渡損失の金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00980" type="EHD00980-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00990" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01000" type="EHD01000-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　外書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01410" type="EHD01410-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　内書き　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　内書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01430" type="EHD01430-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　内書き　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01010" type="EHD01010-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01030" type="EHD01030-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定投資株式の取得に要した金額等の控除　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01040" type="EHD01040-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01060" type="EHD01060-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01070" type="EHD01070-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分で差し引く上場株式等に係る繰越損失の金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分で差し引く上場株式等に係る繰越損失の金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01090" type="EHD01090-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分で差し引く上場株式等に係る繰越損失の金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分で差し引く上場株式等に係る繰越損失の金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01100" type="EHD01100-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD01120" type="EHD01120-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"繰越控除後の所得金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHD00350" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"特例適用条文　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHD00360" type="EHD00360-19-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条１"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHD00370" type="EHD00370-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"条２"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOC080-2-19-0type">
+<xsd:sequence>
+
+<xsd:element name="EHQ00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　申告する特定口座の上場株式等に係る譲渡所得等の金額の合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHQ00010" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHQ00020" type="EHQ00020-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"口座の区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取引先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHQ00040" type="EHQ00040-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00050" type="EHQ00050-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取引先区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00060" type="EHQ00060-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他取引先区分（＿）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00070" type="EHQ00070-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支店名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00080" type="EHQ00080-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本支店区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00090" type="EHQ00090-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他本支店区分（＿）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHQ00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡の対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費及び譲渡に要した費用の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHQ00140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHQ00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡の対価の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費及び譲渡に要した費用の額等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHQ00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHE00110" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"【参考】　特定口座以外で譲渡した株式等の明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHE00120" type="EHE00120-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00130" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡年月日(償還日)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00140" type="EHE00140-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した株式等の銘柄"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00220" type="EHE00220-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00340" type="EHE00340-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00240" type="EHE00240-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00350" type="EHE00350-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"数量　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00160" type="EHE00160-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡先(金融商品取引業者等)の名称・所在地等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00250" type="EHE00250-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00270" type="EHE00270-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00280" type="EHE00280-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00300" type="EHE00300-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00310" type="EHE00310-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00330" type="EHE00330-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00175" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得年月日"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHE00180" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHE00190" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（取得年月日）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHR00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【参考】　特定口座以外で譲渡した株式等の明細　合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHR00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般株式等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHR00090" type="EHR00090-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00110" type="EHR00110-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00120" type="EHR00120-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00140" type="EHR00140-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00150" type="EHR00150-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00160" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00170" type="EHR00170-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EHR00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"上場株式等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EHR00180" type="EHR00180-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00200" type="EHR00200-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡による収入金額　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00210" type="EHR00210-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00230" type="EHR00230-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費（取得価額）　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00240" type="EHR00240-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　開始括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　外書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00260" type="EHR00260-19-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　終了括弧"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EHR00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡のための委託手数料　本書き"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="EHD00010-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00380-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00400-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00410-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00430-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00440-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00460-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00470-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00490-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00500-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00520-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00530-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00550-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00560-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00580-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00620-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00640-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00650-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00670-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00680-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00700-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00740-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00760-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00770-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00790-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01170-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01190-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00800-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00820-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01200-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01220-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00830-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00850-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01230-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01250-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00860-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00880-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01260-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01280-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00890-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00910-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01290-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01310-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00920-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00940-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01320-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01340-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00950-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00970-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01350-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01370-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01130-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01150-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01380-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01400-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00980-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01000-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01410-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01430-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01010-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01030-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01040-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01060-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01070-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01090-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01100-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD01120-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00360-19-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHD00370-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EHQ00020-19-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EHQ00040-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EHQ00050-19-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EHQ00060-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHQ00070-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="40"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EHQ00080-19-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/><xsd:enumeration value="3"/><xsd:enumeration value="4"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EHQ00090-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EHE00120-19-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EHE00140-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="60"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00220-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00340-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00240-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00350-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00160-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00250-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00270-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00280-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00300-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00310-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHE00330-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00090-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00110-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00120-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00140-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00150-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00170-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00180-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00200-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00210-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00230-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00240-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EHR00260-19-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="1"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="EHD00360-19-0type">
+<xsd:simpleContent>
+<xsd:extension base="EHD00360-19-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

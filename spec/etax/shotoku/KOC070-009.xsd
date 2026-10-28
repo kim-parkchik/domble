@@ -1,0 +1,744 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：居住用財産の譲渡損失の金額の明細書《確定申告書付表》(居住用財産の買換え等の場合の譲渡損失の損益通算及び繰越控除用)
+version：9.0
+Date：2024年08月23日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOC070-9-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="9.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOC070-9-0group">
+<xsd:sequence>
+<xsd:element name="KOC070">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="EGE00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告等対象年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGF00000" type="gen:ZEIMUSHOref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"提出税務署"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="EGA00000" type="EGA00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00000" type="EGC00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１ 譲渡した資産に関する明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00000" type="EGD00000-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２ 買い換えた資産に関する明細"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOC070-9-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="EGA00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="EGA00005" type="EGA00005-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税地区分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGA00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGA00014" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所以外の居所又は事業所等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGA00016" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGA00020" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGA00030" type="gen:NOZEISHA_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGA00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"関与税理士名"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGA00050" type="gen:DAIRI_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGA00060" type="gen:DAIRI_TELref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EGC00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="EGC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00055" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00065" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償却費相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00075" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡に要した費用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00110" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"建物"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00120" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の所在地番"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00130" type="EGC00130-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の利用状況"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00140" type="EGC00140-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00143" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住期間"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00145" type="gen:yymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00147" type="gen:yymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"至"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00160" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00170" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00180" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡契約締結日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00220" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00230" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産を取得した時期"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00275" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00285" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"償却費相当額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00295" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡に要した費用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00330" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地・借地権"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00332" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地・借地権の区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00334" type="EGC00334-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00336" type="EGC00336-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借地権"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00340" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の所在地番"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00350" type="EGC00350-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の利用状況"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00360" type="EGC00360-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00370" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00380" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00390" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00400" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡契約締結日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00410" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡した年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00420" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産を取得した時期"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00440" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得費"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGC00465" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取得価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00475" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGC00490" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"譲渡に要した費用"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGC00500" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住用財産の譲渡損失の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="EGD00000-9-0type">
+<xsd:sequence>
+
+<xsd:element name="EGD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"合計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換資産の取得（予定）価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGD00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"建物"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGD00040" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の所在地番"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00050" type="EGD00050-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の利用状況・利用目的"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00060" type="EGD00060-9-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00070" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換資産の取得（予定）日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00080" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"居住の用に供した（供する見込）日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換資産の取得（予定）価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買入れ先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGD00110" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00120" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGD00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住宅の取得等に要した住宅借入金等の金額及びその借入先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGD00140" type="EGD00140-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借入先"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGD00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地・借地権"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGD00162" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地・借地権の区分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGD00164" type="EGD00164-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"土地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00166" type="EGD00166-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"借地権"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="EGD00170" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の所在地番"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00180" type="EGD00180-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"資産の利用状況・利用目的"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00190" type="EGD00190-9-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"面積"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00200" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換資産の取得（予定）日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買換資産の取得（予定）価額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00220" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"買入れ先"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="EGD00230" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="EGD00240" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:complexType name="EGA00005-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="5"/><xsd:enumeration value="6"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EGC00130-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="14"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EGC00140-9-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EGC00334-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EGC00336-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EGC00350-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="14"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EGC00360-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EGD00050-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="14"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EGD00060-9-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EGD00140-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="25"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:complexType name="EGD00164-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:complexType name="EGD00166-9-0Rtype">
+    <xsd:complexContent>
+        <xsd:restriction base="gen:kubun">
+            <xsd:sequence>
+                <xsd:element name="kubun_CD">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_CD">
+                            <xsd:enumeration value="1"/><xsd:enumeration value="2"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+                <xsd:element name="kubun_NM" minOccurs="0">
+                    <xsd:simpleType>
+                        <xsd:restriction base="gen:kubun_NM">
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:restriction>
+    </xsd:complexContent>
+</xsd:complexType>
+
+<xsd:simpleType name="EGD00180-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="14"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="EGD00190-9-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="30"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="EGC00140-9-0type">
+<xsd:simpleContent>
+<xsd:extension base="EGC00140-9-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="EGD00060-9-0type">
+<xsd:simpleContent>
+<xsd:extension base="EGD00060-9-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

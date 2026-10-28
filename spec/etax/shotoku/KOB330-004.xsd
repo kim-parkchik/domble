@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：探鉱準備金及び新鉱床探鉱費の特別控除に関する明細書
+version：4.0
+Date：2017年09月04日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB330-4-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="4.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB330-4-0group">
+<xsd:sequence>
+<xsd:element name="KOB330">
+<xsd:complexType>
+<xsd:sequence>
+
+<xsd:element name="CHA00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHB00000" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="CHC00000" type="CHC00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　探鉱準備金に関する明細書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHD00000" type="CHD00000-4-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　新鉱床探鉱費の特別控除に関する明細書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB330-4-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="CHC00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="CHC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１）　探鉱準備金の積立額の計算の明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取引基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年の鉱物の販売による収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"取引基準による積立額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHC00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年の鉱物の販売による収入金額に係る採掘所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"租税特別措置法施行令第14条第４項の規定により控除する金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年以前各年の採掘損失金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"前年以前各年の採掘所得金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（４）－（５）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHC00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差引採掘所得金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得基準による積立額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHC00130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"探鉱準備金積立限度額（（２）又は（８）のうちいずれか少ない方の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年積み立てた探鉱準備金の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHC00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（２）　探鉱準備金の取崩しに関する明細"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"探鉱準備金の取崩しに関する明細　１"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00170" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の各年分の準備金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１２）のうち本年中の任意取崩額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額に算入される額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHC00220" minOccurs="0" maxOccurs="5">
+<xsd:annotation>
+<xsd:appinfo>"探鉱準備金の取崩しに関する明細　２　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00230" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"積立年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の各年分の準備金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00250" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１２）のうち本年中の任意取崩額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHC00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当初の必要経費に算入した積立額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHC00300" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHC00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年初の各年分の準備金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（１２）のうち本年中の任意取崩額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHC00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"翌年繰越額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="CHD00000-4-0type">
+<xsd:sequence>
+
+<xsd:element name="CHD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"探鉱費等基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHD00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中に支出した新鉱床探鉱費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中の探鉱用機械設備の償却額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHD00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"準備金取崩基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年中の任意取崩額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額に算入される額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="CHD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHD00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所得基準"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="CHD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"この特別控除額及び青色申告特別控除額を控除しないで計算した本年分の事業所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="CHD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本年分必要経費に算入される新鉱床探鉱費の額（（１９）、（２２）又は（２３）のうちいずれか少ない方の金額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+
+
+</xsd:schema>

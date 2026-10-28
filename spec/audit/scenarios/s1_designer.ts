@@ -12,7 +12,8 @@
  * 動かし方：bun spec/audit/scenarios/s1_designer.ts（リポジトリの直下で）
  */
 import {
-  makeDb, makeBook, cashEntry, voucher, runDepreciation, runHomeUseYearEnd, yearFigures, taxReturnOf, incomeTaxOf, cmp, printTable, repo, YEAR, type Cmp,
+  makeDb, makeBook, cashEntry, voucher, runDepreciation, runHomeUseYearEnd, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo,
+  YEAR, type Cmp,
 } from "./common";
 import { EMPTY_INCOME_TAX_INPUT, type IncomeTaxInput } from "../../../src/lib/incomeTax";
 
@@ -149,7 +150,7 @@ const input: IncomeTaxInput = {
   businessWithholding: [{ item: "デザイン料", payer: "株式会社エックス", payerId: "", income: 3_960_000, withheld: 367_560 }],
   socialInsurance: [{ kind: "国民健康保険", amount: 360_000 }, { kind: "国民年金", amount: 210_120 }],
   smallBusiness: [{ kind: "小規模企業共済", amount: 360_000 }],
-  donations: [{ name: "ふるさと納税（〇〇市）", amount: 50_000 }],
+  donations: [{ name: "ふるさと納税（〇〇市）", amount: 50_000, local: "furusato" }],
   spouse: { name: "山田 花子", relation: "妻", birthday: "1987-01-10", income: 600_000, disability: "none", cohabiting: true, lineal: false },
 };
 const it = await incomeTaxOf(db, b, input);
@@ -170,6 +171,25 @@ cmp(rows, "所得税：復興特別所得税 ㊺", 182, v("㊺"));
 cmp(rows, "所得税：源泉徴収税額 ㊾", 367_560, v("㊾"));
 cmp(rows, "所得税：還付される税金", 358_678, v(`(53)`));
 cmp(rows, "所得税：画面で出せるか（令和7年分）", "出せる", "出せる", "年分ごとの決まりの表（令和7年分）で計算する");
+
+// 所得税の e-Tax のデータ（申告書＋青色申告決算書）
+await setFiler(db, { refund_mode: "bank", bank_name: "みずほ", branch_name: "渋谷", account_no: "1234567", office_address: "東京都渋谷区神南1-1-1" });
+const xin: IncomeTaxInput = {
+  ...input, residentTax: "self",
+  businessWithholding: input.businessWithholding.map((r) => ({ ...r, payerId: "東京都港区港南1-1-1" })),
+};
+const x = await incomeXtxOf(db, b, xin, { self: "123456789018", spouse: "123456789018" });
+cmp(rows, "所得税の e-Tax のデータ：書き出せるか", "書き出せる", x.problems.length ? "出せない" : "書き出せる", x.problems.join(" / "));
+cmp(rows, "所得税の e-Tax のデータ：手続 RKO0010 の XSD に合う", "", x.invalid.slice(0, 300));
+cmp(rows, "xtx：事業所得 ①（ABB00300）", "2412813", xtxVal(x.xml, "ABB00300"));
+cmp(rows, "xtx：還付される税金 (53)（ABB00760）", "358678", xtxVal(x.xml, "ABB00760"));
+cmp(rows, "xtx：源泉徴収税額の合計（ABD00070 = ㊾）", "367560", xtxVal(x.xml, "ABD00070"));
+cmp(rows, "xtx：配偶者特別控除の区分1（ABB00515）", "1", xtxVal(x.xml, "ABB00515"));
+cmp(rows, "xtx：住民税 都道府県・市区町村への寄附（ABI00240）", "50000", xtxVal(x.xml, "ABI00240"));
+cmp(rows, "xtx：決算書 売上（収入）金額（AMF00100）", String(f.pl.revenue), xtxVal(x.xml, "AMF00100"));
+cmp(rows, "xtx：決算書 青色申告特別控除前の所得金額（AMF00500）", String(f.pl.income), xtxVal(x.xml, "AMF00500"));
+cmp(rows, "xtx：決算書 減価償却費（AMF00290 = 3ページの必要経費算入額の計 AMF01840）", xtxVal(x.xml, "AMF01840"), xtxVal(x.xml, "AMF00290"));
+cmp(rows, "xtx：貸借対照表 資産の期末合計（AMG00440）＝負債・資本の期末合計（AMG00760）", xtxVal(x.xml, "AMG00440"), xtxVal(x.xml, "AMG00760"));
 
 // 源泉徴収税額を帳簿（事業主貸の補助科目「源泉所得税」）から拾えるか
 const withheldBooks = f.lines.filter((l) => l.sub_account_id === sWith).reduce((s, l) => s + (l.side === "debit" ? l.amount : -l.amount), 0);

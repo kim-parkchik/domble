@@ -1,0 +1,2037 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分所得税青色申告決算書(一般用)付表《医師及び歯科医師用》
+version：6.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOA250-6-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="6.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOA250-6-0group">
+<xsd:sequence>
+<xsd:element name="KOA250">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOA250-1" type="KOA250-1-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１ページ目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOA250-2" type="KOA250-2-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２ページ目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOA250-6-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOA250-1-6-0type">
+<xsd:sequence>
+
+<xsd:element name="AQZ00000" type="gen:NENBUNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQA00000" type="AQA00000-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療科目"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQB00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQB00020" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１．収入金額の内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"社会保険診療報酬"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基金事務所から支払を受ける社会保険診療報酬"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般社会保険"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00040" type="AQC00040-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00050" type="AQC00050-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00060" type="AQC00060-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00070" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00150" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"生活保護法"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00160" type="AQC00160-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00170" type="AQC00170-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00180" type="AQC00180-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00270" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"精神保健福祉法"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00280" type="AQC00280-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00290" type="AQC00290-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00300" type="AQC00300-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00310" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00330" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬の種類　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00340" type="AQC00340-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00350" type="AQC00350-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00360" type="AQC00360-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00370" type="AQC00370-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00380" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00395" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"基金事務所から支払を受ける社会保険診療報酬　小計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00400" type="AQC00400-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00405" type="AQC00405-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00410" type="AQC00410-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00415" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00430" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国民健康保険診療報酬"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00980" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国民健康保険法"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00990" type="AQC00990-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01000" type="AQC01000-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01010" type="AQC01010-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC01030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"高齢者医療確保法"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC01040" type="AQC01040-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01050" type="AQC01050-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01060" type="AQC01060-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00440" type="AQC00440-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00450" type="AQC00450-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00460" type="AQC00460-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00470" type="AQC00470-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00480" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00490" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00492" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"国民健康保険診療報酬　小計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00493" type="AQC00493-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00494" type="AQC00494-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00495" type="AQC00495-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00496" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00497" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00500" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"介護報酬　追加項目　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00510" type="AQC00510-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00520" type="AQC00520-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00530" type="AQC00530-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00540" type="AQC00540-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00550" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00560" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00562" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"介護報酬　小計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00563" type="AQC00563-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00564" type="AQC00564-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00565" type="AQC00565-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00566" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00567" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC01080" minOccurs="0" maxOccurs="2">
+<xsd:annotation>
+<xsd:appinfo>"その他　追加項目　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC01090" type="AQC01090-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01100" type="AQC01100-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01110" type="AQC01110-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01120" type="AQC01120-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01130" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC01140" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他　小計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC01150" type="AQC01150-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01160" type="AQC01160-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01170" type="AQC01170-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額　診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00570" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00580" type="AQC00580-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00590" type="AQC00590-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00600" type="AQC00600-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"決定点数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00610" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00620" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬当座口払込額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00630" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬窓口収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00640" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療の収入等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00650" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般の自由診療"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00660" type="AQC00660-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00670" type="AQC00670-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00680" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00690" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"労働者災害補償保険診療"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00700" type="AQC00700-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00710" type="AQC00710-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00720" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00730" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"公害健康被害補償診療"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00740" type="AQC00740-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00750" type="AQC00750-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00760" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00762" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自動車損害賠償責任保険診療"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00764" type="AQC00764-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00766" type="AQC00766-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00768" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC01190" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"高齢者医療確保法"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC01200" type="AQC01200-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01210" type="AQC01210-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC01220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00770" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬の種類　追加項目"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00780" type="AQC00780-6-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療報酬の種類"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00790" type="AQC00790-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00800" type="AQC00800-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00810" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00820" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00830" type="AQC00830-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療件数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00840" type="AQC00840-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00850" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00860" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00870" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２．自由診療割合の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00880" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数による割合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00890" type="AQC00890-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00900" type="AQC00900-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総診療実日数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00910" type="AQC00910-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"診療実日数の割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQC00920" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"収入による割合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQC00930" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00940" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総診療収入"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00960" type="AQC00960-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"調整率"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQC00970" type="AQC00970-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療の収入等の割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOA250-2-6-0type">
+<xsd:sequence>
+
+<xsd:element name="AQD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３．必要経費の内訳"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般経費分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"原価及び経費の総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分と社会保険診療分とに明確に区分できる経費の総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00050" type="AQD00050-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"左の（ａ）のうち自由診療分に係る経費の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分の原価及び経費の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特典経費分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00090" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者給与"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者給与の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00110" type="AQD00110-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00120" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分の専従者給与の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQD00130" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一括評価による貸倒引当金繰入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00140" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"12月31日現在の自由診療分の一括評価に係る貸金額の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00150" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分の一括評価による貸倒引当金繰入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQD00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職給与引当金勘定への繰入額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職給与引当金勘定への繰入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00180" type="AQD00180-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分の退職給与引当金勘定への繰入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQD00200" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険診療分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00210" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一般経費分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"原価及び経費の総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00230" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分の原価及び経費の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00240" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"社会保険診療分の原価及び経費の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQD00250" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特典経費分"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00260" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"専従者給与の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00270" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（Ｂ）の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00280" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"退職給与引当金繰入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00290" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（Ｄ）の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00300" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一括評価による貸倒引当金繰入額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00310" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（Ｃ）の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00320" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"一括評価による貸倒引当金繰戻額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00330" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"自由診療分の一括評価による貸倒引当金繰戻額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00340" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"社会保険診療分の特典経費の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00350" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"租税特別措置法第26条の規定による社会保険診療分の経費の額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00360" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"社会保険診療報酬"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00370" type="AQD00370-6-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"速算表の（ｂ）率"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00380" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"速算表の（ｃ）加算額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00390" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"租税特別措置法第26条の規定による必要経費の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="AQD00400" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"社会保険診療分の経費と租税特別措置法第26条による金額との差額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="AQD00410" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"租税特別措置法第26条の規定による必要経費の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00420" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"社会保険診療分の原価及び経費と特典経費の合計額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="AQD00430" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"差額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="AQA00000-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="10"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00040-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00050-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00060-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00160-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00170-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00180-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00280-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00290-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00300-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00340-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00350-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00360-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00370-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00400-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00405-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00410-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00990-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01000-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01010-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01040-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01050-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01060-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00440-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00450-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00460-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00470-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00493-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00494-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00495-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00510-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00520-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00530-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00540-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00563-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00564-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00565-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01090-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01100-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01110-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01120-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01150-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01160-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01170-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00580-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00590-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00600-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00660-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00670-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00700-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00710-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00740-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00750-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00764-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00766-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01200-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC01210-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00780-6-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="15"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00790-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00800-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00830-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00840-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00890-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00900-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00910-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00960-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQC00970-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQD00050-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQD00110-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQD00180-6-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="AQD00370-6-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="AQC00040-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00040-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00050-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00050-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00060-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00060-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00160-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00160-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00170-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00170-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00180-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00180-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00280-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00280-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00290-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00290-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00300-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00300-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00350-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00350-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00360-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00360-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00370-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00370-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00400-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00400-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00405-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00405-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00410-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00410-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00990-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00990-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01000-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01000-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01010-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01010-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01040-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01040-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01050-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01050-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01060-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01060-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00450-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00450-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00460-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00460-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00470-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00470-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00493-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00493-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00494-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00494-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00495-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00495-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00520-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00520-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00530-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00530-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00540-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00540-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00563-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00563-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00564-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00564-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00565-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00565-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01100-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01100-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01110-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01110-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01120-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01120-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01150-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01150-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01160-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01160-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01170-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01170-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00580-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00580-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00590-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00590-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00600-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00600-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00660-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00660-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00670-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00670-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00700-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00700-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00710-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00710-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00740-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00740-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00750-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00750-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00764-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00764-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00766-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00766-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01200-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01200-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC01210-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC01210-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00790-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00790-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00800-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00800-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00830-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00830-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00840-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00840-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00890-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00890-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00900-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00900-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00910-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00910-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00960-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00960-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQC00970-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQC00970-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQD00050-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQD00050-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQD00110-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQD00110-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQD00180-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQD00180-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="AQD00370-6-0type">
+<xsd:simpleContent>
+<xsd:extension base="AQD00370-6-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

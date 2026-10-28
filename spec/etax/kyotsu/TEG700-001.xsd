@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：医療費通知(お知らせ)
+version：1.0
+Date：2017年09月04日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="TEG700-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+<!-- Root Element Definition -->
+<xsd:element name="TEG700" type="TEG700-1-0type"/>
+
+<xsd:complexType name="TEG700-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WBA00000" type="WBA00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被保険者又はその被扶養者の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WBB00000" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保険者の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WBC00000" type="WBC00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"ユニークコード"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="WBD00000" type="WBD00000-1-0type" minOccurs="0" maxOccurs="100">
+<xsd:annotation>
+<xsd:appinfo>"医療費の明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="1" maxOccurs="1"/>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="TEG700-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+
+<xsd:complexType name="WBD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WBD00010" minOccurs="0" maxOccurs="20">
+<xsd:annotation>
+<xsd:appinfo>"明細　繰り返し"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WBD00020" type="WBD00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"療養を受けた者の氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WBD00030" type="gen:yyyymm" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"療養を受けた年月"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WBD00040" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"療養を受けた病院、診療所、薬局その他の者の名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WBD00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"被保険者又はその被扶養者が支払った医療費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="WBA00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WBC00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="77"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WBD00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+</xsd:schema>

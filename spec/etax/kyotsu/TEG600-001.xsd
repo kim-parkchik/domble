@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：年分　配当等とみなす金額に関する支払通知書(平成21年以降用)
+version：1.0
+Date：2018年11月13日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+<xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../general/XMLDSIG050.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="TEG600-1-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="1.0"/></xsd:restriction></xsd:simpleType>
+<!-- Root Element Definition -->
+<xsd:element name="TEG600" type="TEG600-1-0type"/>
+
+<xsd:complexType name="TEG600-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAA00000" type="WAA00000-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"表題"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAB00000" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="WAC00000" type="WAC00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払を受ける者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAD00000" type="WAD00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"交付する金銭及び金銭以外の資産の価額（１株又は出資１口当たりの額）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAE00000" type="WAE00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１株又は出資１口当たりの資本金等の額又は連結個別資本金等の額から成る部分の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAF00000" type="WAF00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１株又は出資１口当たりの配当等とみなされる金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="WAG00000" type="gen:yymmdd" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払確定又は支払年月日"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAH00000" type="WAH00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"株式の数又は出資の口数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="WAI00000" type="WAI00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"配当等とみなされる金額の総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<xsd:element name="WAJ00000" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"源泉徴収税額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element><xsd:element name="WAK00000" type="WAK00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"（摘要）"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAL00000" type="WAL00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAM00000" type="WAM00000-1-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払の取扱者"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+<!-- XML-SIGNATURE -->
+<xsd:element ref="dsig:Signature" minOccurs="1" maxOccurs="1"/>
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="TEG600-1-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+
+<xsd:complexType name="WAC00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAC00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所（居所）又は所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAC00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名又は名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WAD00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金銭"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WAD00020" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WAD00030" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金銭以外の資産の価額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WAD00040" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"株式又は出資"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WAD00050" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WAD00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"その他の資産"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WAD00070" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="WAD00080" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"計"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="WAD00090" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WAE00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAE00010" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WAF00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAF00010" type="gen:gaika" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"円"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WAI00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAI00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"外書"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAI00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WAK00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAK00010" type="WAK00010-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"摘要の内容"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAK00020" type="WAK00020-1-0Rtype" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電子交付"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WAL00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAL00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAL00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAL00030" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType><xsd:complexType name="WAM00000-1-0type">
+<xsd:sequence>
+
+<xsd:element name="WAM00010" type="gen:address" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"所在地"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAM00020" type="gen:name" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"名称"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="WAM00030" type="gen:tel-number" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"電話番号"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+
+
+<xsd:simpleType name="WAA00000-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="20"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WAH00000-1-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d?\d?\d?\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WAK00010-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="100"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="WAK00020-1-0Rtype">
+    <xsd:restriction base="gen:str">
+        <xsd:maxLength value="4"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="WAH00000-1-0type">
+<xsd:simpleContent>
+<xsd:extension base="WAH00000-1-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>

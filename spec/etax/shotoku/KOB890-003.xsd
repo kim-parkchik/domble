@@ -1,0 +1,745 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema targetNamespace="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"
+xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general" xmlns:kyo="http://xml.e-tax.nta.go.jp/XSD/kyotsu"
+
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.0" > 
+<xsd:annotation> 
+<xsd:documentation> 
+様式名：相続等に係る生命保険契約等に基づく年金の雑所得の金額の計算書(所得税法施行令第185条第2項又は第186条第2項に基づき計算する場合)(本表・別表1)
+version：3.0
+Date：2022年09月01日
+</xsd:documentation> 
+</xsd:annotation> 
+
+<!-- import -->
+<xsd:import namespace="http://xml.e-tax.nta.go.jp/XSD/general" schemaLocation="../general/General.xsd"/>
+
+<!-- version -->
+<xsd:simpleType name="KOB890-3-0VRtype"><xsd:restriction base="xsd:string"><xsd:enumeration value="3.0"/></xsd:restriction></xsd:simpleType>
+
+<xsd:group name="KOB890-3-0group">
+<xsd:sequence>
+<xsd:element name="KOB890">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="KOB890-1" type="KOB890-1-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="KOB890-2" type="KOB890-2-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２面"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+
+</xsd:sequence>
+<xsd:attribute name="VR"
+type="KOB890-3-0VRtype"
+use="required"/>
+<xsd:attributeGroup ref="gen:FormAttribute"/>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:group>
+
+<xsd:complexType name="KOB890-1-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IMA00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"納税者等部"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMA00010" type="gen:NOZEISHA_ADRref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"住所"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMA00020" type="gen:NOZEISHA_NM_KNref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"フリガナ"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMA00030" type="gen:NOZEISHA_NMref" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"氏名"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMB00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１　保険契約等に関する事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMB00010" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の支払開始年"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMB00020" type="IMB00020-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の残存期間等"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMB00030" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の支払総額(見込額)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMB00040" type="IMB00040-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の支払総額(見込額)に占める保険料又は掛金の総額の割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMB00050" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"当該年金に係る権利について相続税法第24条の規定により評価された額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMB00060" type="IMB00060-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税評価割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMC00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"２　所得金額の計算の基礎となる事項"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMC00010" type="IMC00010-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続税評価割合に応じた割合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMC00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((3)*(7))"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMC00030" type="IMC00030-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"別表３により計算した単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMC00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１単位当たりの金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMD00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"３　各年分の雑所得の金額の計算"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMD00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(6)が50％超の場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMD00020" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告を行う年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00030" type="IMD00030-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((11)-(1)+1)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00040" type="IMD00040-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払年金対応額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMD00060" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00070" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金が月払等の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMD00080" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"剰余金等の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00090" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00100" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00110" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMD00120" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(6)が50％以下の場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMD00130" type="gen:yy" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"申告を行う年分"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00140" type="IMD00140-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((11)-(1)+1)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00150" type="IMD00150-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00160" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"支払年金対応額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMD00170" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00180" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金が月払等の場合"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMD00190" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"剰余金等の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00200" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"総収入金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00210" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"必要経費の額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMD00220" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"雑所得の金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType><xsd:complexType name="KOB890-2-3-0type">
+<xsd:sequence>
+
+<xsd:element name="IME00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【別表１】　本表(2)及び本表(3)の年数等"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IME00010" type="IME00010-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年金の残存期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IME00020" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"相続等の時(年金の支払開始日)の年齢に応じた別表２により求めた年数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IME00030" type="IME00030-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年齢"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IME00040" type="IME00040-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IME00050" type="IME00050-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"保証残存期間"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMF00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【別表３】　本表(9)の単位数"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMF00010" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本表(6)が50％超である場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMF00020" type="IMF00020-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)の年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMF00030" type="IMF00030-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"((2)の年数)"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMF00040" type="IMF00040-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMF00050" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本表(6)が50％以下である場合"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMF00060" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算式１"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMF00070" type="IMF00070-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)の年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMF00080" type="IMF00080-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【特定期間算出割合】"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMF00090" type="IMF00090-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定期間年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMF00100" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"算式２"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMF00110" type="IMF00110-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"(2)の年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMF00120" type="IMF00120-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"特定期間年数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMF00130" type="IMF00130-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="IMG00000" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"【別表４】　本表(14)の金額"</xsd:appinfo>
+</xsd:annotation>
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="IMG00010" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"各年の年金支払額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMG00020" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"１単位当たりの金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMG00030" type="IMG00030-3-0type" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"単位数"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+<xsd:element name="IMG00040" type="gen:kingaku" minOccurs="0">
+<xsd:annotation>
+<xsd:appinfo>"本表(14)に入力する金額"</xsd:appinfo>
+</xsd:annotation>
+</xsd:element>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+</xsd:sequence>
+<xsd:attribute name="page" type="xsd:positiveInteger"/>
+</xsd:complexType>
+
+
+<xsd:simpleType name="IMB00020-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMB00040-3-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMB00060-3-0Rtype">
+    <xsd:restriction base="gen:decimalType">
+        <xsd:pattern value="[-]?\d?\d?\d?"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d"/><xsd:pattern value="[-]?\d?\d?\d?[.]\d\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMC00010-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMC00030-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMD00030-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMD00040-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMD00140-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:minInclusive value="0"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMD00150-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IME00010-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IME00030-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IME00040-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IME00050-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00020-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00030-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00040-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00070-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00080-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00090-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00110-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00120-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMF00130-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+<xsd:simpleType name="IMG00030-3-0Rtype">
+    <xsd:restriction base="gen:nonNegativeType">
+        <xsd:pattern value="\d?\d?\d?\d"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
+
+
+<xsd:complexType name="IMB00020-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMB00020-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMB00040-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMB00040-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMB00060-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMB00060-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMC00010-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMC00010-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMC00030-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMC00030-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMD00030-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMD00030-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMD00040-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMD00040-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMD00140-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMD00140-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMD00150-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMD00150-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IME00010-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IME00010-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IME00030-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IME00030-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IME00040-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IME00040-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IME00050-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IME00050-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00020-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00020-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00030-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00030-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00040-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00040-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00070-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00070-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00080-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00080-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00090-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00090-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00110-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00110-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00120-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00120-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMF00130-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMF00130-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+<xsd:complexType name="IMG00030-3-0type">
+<xsd:simpleContent>
+<xsd:extension base="IMG00030-3-0Rtype">
+<xsd:attribute name="AutoCalc" type="xsd:string"/>
+</xsd:extension>
+</xsd:simpleContent>
+</xsd:complexType>
+</xsd:schema>
