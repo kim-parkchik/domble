@@ -30,7 +30,7 @@ let n = 0;
 const validate = (xml: string) => {
   const file = join(dir, `t${n++}.xtx`);
   writeFileSync(file, xml);
-  // 手続と版（VR="26.0.0" → RSH0010-260.xsd）で XSD を選ぶ
+  // 手続と版（VR="23.2.0" → RSH0010-232.xsd）で XSD を選ぶ
   const [, procedure, vr] = xml.match(/<(RSH\d{4}) VR="([\d.]+)"/)!;
   const p = Bun.spawnSync(["xmllint", "--noout", "--schema", join(SPEC, `${procedure}-${vr.replace(/\./g, "").slice(0, 3)}.xsd`), file]);
   return p.exitCode === 0 ? "" : p.stderr.toString();
@@ -50,7 +50,7 @@ describe("本則課税（一般用：RSH0010）", () => {
 
   test("XSD に合っている", () => expect(validate(xml)).toBe(""));
   test("手続・様式・IT部", () => {
-    expect(xml).toContain('<RSH0010 VR="26.0.0" id="RSH0010">');
+    expect(xml).toContain('<RSH0010 VR="23.2.0" id="RSH0010">');
     expect(xml).toContain('<SHA010 VR="10.0" id="SHA010-1" page="1" sakuseiDay="2027-02-01" sakuseiNM="山田商店 &amp; Co." softNM="domble">');
     expect(xml).toContain('<rdf:li><rdf:description about="#SHB017-1"/></rdf:li><rdf:li><rdf:description about="#SHB033-1"/></rdf:li>');
     expect(xml).toContain("<NOZEISHA_YAGO_KN ID=\"NOZEISHA_YAGO_KN\">ヤマダショウテン</NOZEISHA_YAGO_KN>");
@@ -89,7 +89,7 @@ describe("簡易課税（簡易課税用：RSH0030）", () => {
     const b = base({ sales: { 8: 19_192_000, 10: 11_516_000 }, salesReturn: { 8: 1_250_000, 10: 756_000 }, exportSales: 1_100_000, badDebt: { 8: 0, 10: 560_000 } });
     const xml = buildTaxXtx(simplifiedReturn(b, { ...opts, businessClass: 2 }), filer, period);
     expect(validate(xml)).toBe("");
-    expect(xml).toContain('<RSH0030 VR="26.0.0" id="RSH0030">');
+    expect(xml).toContain('<RSH0030 VR="23.2.0" id="RSH0030">');
     expect(val(xml, "DVC00010")).toBe("2"); // 第二種
     expect(val(xml, "DVC00040")).toBe("1439680");
     expect(val(xml, "DUF00160")).toBe("1605218");
@@ -269,10 +269,25 @@ describe("年分ごとの手続の版", () => {
     }
     expect(cases[0]).toContain("<KAZEI_KIKAN_FROM ID=\"KAZEI_KIKAN_FROM\"><gen:era>5</gen:era><gen:yy>7</gen:yy>");
   });
+  test("令和8年分は、年の途中で課税事業者になっても 23.2.0（令和8年9月30日以前に開始した課税期間用）", () => {
+    const b = base({ sales: { 8: 0, 10: 1_100_000 } });
+    const xml = buildTaxXtx(twentyReturn(b, opts), filer, { from: "2026-10-01", to: "2026-12-31", createdOn: "2027-02-01" });
+    expect(xml).toContain('<RSH0010 VR="23.2.0" id="RSH0010">');
+    expect(validate(xml)).toBe("");
+  });
+  test("令和9年分は版 26.0.0（令和8年10月1日以後開始の課税期間用）で書き出し、その版の XSD に合う", () => {
+    const b = base({ sales: { 8: 1_080_000, 10: 2_200_000 }, purchase: { 8: 540_000, 10: 1_100_000 } });
+    const r9 = { from: "2027-01-01", to: "2027-12-31", createdOn: "2028-02-01" };
+    for (const xml of [buildTaxXtx(standardReturn(b, opts), filer, r9), buildTaxXtx(simplifiedReturn(b, opts), filer, r9)]) {
+      expect(xml).toMatch(/<RSH00[13]0 VR="26\.0\.0"/);
+      expect(validate(xml)).toBe("");
+    }
+  });
   test("表に無い新しい年分は、いちばん新しい版で書き出す（知らせる）", () => {
     expect(xtxVersionFor(2025)).toEqual({ version: "23.2.0", fallback: false });
-    expect(xtxVersionFor(2026)).toEqual({ version: "26.0.0", fallback: false });
-    expect(xtxVersionFor(2027)).toEqual({ version: "26.0.0", fallback: true });
+    expect(xtxVersionFor(2026)).toEqual({ version: "23.2.0", fallback: false });
+    expect(xtxVersionFor(2027)).toEqual({ version: "26.0.0", fallback: false });
+    expect(xtxVersionFor(2028)).toEqual({ version: "26.0.0", fallback: true });
   });
 });
 
