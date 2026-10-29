@@ -60,7 +60,7 @@ export const MANUAL_ITEMS: { key: string; label: string; note: string }[] = [
   {
     key: "display",
     label: "パソコン・ディスプレイ・プリンタを備え、帳簿を画面と書面に整然と出せる",
-    note: "税務調査のときに、画面で見せたり印刷したりできること",
+    note: "税務調査のときに、画面で見せたり印刷したりできること（domble の各帳簿の画面の「印刷」から出せます）",
   },
   {
     key: "filed",
@@ -103,7 +103,7 @@ export const processingManual = (o: { businessName: string; ownerName: string; y
   (3) 年度を締めたときの確認コードを、決算書の控えなど帳簿ファイルの外に残す。
 
 7. 税務調査などへの対応
-  求めに応じて、帳簿を画面に表示し、CSV で書き出して提出する（帳簿の印刷は domble の今の版では決算書・申告書だけのため、CSV を表計算ソフトで開いて印刷する）。
+  求めに応じて、帳簿を画面に表示し、または各帳簿の画面の「印刷」で書面に出力し（PDF への保存を含む）、または CSV で書き出して提出する。
 
 8. 責任者
   このマニュアルの運用の責任者は、${o.ownerName} とする。

@@ -4,17 +4,20 @@
  * 入力した行は「この科目 ⇔ 相手科目」の2行の仕訳として保存されます。
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CornerDownLeft, FileUp, Landmark, Settings2 } from "lucide-react";
+import { CornerDownLeft, FileUp, Landmark, Printer, Settings2 } from "lucide-react";
 import type { Page } from "../../App";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { ADJUSTMENT_PERIOD, MonthTabs, periodLabel } from "../../components/MonthRange";
 import { AccountWithSub, AmountInput, CounterpartyField, DateInput, MemoInput, TaxSelect } from "../../components/Inputs";
 import { useToast } from "../../components/Toast";
+import { PrintPreview } from "../../components/PrintPreview";
 import { EntryEditModal } from "./EntryEditModal";
 import { buildLedger, monthEnd, monthStart, yearEnd } from "../../lib/accounting";
 import { enterToNext } from "../../lib/keyboard";
 import { defaultDateInYear, shortDate, todayIso, yen } from "../../lib/format";
+import { ledgerSection } from "../../lib/printBooks";
+import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE } from "../../constants/accounts";
 import { cashbookTabs } from "../../lib/cashbook";
 import { CashbookTabsModal } from "./CashbookTabsModal";
@@ -24,6 +27,10 @@ import { subKey, type InvoiceKind, type JournalLine, type PurchaseUse, type TaxC
 import { splitByRate } from "../../lib/homeUse";
 import { displayClass, displayUse, taxLongLabel, taxShortLabel } from "../../lib/tax";
 
+/** 印刷するときの帳簿の名前（一般的な帳簿の呼び方に合わせる） */
+const bookTitle = (code: string, name: string) =>
+  code === "101" ? "現金出納帳" : ["102", "103", "104"].includes(code) ? "預金出納帳" : code === "111" ? "売掛帳" : code === "202" ? "買掛帳" : `${name}の帳簿`;
+
 /** 科目ごとの列見出し（一般的な出納帳に合わせる） */
 const columnLabels = (code: string, normal: "debit" | "credit") => {
   if (code === "101") return { dr: "入金", cr: "出金" };
@@ -32,7 +39,7 @@ const columnLabels = (code: string, normal: "debit" | "credit") => {
 };
 
 export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion } = useAppContext();
+  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion, settings } = useAppContext();
   const { lines, opening, subOpening, loading } = useYearData();
   const toast = useToast();
 
@@ -113,6 +120,26 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
   }, [lines, isTaxActive, taxYears]);
 
   const totals = rows.reduce((t, r) => ({ dr: t.dr + r.debit, cr: t.cr + r.credit }), { dr: 0, cr: 0 });
+
+  // ── 印刷（表示中の帳簿・補助科目・期間） ──
+  const [printing, setPrinting] = useState(false);
+  const printDoc = useMemo((): PrintDoc | null => {
+    if (!printing) return null;
+    const base = bookSub === undefined ? opening[account.id] ?? 0 : subOpening[subKey(account.id, bookSub)] ?? 0;
+    const subLabel = bookSub === undefined ? "" : bookSub === null ? "補助なし" : subMap.get(bookSub)?.name ?? "";
+    return {
+      title: bookTitle(account.code, account.name), owner: ownerText(settings.business_name, settings.owner_name),
+      period: from === ADJUSTMENT_PERIOD ? `${year}年 決算整理` : periodText(monthStart(year, from), monthEnd(year, Math.min(to, 12))) + (to === ADJUSTMENT_PERIOD && !fullYear ? "（決算整理を含む）" : ""),
+      printedOn: todayIso(),
+      sections: [ledgerSection({
+        heading: subLabel ? `${account.name}　${subLabel}` : account.name,
+        rows: buildLedger(account, base, lines, accountMap, bookSub), opening: base, from, to, labels,
+        counterOf: (r) => (r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter),
+        taxOf: (r) => taxOfRow(r).text,
+        noteOf: (r) => [bookSub === undefined && r.subId ? subMap.get(r.subId)?.name ?? "" : "", cpOfEntry.get(r.entry_id) ?? ""].filter(Boolean).join("　"),
+      })],
+    };
+  }, [printing, account, bookSub, from, to, lines, opening, subOpening, settings, year, taxOfRow, cpOfEntry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 入力行 ──
   // 入力の日付の初期値：今日が表示中の期間に入っていれば今日、そうでなければ期間の初日
@@ -230,6 +257,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
           </button>
           <MonthTabs from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
         </div>
+        <button className="btn ghost" onClick={() => setPrinting(true)} title="表示中の帳簿を、表示中の期間で印刷します"><Printer size={16} /> 印刷</button>
       </PageHeader>
 
       <div className="book-picker" role="tablist" aria-label="帳簿">
@@ -377,6 +405,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       </section>
 
       {editing && <EntryEditModal entryId={editing} onClose={() => setEditing(null)} />}
+      {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
       {importing && <BankImportModal account={account} initialSub={bookSub} onClose={() => setImporting(false)} />}
       {editingTabs && (
         <CashbookTabsModal

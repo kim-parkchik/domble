@@ -207,4 +207,12 @@ describe("書き出せないとき・版", () => {
     expect(incomeXtxVersionFor(2026)).toEqual({ version: "25.0.1", fallback: true });
     expect(incomeXtxNotices(source({}, { year: 2026 })).join()).toMatch(/令和8年分の e-Tax の版/);
   });
+  test("医療費控除・セルフメディケーション税制を受けるときは、明細書が無いことを知らせる", () => {
+    const notice = (medical: IncomeTaxInput["medical"]) => incomeXtxNotices(source({ medical })).join();
+    expect(notice({ kind: "normal", paid: 300_000, reimbursed: 0 })).toMatch(/医療費控除の明細書は書き出していません/);
+    expect(notice({ kind: "self", paid: 30_000, reimbursed: 0 })).toMatch(/セルフメディケーション税制の明細書は書き出していません/);
+    // 控除額が 0（10万円などの足切り以下）なら知らせない
+    expect(notice({ kind: "normal", paid: 50_000, reimbursed: 0 })).not.toMatch(/明細書/);
+    expect(notice({ kind: "normal", paid: 0, reimbursed: 0 })).not.toMatch(/明細書/);
+  });
 });

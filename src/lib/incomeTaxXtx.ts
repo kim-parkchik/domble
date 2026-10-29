@@ -106,6 +106,12 @@ export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" 
   if (fam.length > FAMILY_ROWS) n.push(`第二表の事業専従者の欄は${FAMILY_ROWS}人分です。${fam.slice(FAMILY_ROWS).map((v) => v.f.name).join("・")}は書いていません`);
   if (src.input.salaries.length > 0) n.push("給与があるため、保険料の「うち年末調整等以外」の欄は書いていません（源泉徴収票に載っていない分だけを書く欄です）");
   if (src.input.housingLoan > 0) n.push("住宅借入金等特別控除の区分は書いていません（計算明細書を添付して、区分を確かめてください）");
+  // 医療費控除・セルフメディケーション税制は、明細書を付けて出す決まり。domble は合計だけを入れるので明細書を作れない。
+  // 合計だけで申告するときは、e-Tax で出しても明細書を書面で別に出す（確定申告書等作成コーナーの「医療費の合計額のみを入力」と同じ）
+  if ((src.result.rows.find((v) => v.no === "㉘")?.value ?? 0) > 0) {
+    const name = src.input.medical.kind === "self" ? "セルフメディケーション税制の明細書" : "医療費控除の明細書";
+    n.push(`${name}は書き出していません（domble は支払額の合計だけを入れるため）。e-Tax で申告するときも、明細書を書面で作って別に税務署へ出してください`);
+  }
   return n;
 };
 

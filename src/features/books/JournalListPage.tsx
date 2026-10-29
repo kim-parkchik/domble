@@ -3,19 +3,22 @@
  * すべての仕訳を日付順に表示します。行をクリックすると修正できます。
  */
 import { useEffect, useMemo, useState } from "react";
-import { Download, Paperclip, Search, Upload } from "lucide-react";
+import { Download, Paperclip, Printer, Search, Upload } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { MonthRange } from "../../components/MonthRange";
 import { useToast } from "../../components/Toast";
+import { PrintPreview } from "../../components/PrintPreview";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { JournalImportModal } from "./JournalImportModal";
 import { groupByEntry, monthEnd, monthStart, yearEnd, yearStart, type FlatLine } from "../../lib/accounting";
-import { parseAmount, shortDate, yen } from "../../lib/format";
+import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
+import { journalSection, type JournalPrintEntry, type JournalSide } from "../../lib/printBooks";
+import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { classLabel, displayClass, displayUse, invoiceCsvLabel, isPurchaseCode, taxLongLabel, taxShortLabel, useLabel } from "../../lib/tax";
 import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
@@ -74,6 +77,7 @@ export const JournalListPage = () => {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const rows = useMemo(() => {
     const start = monthStart(year, from);
@@ -171,6 +175,42 @@ export const JournalListPage = () => {
     }
   };
 
+  // ── 印刷（表示中の仕訳を、絞り込みの条件ごと） ──
+  const printDoc = useMemo((): PrintDoc | null => {
+    if (!printing) return null;
+    const side = (l?: FlatLine): JournalSide | undefined =>
+      l && {
+        account: accountMap.get(l.account_id)?.name ?? "", sub: l.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "",
+        tax: l.tax_code && l.tax_code !== "none" ? taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l)) : "",
+        amount: l.amount,
+      };
+    const entries: JournalPrintEntry[] = [];
+    for (const r of rows) {
+      if (r.first) {
+        const revised = !r.deleted && (r.dr?.revision ?? r.cr?.revision ?? 1) > 1;
+        entries.push({
+          entryId: r.entryId, date: r.date, deleted: r.deleted, counterparty: r.counterparty, lines: [],
+          tags: [r.deleted && "削除済み", revised && "訂正あり", r.adjustment && "決算整理", r.late && "遅れて登録"].filter((t): t is string => !!t),
+        });
+      }
+      entries[entries.length - 1].lines.push({ dr: side(r.dr), cr: side(r.cr), memo: r.memo });
+    }
+    const conditions = [
+      accountId ? `科目 ${accountMap.get(accountId)?.name ?? ""}` : "",
+      cpId ? `取引先 ${cpMap.get(cpId)?.name ?? ""}` : "",
+      taxFilter ? `税区分 ${taxFilter === "unset" ? "未設定" : taxFilter === "transitional" ? "経過措置の仕入れ" : taxFilter === "nodeduct" ? "控除しない仕入れ" : TAX_CODES.find((t) => t.code === taxFilter)?.label ?? ""}` : "",
+      q.trim() ? `「${q.trim()}」を含む` : "",
+      minAmt || maxAmt ? `金額 ${minAmt || ""}〜${maxAmt || ""}` : "",
+      lateOnly ? "入力期間を過ぎて登録したもの" : "",
+      showDeleted ? "削除済みを含む" : "",
+    ].filter(Boolean).join("・");
+    return {
+      title: "仕訳日記帳", owner: ownerText(settings.business_name, settings.owner_name),
+      period: periodText(monthStart(year, from), monthEnd(year, to)), printedOn: todayIso(), conditions,
+      sections: [journalSection(entries)],
+    };
+  }, [printing, rows]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="page">
       <PageHeader title="仕訳日記帳" note="行をクリックすると訂正・削除できます。日付・金額・取引先（補助科目）を組み合わせて検索できます。">
@@ -179,6 +219,9 @@ export const JournalListPage = () => {
         </button>
         <button className="btn ghost" onClick={exportCsv} disabled={rows.length === 0}>
           <Download size={16} /> CSV 書き出し
+        </button>
+        <button className="btn ghost" onClick={() => setPrinting(true)}>
+          <Printer size={16} /> 印刷
         </button>
       </PageHeader>
 
@@ -293,6 +336,7 @@ export const JournalListPage = () => {
 
       {editing && <EntryEditModal entryId={editing} onClose={() => setEditing(null)} />}
       {importing && <JournalImportModal onClose={() => setImporting(false)} />}
+      {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
     </div>
   );
 };

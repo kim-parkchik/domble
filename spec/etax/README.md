@@ -15,5 +15,6 @@
 
 - テスト（`src/lib/taxXtx.test.ts`・`src/lib/incomeTaxXtx.test.ts`、続け通しのスクリプト）：書き出した xtx を `xmllint --schema` で検証する
 - `scripts/etax_forms.py`：様式の項目の並び（`src/lib/etaxForms.ts`）と税務署の一覧（`src/constants/taxOffices.ts`）を作る
+- `coverage.md`：手続の様式ごとの、domble の対応と優先度（対応表）。一覧は `python3 -I scripts/etax_procedure_forms.py <手続の XSD>` で出せる
 
-新しい年分の版が出たら、手続の XSD を足し（前の年分の版は残す）、`XTX_VERSIONS` に年分と版を足して、様式が変わっていれば `python3 -I scripts/etax_forms.py` を動かし、テストで確かめます。
+新しい年分の版が出たら、手続の XSD を足し（前の年分の版は残す）、`XTX_VERSIONS` に年分と版を足して、様式が変わっていれば `python3 -I scripts/etax_forms.py` を動かし、テストで確かめます。様式の増減は `scripts/etax_procedure_forms.py` で見て、`coverage.md` を直します。

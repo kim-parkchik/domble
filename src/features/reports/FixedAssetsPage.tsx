@@ -4,18 +4,23 @@
  *  - 年末に「減価償却費（事業分）＋事業主貸（家事分） / 資産の科目」の決算整理仕訳を1本作る。作り直すと同じ仕訳を訂正する
  *  - 帳簿の資産の科目の残高と、台帳の未償却残高を並べて、ずれていないか確かめられる
  * 資産を買った仕訳（工具器具備品 / 普通預金 など）は、振替伝票でふつうに入れる
+ * 台帳（その年に償却する資産）は印刷と CSV の書き出しができる
  */
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Trash2, Wand2 } from "lucide-react";
+import { Download, Pencil, Plus, Printer, Trash2, Wand2 } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { useToast } from "../../components/Toast";
 import { Modal } from "../../components/Modal";
+import { PrintPreview } from "../../components/PrintPreview";
+import { exportCsvFile } from "../../components/csvExport";
 import { AmountInput, FullDateInput } from "../../components/Inputs";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { closingBalances } from "../../lib/accounting";
-import { yen } from "../../lib/format";
+import { todayIso, yen } from "../../lib/format";
+import { ASSET_CSV_HEADER, assetCsvRows, assetSection, type AssetPrintLine } from "../../lib/printBooks";
+import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
 import {
   depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear, validateAsset,
@@ -35,6 +40,7 @@ export const FixedAssetsPage = () => {
   const [runLines, setRunLines] = useState<string | null>(null);
   const [editing, setEditing] = useState<FixedAsset | "new" | null>(null);
   const [viewing, setViewing] = useState<number | null>(null);
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     repo.getAssets(db).then(setAssets).catch(console.error);
@@ -58,6 +64,21 @@ export const FixedAssetsPage = () => {
   const active = rows.filter((r) => r.d && !(r.d.opening === 0 && r.d.depreciation === 0));
   const others = rows.filter((r) => !active.includes(r));
   const sum = (k: "opening" | "depreciation" | "business" | "closing") => active.reduce((s, r) => s + (r.d ? r.d[k] : 0), 0);
+
+  // 印刷・CSV の行（画面の台帳と同じ資産）
+  const printLines: AssetPrintLine[] = active.map(({ a, d }) => ({
+    name: a.name, account: accountName(a.account_id), acquired: a.acquired_on, used: a.used_on, cost: a.cost, method: METHOD_LABEL[a.method],
+    life: a.method === "straight" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—", rate: d!.rate !== null ? d!.rate.toFixed(3) : "—",
+    months: d!.months, opening: d!.opening, depreciation: d!.depreciation, businessRate: a.business_rate, business: d!.business, closing: d!.closing,
+    memo: [d!.disposed ? `${ymd(a.disposed_on!)} 売却・除却` : "", a.memo].filter(Boolean).join("　"),
+  }));
+  const printDoc = useMemo((): PrintDoc | null => printing
+    ? {
+      title: "固定資産台帳", owner: ownerText(settings.business_name, settings.owner_name),
+      period: periodText(`${year}-01-01`, `${year}-12-31`), printedOn: todayIso(), sections: [assetSection(`${year}年の減価償却`, printLines)],
+    }
+    : null, [printing, assets, accounts, year, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+  const exportCsv = () => exportCsvFile(`固定資産台帳_${settings.business_name || "帳簿"}_${year}.csv`, ASSET_CSV_HEADER, assetCsvRows(printLines), toast);
 
   const planned = useMemo(() => depreciationLines(assets, year, ids), [assets, year, ids.expense, ids.draw]); // eslint-disable-line react-hooks/exhaustive-deps
   const outdated = runId !== null && runLines !== lineKey(planned);
@@ -111,6 +132,8 @@ export const FixedAssetsPage = () => {
         title="固定資産台帳"
         note={`10万円以上の備品・車・建物などを登録すると、${year}年の減価償却費を計算します。資産を買った仕訳は振替伝票で入れてください。${strict ? "台帳の変更は履歴に記録されます。" : ""}`}
       >
+        <button className="btn ghost" onClick={exportCsv} disabled={active.length === 0}><Download size={16} /> CSV 書き出し</button>
+        <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>
         <button className="btn primary" onClick={() => setEditing("new")} disabled={!can("master")}><Plus size={16} /> 資産を追加</button>
       </PageHeader>
 
@@ -244,6 +267,7 @@ export const FixedAssetsPage = () => {
 
       {editing && <AssetModal asset={editing === "new" ? null : editing} blue={settings.filing_type !== "white"} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); bump(); }} />}
       {viewing && <EntryEditModal entryId={viewing} onClose={() => setViewing(null)} />}
+      {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
     </div>
   );
 };

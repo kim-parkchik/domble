@@ -4,7 +4,7 @@
  * 履歴はデータベース側で書き換え・削除ができないようにしてあります。
  */
 import { useEffect, useMemo, useState } from "react";
-import { Download, ShieldCheck } from "lucide-react";
+import { Download, Printer, ShieldCheck } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext } from "../../context/AppContext";
@@ -13,9 +13,12 @@ import { useToast } from "../../components/Toast";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { ACTION_LABEL, SnapshotTable } from "./HistoryView";
 import { IntegrityModal } from "./IntegrityModal";
+import { PrintPreview } from "../../components/PrintPreview";
 import type { AccessLogRecord, EvidenceHistoryRecord, HistoryAction, HistoryRecord, MasterHistoryRecord } from "../../lib/types";
 import { EVIDENCE_ACTION_LABEL, evidenceActionBadge } from "../evidence/EvidenceModals";
-import { yen } from "../../lib/format";
+import { todayIso, yen } from "../../lib/format";
+import { historySection, tableSection, type HistoryPrintRecord } from "../../lib/printBooks";
+import { ownerText, type PrintDoc, type PrintSection } from "../../lib/printLayout";
 import { toCsv, type CsvValue } from "../../lib/csv";
 import { loginEnds, type LoginEnd } from "../../lib/accessLog";
 
@@ -28,6 +31,7 @@ const LOGIN_END_LABEL: Record<LoginEnd, string> = {
 import * as repo from "../../db/repo";
 
 type Filter = "all" | HistoryAction | "changes";
+const FILTER_LABEL: Record<Filter, string> = { changes: "訂正と削除", update: "訂正", delete: "削除", all: "登録も含む", create: "登録" };
 
 /** 画面に一度に出す件数（履歴は全件読み込むが、描画は少しずつ。CSV は全件） */
 const PAGE_SIZE = 500;
@@ -60,6 +64,7 @@ export const HistoryPage = () => {
   const [masters, setMasters] = useState<MasterHistoryRecord[]>([]);
   const [evidence, setEvidence] = useState<EvidenceHistoryRecord[]>([]);
   const [checking, setChecking] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const page = usePaged([filter, entryNo, kind]);
 
   useEffect(() => {
@@ -140,6 +145,37 @@ export const HistoryPage = () => {
 
   const tabCount = { entries: shown.length, masters: masters.length, evidence: evidence.length, access: access.length }[kind];
 
+  // ── 印刷（表示中のタブ。仕訳は絞り込みのとおり、訂正は訂正前と訂正後を並べる） ──
+  const printDoc = useMemo((): PrintDoc | null => {
+    if (!printing) return null;
+    const part = (label: string, snap: HistoryRecord["snapshot"]) => ({ label, date: snap.date, counterparty: snap.counterparty ?? "", lines: snap.lines });
+    let section: PrintSection;
+    if (kind === "entries") {
+      const recs: HistoryPrintRecord[] = shown.map((r) => {
+        const prev = r.action === "update" ? prevOf(r) : undefined;
+        return {
+          recordedAt: r.recorded_at, entryId: r.entry_id, revision: r.revision, action: ACTION_LABEL[r.action], user: r.user_name ?? "", reason: r.reason,
+          parts: r.action === "update"
+            ? [...(prev ? [part("訂正前", prev.snapshot)] : []), part("訂正後", r.snapshot)]
+            : [part(r.action === "delete" ? "削除時" : "登録時", r.snapshot)],
+        };
+      });
+      section = historySection("仕訳", recs);
+    } else {
+      const { name, header, rows } = csvOf();
+      const widths = kind === "masters" ? [17, 7, 12, 7, 16, 22, 22, 10]
+        : kind === "evidence" ? [15, 7, 5, 8, 11, 14, 11, 8, 16, 24, 14, 9]
+          : [20, 10, 16, 40];
+      section = tableSection(name, header, widths, rows);
+    }
+    return {
+      title: "訂正・削除履歴", owner: ownerText(settings.business_name, settings.owner_name),
+      period: "すべての期間", printedOn: todayIso(),
+      conditions: kind === "entries" ? [FILTER_LABEL[filter], entryNo ? `伝票番号 ${entryNo}` : ""].filter(Boolean).join("・") : undefined,
+      sections: [section],
+    };
+  }, [printing, kind, filter, entryNo, records, masters, evidence, access, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="page">
       <PageHeader
@@ -149,6 +185,9 @@ export const HistoryPage = () => {
         <button className="btn ghost" onClick={() => setChecking(true)}><ShieldCheck size={16} /> 改ざんの確認</button>
         <button className="btn ghost" onClick={exportCsv} disabled={tabCount === 0}>
           <Download size={16} /> CSV 書き出し
+        </button>
+        <button className="btn ghost" onClick={() => setPrinting(true)} disabled={tabCount === 0} title="表示中のタブを印刷します">
+          <Printer size={16} /> 印刷
         </button>
       </PageHeader>
 
@@ -243,6 +282,7 @@ export const HistoryPage = () => {
 
       {editing && <EntryEditModal entryId={editing} onClose={() => setEditing(null)} />}
       {checking && <IntegrityModal onClose={() => setChecking(false)} />}
+      {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
     </div>
   );
 };

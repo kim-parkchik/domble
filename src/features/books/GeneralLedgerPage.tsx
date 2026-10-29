@@ -1,23 +1,32 @@
 /**
  * 総勘定元帳
  * 左で科目を選び、右でその科目の動きと残高を確認します。
+ * 印刷（この科目・すべての科目、補助科目ごとに分けた補助元帳も）と CSV の書き出し（すべての科目）ができます。
  */
 import { useMemo, useState } from "react";
+import { Download, Printer } from "lucide-react";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { MonthRange } from "../../components/MonthRange";
+import { PrintPreview } from "../../components/PrintPreview";
+import { exportCsvFile } from "../../components/csvExport";
+import { useToast } from "../../components/Toast";
 import { EntryEditModal } from "../entry/EntryEditModal";
-import { buildLedger, closingBalances, monthEnd, monthStart } from "../../lib/accounting";
-import { shortDate, yen } from "../../lib/format";
+import { buildLedger, closingBalances, monthEnd, monthStart, type LedgerRow } from "../../lib/accounting";
+import { shortDate, todayIso, yen } from "../../lib/format";
 import { displayClass, displayUse, taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { ADJUSTMENT, LEDGER_CSV_HEADER, ledgerCsvRows, ledgerSection } from "../../lib/printBooks";
+import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
+import type { CsvValue } from "../../lib/csv";
 import { CATEGORY_LABEL, isBalanceSheet } from "../../constants/accounts";
-import { subKey, type AccountCategory } from "../../lib/types";
+import { subKey, type Account, type AccountCategory } from "../../lib/types";
 
 const ORDER: AccountCategory[] = ["asset", "liability", "equity", "revenue", "cogs", "expense", "special"];
 
 export const GeneralLedgerPage = () => {
-  const { year, accounts, accountMap, subAccounts, labelOf, subMap, taxYears } = useAppContext();
+  const { year, accounts, accountMap, subAccounts, labelOf, subMap, taxYears, settings, counterparties } = useAppContext();
   const { lines, opening, subOpening } = useYearData();
+  const toast = useToast();
   const [accountId, setAccountIdRaw] = useState(accounts[0].id);
   const [sub, setSub] = useState<number | null | undefined>(undefined);
   const setAccountId = (id: number) => {
@@ -28,6 +37,10 @@ export const GeneralLedgerPage = () => {
   const [to, setTo] = useState(12);
   const [editing, setEditing] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
+  // 印刷：対象（この科目 / すべての科目）と、補助科目ごとに分けるか（補助元帳）
+  const [printing, setPrinting] = useState(false);
+  const [printAll, setPrintAll] = useState(false);
+  const [splitSubs, setSplitSubs] = useState(false);
 
   const balances = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
   const used = useMemo(() => new Set(lines.map((l) => l.account_id)), [lines]);
@@ -58,10 +71,65 @@ export const GeneralLedgerPage = () => {
     (a) => showAll || a.id === accountId || used.has(a.id) || (balances.get(a.id) ?? 0) !== 0,
   );
 
+  // ── 印刷・CSV ──
+  /** 伝票番号 → 取引先の名前 */
+  const cpOfEntry = useMemo(() => {
+    const names = new Map(counterparties.map((c) => [c.id, c.name]));
+    const m = new Map<number, string>();
+    for (const l of lines) if (l.counterparty_id) m.set(l.entry_id, names.get(l.counterparty_id) ?? "");
+    return m;
+  }, [lines, counterparties]);
+  const counterOf = (r: LedgerRow) => (r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter);
+  const taxOf = (r: LedgerRow) => {
+    const lt = { date: r.date, tax_code: r.taxCode, business_class: r.businessClass, purchase_use: r.purchaseUse };
+    return r.taxCode && r.taxCode !== "none" ? taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, lt), displayUse(taxYears, lt)) : "";
+  };
+  const subName = (id: number | null) => (id ? subMap.get(id)?.name ?? "" : "");
+  /** 期間（画面の 1〜12月。12月までなら決算整理も入れる） */
+  const period = { from, to: to === 12 ? ADJUSTMENT : to };
+  /** 印刷・CSV の対象の科目（すべて = 残高か動きがある科目） */
+  const targets = (all: boolean) => (all ? ORDER.flatMap((c) => accounts.filter((a) => a.category === c && (used.has(a.id) || (balances.get(a.id) ?? 0) !== 0))) : [account]);
+  const baseOf = (a: Account, s?: number | null) =>
+    !isBalanceSheet(a.category) ? 0 : s === undefined ? opening[a.id] ?? 0 : subOpening[subKey(a.id, s)] ?? 0;
+
+  const printDoc = useMemo((): PrintDoc | null => {
+    if (!printing) return null;
+    const sections = targets(printAll).flatMap((a) => {
+      // 分ける単位：補助科目ごと（補助なしを含む。動きか残高があるものだけ）か、画面で選んでいる補助科目か、科目全体
+      const subsOf = subAccounts.filter((x) => x.account_id === a.id);
+      const units: (number | null | undefined)[] =
+        !printAll && sub !== undefined ? [sub]
+          : splitSubs && subsOf.length > 0
+            ? [...subsOf.map((x) => x.id), null].filter((s) => baseOf(a, s) !== 0 || lines.some((l) => l.account_id === a.id && (l.sub_account_id ?? null) === s))
+            : [undefined];
+      return units.map((s) => {
+        const rows = buildLedger(a, baseOf(a, s), lines, accountMap, s);
+        return ledgerSection({
+          heading: s === undefined ? a.name : `${a.name}　${s === null ? "補助なし" : subName(s)}`,
+          rows, opening: baseOf(a, s), ...period, labels: { dr: "借方", cr: "貸方" }, counterOf, taxOf,
+          noteOf: (r) => [s === undefined ? subName(r.subId) : "", cpOfEntry.get(r.entry_id) ?? ""].filter(Boolean).join("　"),
+        });
+      });
+    });
+    return {
+      title: "総勘定元帳", owner: ownerText(settings.business_name, settings.owner_name),
+      period: periodText(monthStart(year, from), monthEnd(year, to)), printedOn: todayIso(), sections,
+    };
+  }, [printing, printAll, splitSubs, account, sub, lines, opening, subOpening, from, to, year, settings, cpOfEntry, accounts, subAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const exportCsv = () => {
+    const rows: CsvValue[][] = targets(true).flatMap((a) =>
+      ledgerCsvRows(a.name, { rows: buildLedger(a, baseOf(a), lines, accountMap), opening: baseOf(a), ...period, counterOf, taxOf },
+        (r) => subName(r.subId), (r) => cpOfEntry.get(r.entry_id) ?? ""));
+    exportCsvFile(`総勘定元帳_${settings.business_name || "帳簿"}_${year}.csv`, LEDGER_CSV_HEADER, rows, toast);
+  };
+
   return (
     <div className="page">
       <PageHeader title="総勘定元帳">
         <MonthRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+        <button className="btn ghost" onClick={exportCsv} title="すべての科目の元帳を、表示中の期間で書き出します"><Download size={16} /> CSV 書き出し</button>
+        <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>
       </PageHeader>
 
       <div className="split">
@@ -169,6 +237,17 @@ export const GeneralLedgerPage = () => {
       </div>
 
       {editing && <EntryEditModal entryId={editing} onClose={() => setEditing(null)} />}
+      {printing && (
+        <PrintPreview doc={printDoc} onClose={() => setPrinting(false)}>
+          <select value={printAll ? "all" : "one"} onChange={(e) => setPrintAll(e.target.value === "all")} aria-label="印刷する科目">
+            <option value="one">{account.name}{sub !== undefined ? `（${sub === null ? "補助なし" : subName(sub)}）` : ""}</option>
+            <option value="all">すべての科目（科目ごとに改ページ）</option>
+          </select>
+          {(printAll || (sub === undefined && subs.length > 0)) && (
+            <label><input type="checkbox" checked={splitSubs} onChange={(e) => setSplitSubs(e.target.checked)} /> 補助科目ごとに分ける（補助元帳）</label>
+          )}
+        </PrintPreview>
+      )}
     </div>
   );
 };
