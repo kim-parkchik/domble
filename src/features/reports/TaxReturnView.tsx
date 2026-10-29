@@ -3,10 +3,11 @@
  *  - 方式の比較：その年に使える方式（本則・簡易・2割特例・3割特例）の納付税額を並べる
  *  - 選んだ方式の付表・第二表・第一表を、欄の番号つきで出す（確定申告書等作成コーナーや e-Tax に書き写す）
  *  - 中間納付税額は年度ごとに入れる（前年の実績で計算した中間申告の額を「判定した額を入れる」で入れられる）
+ *  - 本則課税の棚卸資産の調整（付表2-3 ⑯）は年度ごとに、税率・控除できる割合ごとの取得価額を入れる
  *  - 選んだ方式の申告書を e-Tax のデータ（.xtx）で書き出す（作るのは lib/taxXtx.ts。申告者の情報は事業者設定から）
  */
 import { useEffect, useMemo, useState } from "react";
-import { FileDown, Printer, Save } from "lucide-react";
+import { FileDown, Plus, Printer, Save, Trash2, Wand2 } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext, useBaseSales, useInterim, useYearData } from "../../context/AppContext";
@@ -16,7 +17,14 @@ import { useToast } from "../../components/Toast";
 import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings, filerProblems } from "../../lib/etax";
 import { buildTaxXtx, xtxProblem, xtxVersionFor } from "../../lib/taxXtx";
-import { buildTaxBase, computeReturn, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn, type ReturnMethod, type TaxForm } from "../../lib/taxReturn";
+import {
+  buildTaxBase, computeReturn, inventoryAdjustTax, inventoryOf, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn,
+  type InventoryAdjust, type Rate, type ReturnMethod, type TaxForm,
+} from "../../lib/taxReturn";
+import { closingBalances, type FlatLine } from "../../lib/accounting";
+import { taxYearOf } from "../../lib/tax";
+import type { OpeningBalances } from "../../lib/types";
+import { AmountInput } from "../../components/Inputs";
 import * as repo from "../../db/repo";
 import { MyNumberDialog } from "../../components/MyNumberDialog";
 
@@ -30,9 +38,110 @@ const METHOD_NOTE: Record<ReturnMethod, string> = {
 
 const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
 
+/** 棚卸資産の調整（保存したもの）と、帳簿の期首・期末の棚卸高（読み込み中は null） */
+export const useInventory = (lines: FlatLine[], opening: OpeningBalances) => {
+  const { db, year, accounts, dataVersion } = useAppContext();
+  const [adjust, setAdjust] = useState<InventoryAdjust | null | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    repo.getInventoryAdjust(db, year).then((v) => alive && setAdjust(v)).catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [db, year, dataVersion]);
+  const amounts = useMemo(() => {
+    const end = closingBalances(accounts, opening, lines);
+    return inventoryOf(accounts, (a) => opening[a.id] ?? 0, (a) => end.get(a.id) ?? 0);
+  }, [accounts, opening, lines]);
+  return useMemo(() => (adjust === undefined ? null : { adjust, ...amounts }), [adjust, amounts]);
+};
+
+const PCT_LABEL: Record<number, string> = { 100: "全額（インボイスあり）", 80: "80%（経過措置）", 70: "70%（経過措置）", 50: "50%（経過措置）", 30: "30%（経過措置）" };
+
+/** 棚卸資産の調整（付表2-3 ⑯）の入力 */
+const InventorySection = ({ inv, disabled }: { inv: NonNullable<ReturnType<typeof useInventory>>; disabled: boolean }) => {
+  const { db, year, taxYears, taxYear, bump } = useAppContext();
+  const toast = useToast();
+  // 初めの向き：前年が免税（または年の途中から課税事業者）なら加算、翌年が免税なら減算
+  const next = taxYearOf(taxYears, year + 1);
+  const suggested: InventoryAdjust["direction"] = next.status === "exempt" && !next.inherited ? "sub" : "add";
+  const saved: InventoryAdjust = inv.adjust ?? { direction: suggested, rows: [] };
+  const [draft, setDraft] = useState<InventoryAdjust>(saved);
+  useEffect(() => setDraft(saved), [inv.adjust]); // eslint-disable-line react-hooks/exhaustive-deps
+  const changed = JSON.stringify(draft) !== JSON.stringify(saved);
+  const tax = inventoryAdjustTax(draft);
+  const setRow = (i: number, patch: Partial<InventoryAdjust["rows"][number]>) =>
+    setDraft((d) => ({ ...d, rows: d.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
+  const fromBooks = () => {
+    const amount = draft.direction === "add" ? inv.opening : inv.closing;
+    setDraft((d) => ({ ...d, rows: [{ rate: 10, pct: 100, amount }] }));
+    toast(`帳簿の${draft.direction === "add" ? "期首" : "期末"}の棚卸高 ${yen(amount)} 円を、税率10%・全額として入れました（保存はまだです）。軽減税率の品物や経過措置の仕入れは分けてください`);
+  };
+  const saveIt = async () => {
+    try {
+      await repo.saveInventoryAdjust(db, year, draft);
+      bump();
+      toast("棚卸資産の調整を保存しました");
+    } catch (e) {
+      toast(String(e).replace(/^Error: /, ""), "error");
+    }
+  };
+  const prev = taxYearOf(taxYears, year - 1);
+  return (
+    <div className="tax-inventory">
+      <h3 className="sheet-sub">棚卸資産の調整（本則課税の付表2-3 ⑯）</h3>
+      <div className="field-row wrap">
+        <label className="check"><input type="radio" name="inv-dir" checked={draft.direction === "add"} disabled={disabled} onChange={() => setDraft((d) => ({ ...d, direction: "add" }))} /> 加算（免税事業者から課税事業者になった年）</label>
+        <label className="check"><input type="radio" name="inv-dir" checked={draft.direction === "sub"} disabled={disabled} onChange={() => setDraft((d) => ({ ...d, direction: "sub" }))} /> 減算（翌年から免税事業者になる年）</label>
+      </div>
+      {draft.rows.length > 0 && (
+        <table className="ledger it-table tax-inventory-rows">
+          <thead><tr><th style={{ width: 150 }}>税率</th><th style={{ width: 220 }}>控除できる割合</th><th className="num">取得価額（税込）</th><th style={{ width: 40 }} /></tr></thead>
+          <tbody>
+            {draft.rows.map((r, i) => (
+              <tr key={i}>
+                <td>
+                  <select className="input" value={r.rate} disabled={disabled} onChange={(e) => setRow(i, { rate: Number(e.target.value) as Rate })} aria-label="税率">
+                    <option value={10}>10%（7.8/110）</option>
+                    <option value={8}>8% 軽減（6.24/108）</option>
+                  </select>
+                </td>
+                <td>
+                  <select className="input" value={r.pct} disabled={disabled} onChange={(e) => setRow(i, { pct: Number(e.target.value) })} aria-label="控除できる割合">
+                    {Object.entries(PCT_LABEL).sort((a, b) => Number(b[0]) - Number(a[0])).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </td>
+                <td><AmountInput value={r.amount || null} onChange={(n) => setRow(i, { amount: n ?? 0 })} disabled={disabled} aria-label="取得価額" /></td>
+                <td><button type="button" className="btn ghost sm icon" onClick={() => setDraft((d) => ({ ...d, rows: d.rows.filter((_, j) => j !== i) }))} disabled={disabled} aria-label="行を消す" title="行を消す"><Trash2 size={14} /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="field-row wrap tax-inventory-actions">
+        <button type="button" className="btn ghost sm" onClick={() => setDraft((d) => ({ ...d, rows: [...d.rows, { rate: 10, pct: 100, amount: 0 }] }))} disabled={disabled}><Plus size={14} /> 行を足す</button>
+        <button type="button" className="btn ghost sm" onClick={fromBooks} disabled={disabled || (draft.direction === "add" ? inv.opening : inv.closing) === 0}>
+          <Wand2 size={14} /> 帳簿の{draft.direction === "add" ? "期首" : "期末"}の棚卸高から入れる（{yen(draft.direction === "add" ? inv.opening : inv.closing)}円）
+        </button>
+        <span className="tax-inventory-total">⑯ {signed(tax[8] + tax[10])} 円（6.24% 分 {signed(tax[8])}・7.8% 分 {signed(tax[10])}）</span>
+        <button type="button" className="btn ghost" onClick={saveIt} disabled={disabled || !changed}><Save size={15} /> 保存する</button>
+      </div>
+      <p className="field-note">
+        {draft.direction === "add"
+          ? `${taxYear.taxable_from ? `${taxYear.taxable_from} から課税事業者なので、その前日` : `課税事業者になった日の前日（${year - 1}年12月31日）`}に持っていた棚卸資産のうち、免税事業者の期間に仕入れたものの取得価額（引取運賃などを含む）を入れます。`
+          : `${year}年12月31日に持っている棚卸資産のうち、${year}年に仕入れたものの取得価額を入れます。`}
+        適格請求書発行事業者でない相手から仕入れたものは、仕入れた時期の控除できる割合（令和8年9月までは80% など）を選びます。棚卸資産の明細（品名・数量・取得価額）を記録して保存することが要件です。
+        調整の税額は ⑰ に加え、個別対応方式では課税売上げにのみ要するもの（⑲）に入れます。簡易課税・2割特例では使いません。
+        {prev.status === "exempt" && draft.direction === "add" && !inv.adjust && ` ${year - 1}年は免税事業者でした。`}
+      </p>
+    </div>
+  );
+};
+
 export const TaxReturnView = () => {
   const { db, year, settings, taxYears, taxYear, isClosed, can, dataVersion, bump } = useAppContext();
-  const { lines } = useYearData();
+  const { lines, opening } = useYearData();
+  const inv = useInventory(lines, opening);
   const toast = useToast();
   const available = methodsFor(year);
   const current = (taxYear.status === "exempt" ? null : taxYear.status) as ReturnMethod | null;
@@ -68,11 +177,12 @@ export const TaxReturnView = () => {
   const baseSales = useBaseSales();
   const options = {
     businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null, deduction: taxYear.deduction,
+    inventory: inv?.adjust ?? null,
   };
   const results = useMemo(
     () => available.map((m) => ({ m, r: computeReturn(m, base, options), problem: baseSales ? methodProblem(m, baseSales) : null })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [base, interim, taxYear.business_class, taxYear.deduction, year, baseSales],
+    [base, interim, taxYear.business_class, taxYear.deduction, year, baseSales, inv?.adjust],
   );
   // 2割・3割特例の第一表は、簡易課税の届出があれば簡易課税用、無ければ一般用
   const shown = method === "twenty" ? twentyReturn(base, options, firstKind)
@@ -173,6 +283,7 @@ export const TaxReturnView = () => {
             {interimInfo && interimInfo.plan.periods.length > 0 && `前年の実績で計算した額は、消費税 ${yen(interimInfo.plan.national)}円・地方消費税 ${yen(interimInfo.plan.local)}円です（「中間申告」で回数と期限を見られます）。`}
           </p>
         </form>
+        {method === "standard" && inv && <InventorySection inv={inv} disabled={!admin || isClosed} />}
       </div>
 
       <div className="tax-return-forms print-area">

@@ -364,6 +364,10 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .tax-interim { margin-top: 12px; align-items: flex-end; }
 .tax-interim { flex-wrap: wrap; }
 .tax-interim .field { max-width: 220px; min-width: 180px; }
+.tax-inventory { margin-top: 16px; max-width: 900px; }
+.tax-inventory-rows { margin: 6px 0; }
+.tax-inventory-actions { align-items: center; gap: 8px; margin-top: 6px; }
+.tax-inventory-total { font-size: 13px; margin-left: auto; }
 .tax-interim > .field-note { flex-basis: 100%; margin: 0; }
 .tax-return-forms { margin-top: 20px; }
 .tax-return-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

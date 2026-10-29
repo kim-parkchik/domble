@@ -38,6 +38,7 @@ import {
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
 import { CATEGORY_CODE_RANGE, LOCKED_CODES, normalSideOf } from "../constants/accounts";
 import { methodLabel, validateAsset, type FixedAsset } from "../lib/depreciation";
+import type { InventoryAdjust } from "../lib/taxReturn";
 import {
   DEFAULT_BACKUP_GENERATIONS, DEFAULT_INPUT_PERIOD_DAYS, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
 } from "../constants/appConfig";
@@ -656,6 +657,48 @@ const saveIncomeTaxInput_ = async (db: Database, year: number, input: IncomeTaxI
 export const getTaxInterim = async (db: Database, year: number) => {
   const r = await db.select<{ national: number; local: number }[]>("SELECT national, local FROM tax_interims WHERE fiscal_year = ?", [year]);
   return r[0] ?? { national: 0, local: 0 };
+};
+
+/** 消費税の棚卸資産の調整（付表2-3 ⑯。無ければ null） */
+export const getInventoryAdjust = async (db: Database, year: number): Promise<InventoryAdjust | null> => {
+  const r = await db.select<{ direction: string; rows: string }[]>("SELECT direction, rows FROM tax_inventory_adjusts WHERE fiscal_year = ?", [year]);
+  if (!r[0]) return null;
+  try {
+    const rows = (JSON.parse(r[0].rows) as InventoryAdjust["rows"]).filter((x) => (x.rate === 8 || x.rate === 10) && Number.isInteger(x.amount) && Number.isInteger(x.pct));
+    return { direction: r[0].direction === "sub" ? "sub" : "add", rows };
+  } catch {
+    return null;
+  }
+};
+
+const INVENTORY_PCTS = [100, 80, 70, 50, 30];
+/** 保存（行が無ければ消す）。締めた年度は変えられない */
+const saveInventoryAdjust_ = async (db: Database, year: number, adj: InventoryAdjust) => {
+  const rows = adj.rows.filter((x) => x.amount !== 0);
+  for (const x of rows) {
+    if (x.rate !== 8 && x.rate !== 10) throw new Error("税率は 10% か 8%（軽減）です");
+    if (!INVENTORY_PCTS.includes(x.pct)) throw new Error("控除できる割合は 100%・80%・70%・50%・30% のどれかです");
+    if (!Number.isInteger(x.amount) || x.amount < 0 || x.amount > 100_000_000_000) throw new Error("棚卸資産の取得価額は 0 以上の整数（円）で入れてください");
+  }
+  if (adj.direction !== "add" && adj.direction !== "sub") throw new Error("加算か減算かを選んでください");
+  await assertYearOpen(db, year);
+  const before = await getInventoryAdjust(db, year);
+  const text = (x: InventoryAdjust | null) =>
+    !x || x.rows.length === 0 ? "なし"
+      : `${x.direction === "sub" ? "減算" : "加算"} ${x.rows.map((r) => `${r.rate}%${r.pct < 100 ? `（${r.pct}%）` : ""} ${r.amount.toLocaleString()}円`).join("・")}`;
+  const next = { direction: adj.direction, rows: rows.map((x) => ({ rate: x.rate, pct: x.pct, amount: x.amount })) };
+  if (text(before) === text(next)) return;
+  if (rows.length === 0) await db.execute("DELETE FROM tax_inventory_adjusts WHERE fiscal_year = ?", [year]);
+  else {
+    await db.execute(
+      "INSERT INTO tax_inventory_adjusts (fiscal_year, direction, rows) VALUES (?, ?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET direction = excluded.direction, rows = excluded.rows",
+      [year, next.direction, JSON.stringify(next.rows)],
+    );
+  }
+  await logMaster(db, {
+    target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の消費税の棚卸資産の調整`,
+    old_value: text(before), new_value: text(next),
+  });
 };
 
 const saveTaxInterim_ = async (db: Database, year: number, national: number, local: number) => {
@@ -2481,6 +2524,7 @@ export const saveFilingYear = inTx(saveFilingYear_, (year) => `${year}年の申�
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
+export const saveInventoryAdjust = inTx(saveInventoryAdjust_, (year) => `${year}年の棚卸資産の調整`, { perm: "settings" });
 export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登録番号の保存", { perm: "settings" });
 export const saveEtaxInfo = inTx(saveEtaxInfo_, () => "e-Tax の申告者の情報の保存", { perm: "settings" });
 export const fillTaxCodes = inTx(fillTaxCodes_, (year) => `${year}年の仕訳の税区分の一括設定`, { perm: "entry" });

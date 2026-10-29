@@ -122,6 +122,39 @@ describe("本則課税（一般用の書き方の設例：割戻し計算）", (
   });
 });
 
+describe("棚卸資産の調整（付表2-3 ⑯。令和7年分 確定申告の手引き 個人事業者用（一般用）の設例「甲野商店」）", () => {
+  // 令和6年は免税、令和7年分から課税（本則課税）。期首商品棚卸高 1,741,000円 × 7.8/110 = 123,452円
+  const b = base({
+    sales: { 8: 13_110_000, 10: 9_550_000 }, nontaxSales: 350_000, purchase: { 8: 8_736_000, 10: 7_690_000 },
+    transitional: [{ pct: 80, purchase: { 8: 0, 10: 1_650_000 }, ret: { 8: 0, 10: 0 } }],
+  });
+  const add = { direction: "add" as const, rows: [{ rate: 10 as const, pct: 100, amount: 1_741_000 }] };
+  test("⑯ を加算すると ⑰・第一表 ⑨・地方消費税が国税庁の設例と同じになる", () => {
+    const r = standardReturn(b, { ...opts, businessClass: 2, inventory: add });
+    expect(cell(r, "2-3", "⑯")).toEqual({ a: 0, b: 123_452, c: 123_452 });
+    expect(cell(r, "2-3", "⑰").c).toBe(1_267_088);
+    expect(cell(r, "first", "⑨").c).toBe(167_400);
+    expect(cell(r, "first", "⑳").c).toBe(47_200);
+    // 調整が無ければ ⑯ の行は出さない（調整の分だけ納める額が多い）
+    const none = standardReturn(b, { ...opts, businessClass: 2 });
+    expect(none.forms.find((f) => f.id === "2-3")!.rows.some((x) => x.no === "⑯")).toBe(false);
+    expect(cell(none, "first", "⑨").c).toBe(290_800);
+  });
+  test("減算はマイナス。軽減税率は 6.24/108、経過措置は控除できる割合を掛ける", () => {
+    const r = standardReturn(b, {
+      ...opts, inventory: { direction: "sub", rows: [{ rate: 8, pct: 100, amount: 1_080_000 }, { rate: 10, pct: 80, amount: 1_100_000 }] },
+    });
+    expect(cell(r, "2-3", "⑯")).toEqual({ a: -62_400, b: -62_400, c: -124_800 });
+  });
+  test("課税売上割合が 95% 未満の個別対応方式では、棚卸資産の調整は課税対応（⑲）に入れる", () => {
+    const low = base({ sales: { 8: 0, 10: 11_000_000 }, nontaxSales: 5_000_000, purchase: { 8: 0, 10: 5_500_000 } });
+    const r = standardReturn(low, { ...opts, inventory: add });
+    const without = standardReturn(low, opts);
+    expect(cell(r, "2-3", "⑲").b! - cell(without, "2-3", "⑲").b!).toBe(123_452);
+    expect(cell(r, "2-3", "⑳").b).toBe(cell(without, "2-3", "⑳").b);
+  });
+});
+
 describe("簡易課税（簡易課税用の書き方の設例。第二種事業が 75% 以上なので全体に 80%）", () => {
   const b = base({
     sales: { 8: 19_192_000, 10: 11_516_000 }, salesReturn: { 8: 1_250_000, 10: 756_000 },

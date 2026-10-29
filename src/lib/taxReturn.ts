@@ -10,9 +10,12 @@
  * 端数：計算の途中の 1 円未満はその都度切り捨て、課税標準額は千円未満切り捨て、差引税額・譲渡割額は百円未満切り捨て
  * 対象は課税事業者の期間の、削除済みでない明細（年の途中から課税事業者になった場合はその日から）
  * 本則課税で課税売上割合が 95% 未満（または課税売上高が5億円超）なら、個別対応方式（⑲⑳㉑。課税仕入の用途区分ごと）か一括比例配分方式（㉒）
- * 課税売上割合に準ずる割合・特定課税仕入れ・課税貨物・棚卸資産の調整・調整対象固定資産の調整・旧税率には対応していない
+ * 棚卸資産の調整（付表2-3 ⑯。消法36条・No.6491）：免税事業者から課税事業者になる年は、前日に持っていた棚卸資産のうち免税の期間に仕入れたものの税額を加算、
+ *   課税事業者から免税事業者になる前の年は、その年に仕入れて年末に残っている棚卸資産の税額を減算する。取得価額（税込）× 7.8/110・6.24/108（経過措置の仕入れは控除できる割合を掛ける）。
+ *   棚卸資産は課税売上げにのみ要するもの（個別対応方式の ⑲）として扱う。本則課税だけ（簡易課税・2割特例は調整しない）
+ * 課税売上割合に準ずる割合・特定課税仕入れ・課税貨物・調整対象固定資産の調整・旧税率には対応していない
  */
-import type { DeductionMethod, PurchaseUse, TaxYear } from "./types";
+import type { Account, DeductionMethod, PurchaseUse, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { isPurchaseCode, taxActiveOn, taxCodeDef, transitionalRate } from "./tax";
 import { BUSINESS_CLASSES } from "../constants/tax";
@@ -159,6 +162,35 @@ export interface TaxReturn {
   deduction?: { method: DeductionMethod; amounts: Record<DeductionMethod, number> };
 }
 
+/** 棚卸資産の調整（付表2-3 ⑯）。add = 加算（免税から課税になった年）／ sub = 減算（課税から免税になる前の年） */
+export interface InventoryAdjust {
+  direction: "add" | "sub";
+  /** 税率・控除できる割合（100 = 全額。経過措置は 80・70・50・30）ごとの取得価額（税込） */
+  rows: { rate: Rate; pct: number; amount: number }[];
+}
+
+/** 棚卸資産の調整の税額（税率ごと。減算はマイナス） */
+export const inventoryAdjustTax = (adj: InventoryAdjust | null | undefined): Record<Rate, number> => {
+  const sign = adj?.direction === "sub" ? -1 : 1;
+  const at = (r: Rate) => (adj?.rows ?? []).filter((x) => x.rate === r).reduce((t, x) => t + Math.floor((nationalTaxIn(x.amount, r) * x.pct) / 100), 0);
+  return { 8: sign * at(8), 10: sign * at(10) };
+};
+
+/**
+ * 帳簿の期首・期末の棚卸高（調整の取得価額の初めの額）。期首商品棚卸高・期末商品棚卸高の科目にあればその額、無ければ棚卸資産の科目の期首・期末残高
+ * opening = 期首残高、end = 期末残高（科目の残高の側で）
+ */
+export const inventoryOf = (accounts: Account[], opening: (a: Account) => number, end: (a: Account) => number) => {
+  const by = (code: string) => accounts.find((a) => a.code === code);
+  const stock = by("113");
+  const pick = (code: string, fallback: number) => {
+    const a = by(code);
+    const v = a ? end(a) : 0;
+    return v || fallback;
+  };
+  return { opening: pick("501", stock ? opening(stock) : 0), closing: pick("503", stock ? end(stock) : 0) };
+};
+
 export interface ReturnOptions {
   /** 簡易課税の事業区分（1〜6） */
   businessClass: number;
@@ -169,6 +201,8 @@ export interface ReturnOptions {
   baseSales?: number | null;
   /** 本則課税で課税売上割合が 95% 未満のときの控除の方式（既定は個別対応方式） */
   deduction?: DeductionMethod;
+  /** 棚卸資産の調整（本則課税の付表2-3 ⑯） */
+  inventory?: InventoryAdjust | null;
 }
 
 type AB = Record<Rate, number>;
@@ -278,12 +312,14 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
   const tax10 = map((r) => nationalTaxIn(b.purchase[r], r) - nationalTaxIn(b.purchaseReturn[r], r));
   const pay11 = map((r) => b.transitional.reduce((t, x) => t + x.purchase[r] - x.ret[r], 0));
   const tax12 = map((r) => transitionalTax(b.transitional, r));
-  const total17 = map((r) => tax10[r] + tax12[r]);
+  const adj16 = inventoryAdjustTax(o.inventory);
+  const total17 = map((r) => tax10[r] + tax12[r] + adj16[r]);
   const full = r1 + b.exportSales <= 500_000_000 && ratio >= 0.95;
   // 個別対応方式：⑲ 課税対応の税額、⑳ 共通対応の税額、㉑ ⑲ ＋ ⑳ × ④／⑦（非課税対応は控除しない）
   const useTax = (g: PurchaseGroup | undefined) =>
     map((r) => (g ? nationalTaxIn(g.purchase[r], r) - nationalTaxIn(g.ret[r], r) + transitionalTax(g.transitional, r) : 0));
-  const r19 = useTax(b.byUse?.taxable);
+  // 棚卸資産の調整は課税対応（⑲）に入れる
+  const r19 = map((r) => useTax(b.byUse?.taxable)[r] + adj16[r]);
   const r20 = useTax(b.byUse?.common ?? { purchase: map((r) => b.purchase[r]), ret: map((r) => b.purchaseReturn[r]), transitional: b.transitional });
   const r21 = map((r) => r19[r] + (r7 > 0 ? mulDiv(r20[r], r4, r7) : r20[r]));
   const r22 = map((r) => (r7 > 0 ? mulDiv(total17[r], r4, r7) : total17[r])); // 一括比例配分方式：⑰ × ④／⑦
@@ -319,6 +355,9 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
       abRow("⑩", "課税仕入れに係る消費税額", tax10),
       abRow("⑪", "適格請求書発行事業者以外の者から行った課税仕入れに係る経過措置の適用を受ける課税仕入れに係る支払対価の額（税込み）", pay11),
       abRow("⑫", "適格請求書発行事業者以外の者から行った課税仕入れに係る経過措置により課税仕入れに係る消費税額とみなされる額", tax12),
+      ...(sumAB(adj16) || adj16[8] || adj16[10]
+        ? [abRow("⑯", "納税義務の免除を受けない（受ける）こととなった場合における消費税額の調整（加算又は減算）額", adj16, o.inventory?.direction === "sub" ? "減算（課税事業者から免税事業者になる前の年）" : "加算（免税事業者から課税事業者になった年）")]
+        : []),
       abRow("⑰", "課税仕入れ等の税額の合計額（⑩＋⑫＋⑭＋⑮±⑯）", total17),
       ...(full
         ? [abRow("⑱", "課税売上高が5億円以下、かつ、課税売上割合が95%以上の場合（⑰の金額）", total17)]

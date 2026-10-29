@@ -320,6 +320,23 @@ describe("貸倒引当金（repo）", () => {
   });
 });
 
+describe("消費税の棚卸資産の調整（repo）", () => {
+  test("年度ごとに保存し、金額の無い行は落とす。変えたら履歴に残り、締めた年度は変えられない", async () => {
+    const { db } = strict;
+    expect(await repo.getInventoryAdjust(db, 2026)).toBeNull();
+    await repo.saveInventoryAdjust(db, 2026, { direction: "add", rows: [{ rate: 10, pct: 100, amount: 1_741_000 }, { rate: 8, pct: 80, amount: 0 }] });
+    expect(await repo.getInventoryAdjust(db, 2026)).toEqual({ direction: "add", rows: [{ rate: 10, pct: 100, amount: 1_741_000 }] });
+    await expect(repo.saveInventoryAdjust(db, 2026, { direction: "add", rows: [{ rate: 10, pct: 60, amount: 1 }] })).rejects.toThrow(/控除できる割合/);
+    await expect(repo.saveInventoryAdjust(db, 2026, { direction: "add", rows: [{ rate: 10, pct: 100, amount: -1 }] })).rejects.toThrow(/取得価額/);
+    await repo.saveInventoryAdjust(db, 2026, { direction: "add", rows: [] });
+    expect(await repo.getInventoryAdjust(db, 2026)).toBeNull();
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.label.includes("棚卸資産の調整"));
+    expect(h.map((x) => x.new_value).reverse()).toEqual(["加算 10% 1,741,000円", "なし"]);
+    await repo.closeYear(db, 2025);
+    await expect(repo.saveInventoryAdjust(db, 2025, { direction: "sub", rows: [{ rate: 10, pct: 100, amount: 1 }] })).rejects.toThrow(/締め/);
+  });
+});
+
 describe("申告の種類（年度ごと。repo）", () => {
   test("年度ごとに保存し、次に変える年まで引き継ぐ。設定の無い年は帳簿を作ったときの設定。変更は履歴に残る", async () => {
     const { db } = strict;

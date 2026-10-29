@@ -38,6 +38,24 @@ const validate = (xml: string) => {
 const val = (xml: string, t: string) => xml.match(new RegExp(`<${t}>(?:<kubun_CD>)?([^<]*)<`))?.[1];
 const ref = (xml: string, t: string) => xml.match(new RegExp(`<${t} IDREF="([A-Z_]+)"/>`))?.[1];
 
+describe("棚卸資産の調整（付表2-3 ⑯：DTE00200〜00220）", () => {
+  const b = base({ sales: { 8: 13_110_000, 10: 9_550_000 }, nontaxSales: 350_000, purchase: { 8: 8_736_000, 10: 7_690_000 } });
+  test("加算：⑯ と ⑰ に入れ、XSD に合う", () => {
+    const xml = buildTaxXtx(standardReturn(b, { ...opts, inventory: { direction: "add", rows: [{ rate: 10, pct: 100, amount: 1_741_000 }] } }), filer, period);
+    expect(validate(xml)).toBe("");
+    expect([val(xml, "DTE00210"), val(xml, "DTE00220")]).toEqual(["123452", "123452"]);
+    expect(val(xml, "DTE00250")).toBe(String(Math.floor((7_690_000 * 78) / 1100) + 123_452));
+  });
+  test("減算はマイナスで書く", () => {
+    const xml = buildTaxXtx(standardReturn(b, { ...opts, inventory: { direction: "sub", rows: [{ rate: 8, pct: 100, amount: 1_080_000 }] } }), filer, period);
+    expect(validate(xml)).toBe("");
+    expect([val(xml, "DTE00200"), val(xml, "DTE00220")]).toEqual(["-62400", "-62400"]);
+  });
+  test("調整が無ければ ⑯ は書かない", () => {
+    expect(buildTaxXtx(standardReturn(b, opts), filer, period)).not.toContain("DTE00220");
+  });
+});
+
 describe("本則課税（一般用：RSH0010）", () => {
   const b = base({
     sales: { 8: 203_878_000, 10: 135_400_000 }, salesReturn: { 8: 4_521_120, 10: 4_400_005 },

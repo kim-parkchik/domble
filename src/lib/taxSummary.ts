@@ -14,6 +14,7 @@ import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
 import { deductionProblem, isPurchaseCode, isSalesCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
 import { INTERIM_KIND_LABEL, type InterimPlan } from "./taxInterim";
+import type { InventoryAdjust } from "./taxReturn";
 
 export type TaxKind = "sales" | "salesReturn" | "badDebt" | "badDebtRecovered" | "purchase" | "purchaseReturn" | "other";
 
@@ -193,6 +194,8 @@ export interface TaxCheckInput {
   baseSales?: BaseSalesInfo | null;
   /** 中間申告の予定と、申告書に入れてある中間納付税額（読み込み中は null） */
   interim?: { plan: InterimPlan; entered: { national: number; local: number } } | null;
+  /** 棚卸資産の調整（付表2-3 ⑯）と、帳簿の期首・期末の棚卸高（読み込み中は null） */
+  inventory?: { adjust: InventoryAdjust | null; opening: number; closing: number } | null;
 }
 
 const yenText = (n: number) => `${n.toLocaleString()}円`;
@@ -233,6 +236,37 @@ const interimIssues = (year: number, i: NonNullable<TaxCheckInput["interim"]>): 
   return [];
 };
 
+/** 棚卸資産の調整（付表2-3 ⑯）：免税から課税になった年の加算、課税から免税になる前の年の減算が入っているか */
+const inventoryIssues = (year: number, taxYears: TaxYear[], inv: NonNullable<TaxCheckInput["inventory"]>): TaxIssue[] => {
+  const ty = taxYearOf(taxYears, year);
+  const dir = inv.adjust?.rows.length ? inv.adjust.direction : null;
+  if (ty.status !== "standard") {
+    return dir ? [{
+      level: "info", title: "棚卸資産の調整が入っていますが、本則課税ではありません", fix: "return", entryIds: [],
+      detail: "棚卸資産の調整（付表2-3 ⑯）は本則課税だけのものです。簡易課税・2割特例では使いません。",
+    }] : [];
+  }
+  const out: TaxIssue[] = [];
+  const became = taxYearOf(taxYears, year - 1).status === "exempt" || !!ty.taxable_from;
+  if (became && dir !== "add" && (inv.opening > 0 || ty.taxable_from)) {
+    out.push({
+      level: ty.taxable_from ? "info" : "warn", title: "免税事業者から課税事業者になった年の棚卸資産の調整が入っていません", fix: "return", entryIds: [],
+      detail: (ty.taxable_from
+        ? `${ty.taxable_from} から課税事業者なので、その前日に持っていた棚卸資産のうち、免税の期間に仕入れたものの消費税額を加算できます。`
+        : `期首の棚卸高 ${yenText(inv.opening)} のうち、免税の期間（${year - 1}年まで）に仕入れたものの消費税額を加算できます。`)
+        + "申告書の「棚卸資産の調整」で入れます（付表2-3 ⑯。棚卸資産の明細の記録と保存が要ります）。",
+    });
+  }
+  const next = taxYearOf(taxYears, year + 1);
+  if (next.status === "exempt" && !next.inherited && dir !== "sub" && inv.closing > 0) {
+    out.push({
+      level: "warn", title: "免税事業者になる前の年の棚卸資産の調整が入っていません", fix: "return", entryIds: [],
+      detail: `${year + 1}年から免税事業者なので、年末の棚卸高 ${yenText(inv.closing)} のうち、${year}年に仕入れたものの消費税額を減算します（申告書の「棚卸資産の調整」。付表2-3 ⑯）。`,
+    });
+  }
+  return out;
+};
+
 export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
   const issues: TaxIssue[] = [];
   const ty = taxYearOf(x.taxYears, x.year);
@@ -260,6 +294,7 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
     });
   }
   if (ty.status === "exempt") return byLevel(issues);
+  if (x.inventory) issues.push(...inventoryIssues(x.year, x.taxYears, x.inventory));
   if (x.baseSales && (ty.status === "twenty" || ty.status === "thirty" || ty.status === "simplified")) {
     const m = methodProblem(ty.status, x.baseSales);
     if (m) issues.push({ level: "error", title: `${statusLabel(ty.status)}は使えません`, fix: "settings", entryIds: [], detail: `${m}。事業者設定の「消費税」で課税区分を選び直してください。` });

@@ -20,7 +20,7 @@ import { toCsv } from "../../lib/csv";
 import { INVOICE_KINDS, TAX_STATUS_OPTIONS, TAX_METHOD_OPTIONS } from "../../constants/tax";
 import { classLabel, taxCodeDef, useLabel } from "../../lib/tax";
 import { buildTaxSummary, taxChecks, TAX_KIND_LABEL, type TaxIssue, type TaxSummaryRow } from "../../lib/taxSummary";
-import { TaxReturnView } from "./TaxReturnView";
+import { TaxReturnView, useInventory } from "./TaxReturnView";
 import { TaxInterimView } from "./TaxInterimView";
 
 type View = "summary" | "checks" | "return" | "interim";
@@ -33,7 +33,8 @@ const MAX_ENTRIES = 20;
 
 export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
   const { year, accounts, accountMap, counterparties, taxYears, taxYear, settings } = useAppContext();
-  const { lines, loading } = useYearData();
+  const { lines, opening, loading } = useYearData();
+  const inventory = useInventory(lines, opening);
   const toast = useToast();
   const [view, setView] = useState<View>("summary");
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -44,9 +45,9 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
   const interim = useInterim();
   const issues = useMemo(
     () => taxChecks({
-      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary, baseSales, interim,
+      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary, baseSales, interim, inventory,
     }),
-    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales, interim],
+    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales, interim, inventory],
   );
   const byEntry = useMemo(() => groupByEntry(lines), [lines]);
 

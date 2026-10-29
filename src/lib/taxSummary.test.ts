@@ -258,3 +258,31 @@ describe("中間申告（確認）", () => {
     expect(check(300_000, { national: 100_000, local: 28_200 })[0]).toMatchObject({ title: expect.stringMatching(/要らない年/) });
   });
 });
+
+describe("棚卸資産の調整（確認）", () => {
+  const ty = (from_year: number, status: TaxYear["status"], taxable_from = ""): TaxYear =>
+    ({ from_year, status, method: "inclusive", business_class: 5, taxable_from, deduction: "individual", voluntary_interim: 0 });
+  const check = (taxYears: TaxYear[], inventory: { adjust: { direction: "add" | "sub"; rows: { rate: 8 | 10; pct: number; amount: number }[] } | null; opening: number; closing: number }) =>
+    taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, taxYears), inventory });
+  const add = { direction: "add" as const, rows: [{ rate: 10 as const, pct: 100, amount: 1_000_000 }] };
+
+  test("前年が免税で本則課税になった年、期首の棚卸高があるのに加算が無ければ知らせる", () => {
+    const years = [ty(2025, "exempt"), ty(2026, "standard")];
+    expect(check(years, { adjust: null, opening: 1_741_000, closing: 0 })[0]).toMatchObject({
+      level: "warn", fix: "return", title: "免税事業者から課税事業者になった年の棚卸資産の調整が入っていません",
+    });
+    expect(check(years, { adjust: add, opening: 1_741_000, closing: 0 })).toEqual([]);
+    expect(check(years, { adjust: null, opening: 0, closing: 0 })).toEqual([]);
+    // 年の途中から課税事業者：前日の棚卸高は帳簿に無いので、念のため
+    expect(check([ty(2026, "standard", "2026-04-01")], { adjust: null, opening: 0, closing: 0 })[0]).toMatchObject({ level: "info", detail: expect.stringMatching(/2026-04-01 から課税事業者/) });
+  });
+  test("翌年から免税になる年は、年末の棚卸高があるのに減算が無ければ知らせる。本則課税でなければ調整は使わない", () => {
+    expect(check([ty(2026, "standard"), ty(2027, "exempt")], { adjust: null, opening: 0, closing: 500_000 })[0]).toMatchObject({
+      level: "warn", title: "免税事業者になる前の年の棚卸資産の調整が入っていません",
+    });
+    expect(check([ty(2026, "standard")], { adjust: null, opening: 0, closing: 500_000 })).toEqual([]);
+    expect(check([ty(2025, "exempt"), ty(2026, "simplified")], { adjust: add, opening: 1_000_000, closing: 0 })).toEqual([
+      expect.objectContaining({ level: "info", title: "棚卸資産の調整が入っていますが、本則課税ではありません" }),
+    ]);
+  });
+});

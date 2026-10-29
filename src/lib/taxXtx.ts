@@ -96,7 +96,7 @@ const FUHYO13: Table = {
 };
 const FUHYO23: Table = {
   "①": abc("DTB", 20), "②": "DTB00050", "③": "DTB00060", "④": "DTB00070", "⑥": "DTC00020", "⑦": "DTC00030",
-  "⑨": abc("DTE", 20), "⑩": abc("DTE", 60), "⑪": abc("DTE", 280), "⑫": abc("DTE", 320), "⑰": abc("DTE", 240),
+  "⑨": abc("DTE", 20), "⑩": abc("DTE", 60), "⑪": abc("DTE", 280), "⑫": abc("DTE", 320), "⑯": abc("DTE", 200), "⑰": abc("DTE", 240),
   "⑱": abc("DTF", 10), "⑲": abc("DTG", 30), "⑳": abc("DTG", 70), "㉑": abc("DTG", 110), "㉒": abc("DTG", 150), "㉖": abc("DTI", 20), "㉗": abc("DTI", 60), "㉘": abc("DTJ", 10),
 };
 const FUHYO43: Table = {

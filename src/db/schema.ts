@@ -59,6 +59,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_filing_years", "filing_years", "from_year"),
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
+  ...yearGuards("trg_closed_tax_inventory_adjusts", "tax_inventory_adjusts", "fiscal_year"),
   ...yearGuards("trg_closed_tax_prev_amounts", "tax_prev_amounts", "fiscal_year"),
   ...yearGuards("trg_closed_income_tax_inputs", "income_tax_inputs", "fiscal_year"),
 ];
@@ -227,6 +228,16 @@ export const SCHEMA: string[] = [
    * 基準期間の課税売上高を手で入れた額（申告する年ごと。lib/baseSales.ts）。
    * 基準期間（前々年）の帳簿が domble に無いとき、または帳簿の計算の代わりに使いたいときだけ。入っていれば帳簿の計算より優先する
    */
+  /**
+   * 消費税の棚卸資産の調整（本則課税の付表2-3 ⑯。申告する年ごと。lib/taxReturn.ts の InventoryAdjust）。
+   * direction：add 加算（免税から課税になった年）／ sub 減算（課税から免税になる前の年）。rows：税率・控除できる割合・取得価額（税込）の JSON
+   */
+  `CREATE TABLE IF NOT EXISTS tax_inventory_adjusts (
+    fiscal_year INTEGER PRIMARY KEY,
+    direction TEXT NOT NULL CHECK (direction IN ('add', 'sub')),
+    rows TEXT NOT NULL
+  );`,
+
   `CREATE TABLE IF NOT EXISTS tax_base_sales (
     fiscal_year INTEGER PRIMARY KEY,
     amount INTEGER NOT NULL CHECK (amount >= 0)
