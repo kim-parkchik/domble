@@ -3,7 +3,7 @@
  * （純粋関数。数字は incomeTax.ts・blueStatement.ts・whiteStatement.ts の計算結果をそのまま使う）
  *
  * 手続 RKO0010（所得税及び復興特別所得税申告）。手続の版は年分で選ぶ（INCOME_XTX_VERSIONS）
- *  - KOA020：確定申告書の第一表・第二表（第三表・第四表は扱わない）
+ *  - KOA020：確定申告書の第一表・第二表と、損失申告の年（純損失を繰り越す・繰越損失が残る）は第四表（一）（二）（第三表・第四表の付表は扱わない）
  *  - KOA210：青色申告決算書（一般用）の1〜4ページ（製造原価の計算は書かない）
  *  - KOA110：収支内訳書（一般用）の1・2ページ（白色申告の年）
  * 様式の行数より多い明細は、金額の大きい順に入れ、残りは「その他」の1行にまとめる（次葉合計の欄がある明細は次葉合計に）。
@@ -98,7 +98,6 @@ export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" |
 export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer" | "input" | "result" | "biz">): string[] => {
   const p: string[] = [];
   if (src.year < INCOME_XTX_FIRST_YEAR) p.push(`e-Tax のデータは令和${INCOME_XTX_FIRST_YEAR - 2018}年（${INCOME_XTX_FIRST_YEAR}年）分から書き出せます`);
-  if (src.result.totalIncome < 0) p.push("所得金額の合計がマイナスです。損失申告（第四表）には対応していません");
   const missing = filerProblems(src.filer);
   if (missing.length) p.push(`事業者設定の e-Tax の欄：${missing.join("、")}`);
   const noPayer = src.result.second.withholding.filter((r) => r.withheld > 0 && (!r.payer.trim() || !r.payerId.trim()));
@@ -149,6 +148,8 @@ const sumOf = <T>(rows: T[], f: (r: T) => number) => rows.reduce((s, r) => s + f
 const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean): EtaxValues => {
   const { input: x, result: r } = src;
   const row = (no: string) => r.rows.find((v) => v.no === no)?.value ?? 0;
+  // 第四表を使う年は ⑫・㉛ を書かない（㉜ は 0）
+  const fourth = r.loss.fourth;
   const spouse = spouseDeduction(x.spouse, r.totalIncome, src.year);
   const specificCount = x.dependents.filter((d) => dependentDeduction(d, src.year).kind === "specificRelative").length;
   const medical = row("㉘");
@@ -166,7 +167,7 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     ABB00080: amount(row("㋔")), ABB00100: amount(row("㋕")), ABB00105: amount(row("㋖")), ABB00110: amount(row("㋗")),
     // 所得金額等
     ABB00300: row("①"), ABB00370: amount(row("⑥")), ABB01060: amount(row("⑦")), ABB01090: amount(row("⑧")), ABB01120: amount(row("⑨")),
-    ABB01130: amount(row("⑩")), ABB00410: row("⑫"),
+    ABB01130: amount(row("⑩")), ABB00410: fourth ? undefined : row("⑫"),
     // 所得から差し引かれる金額（医療費控除の区分 1 = セルフメディケーション税制、配偶者（特別）控除の区分1 = 配偶者特別控除、ひとり親控除の区分 = 1）
     ABB00435: medical && x.medical.kind === "self" ? 1 : undefined, ABB00440: amount(medical),
     ABB00450: amount(row("⑬")), ABB00460: amount(row("⑭")), ABB00470: amount(row("⑮")), ABB00480: amount(row("⑯")), ABB00490: amount(row("㉙")),
@@ -175,11 +176,11 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     ABB00546: row("㉔") ? specificCount : undefined, ABB00548: amount(row("㉔")),
     ABB00550: amount(row("㉕")), ABB00555: row("㉖"), ABB00560: row("㉚"),
     // 税金の計算
-    ABB00580: row("㉛"), ABB00590: row("㉜"), ABB00650: amount(row("㉟")), ABB00670: row("㊷"), ABB01010: row("㊹"), ABB01020: row("㊺"), ABB01030: row("㊻"),
+    ABB00580: fourth ? undefined : row("㉛"), ABB00590: row("㉜"), ABB00650: amount(row("㉟")), ABB00670: row("㊷"), ABB01010: row("㊹"), ABB01020: row("㊺"), ABB01030: row("㊻"),
     ABB00710: amount(row("㊾")), ABB00720: row("㊿"), ABB00730: amount(row(fieldNo(51))), ABB00750: amount(row(fieldNo(52))), ABB00760: amount(row(fieldNo(53))),
     // その他
     ABB00775: amount(row(fieldNo(56))), ABB00780: amount(row(fieldNo(57))), ABB00790: amount(row(fieldNo(58))), ABB00800: amount(row(fieldNo(59))),
-    ABB00810: amount(row(fieldNo(60))),
+    ABB00810: amount(row(fieldNo(60))), ABB00830: amount(row(fieldNo(62))),
     // 還付される税金の受取場所（口座）。公金受取口座は口座を書かず、口座情報利用同意区分を 1 にする（個人番号が必須）
     ABB00950: refund ? ref(refs, "KANPU_KINYUKIKAN") : undefined,
     ABZ40000: refund && src.filer.refund?.kind === "public" && refs.has("NOZEISHA_BANGO") ? { kubun: 1 } : undefined,
@@ -264,6 +265,37 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     // 税理士署名欄（依頼している税理士等）
     ABS10050: ref(refs, "DAIRI_NM"), ABS10060: ref(refs, "DAIRI_TEL"),
   });
+};
+
+/**
+ * 第四表（一）（二）（損失申告用）。domble の所得は経常所得だけなので、損益の通算の欄はどれも (67) と同じ額
+ * 4 繰越損失を差し引く計算：A（3年前）・B（2年前）・C（前年）の年分の「青色の場合・山林以外の所得の損失」の行（Ⓒ は B・C だけ）
+ */
+const CARRY_TAGS: [year: string, blueYear: string, before: string, used: string, after: string | null][] = [
+  ["ABP00320", "ABP00340", "ABP00500", "ABP00870", null],
+  ["ABP00360", "ABP00380", "ABP00620", "ABP00990", "ABP01240"],
+  ["ABP00400", "ABP00420", "ABP00740", "ABP01110", "ABP01360"],
+];
+const fourthValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const l = src.result.loss;
+  if (!l.fourth) return {};
+  const v: Record<string, EtaxValue | undefined> = {
+    ABM00010: ref(refs, "NENBUN"), ABM00020: ref(refs, "SHINKOKU_KBN"), ABM00060: ref(refs, "NOZEISHA_ADR"),
+    ABM00070: ref(refs, "NOZEISHA_NM_KN"), ABM00080: ref(refs, "NOZEISHA_NM"),
+    // 1 損失額又は所得金額・2 損益の通算（通算前・第1次〜第3次通算後・損失額又は所得金額）・(81)
+    ABN00030: l.income, ABN00810: l.income, ABN00930: l.income, ABN01070: l.income, ABN01230: l.income, ABN01390: l.income, ABN01520: l.income,
+    ABO00010: ref(refs, "NENBUN"), ABO00020: ref(refs, "SHINKOKU_KBN"),
+    // 3 翌年以後に繰り越す損失額
+    ABP00020: amount(l.blueLoss),
+    ABP01445: l.forDeductions,
+  };
+  l.carry.forEach((c, i) => {
+    if (!c.before) return;
+    const [yearTag, blueTag, beforeTag, usedTag, afterTag] = CARRY_TAGS[i];
+    Object.assign(v, { [yearTag]: { nen: c.year }, [blueTag]: { nen: c.year }, [beforeTag]: c.before, [usedTag]: c.used });
+    if (afterTag) v[afterTag] = c.after ?? 0;
+  });
+  return clean(v);
 };
 
 // ── 青色申告決算書（KOA210） ──
@@ -605,7 +637,7 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
   const it = { refund, personal: true, nenbun: src.year };
   const refs = itRefs(filer, it);
   const attrs: FormAttrs = { author: filer.yago.trim() || filer.name.trim(), createdOn: src.createdOn };
-  const koa020 = { ...firstValues({ ...src, filer }, refs, refund), ...secondValues(src, refs) };
+  const koa020 = { ...firstValues({ ...src, filer }, refs, refund), ...secondValues(src, refs), ...fourthValues(src, refs) };
   return documentXml({
     namespace: NAMESPACE,
     procedure: PROCEDURE.procedure,

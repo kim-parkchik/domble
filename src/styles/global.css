@@ -826,6 +826,8 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .it-table td { padding: 3px 4px; white-space: normal; overflow: visible; }
 .it-table td.center { text-align: center; }
 .it-table .input { width: 100%; min-width: 0; }
+.it-carry thead th { white-space: normal; vertical-align: bottom; }
+.it-carry td { padding: 6px 10px; }
 .it-amounts .field { flex: 0 1 190px; min-width: 160px; }
 .it-pick { margin-top: 8px; }
 .it-first tr.st-strong td { font-weight: 700; border-bottom: 1px solid var(--rule-strong); }

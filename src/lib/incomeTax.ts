@@ -7,13 +7,18 @@
  * 対象：事業所得（営業等。帳簿と決算書から）・給与所得・雑所得（公的年金等・業務・その他）
  *  - 給与所得控除は年分の表の最低保障（令和7年分 65万円、令和8・9年分 74万円と 190万円超 220万円以下の特例の段）。660万円未満は「年末調整等のための給与所得控除後の給与等の金額の表」と同じ計算
  *  - 公的年金等控除は年齢（その年12月31日現在で65歳以上か）と、公的年金等以外の合計所得金額（1,000万円・2,000万円）で決める
- *  - 雑所得の損失は雑所得の中だけで差し引く。事業所得の損失はほかの所得から差し引く（純損失が残る場合の損失申告は扱わない）
+ *  - 雑所得の損失は雑所得の中だけで差し引く。事業所得の損失はほかの所得から差し引く（損益の通算）
+ * 損失申告（第四表）：青色申告の年の純損失を翌年以後3年間に繰り越し、古い年分から順に差し引く（純損失の繰越控除。lossOf）
+ *  - 本年の純損失を繰り越すとき・繰越損失が翌年に残るときは第四表を使い、第一表の ⑫・㉛ は書かず ㉜ は 0（損失申告用の手引き）
+ *  - 繰越損失を使い切るときは第四表を使わず、第一表の (62)「本年分で差し引く繰越損失額」に書いて ⑫ から差し引く
+ *  - 合計所得金額（基礎控除・配偶者控除などの所得要件）は繰越控除の前、医療費控除・寄附金控除の総所得金額等は繰越控除の後
+ *  - 白色申告の年の純損失（繰り越せるのは変動所得・被災事業用資産の損失だけ）、雑損失、前年への繰戻し還付は扱わない
  * 所得控除：社会保険料・小規模企業共済等掛金・生命保険料（令和8年分からの23歳未満の扶養親族がいる場合の特例を含む）・地震保険料・寄附金・医療費（またはセルフメディケーション税制）・
  *   寡婦・ひとり親・勤労学生・障害者・配偶者（特別）・扶養・特定親族特別控除（令和7年分から）・基礎控除
  * 税額：課税される所得金額（千円未満切り捨て）× 税率、住宅借入金等特別控除（計算明細書の額を入れる）、復興特別所得税（基準所得税額 × 2.1%。1円未満切り捨て）、
  *   源泉徴収税額・予定納税額を差し引いて、納める税金（百円未満切り捨て）または還付される税金
  * 事業所得：青色申告は青色申告特別控除を差し引く。白色申告は収支内訳書の所得金額（事業専従者控除の後。lib/whiteStatement.ts）をそのまま使う
- * 扱わないもの：不動産・利子・配当・譲渡・一時所得、分離課税、損失申告、雑損控除、所得金額調整控除、配当控除などほかの税額控除、災害減免、外国税額控除
+ * 扱わないもの：不動産・利子・配当・譲渡・一時所得、分離課税、雑損控除、所得金額調整控除、配当控除などほかの税額控除、災害減免、外国税額控除
  */
 import type { FilingType } from "./types";
 
@@ -94,6 +99,17 @@ export interface Donation {
   local: DonationLocal;
 }
 
+/** 前の年から繰り越した純損失（青色申告の年の、山林以外の所得の損失）。第四表（二）「4 繰越損失を差し引く計算」の Ⓐ */
+export interface CarriedLoss {
+  /** 損失が出た年分 */
+  year: number;
+  /** 前年分までに引ききれなかった損失額 */
+  amount: number;
+}
+
+/** 繰越損失の行の名前（[3年前, 2年前, 前年]） */
+export const CARRY_LABELS = ["3年前", "2年前", "前年"] as const;
+
 export interface IncomeTaxInput {
   /** 本人の生年月日（YYYY-MM-DD。公的年金等控除の年齢に使う） */
   birthday: string;
@@ -128,6 +144,11 @@ export interface IncomeTaxInput {
   residentTax: "" | "special" | "self";
   /** 事業税：他の都道府県に事務所等があるか、その年の中途の開業・廃業（日付 YYYY-MM-DD） */
   businessTax: { otherPrefecture: boolean; change: "" | "open" | "close"; changeDate: string };
+  /**
+   * 前の年から繰り越した純損失。auto = 前の年の申告（domble の所得税の入力と帳簿）から引き継ぐ ／ manual = 手で入れる
+   * amounts は manual のときの [3年前, 2年前, 前年] の年分の、青色申告の年の純損失のうち前年分までに引ききれなかった額（前の年の第四表（二）から写す）
+   */
+  carry: { mode: "auto" | "manual"; amounts: [number, number, number] };
 }
 
 export const emptyRelative = (relation = ""): Relative => ({
@@ -143,6 +164,7 @@ export const EMPTY_INCOME_TAX_INPUT: IncomeTaxInput = {
   medical: { kind: "normal", paid: 0, reimbursed: 0 },
   donations: [], spouse: null, dependents: [], housingLoan: 0, prepaid: 0,
   residentTax: "", businessTax: { otherPrefecture: false, change: "", changeDate: "" },
+  carry: { mode: "auto", amounts: [0, 0, 0] },
 };
 
 const MAX_AMOUNT = 100_000_000_000;
@@ -190,6 +212,8 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
   const quake = (x.quake ?? {}) as Partial<IncomeTaxInput["quake"]>;
   const medical = (x.medical ?? {}) as Partial<IncomeTaxInput["medical"]>;
   const biz = (x.businessTax ?? {}) as Partial<IncomeTaxInput["businessTax"]>;
+  const carry = (x.carry ?? {}) as Partial<{ mode: unknown; amounts: unknown[] }>;
+  const carried = (i: number) => amount(Array.isArray(carry.amounts) ? carry.amounts[i] : 0, `${CARRY_LABELS[i]}の年分の繰越損失`);
   const change = biz.change === "open" || biz.change === "close" ? biz.change : "";
   const changeDate = change ? text(biz.changeDate, 10) : "";
   if (changeDate && !isIsoDate(changeDate)) problems.push("事業税の開業・廃業の日付が正しくありません");
@@ -222,6 +246,7 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
     prepaid: amount(x.prepaid, "予定納税額"),
     residentTax: x.residentTax === "special" || x.residentTax === "self" ? x.residentTax : "",
     businessTax: { otherPrefecture: !!biz.otherPrefecture, change, changeDate },
+    carry: { mode: carry.mode === "manual" ? "manual" : "auto", amounts: [carried(0), carried(1), carried(2)] },
   };
   return problems.length ? problems[0] : out;
 };
@@ -488,18 +513,94 @@ export interface IncomeTaxResult {
     donations: IncomeTaxInput["donations"];
     relatives: { name: string; relation: string; birthday: string; kind: string; disability: Disability; cohabiting: boolean }[];
   };
-  /** 合計所得金額（⑫） */
+  /** 合計所得金額（純損失の繰越控除の前。繰越控除が無ければ ⑫） */
   totalIncome: number;
+  /** 損失申告（第四表）と繰越控除 */
+  loss: LossResult;
   /** 納める税金（＋）・還付される税金（−） */
   balance: number;
   notes: string[];
 }
 
+/** 第四表（二）「4 繰越損失を差し引く計算」の1年分 */
+export interface CarryRow {
+  year: number;
+  /** Ⓐ 前年分までに引ききれなかった損失額 */
+  before: number;
+  /** Ⓑ 本年分で差し引く損失額 */
+  used: number;
+  /** Ⓒ 翌年分以後に繰り越して差し引かれる損失額（3年前の年分は繰り越せないので null） */
+  after: number | null;
+}
+
+export interface LossResult {
+  /** 第四表（損失申告用）を使うか（本年の純損失を繰り越すとき、または繰越損失が翌年に残るとき） */
+  fourth: boolean;
+  /** (67)・(81) 経常所得の損失額又は所得金額（domble は譲渡・一時・山林・退職を扱わないので、損益の通算の前後で同じ額） */
+  income: number;
+  /** (82) 青色申告者の損失の金額（本年の純損失。白色申告の年は 0） */
+  blueLoss: number;
+  /** 4 繰越損失を差し引く計算（[3年前, 2年前, 前年]） */
+  carry: CarryRow[];
+  /** 本年分で差し引く繰越損失額の合計（第四表を使わないときは第一表の (62)） */
+  used: number;
+  /** (93) 雑損控除・医療費控除・寄附金控除の計算で使う所得金額の合計額（総所得金額等。繰越控除の後） */
+  forDeductions: number;
+  /** 翌年に繰り越す純損失（翌年分の Ⓐ） */
+  next: CarriedLoss[];
+}
+
+/**
+ * 純損失の繰越控除と、本年の純損失（No.2070、損失申告用の手引き）
+ * income = 経常所得（第一表 ①〜⑥＋⑩）。繰越損失は古い年分から順に、income の黒字から差し引く。3年前の年分の残りは繰り越せない
+ */
+export const lossOf = (income: number, carried: CarriedLoss[], year: number, white: boolean): LossResult => {
+  let left = Math.max(income, 0);
+  const carry = CARRY_LABELS.map((_, i): CarryRow => {
+    const y = year - 3 + i;
+    const before = sum(carried.filter((c) => c.year === y).map((c) => c.amount));
+    const used = Math.min(before, left);
+    left -= used;
+    return { year: y, before, used, after: i === 0 ? null : before - used };
+  });
+  const used = sum(carry.map((c) => c.used));
+  const blueLoss = white ? 0 : Math.max(-income, 0);
+  const next = [
+    ...carry.filter((c) => c.after).map((c) => ({ year: c.year, amount: c.after! })),
+    ...(blueLoss ? [{ year, amount: blueLoss }] : []),
+  ];
+  return { fourth: next.length > 0, income, blueLoss, carry, used, forDeductions: Math.max(income, 0) - used, next };
+};
+
+/** その年の繰越損失（Ⓐ）：手で入れたもの、または前の年の申告から引き継いだもの（prev = 前の年の計算の next。前の年の入力が無ければ null） */
+export const carriedLosses = (input: IncomeTaxInput, year: number, prev: CarriedLoss[] | null): CarriedLoss[] =>
+  input.carry.mode === "manual"
+    ? input.carry.amounts.map((amount, i) => ({ year: year - 3 + i, amount })).filter((c) => c.amount > 0)
+    : (prev ?? []).filter((c) => c.year >= year - 3 && c.year < year && c.amount > 0);
+
+/** 前の年の入力と事業所得（load が返す。domble に前の年の所得税の入力が無ければ null） */
+export interface PastIncomeTax {
+  input: IncomeTaxInput;
+  biz: BusinessFigures;
+}
+
+/**
+ * year に繰り越された純損失を、前の年の申告からさかのぼって出す（前の年が「引き継ぐ」なら、その前の年へ）。
+ * 前の年の入力が無ければ null（手で入れてもらう）
+ */
+export const carriedFromPast = async (year: number, load: (year: number) => Promise<PastIncomeTax | null>, depth = 10): Promise<CarriedLoss[] | null> => {
+  const prev = await load(year - 1);
+  if (!prev) return null;
+  const before = prev.input.carry.mode === "manual" || depth <= 1 ? null : await carriedFromPast(year - 1, load, depth - 1);
+  return computeIncomeTax(prev.input, prev.biz, year - 1, carriedLosses(prev.input, year - 1, before)).loss.next;
+};
+
 const NOS = "⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿";
 /** 欄番号（51 以降は丸数字が無いので（51）） */
 export const fieldNo = (n: number) => (n <= 50 ? [...NOS][n] : `(${n})`);
 
-export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, year: number): IncomeTaxResult => {
+/** carried = その年に繰り越された純損失（carriedLosses） */
+export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, year: number, carried: CarriedLoss[] = []): IncomeTaxResult => {
   const notes: string[] = [];
   const { rules, fallback } = rulesFor(year);
   if (fallback) {
@@ -524,10 +625,22 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   if (pensionIn > 0 && age === null) notes.push("公的年金等の控除額は、本人の生年月日が分からないため65歳未満として計算しています。");
   const r7 = pensionIncome(pensionIn, (age ?? 0) >= 65, other);
   const r10 = Math.max(r7 + r8 + r9, 0);
+  // 合計所得金額（繰越控除の前）
   const r12 = r1 + r6 + r10;
-  if (r12 < 0) notes.push("所得金額の合計がマイナスです（純損失）。損失申告（第四表）には対応していません。");
   if (salaryIn > 8_500_000) notes.push("給与の収入が850万円を超えています。所得金額調整控除（23歳未満の扶養親族・特別障害者がいる場合など）には対応していません。");
-  const total = Math.max(r12, 0);
+  // 純損失の繰越控除。total = 総所得金額等（繰越控除の後。医療費控除・寄附金控除に使う）
+  const loss = lossOf(r12, carried, year, white);
+  const total = loss.forDeductions;
+  const expired = loss.carry[0].before - loss.carry[0].used;
+  if (expired > 0) notes.push(`${loss.carry[0].year}年分の純損失のうち ${expired.toLocaleString()}円は、繰り越せる3年を過ぎるため差し引けません。`);
+  if (loss.fourth) notes.push("損失申告用の第四表を使います（第四表のタブ）。第一表の ⑫ と ㉛ は書かず、㉜ は 0 です。");
+  if (loss.blueLoss) {
+    notes.push(`純損失 ${loss.blueLoss.toLocaleString()}円を翌年以後3年間に繰り越せます（毎年続けて確定申告書を出すことが要ります）。前年も青色申告なら、前年分の所得税の還付を受ける「繰戻し還付」も選べます（還付請求書は domble では作れません）。`);
+  } else if (r12 < 0) {
+    notes.push("所得金額の合計がマイナスです（純損失）。白色申告の年の純損失は、変動所得・被災事業用資産の損失のほかは繰り越せません（domble は変動所得・被災事業用資産の損失を扱いません）。");
+  }
+  // ⑫：繰越損失を使い切るときは (62) を差し引いた額。第四表を使うときは書かない
+  const r12Shown = loss.fourth ? null : r12 - loss.used;
 
   // 所得控除
   const r13 = sum(input.socialInsurance.map((r) => r.amount));
@@ -564,7 +677,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const r30 = r26 + r28 + r29;
 
   // 税金の計算
-  const r31 = Math.max(floorTo(r12 - r30, 1000), 0);
+  const r31 = Math.max(floorTo(total - r30, 1000), 0);
   const r32 = incomeTaxOn(r31);
   const r35 = Math.min(input.housingLoan, r32);
   const r42 = r32 - r35;
@@ -603,7 +716,10 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "⑧", label: "雑（業務）", value: r8 },
     { no: "⑨", label: "雑（その他）", value: r9 },
     { no: "⑩", label: "⑦から⑨までの計", value: r10, note: r7 + r8 + r9 < 0 ? "雑所得の損失はほかの所得から差し引けないので 0" : undefined },
-    { no: "⑫", label: "合計", value: r12, key: "total" },
+    {
+      no: "⑫", label: "合計", value: r12Shown, key: "total",
+      note: loss.fourth ? "第四表を使うので書きません（第四表の (81)）" : loss.used ? `本年分で差し引く繰越損失額 ${loss.used.toLocaleString()}円（${fieldNo(62)}）を差し引いた額` : undefined,
+    },
     { no: "", label: "所得から差し引かれる金額", value: null, head: true },
     { no: "⑬", label: "社会保険料控除", value: r13 },
     { no: "⑭", label: "小規模企業共済等掛金控除", value: r14 },
@@ -620,8 +736,8 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "㉙", label: "寄附金控除", value: r29 },
     { no: "㉚", label: "合計（㉖＋㉗＋㉘＋㉙）", value: r30 },
     { no: "", label: "税金の計算", value: null, head: true },
-    { no: "㉛", label: "課税される所得金額（⑫－㉚）", value: r31, note: "千円未満切り捨て" },
-    { no: "㉜", label: "上の㉛に対する税額", value: r32 },
+    { no: "㉛", label: "課税される所得金額（⑫－㉚）", value: loss.fourth ? null : r31, note: loss.fourth ? "第四表を使うので書きません" : "千円未満切り捨て" },
+    { no: "㉜", label: "上の㉛に対する税額", value: r32, note: loss.fourth ? "第四表を使うので 0" : undefined },
     { no: "㉟", label: "住宅借入金等特別控除", value: r35 },
     { no: "㊷", label: "差引所得税額", value: r42 },
     { no: "㊹", label: "再差引所得税額（基準所得税額）", value: r44 },
@@ -638,6 +754,10 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: fieldNo(58), label: "専従者給与（控除）額の合計額", value: biz.familySalary },
     { no: fieldNo(59), label: "青色申告特別控除額", value: blue },
     { no: fieldNo(60), label: "雑所得・一時所得等の源泉徴収税額の合計額", value: sum([...input.pensions, ...input.misc].map((r) => r.withheld)) },
+    {
+      no: fieldNo(62), label: "本年分で差し引く繰越損失額", value: loss.fourth ? 0 : loss.used,
+      note: loss.fourth && loss.used ? `第四表を使うので書きません（第四表で ${loss.used.toLocaleString()}円を差し引きます）` : undefined,
+    },
   ];
 
   const relatives = [
@@ -652,6 +772,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
       socialInsurance: input.socialInsurance, smallBusiness: input.smallBusiness, life: input.life, quake: input.quake, donations: input.donations, relatives,
     },
     totalIncome: r12,
+    loss,
     balance: r52 - r53,
     notes,
   };

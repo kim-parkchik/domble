@@ -627,9 +627,13 @@ const deleteBankRule_ = async (db: Database, id: number) => {
 // 所得税の申告書に入れるもの（年度ごと。考え方は lib/incomeTax.ts）
 //  帳簿そのものではないので履歴には残さない（決算書の書き込み欄と同じ）。年の締めをした年度は変えられない
 // ────────────────────────────────────────────
-export const getIncomeTaxInput = async (db: Database, year: number): Promise<IncomeTaxInput> => {
+export const getIncomeTaxInput = async (db: Database, year: number): Promise<IncomeTaxInput> =>
+  (await findIncomeTaxInput(db, year)) ?? EMPTY_INCOME_TAX_INPUT;
+
+/** 保存した所得税の入力（保存していなければ null。前の年の申告から繰越損失を引き継ぐときに使う） */
+export const findIncomeTaxInput = async (db: Database, year: number): Promise<IncomeTaxInput | null> => {
   const r = await db.select<{ data: string }[]>("SELECT data FROM income_tax_inputs WHERE fiscal_year = ?", [year]);
-  if (!r[0]) return EMPTY_INCOME_TAX_INPUT;
+  if (!r[0]) return null;
   try {
     const n = normalizeIncomeTaxInput(JSON.parse(r[0].data));
     return typeof n === "string" ? EMPTY_INCOME_TAX_INPUT : n;

@@ -16,23 +16,25 @@ import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { AmountInput } from "../../components/Inputs";
 import { useToast } from "../../components/Toast";
-import { closingBalances, summarizeIncome } from "../../lib/accounting";
+import { closingBalances, yearEnd, yearStart } from "../../lib/accounting";
 import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings } from "../../lib/etax";
 import { isYearCompliant } from "../../lib/ebook";
 import { buildBlueStatement } from "../../lib/blueStatement";
-import { buildWhiteStatement, businessMonths, familyDeductions, familyMembers, whiteSummary, type FamilyLine } from "../../lib/whiteStatement";
+import { buildWhiteStatement, businessMonths, familyMembers, type FamilyLine } from "../../lib/whiteStatement";
+import { businessFigures } from "../../lib/incomeTaxBooks";
 import { buildIncomeTaxXtx, incomeXtxNotices, incomeXtxProblems, myNumberPersons, type IncomeTaxXtxSource } from "../../lib/incomeTaxXtx";
 import { MyNumberDialog } from "../../components/MyNumberDialog";
 import { CODE } from "../../constants/accounts";
 import {
-  BLUE_DEDUCTION_LIMIT, computeIncomeTax, dependentDeduction, fieldNo, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES, DONATION_LOCALS, emptyRelative,
-  EMPTY_INCOME_TAX_INPUT, spouseDeduction,
-  type BusinessFigures, type Disability, type Donation, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PayerRow, type PremiumRow, type Relative,
+  BLUE_DEDUCTION_LIMIT, CARRY_LABELS, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, fieldNo, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES,
+  DONATION_LOCALS, emptyRelative, EMPTY_INCOME_TAX_INPUT, spouseDeduction,
+  type CarriedLoss, type Disability, type Donation, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PastIncomeTax, type PayerRow, type PremiumRow,
+  type Relative,
 } from "../../lib/incomeTax";
 import * as repo from "../../db/repo";
 
-type View = "input" | "first" | "second";
+type View = "input" | "first" | "second" | "fourth";
 
 const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
 const emptyPayer = (): PayerRow => ({ item: "", payer: "", payerId: "", income: 0, withheld: 0 });
@@ -67,22 +69,29 @@ export const IncomeTaxPage = () => {
 
   // 事業所得（営業等）：帳簿と決算書から。白色申告は収支内訳書（専従者給与を経費にせず、事業専従者控除を差し引く）
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
-  const familyLines = useMemo<FamilyLine[]>(() => {
-    if (!white) return [];
-    const w = whiteSummary(accounts, (a) => end.get(a.id) ?? 0);
-    return familyDeductions(w.beforeDeduction, familyMembers(x), year, businessMonths(x.businessTax, year));
-  }, [white, accounts, end, x, year]);
-  const biz = useMemo<BusinessFigures>(() => {
-    if (white) {
-      const w = whiteSummary(accounts, (a) => end.get(a.id) ?? 0);
-      const deduction = familyLines.reduce((t, l) => t + l.deduction, 0);
-      return { revenue: w.revenue.total, incomeBeforeBlue: w.beforeDeduction - deduction, filingType, familySalary: deduction };
-    }
-    const pl = summarizeIncome(accounts, end);
-    const family = accounts.find((a) => a.code === CODE.FAMILY_SALARY);
-    return { revenue: pl.revenue, incomeBeforeBlue: pl.income, filingType, familySalary: family ? end.get(family.id) ?? 0 : 0 };
-  }, [white, accounts, end, familyLines, filingType]);
-  const result = useMemo(() => computeIncomeTax(x, biz, year), [x, biz, year]);
+  const { biz, familyLines } = useMemo(() => businessFigures(accounts, end, filingType, x, year), [accounts, end, filingType, x, year]);
+
+  // 前の年から繰り越した純損失：前の年の申告（保存した所得税の入力と帳簿）から引き継ぐ。前の年の入力が無ければ null
+  const [pastCarry, setPastCarry] = useState<CarriedLoss[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = async (y: number): Promise<PastIncomeTax | null> => {
+      const input = await repo.findIncomeTaxInput(db, y);
+      if (!input) return null;
+      const [l, o] = await Promise.all([repo.getLines(db, yearStart(y), yearEnd(y)), repo.getOpening(db, y)]);
+      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, l), filingTypeOf(y), input, y).biz };
+    };
+    carriedFromPast(year, load).then((v) => alive && setPastCarry(v)).catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [db, year, dataVersion, accounts, filingTypeOf]);
+  const carried = useMemo(() => carriedLosses(x, year, pastCarry), [x, year, pastCarry]);
+  const result = useMemo(() => computeIncomeTax(x, biz, year, carried), [x, biz, year, carried]);
+  const fourth = result.loss.fourth;
+  useEffect(() => {
+    if (!fourth && view === "fourth") setView("first");
+  }, [fourth, view]);
 
   // 事業主貸の補助科目ごとの合計（社会保険料などを拾うため）
   const drawings = useMemo(() => {
@@ -168,7 +177,7 @@ export const IncomeTaxPage = () => {
 
       <div className="filters print-skip it-bar">
         <div className="seg" role="tablist">
-          {([["input", "入力"], ["first", "第一表"], ["second", "第二表"]] as [View, string][]).map(([v, label]) => (
+          {([["input", "入力"], ["first", "第一表"], ["second", "第二表"], ...(fourth ? [["fourth", "第四表"]] : [])] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>{label}</button>
           ))}
         </div>
@@ -204,9 +213,14 @@ export const IncomeTaxPage = () => {
         <div className="scroll-y">
           {result.notes.map((n) => <p key={n} className="notice it-note">{n}</p>)}
           {view === "input" ? (
-            <InputView x={x} set={set} setX={setX} result={result} year={year} disabled={!admin} drawings={drawings.length > 0} onPick={pickFromBooks} white={white} familyLines={familyLines} />
+            <InputView
+              x={x} set={set} setX={setX} result={result} year={year} disabled={!admin} drawings={drawings.length > 0} onPick={pickFromBooks} white={white} familyLines={familyLines}
+              pastCarry={pastCarry}
+            />
           ) : view === "first" ? (
             <FirstTable result={result} year={year} />
+          ) : view === "fourth" ? (
+            <FourthTable result={result} year={year} />
           ) : (
             <SecondTable result={result} x={x} familySalary={biz.familySalary} white={white} familyLines={familyLines} />
           )}
@@ -295,9 +309,10 @@ const PREMIUM_COLS = (placeholder: string): Col<PremiumRow>[] => [
   { key: "amount", label: "支払った額", kind: "amount", width: 150 },
 ];
 
-const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, white, familyLines }: {
+const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, white, familyLines, pastCarry }: {
   x: IncomeTaxInput; set: <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => void; setX: (f: (p: IncomeTaxInput) => IncomeTaxInput) => void;
   result: IncomeTaxResult; year: number; disabled: boolean; drawings: boolean; onPick: () => void; white: boolean; familyLines: FamilyLine[];
+  pastCarry: CarriedLoss[] | null;
 }) => {
   const { rules } = rulesFor(year);
   const man = (n: number) => `${n / 10_000}万円`;
@@ -348,6 +363,8 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, whi
     <Section title="雑所得（業務・その他）" note="業務：副業の原稿料・講演料など事業と言えないもの。その他：暗号資産など。損失はほかの所得から差し引けません。">
       <RowsEditor rows={x.misc} cols={MISC_COLS} onChange={(v) => set("misc", v)} make={(): MiscRow => ({ ...emptyPayer(), kind: "business", expenses: 0 })} addLabel="雑所得を足す" disabled={disabled} />
     </Section>
+
+    <CarrySection x={x} set={set} result={result} year={year} disabled={disabled} pastCarry={pastCarry} />
 
     <Section title="社会保険料・小規模企業共済等掛金" note="国民健康保険・国民年金・介護保険など（家族の分を払ったものも含む）と、小規模企業共済・iDeCo など。事業主貸に補助科目を作って記帳していれば、名前から拾えます。">
       <RowsEditor rows={x.socialInsurance} cols={PREMIUM_COLS("例：国民年金")} onChange={(v) => set("socialInsurance", v)} make={() => ({ kind: "", amount: 0 })} addLabel="社会保険料を足す" disabled={disabled} />
@@ -560,8 +577,59 @@ const RelativesEditor = ({ rows, onChange, year, ownIncome, spouse, disabled }: 
   );
 };
 
+/** 前の年から繰り越した純損失（第四表（二）の「4 繰越損失を差し引く計算」）。前の年の申告から引き継ぐか、手で入れる */
+const CarrySection = ({ x, set, result, year, disabled, pastCarry }: {
+  x: IncomeTaxInput; set: <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => void; result: IncomeTaxResult; year: number; disabled: boolean;
+  pastCarry: CarriedLoss[] | null;
+}) => {
+  const manual = x.carry.mode === "manual";
+  const loss = result.loss;
+  const rows = loss.carry.map((c, i) => ({ ...c, label: `${reiwaYear(c.year)}（${CARRY_LABELS[i]}）` })).filter((c) => manual || c.before > 0);
+  const setMode = (mode: IncomeTaxInput["carry"]["mode"]) => set("carry", { ...x.carry, mode });
+  const setAmount = (i: number, n: number) => set("carry", { ...x.carry, amounts: x.carry.amounts.map((v, j) => (j === i ? n : v)) as [number, number, number] });
+  return (
+    <Section
+      title="繰越損失（前の年までの純損失）"
+      note="青色申告の年の純損失（事業などの赤字を、給与などのほかの所得から差し引いても残った額）は、翌年以後3年間に繰り越して、古い年分から順に差し引けます。損失が出た年から毎年続けて確定申告書を出していることが要ります。白色申告の年の純損失（変動所得・被災事業用資産の損失）と雑損失は domble では扱いません。"
+    >
+      <div className="field-row wrap">
+        <label className="check"><input type="radio" name="carry-mode" checked={!manual} onChange={() => setMode("auto")} disabled={disabled} /> 前の年の申告から引き継ぐ</label>
+        <label className="check"><input type="radio" name="carry-mode" checked={manual} onChange={() => setMode("manual")} disabled={disabled} /> 手で入れる（前の年の第四表（二）から写す）</label>
+      </div>
+      {!manual && (
+        <p className="muted">
+          {pastCarry === null
+            ? `${reiwaYear(year - 1)}の所得税の入力が domble にありません。前の年に純損失を繰り越していれば、「手で入れる」にして、前の年の第四表（二）から写してください。`
+            : rows.length === 0 ? `${reiwaYear(year - 1)}の申告から繰り越された純損失はありません。` : `${reiwaYear(year - 1)}の申告（domble の所得税の入力と帳簿）から引き継いでいます。`}
+        </p>
+      )}
+      {rows.length > 0 && (
+        <table className="ledger it-table it-carry">
+          <thead>
+            <tr><th>損失が出た年分</th><th className="num">Ⓐ前年分までに引ききれなかった損失額</th><th className="num">Ⓑ本年分で差し引く損失額</th><th className="num">Ⓒ翌年分以後に繰り越す額</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => {
+              const i = c.year - (year - 3);
+              return (
+                <tr key={c.year}>
+                  <td>{c.label}</td>
+                  <td className="num">{manual ? <Amount value={x.carry.amounts[i]} onChange={(n) => setAmount(i, n)} disabled={disabled} label={`${c.label}の繰越損失`} /> : yen(c.before)}</td>
+                  <td className="num">{yen(c.used)}</td>
+                  <td className="num">{c.after === null ? <span className="muted">繰り越せません</span> : yen(c.after)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+      {loss.blueLoss > 0 && <p className="field-note">本年の純損失 {yen(loss.blueLoss)}円は、翌年分に繰り越します（第四表の (82)）。</p>}
+    </Section>
+  );
+};
+
 // ────────────────────────────────────────────
-// 第一表・第二表
+// 第一表・第二表・第四表
 // ────────────────────────────────────────────
 
 const FirstTable = ({ result, year }: { result: IncomeTaxResult; year: number }) => (
@@ -589,6 +657,57 @@ const FirstTable = ({ result, year }: { result: IncomeTaxResult; year: number })
     </p>
   </div>
 );
+
+const Row = ({ no, label, value, note }: { no: string; label: string; value: number; note?: string }) => (
+  <tr><td className="tax-form-no">{no}</td><td>{label}</td><td className="num"><b>{signed(value)}</b></td><td className="muted">{note ?? ""}</td></tr>
+);
+
+/** 第四表（損失申告用）：domble が扱う所得は経常所得だけなので、(67)・(81)・(82)・4 の繰越損失・(93) */
+const FourthTable = ({ result, year }: { result: IncomeTaxResult; year: number }) => {
+  const l = result.loss;
+  return (
+    <div className="print-area">
+      <h3 className="sheet-sub">{year}年分 所得税及び復興特別所得税の確定申告書（損失申告用）第四表の数字</h3>
+      <table className="ledger tax-form-table it-first">
+        <colgroup><col style={{ width: 60 }} /><col /><col style={{ width: 150 }} /><col style={{ width: "34%" }} /></colgroup>
+        <thead><tr><th>欄</th><th>項目</th><th className="num">金額</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr className="cat-row"><td colSpan={4}>第四表（一）　1 損失額又は所得金額・2 損益の通算</td></tr>
+          <Row no={fieldNo(67)} label="経常所得（第一表の①から⑥までの計＋⑩）" value={l.income} note="通算前・第1次〜第3次通算後・損失額又は所得金額も同じ額" />
+          <Row no={fieldNo(81)} label="損失額又は所得金額の合計額" value={l.income} note="譲渡・一時・山林・退職の所得は domble では扱いません" />
+          <tr className="cat-row"><td colSpan={4}>第四表（二）　3 翌年以後に繰り越す損失額</td></tr>
+          <Row no={fieldNo(82)} label="青色申告者の損失の金額" value={l.blueLoss} note={l.blueLoss ? "(81) の赤字" : undefined} />
+          <tr className="cat-row"><td colSpan={4}>4 繰越損失を差し引く計算（純損失・青色の年・山林以外の所得の損失）</td></tr>
+        </tbody>
+      </table>
+      <table className="ledger it-table it-carry">
+        <thead>
+          <tr><th>年分</th><th className="num">Ⓐ前年分までに引ききれなかった損失額</th><th className="num">Ⓑ本年分で差し引く損失額</th><th className="num">Ⓒ翌年分以後に繰り越して差し引かれる損失額</th></tr>
+        </thead>
+        <tbody>
+          {l.carry.map((c, i) => (
+            <tr key={c.year}>
+              <td>{"ABC"[i]}　{reiwaYear(c.year)}（{CARRY_LABELS[i]}）</td>
+              <td className="num">{c.before ? yen(c.before) : ""}</td>
+              <td className="num">{c.before ? yen(c.used) : ""}</td>
+              <td className="num">{c.after === null ? "" : c.before ? yen(c.after) : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <table className="ledger tax-form-table it-first">
+        <colgroup><col style={{ width: 60 }} /><col /><col style={{ width: 150 }} /><col style={{ width: "34%" }} /></colgroup>
+        <tbody>
+          <Row no={fieldNo(93)} label="雑損控除、医療費控除及び寄附金控除の計算で使用する所得金額の合計額" value={l.forDeductions} note="(81) の黒字から本年分で差し引く損失額を引いた額" />
+        </tbody>
+      </table>
+      <p className="field-note">
+        第四表は第一表・第二表と一緒に出します。第一表の ⑫・㉛ は書かず、㉜ は 0 です（損失申告用の手引き）。
+        翌年は、Ⓒ の額と (82) の額が「前年分までに引ききれなかった損失額」になります（domble で翌年の申告を作れば引き継ぎます）。
+      </p>
+    </div>
+  );
+};
 
 const SecondTable = ({ result, x, familySalary, white, familyLines }: {
   result: IncomeTaxResult; x: IncomeTaxInput; familySalary: number; white: boolean; familyLines: FamilyLine[];

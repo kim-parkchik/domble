@@ -3,8 +3,9 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
-  ageAt, basicDeduction, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, fieldNo, incomeTaxOn, lifeInsuranceDeduction,
+  ageAt, basicDeduction, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, fieldNo, incomeTaxOn, lifeInsuranceDeduction,
   medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, rulesFor, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
+  type PastIncomeTax,
 } from "./incomeTax";
 
 const cell = (r: IncomeTaxResult, no: string) => r.rows.find((x) => x.no === no)!.value;
@@ -254,5 +255,84 @@ describe("入力の確かめ", () => {
     expect(n).toMatchObject({ birthday: "1980-01-01", socialInsurance: [{ kind: "国民年金", amount: 200_000 }], widow: "none", spouse: null });
     expect(normalizeIncomeTaxInput({ prepaid: -1 })).toMatch(/予定納税額/);
     expect(normalizeIncomeTaxInput({ dependents: [{ birthday: "2020-13-01" }] })).toMatch(/扶養親族 1人目の生年月日/);
+  });
+  test("繰越損失：ふだんは前の年の申告から引き継ぐ。手で入れる額は 0 以上の整数", () => {
+    expect(normalizeIncomeTaxInput({})).toMatchObject({ carry: { mode: "auto", amounts: [0, 0, 0] } });
+    expect(normalizeIncomeTaxInput({ carry: { mode: "manual", amounts: [0, "300000"] } })).toMatchObject({ carry: { mode: "manual", amounts: [0, 300_000, 0] } });
+    expect(normalizeIncomeTaxInput({ carry: { mode: "manual", amounts: [0, 0, -1] } })).toMatch(/前年の年分の繰越損失/);
+  });
+});
+
+describe("損失申告（第四表）と純損失の繰越控除", () => {
+  // 青色申告特別控除は所得が上限（赤字なら 0）。給与・雑所得なし
+  const biz = (incomeBeforeBlue: number, filingType: BusinessFigures["filingType"] = "blue65"): BusinessFigures => ({ revenue: 3_000_000, incomeBeforeBlue, filingType, familySalary: 0 });
+  const tax = (incomeBeforeBlue: number, carried: { year: number; amount: number }[] = [], input: Partial<IncomeTaxInput> = {}, year = 2025) =>
+    computeIncomeTax({ ...EMPTY_INCOME_TAX_INPUT, ...input }, biz(incomeBeforeBlue), year, carried);
+
+  test("青色の年の純損失は第四表で翌年に繰り越す。第一表の ⑫・㉛ は書かず ㉜ は 0", () => {
+    const r = tax(-800_000);
+    expect(r.loss).toMatchObject({ fourth: true, income: -800_000, blueLoss: 800_000, used: 0, forDeductions: 0, next: [{ year: 2025, amount: 800_000 }] });
+    expect([cell(r, "①"), cell(r, "⑫"), cell(r, "㉛"), cell(r, "㉜"), cell(r, fieldNo(62))]).toEqual([-800_000, null, null, 0, 0]);
+    expect(r.totalIncome).toBe(-800_000);
+    expect(r.notes.join()).toMatch(/第四表を使います.*純損失 800,000円を翌年以後3年間に繰り越せます/);
+  });
+  test("損益の通算で赤字が残らなければ、第四表は使わない", () => {
+    const r = tax(-500_000, [], { salaries: [{ item: "給料", payer: "A社", payerId: "", income: 3_000_000, withheld: 0 }] });
+    expect(r.loss.fourth).toBe(false);
+    expect(cell(r, "⑫")).toBe(2_020_000 - 500_000);
+  });
+  test("繰越損失を使い切る年は第四表を使わず、(62) に書いて ⑫ から差し引く。合計所得金額は繰越控除の前、医療費控除は後の所得で", () => {
+    // 所得 2,000,000 − 青色 650,000 = 1,350,000、前年の純損失 500,000 → ⑫ 850,000
+    const r = tax(2_000_000, [{ year: 2024, amount: 500_000 }], { medical: { kind: "normal", paid: 150_000, reimbursed: 0 } });
+    expect(r.loss).toMatchObject({ fourth: false, used: 500_000, forDeductions: 850_000, next: [] });
+    expect([cell(r, "⑫"), cell(r, fieldNo(62))]).toEqual([850_000, 500_000]);
+    expect(r.totalIncome).toBe(1_350_000);
+    // 基礎控除は合計所得金額 1,350,000（令和7年分：132万円超 336万円以下は 88万円）。繰越控除後の 850,000 なら 95万円
+    expect(cell(r, "㉕")).toBe(basicDeduction(1_350_000, 2025));
+    expect(cell(r, "㉕")).not.toBe(basicDeduction(850_000, 2025));
+    // 医療費控除：150,000 − 850,000 × 5%（42,500）
+    expect(cell(r, "㉘")).toBe(107_500);
+    expect(cell(r, "㉛")).toBe(Math.max(Math.floor((850_000 - cell(r, "㉚")!) / 1000) * 1000, 0));
+  });
+  test("古い年分から順に差し引き、引ききれない分は第四表で翌年に繰り越す", () => {
+    // 所得 1,450,000 − 650,000 = 800,000。2022年分 300,000 → 2023年分 1,000,000 のうち 500,000
+    const r = tax(1_450_000, [{ year: 2022, amount: 300_000 }, { year: 2023, amount: 1_000_000 }], {}, 2025);
+    expect(r.loss.carry).toEqual([
+      { year: 2022, before: 300_000, used: 300_000, after: null },
+      { year: 2023, before: 1_000_000, used: 500_000, after: 500_000 },
+      { year: 2024, before: 0, used: 0, after: 0 },
+    ]);
+    expect(r.loss).toMatchObject({ fourth: true, used: 800_000, forDeductions: 0, next: [{ year: 2023, amount: 500_000 }] });
+    expect([cell(r, "⑫"), cell(r, "㉛"), cell(r, "㉜"), cell(r, fieldNo(62))]).toEqual([null, null, 0, 0]);
+  });
+  test("3年前の年分の残りは繰り越せない（第四表は使わず、知らせる）", () => {
+    const r = tax(1_050_000, [{ year: 2022, amount: 1_000_000 }]);
+    expect(r.loss).toMatchObject({ fourth: false, used: 400_000, next: [] });
+    expect([cell(r, "⑫"), cell(r, fieldNo(62))]).toEqual([0, 400_000]);
+    expect(r.notes.join()).toMatch(/2022年分の純損失のうち 600,000円は、繰り越せる3年を過ぎる/);
+  });
+  test("白色申告の年の純損失は繰り越さない（第四表を使わず、⑫ は赤字のまま）", () => {
+    const r = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, biz(-300_000, "white"), 2025);
+    expect(r.loss).toMatchObject({ fourth: false, blueLoss: 0, next: [] });
+    expect(cell(r, "⑫")).toBe(-300_000);
+    expect(r.notes.join()).toMatch(/白色申告の年の純損失は/);
+  });
+  test("繰越損失は手で入れた額か、前の年の申告から引き継いだ額（3年より前・本年の分は使わない）", () => {
+    const manual: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, carry: { mode: "manual", amounts: [100, 0, 300] } };
+    expect(carriedLosses(manual, 2026, [{ year: 2025, amount: 9 }])).toEqual([{ year: 2023, amount: 100 }, { year: 2025, amount: 300 }]);
+    expect(carriedLosses(EMPTY_INCOME_TAX_INPUT, 2026, [{ year: 2022, amount: 1 }, { year: 2024, amount: 2 }, { year: 2026, amount: 3 }])).toEqual([{ year: 2024, amount: 2 }]);
+    expect(carriedLosses(EMPTY_INCOME_TAX_INPUT, 2026, null)).toEqual([]);
+  });
+  test("前の年の申告から引き継ぐ：手で入れた年までさかのぼって計算する", async () => {
+    const past: Record<number, PastIncomeTax> = {
+      // 2024年分：2023年分の純損失 700,000 を手で入れた。所得 850,000 − 650,000 = 200,000 を差し引き、500,000 が残る
+      2024: { input: { ...EMPTY_INCOME_TAX_INPUT, carry: { mode: "manual", amounts: [0, 0, 700_000] } }, biz: biz(850_000) },
+      // 2025年分：前の年から引き継ぐ。赤字 350,000
+      2025: { input: EMPTY_INCOME_TAX_INPUT, biz: biz(-350_000) },
+    };
+    const load = async (y: number) => past[y] ?? null;
+    expect(await carriedFromPast(2026, load)).toEqual([{ year: 2023, amount: 500_000 }, { year: 2025, amount: 350_000 }]);
+    expect(await carriedFromPast(2025, load)).toEqual([{ year: 2023, amount: 500_000 }]);
+    expect(await carriedFromPast(2027, load)).toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { buildIncomeTaxXtx, incomeXtxNotices, incomeXtxProblems, incomeXtxVersionFor, myNumberPersons, type IncomeTaxXtxSource } from "./incomeTaxXtx";
-import { computeIncomeTax, EMPTY_INCOME_TAX_INPUT, emptyRelative, type BusinessFigures, type IncomeTaxInput } from "./incomeTax";
+import { computeIncomeTax, EMPTY_INCOME_TAX_INPUT, emptyRelative, type BusinessFigures, type CarriedLoss, type IncomeTaxInput } from "./incomeTax";
 import type { BlueStatement, DepreciationLine, PayLine } from "./blueStatement";
 import type { StatementRow } from "./statementLines";
 import type { EtaxFiler } from "./etax";
@@ -59,11 +59,11 @@ const statement = (o: Partial<BlueStatement> = {}): BlueStatement => ({
 });
 
 const biz: BusinessFigures = { revenue: 5_000_000, incomeBeforeBlue: 4_000_000, filingType: "blue65", familySalary: 0 };
-const source = (input: Partial<IncomeTaxInput> = {}, o: Partial<IncomeTaxXtxSource> = {}): IncomeTaxXtxSource => {
+const source = (input: Partial<IncomeTaxInput> = {}, o: Partial<IncomeTaxXtxSource> = {}, carried: CarriedLoss[] = []): IncomeTaxXtxSource => {
   const x = { ...EMPTY_INCOME_TAX_INPUT, birthday: "1985-06-01", ...input };
   const b = o.biz ?? biz;
   return {
-    year: 2025, filer, input: x, result: computeIncomeTax(x, b, 2025), biz: b, statement: statement(), bookKeeping: 2, numbers: {}, createdOn: "2026-02-20",
+    year: 2025, filer, input: x, result: computeIncomeTax(x, b, 2025, carried), biz: b, statement: statement(), bookKeeping: 2, numbers: {}, createdOn: "2026-02-20",
     settings: { address: filer.address, phone: filer.phone, office_address: "", office_phone: "", union_name: "" },
     ...o,
   };
@@ -208,8 +208,8 @@ describe("還付・1月1日の住所・依頼税理士", () => {
 });
 
 describe("書き出せないとき・版", () => {
-  test("損失・支払者の名称の無い源泉徴収・令和6年分以前・申告者の情報の不足", () => {
-    expect(incomeXtxProblems(source({}, { biz: { ...biz, incomeBeforeBlue: -500_000 } })).join()).toMatch(/損失申告/);
+  test("支払者の名称の無い源泉徴収・令和6年分以前・申告者の情報の不足（損失の年は第四表を付けて書き出せる）", () => {
+    expect(incomeXtxProblems(source({}, { biz: { ...biz, incomeBeforeBlue: -500_000 } }))).toEqual([]);
     expect(incomeXtxProblems(source({ businessWithholding: [{ item: "報酬", payer: "", payerId: "", income: 100_000, withheld: 10_210 }] })).join()).toMatch(/支払者の名称/);
     expect(incomeXtxProblems(source({}, { year: 2024 })).join()).toMatch(/令和7年/);
     expect(incomeXtxProblems(source({}, { filer: { ...filer, userId: "" } })).join()).toMatch(/利用者識別番号/);
@@ -305,5 +305,43 @@ describe("白色申告（申告書＋収支内訳書）", () => {
   });
   test("専従者給与を経費に入れていないことを知らせる", () => {
     expect(incomeXtxNotices(src).join()).toMatch(/専従者給与の科目に記帳した額は/);
+  });
+});
+
+describe("損失申告（第四表）と繰越控除", () => {
+  const lossBiz: BusinessFigures = { revenue: 3_000_000, incomeBeforeBlue: -800_000, filingType: "blue65", familySalary: 0 };
+  test("本年の純損失：第四表（一）（二）を書き、第一表の ⑫・㉛ は書かず ㉜ は 0", () => {
+    const xml = buildIncomeTaxXtx(source({ salaries: [{ item: "給料", payer: "A社", payerId: "東京都千代田区", income: 1_000_000, withheld: 30_000 }] }, { biz: lossBiz }));
+    expect(validate(xml)).toBe("");
+    // 給与所得 350,000（令和7年分：100万 − 65万）− 事業の損失 800,000 = −450,000
+    expect(val(xml, "ABN00030")).toBe("-450000");
+    expect(val(xml, "ABN01520")).toBe("-450000");
+    expect(val(xml, "ABP00020")).toBe("450000");
+    expect(xml).toContain('<ABM00080 IDREF="NOZEISHA_NM"/>');
+    expect(xml).not.toContain("<ABB00410>");
+    expect(xml).not.toContain("<ABB00580>");
+    expect(val(xml, "ABB00590")).toBe("0");
+    // 源泉徴収税額は還付
+    expect(val(xml, "ABB00760")).toBe("30000");
+  });
+  test("繰越損失が翌年に残る：4 の Ⓐ・Ⓑ・Ⓒ と年分", () => {
+    const b: BusinessFigures = { ...lossBiz, incomeBeforeBlue: 1_450_000 };
+    const xml = buildIncomeTaxXtx(source({}, { biz: b }, [{ year: 2022, amount: 300_000 }, { year: 2023, amount: 1_000_000 }]));
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain("<ABP00320><gen:era>5</gen:era><gen:yy>4</gen:yy></ABP00320>");
+    expect([val(xml, "ABP00500"), val(xml, "ABP00870")]).toEqual(["300000", "300000"]);
+    expect([val(xml, "ABP00620"), val(xml, "ABP00990"), val(xml, "ABP01240")]).toEqual(["1000000", "500000", "500000"]);
+    expect(xml).not.toContain("ABP00400");
+    expect(xml).not.toContain("<ABP00020>");
+    expect(val(xml, "ABP01445")).toBe("0");
+    expect(xml).not.toContain("<ABB00830>");
+  });
+  test("繰越損失を使い切る：第四表は書かず、第一表の (62) に書く", () => {
+    const b: BusinessFigures = { ...lossBiz, incomeBeforeBlue: 2_000_000 };
+    const xml = buildIncomeTaxXtx(source({}, { biz: b }, [{ year: 2024, amount: 500_000 }]));
+    expect(validate(xml)).toBe("");
+    expect(xml).not.toContain("ABM00000");
+    expect(val(xml, "ABB00830")).toBe("500000");
+    expect(val(xml, "ABB00410")).toBe("850000");
   });
 });
