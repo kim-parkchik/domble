@@ -11,7 +11,7 @@
 import { closingBalances, summarizeIncome, type FlatLine, type IncomeSummary } from "./accounting";
 import { monthlySales, partnerTotals, payeeBreakdown, type MonthlySales, type PayeeRow } from "./statements";
 import { lineOf, sectionOf, statementLayout, type StatementLayout } from "./statementLines";
-import { depreciationFor, type FixedAsset } from "./depreciation";
+import { depreciationFor, isOldStraight, type FixedAsset } from "./depreciation";
 import type { Account, HomeUseRate, OpeningBalances } from "./types";
 import { CODE } from "../constants/accounts";
 
@@ -66,6 +66,8 @@ export interface DepreciationLine {
   /** 取得年月（YYYY-MM） */
   acquired: string;
   cost: number;
+  /** 償却の基礎になる金額（旧定額法は取得価額 × 90%、均等償却の年は取得価額 × 5%） */
+  base: number;
   method: string;
   /** 耐用年数（定額法・一括償却資産。無ければ null） */
   life: number | null;
@@ -191,10 +193,11 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
     .map((a) => ({ a, d: depreciationFor(a, s.year) }))
     .filter((x) => x.d && !(x.d.opening === 0 && x.d.depreciation === 0))
     .map(({ a, d }): DepreciationLine => ({
-      name: a.name, quantity: notes[`dep:${a.id}:qty`] ?? "", acquired: a.acquired_on.slice(0, 7), cost: a.cost, method: METHOD_LABEL[a.method],
+      name: a.name, quantity: notes[`dep:${a.id}:qty`] ?? "", acquired: a.acquired_on.slice(0, 7), cost: a.cost, base: d!.base,
+      method: isOldStraight(a) ? "旧定額法" : METHOD_LABEL[a.method],
       life: a.method === "straight" ? a.useful_life : a.method === "lump3" ? 3 : null, rate: d!.rate, months: d!.months,
       depreciation: d!.depreciation, businessRate: a.business_rate, business: d!.business, closing: d!.closing,
-      memo: [a.method === "small" ? "措法28の2" : "", d!.disposed ? `${Number(a.disposed_on!.slice(5, 7))}月売却・除却` : "", a.memo].filter(Boolean).join(" "),
+      memo: [a.method === "small" ? "措法28の2" : "", d!.equal ? "均等償却" : "", d!.disposed ? `${Number(a.disposed_on!.slice(5, 7))}月売却・除却` : "", a.memo].filter(Boolean).join(" "),
     }));
 
   // 売上先・仕入先の明細（計は 1ページの売上（収入）金額・仕入金額。家事消費等・雑収入は上記以外に入る）

@@ -5,6 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account } from "./types";
 import type { FlatLine } from "./accounting";
+import type { FixedAsset } from "./depreciation";
 import { emptyRelative, EMPTY_INCOME_TAX_INPUT } from "./incomeTax";
 import { buildWhiteStatement, businessMonths, familyDeductions, familyMembers, whiteSummary, type FamilyMember } from "./whiteStatement";
 
@@ -131,6 +132,17 @@ describe("収支内訳書の1ページ", () => {
     expect(s.purchases.rows.map((r) => [r.name, r.amount])).toEqual([["取引先3", 1_000_000]]);
     expect(s.purchases.total).toBe(1_000_000);
     expect(s.purchases.other).toBe(0);
+  });
+  test("減価償却費の計算：平成19年3月31日以前の取得は旧定額法。均等償却の年は償却の基礎が取得価額 × 5%、摘要に「均等償却」", () => {
+    const shop: FixedAsset = {
+      id: 7, name: "店舗", account_id: acc("建物").id, acquired_on: "2000-04-01", used_on: "2000-04-01", cost: 10_000_000, method: "straight", useful_life: 22,
+      business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
+    };
+    const at = (year: number) => buildWhiteStatement({
+      year, accounts: seeds, opening: {}, lines: [], notes: {}, assets: [shop], homeUseRates: [], excludeEntryIds: [], payeeName: () => "", family: [], periodMonths: 12,
+    }).detail.depreciation[0];
+    expect(at(2022)).toMatchObject({ method: "旧定額法", base: 9_000_000, rate: 0.046, depreciation: 414_000, memo: "" });
+    expect(at(2025)).toMatchObject({ method: "旧定額法", base: 500_000, rate: 0.2, depreciation: 100_000, closing: 300_000, memo: "均等償却" });
   });
   test("経費の追加の欄は 5 つ。多ければ金額の小さい科目を雑費にまとめて知らせる", () => {
     const names = ["支払手数料", "車両費", "新聞図書費", "会議費", "研修費", "諸会費"];

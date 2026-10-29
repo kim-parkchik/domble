@@ -35,7 +35,7 @@ const filer: EtaxFiler = {
 const row = (label: string, amount: number, extra = false, opening = 0): StatementRow => ({ label, extra, opening, amount, accountIds: [] });
 const pay = (name: string, total: number, o: Partial<PayLine> = {}): PayLine => ({ name, relation: "", age: 30, months: 12, work: "", salary: total, bonus: 0, total, tax: 0, ...o });
 const dep = (name: string, d: number): DepreciationLine => ({
-  name, quantity: "1台", acquired: "2025-04", cost: d * 4, method: "定額法", life: 4, rate: 0.25, months: 9, depreciation: d, businessRate: 100, business: d, closing: d * 3, memo: "",
+  name, quantity: "1台", acquired: "2025-04", cost: d * 4, base: d * 4, method: "定額法", life: 4, rate: 0.25, months: 9, depreciation: d, businessRate: 100, business: d, closing: d * 3, memo: "",
 });
 
 /** 売上 500万・経費 100万（うち減価償却費・給料賃金）・所得 400万の決算書 */
@@ -305,6 +305,15 @@ describe("白色申告（申告書＋収支内訳書）", () => {
   });
   test("専従者給与を経費に入れていないことを知らせる", () => {
     expect(incomeXtxNotices(src).join()).toMatch(/専従者給与の科目に記帳した額は/);
+  });
+});
+
+describe("減価償却費の計算（旧定額法）", () => {
+  test("償却の基礎になる金額は取得価額 × 90%、償却方法は「旧定額法」", () => {
+    const shop = { ...dep("店舗", 414_000), acquired: "2000-04", cost: 10_000_000, base: 9_000_000, method: "旧定額法", life: 22, rate: 0.046, months: 12 };
+    const xml = buildIncomeTaxXtx(source({}, { statement: statement({ depreciation: [shop] }) }));
+    expect(validate(xml)).toBe("");
+    expect([val(xml, "AMF01640"), val(xml, "AMF01650"), val(xml, "AMF01660")]).toEqual(["10000000", "9000000", "旧定額法"]);
   });
 });
 

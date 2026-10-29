@@ -3,9 +3,12 @@ import type { JournalLine } from "./types";
 /**
  * 減価償却の計算（純粋関数）
  *
- * 個人の法定の償却方法は定額法なので、まず次の3つに対応する（定率法は届出が要るので、あとで）
+ * 個人の法定の償却方法は定額法（平成19年3月31日以前の取得は旧定額法）なので、次に対応する（定率法・旧定率法は届出が要るので、あとで）
  *  - 定額法（平成19年4月1日以後に取得したもの）：取得価額 × 償却率 × 使った月数 / 12。1円未満は切り上げ。
  *    最後は未償却残高が 1円（備忘価額）になるまで償却する
+ *  - 旧定額法（償却方法「定額法」で、取得日が平成19年3月31日以前のもの。国税庁 No.2105、決算書の書き方）：
+ *    取得価額 × 90% × 旧定額法の償却率 × 月数 / 12。償却費の累計が取得価額の 95% に達したら、その翌年から5年間で
+ *    1円まで均等に償却する（{取得価額 − 取得価額 × 95% − 1円} ÷ 5 × 月数 / 12）
  *  - 一括償却資産（10万円以上20万円未満）：取得価額の 1/3 ずつを3年。月割りしない。売ったり捨てたりしても3年続ける
  *  - 少額減価償却資産（青色申告・30万円未満。1年の合計300万円まで）：使い始めた年に全額
  * 償却率は「1 / 耐用年数」を小数第3位で切り上げたもの（定額法の償却率表と同じ値になる）
@@ -66,8 +69,12 @@ export interface FixedAsset {
 
 /** ある年度の償却 */
 export interface YearDepreciation {
-  /** 償却率（定額法のとき。例 0.250） */
+  /** 償却率（定額法・旧定額法のとき。例 0.250。旧定額法の均等償却の年は 0.200） */
   rate: number | null;
+  /** 償却の基礎になる金額（取得価額。旧定額法は取得価額 × 90%、均等償却の年は取得価額 × 5%） */
+  base: number;
+  /** 旧定額法で、95% に達した翌年からの5年間の均等償却の年 */
+  equal: boolean;
   /** 本年中の償却期間（月数） */
   months: number;
   /** 期首の未償却残高 */
@@ -86,6 +93,23 @@ export interface YearDepreciation {
 
 /** 定額法の償却率（千分率の整数。例：耐用年数4年 → 250） */
 export const straightRateMil = (life: number) => Math.ceil(1000 / life);
+
+/** 旧定額法で計算する取得日（この日以前） */
+export const OLD_STRAIGHT_UNTIL = "2007-03-31";
+/** 旧定額法の償却率（千分率。耐用年数 2〜100年。減価償却資産の耐用年数等に関する省令 別表第七） */
+const OLD_STRAIGHT_RATES = [
+  500, 333, 250, 200, 166, 142, 125, 111, 100, 90, 83, 76, 71, 66, 62, 58, 55, 52, 50, 48, 46, 44, 42, 40, 39, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 27,
+  26, 25, 25, 24, 24, 23, 23, 22, 22, 21, 21, 20, 20, 20, 19, 19, 19, 18, 18, 18, 17, 17, 17, 17, 16, 16, 16, 16, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 13,
+  13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11, 11, 11, 11, 10,
+];
+export const oldStraightRateMil = (life: number) => OLD_STRAIGHT_RATES[Math.min(Math.max(life, 2), 100) - 2];
+
+/** 旧定額法で計算するか（償却方法が定額法で、取得日が平成19年3月31日以前） */
+export const isOldStraight = (a: Pick<FixedAsset, "method" | "acquired_on">) => a.method === "straight" && a.acquired_on <= OLD_STRAIGHT_UNTIL;
+/** 台帳・決算書に出す償却方法（取得日で旧定額法になるものは「旧定額法」） */
+export const methodLabel = (a: Pick<FixedAsset, "method" | "acquired_on">) => (isOldStraight(a) ? "旧定額法" : METHOD_LABEL[a.method]);
+/** 旧定額法：償却費の累計が取得価額の 95% に達したときの未償却残高（取得価額 × 5%） */
+const oldFloor = (cost: number) => cost - Math.floor((cost * 95) / 100);
 
 const yearOf = (date: string) => Number(date.slice(0, 4));
 const monthOf = (date: string) => Number(date.slice(5, 7));
@@ -113,6 +137,13 @@ const depreciationOfYear = (a: FixedAsset, year: number, book: number) => {
     if (k < 1 || k > 3) return 0;
     return Math.min(book, Math.ceil((a.cost * k) / 3) - Math.ceil((a.cost * (k - 1)) / 3));
   }
+  if (isOldStraight(a)) {
+    const floor = oldFloor(a.cost);
+    // 95% に達するまで：取得価額 × 90% × 旧定額法の償却率。達する年は 95% ちょうどまで
+    if (book > floor) return Math.max(0, Math.min(Math.ceil((a.cost * 9 * oldStraightRateMil(a.useful_life) * monthsIn(a, year)) / 120_000), book - floor));
+    // 達した翌年から：(取得価額 × 5% − 1円) ÷ 5 ずつ、1円まで
+    return Math.max(0, Math.min(Math.ceil(((floor - 1) * monthsIn(a, year)) / 60), book - 1));
+  }
   const annual = Math.ceil((a.cost * straightRateMil(a.useful_life) * monthsIn(a, year)) / 12000);
   return Math.max(0, Math.min(annual, book - 1));
 };
@@ -134,8 +165,12 @@ export const depreciationFor = (a: FixedAsset, year: number): YearDepreciation |
   if (a.opening_year !== null && a.opening_book_value !== null && year === a.opening_year) book = a.opening_book_value;
   const depreciation = depreciationOfYear(a, year, book);
   const { business, private: priv } = splitBusiness(depreciation, a.business_rate);
+  const old = isOldStraight(a);
+  const equal = old && book <= oldFloor(a.cost);
   return {
-    rate: a.method === "straight" ? straightRateMil(a.useful_life) / 1000 : null,
+    rate: a.method !== "straight" ? null : equal ? 0.2 : (old ? oldStraightRateMil(a.useful_life) : straightRateMil(a.useful_life)) / 1000,
+    base: equal ? oldFloor(a.cost) : old ? Math.floor((a.cost * 9) / 10) : a.cost,
+    equal,
     months: a.method === "straight" ? monthsIn(a, year) : 12,
     opening: book,
     depreciation,

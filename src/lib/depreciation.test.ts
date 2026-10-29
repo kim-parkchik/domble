@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { depreciationFor, depreciationLines, smallTotalOfYear, straightRateMil, validateAsset, type FixedAsset } from "./depreciation";
+import { depreciationFor, depreciationLines, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset, type FixedAsset } from "./depreciation";
 
 const asset = (p: Partial<FixedAsset>): FixedAsset => ({
   id: 1, name: "パソコン", account_id: 134, acquired_on: "2026-04-10", used_on: "2026-04-10", cost: 240_000, method: "straight",
@@ -15,7 +15,9 @@ describe("定額法", () => {
   test("使い始めた年は月割り。最後は 1円（備忘価額）を残す", () => {
     const pc = asset({});
     expect(depreciationFor(pc, 2025)).toBeNull();
-    expect(depreciationFor(pc, 2026)).toEqual({ rate: 0.25, months: 9, opening: 240_000, depreciation: 45_000, business: 45_000, private: 0, closing: 195_000, disposed: false });
+    expect(depreciationFor(pc, 2026)).toEqual({
+      rate: 0.25, base: 240_000, equal: false, months: 9, opening: 240_000, depreciation: 45_000, business: 45_000, private: 0, closing: 195_000, disposed: false,
+    });
     expect([2027, 2028, 2029, 2030, 2031].map((y) => dep(pc, y))).toEqual([60_000, 60_000, 60_000, 14_999, 0]);
     expect(depreciationFor(pc, 2031)?.closing).toBe(1);
   });
@@ -36,6 +38,34 @@ describe("定額法", () => {
     const old = asset({ used_on: "2020-01-01", acquired_on: "2020-01-01", cost: 300_000, opening_year: 2026, opening_book_value: 50_000 });
     expect(depreciationFor(old, 2026)).toMatchObject({ opening: 50_000, depreciation: 49_999, closing: 1 });
     expect(dep(old, 2027)).toBe(0);
+  });
+});
+
+describe("旧定額法（平成19年3月31日以前の取得）", () => {
+  test("償却率は旧定額法の表（別表第七）。今の定額法と違う耐用年数がある", () => {
+    expect([2, 3, 6, 7, 9, 11, 22, 27, 37, 50, 51, 60, 100].map(oldStraightRateMil)).toEqual([500, 333, 166, 142, 111, 90, 46, 37, 27, 20, 20, 17, 10]);
+  });
+  test("償却方法「定額法」でも、取得日が平成19年3月31日以前なら旧定額法", () => {
+    expect(methodLabel(asset({ acquired_on: "2007-03-31" }))).toBe("旧定額法");
+    expect(methodLabel(asset({ acquired_on: "2007-04-01" }))).toBe("定額法");
+    expect(methodLabel(asset({ acquired_on: "2007-03-31", method: "lump3" }))).toBe("一括償却資産（3年）");
+  });
+  test("取得価額 × 90% × 償却率。95% に達した翌年から5年で1円まで均等償却（国税庁 No.2105 の例：500万円・5年）", () => {
+    const a = asset({ cost: 5_000_000, useful_life: 5, acquired_on: "2001-01-10", used_on: "2001-01-10" });
+    expect(Array.from({ length: 12 }, (_, i) => dep(a, 2001 + i))).toEqual([
+      900_000, 900_000, 900_000, 900_000, 900_000, 250_000, 50_000, 50_000, 50_000, 50_000, 49_999, 0,
+    ]);
+    expect(depreciationFor(a, 2001)).toMatchObject({ rate: 0.2, base: 4_500_000, equal: false });
+    expect(depreciationFor(a, 2006)).toMatchObject({ base: 4_500_000, equal: false, closing: 250_000 });
+    expect(depreciationFor(a, 2007)).toMatchObject({ rate: 0.2, base: 250_000, equal: true });
+    expect(depreciationFor(a, 2011)?.closing).toBe(1);
+  });
+  test("全体の確認の例：2000年4月取得の建物 1,000万円・22年。期首の未償却残高からでも、取得から積み上げても正しい", () => {
+    const b = asset({ cost: 10_000_000, useful_life: 22, acquired_on: "2000-04-01", used_on: "2000-04-01" });
+    expect(dep({ ...b, opening_year: 2015, opening_book_value: 5_000_000 }, 2015)).toBe(414_000);
+    // 2000年は9か月 310,500円、2001〜2022年は 414,000円、2023年に 95% に達し（81,500円）、2024年から 100,000円ずつ
+    expect([2000, 2001, 2022, 2023, 2024, 2025, 2027, 2028, 2029].map((y) => dep(b, y))).toEqual([310_500, 414_000, 414_000, 81_500, 100_000, 100_000, 100_000, 99_999, 0]);
+    expect(depreciationFor(b, 2025)).toMatchObject({ equal: true, base: 500_000, opening: 400_000, closing: 300_000 });
   });
 });
 

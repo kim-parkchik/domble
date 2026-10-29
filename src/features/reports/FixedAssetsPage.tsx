@@ -23,7 +23,8 @@ import { ASSET_CSV_HEADER, assetCsvRows, assetSection, type AssetPrintLine } fro
 import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
 import {
-  depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear, validateAsset,
+  depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear,
+  validateAsset,
   type DepreciationMethod, type FixedAsset,
 } from "../../lib/depreciation";
 import * as repo from "../../db/repo";
@@ -68,7 +69,7 @@ export const FixedAssetsPage = () => {
 
   // 印刷・CSV の行（画面の台帳と同じ資産）
   const printLines: AssetPrintLine[] = active.map(({ a, d }) => ({
-    name: a.name, account: accountName(a.account_id), acquired: a.acquired_on, used: a.used_on, cost: a.cost, method: METHOD_LABEL[a.method],
+    name: a.name, account: accountName(a.account_id), acquired: a.acquired_on, used: a.used_on, cost: a.cost, method: methodLabel(a),
     life: a.method === "straight" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—", rate: d!.rate !== null ? d!.rate.toFixed(3) : "—",
     months: d!.months, opening: d!.opening, depreciation: d!.depreciation, businessRate: a.business_rate, business: d!.business, closing: d!.closing,
     memo: [d!.disposed ? `${ymd(a.disposed_on!)} 売却・除却` : "", a.memo].filter(Boolean).join("　"),
@@ -163,7 +164,7 @@ export const FixedAssetsPage = () => {
                     <td>{accountName(a.account_id)}</td>
                     <td>{ymd(a.used_on)}</td>
                     <td className="num">{yen(a.cost)}</td>
-                    <td>{METHOD_LABEL[a.method]}</td>
+                    <td>{methodLabel(a)}</td>
                     <td className="num">{a.method === "straight" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—"}</td>
                     <td className="num">{d!.rate !== null ? d!.rate.toFixed(3) : "—"}</td>
                     <td className="num">{d!.months}</td>
@@ -206,7 +207,7 @@ export const FixedAssetsPage = () => {
                     <td>{accountName(a.account_id)}</td>
                     <td>{ymd(a.used_on)} 使用開始</td>
                     <td className="num">{yen(a.cost)}</td>
-                    <td>{METHOD_LABEL[a.method]}</td>
+                    <td>{methodLabel(a)}</td>
                     <td>{a.disposed_on ? `${ymd(a.disposed_on)} 売却・除却` : ""}</td>
                     <td>{editButtons(a)}</td>
                   </tr>
@@ -389,6 +390,11 @@ const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onC
           </label>
         </div>
         {method === "straight" && <p className="field-note">{LIFE_EXAMPLES}。耐用年数は国税庁の耐用年数表で確かめてください。</p>}
+        {method === "straight" && acquired && acquired <= OLD_STRAIGHT_UNTIL && (
+          <p className="field-note">
+            平成19年3月31日以前に取得した資産なので、旧定額法で計算します（取得価額 × 90% × 旧定額法の償却率。償却費の累計が取得価額の95%に達したら、その翌年から5年間で1円まで均等に償却します）。
+          </p>
+        )}
         {method === "lump3" && <p className="field-note">取得価額の 1/3 ずつを3年で経費にします（月割りしません）。</p>}
         {method === "small" && <p className="field-note">使い始めた年に全額を経費にします（1年の合計 {yen(SMALL_YEAR_LIMIT)} 円まで）。</p>}
         {cost !== null && cost > 0 && cost < EXPENSE_LIMIT && <p className="field-note">{yen(EXPENSE_LIMIT)} 円未満のものは、台帳に入れずに消耗品費などで経費にできます。</p>}

@@ -37,7 +37,7 @@ import {
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
 import { CATEGORY_CODE_RANGE, LOCKED_CODES, normalSideOf } from "../constants/accounts";
-import { METHOD_LABEL, validateAsset, type FixedAsset } from "../lib/depreciation";
+import { methodLabel, validateAsset, type FixedAsset } from "../lib/depreciation";
 import {
   DEFAULT_BACKUP_GENERATIONS, DEFAULT_INPUT_PERIOD_DAYS, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
 } from "../constants/appConfig";
@@ -1577,7 +1577,7 @@ export const getAssets = (db: Database) =>
 const assetText = (a: AssetInput) =>
   [
     `取得 ${a.acquired_on}`, `使用開始 ${a.used_on}`, `取得価額 ${a.cost.toLocaleString()}円`,
-    METHOD_LABEL[a.method] + (a.method === "straight" ? ` ${a.useful_life}年` : ""), `事業 ${a.business_rate}%`,
+    methodLabel(a) + (a.method === "straight" ? ` ${a.useful_life}年` : ""), `事業 ${a.business_rate}%`,
     a.opening_year !== null ? `${a.opening_year}年期首の未償却残高 ${a.opening_book_value?.toLocaleString()}円` : "",
     a.disposed_on ? `売却・除却 ${a.disposed_on}` : "",
     a.memo ? `備考 ${a.memo}` : "",

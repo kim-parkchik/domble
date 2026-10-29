@@ -460,7 +460,7 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
     const others = dep.slice(7);
     v.AMF01600 = {
       rows: shown.map((d) => clean({
-        AMF01610: text(d.name, 16), AMF01620: text(d.quantity, 13), AMF01630: { yymm: d.acquired }, AMF01640: d.cost, AMF01650: d.cost,
+        AMF01610: text(d.name, 16), AMF01620: text(d.quantity, 13), AMF01630: { yymm: d.acquired }, AMF01640: d.cost, AMF01650: d.base,
         AMF01660: text(d.method, 10), AMF01670: d.life !== null && d.life >= 2 ? d.life : undefined,
         AMF01690: d.rate !== null ? { decimal: d.rate.toFixed(3) } : undefined, AMF01720: d.months >= 1 ? d.months : undefined,
         AMF01730: d.depreciation, AMF01750: d.depreciation, AMF01760: { decimal: String(Number(d.businessRate.toFixed(2))) }, AMF01770: d.business, AMF01780: d.closing,
@@ -594,7 +594,7 @@ const whiteValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => 
     const others = dep.slice(6);
     v.AIM00010 = {
       rows: dep.slice(0, 6).map((x) => clean({
-        AIM00020: text(x.name, 16), AIM00030: text(x.quantity, 20), AIM00050: { yymm: x.acquired }, AIM00060: x.cost, AIM00070: x.cost,
+        AIM00020: text(x.name, 16), AIM00030: text(x.quantity, 20), AIM00050: { yymm: x.acquired }, AIM00060: x.cost, AIM00070: x.base,
         AIM00080: text(x.method, 10), AIM00090: x.life !== null && x.life >= 2 ? x.life : undefined,
         AIM00110: x.rate !== null ? { decimal: x.rate.toFixed(3) } : undefined, AIM00140: x.months >= 1 ? x.months : undefined,
         AIM00150: x.depreciation, AIM00170: x.depreciation, AIM00180: { decimal: String(Number(x.businessRate.toFixed(2))) }, AIM00190: x.business, AIM00200: x.closing,

@@ -13,7 +13,7 @@ import { yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
 import { monthlySales, payeeBreakdown, type PayeeRow } from "../../lib/statements";
 import { partnerLines, partnerTable, type PartnerTable } from "../../lib/blueStatement";
-import { depreciationFor, type FixedAsset } from "../../lib/depreciation";
+import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
 import type { FlatLine } from "../../lib/accounting";
 import * as repo from "../../db/repo";
 
@@ -313,8 +313,8 @@ export const DepreciationSection = ({ assets, notes, onSaved }: NoteProps & { as
                   <td><Note k={`dep:${a.id}:qty`} notes={notes} onSaved={onSaved} placeholder="数量" /></td>
                   <td>{a.acquired_on.slice(0, 4)}年{Number(a.acquired_on.slice(5, 7))}月</td>
                   <td className="num">{yen(a.cost)}</td>
-                  <td className="num">{yen(a.cost)}</td>
-                  <td>{METHOD_SHORT[a.method]}</td>
+                  <td className="num">{yen(d!.base)}</td>
+                  <td>{isOldStraight(a) ? "旧定額法" : METHOD_SHORT[a.method]}</td>
                   <td className="num">{a.method === "straight" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—"}</td>
                   <td className="num">{d!.rate !== null ? d!.rate.toFixed(3) : a.method === "lump3" ? "1/3" : "—"}</td>
                   <td className="num">{d!.months}/12</td>
@@ -325,7 +325,7 @@ export const DepreciationSection = ({ assets, notes, onSaved }: NoteProps & { as
                   <td className="num">{yen(d!.business)}</td>
                   <td className="num">{yen(d!.closing)}</td>
                   <td>
-                    {[a.method === "small" ? "措法28の2" : "", d!.disposed ? `${a.disposed_on!.slice(5, 7).replace(/^0/, "")}月売却・除却` : "", a.memo].filter(Boolean).join("　")}
+                    {[a.method === "small" ? "措法28の2" : "", d!.equal ? "均等償却" : "", d!.disposed ? `${a.disposed_on!.slice(5, 7).replace(/^0/, "")}月売却・除却` : "", a.memo].filter(Boolean).join("　")}
                   </td>
                 </tr>
               ))}
