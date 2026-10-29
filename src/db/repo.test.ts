@@ -277,6 +277,47 @@ describe("固定資産台帳・減価償却（repo）", () => {
   });
 });
 
+describe("申告の種類（年度ごと。repo）", () => {
+  test("年度ごとに保存し、次に変える年まで引き継ぐ。設定の無い年は帳簿を作ったときの設定。変更は履歴に残る", async () => {
+    const { db } = strict;
+    expect(await repo.filingTypeIn(db, 2026)).toBe("blue65");
+    await repo.saveFilingYear(db, 2025, "white");
+    await repo.saveFilingYear(db, 2026, "blue65");
+    expect(await repo.getFilingYears(db)).toEqual([{ from_year: 2025, filing_type: "white" }, { from_year: 2026, filing_type: "blue65" }]);
+    expect([await repo.filingTypeIn(db, 2024), await repo.filingTypeIn(db, 2025), await repo.filingTypeIn(db, 2027)]).toEqual(["blue65", "white", "blue65"]);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.label.includes("申告の種類"));
+    expect(h.map((x) => [x.label, x.old_value, x.new_value]).reverse()).toEqual([
+      ["2025年の申告の種類", "青色申告（65万円控除）（前の年から引き継ぎ）", "白色申告"],
+      ["2026年の申告の種類", "白色申告（前の年から引き継ぎ）", "青色申告（65万円控除）"],
+    ]);
+    // 年度ごとに決めたあとは、事業者の情報からは変えられない
+    await expect(repo.saveSettings(db, { ...(await repo.getSettings(db)), filing_type: "white" })).rejects.toThrow(/年度ごと/);
+  });
+  test("締めた年度と、締めた年度が引き継ぐ年の設定は変えられない（トリガーでも止める）", async () => {
+    const { db, raw } = strict;
+    await repo.saveFilingYear(db, 2024, "white");
+    await repo.closeYear(db, 2025);
+    await expect(repo.saveFilingYear(db, 2025, "blue65")).rejects.toThrow(/締め/);
+    await expect(repo.saveFilingYear(db, 2024, "blue65")).rejects.toThrow(/2025年は締め済み/);
+    expect(() => raw.run("INSERT INTO filing_years (from_year, filing_type) VALUES (2025, 'blue10')")).toThrow(/締め/);
+    await repo.saveFilingYear(db, 2026, "blue10");
+    expect(await repo.filingTypeIn(db, 2026)).toBe("blue10");
+  });
+  test("少額減価償却資産の特例（青色だけ）：白色の年に使い始めた資産には使えず、使っていれば白色にできない", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const asset: repo.AssetInput = {
+      name: "タブレット", account_id: accts.find((a) => a.name === "工具器具備品")!.id, acquired_on: "2026-05-01", used_on: "2026-05-01", cost: 150_000,
+      method: "small", useful_life: 0, business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
+    };
+    await repo.saveAsset(db, null, asset);
+    await expect(repo.saveFilingYear(db, 2026, "white")).rejects.toThrow(/少額減価償却資産/);
+    await expect(repo.saveFilingYear(db, 2025, "white")).rejects.toThrow(/2025年以降/);
+    await repo.saveFilingYear(db, 2027, "white");
+    await expect(repo.saveAsset(db, null, { ...asset, acquired_on: "2027-05-01", used_on: "2027-05-01" })).rejects.toThrow(/青色申告のときだけ/);
+  });
+});
+
 describe("決算書の書き込み（repo）", () => {
   test("年度ごとに保存し、空にすると消える。締めた年度は変えられない", async () => {
     const { db } = strict;

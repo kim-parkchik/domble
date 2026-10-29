@@ -3,12 +3,14 @@
  * 決算書の画面（StatementsPage・StatementPages）と同じ集計を使う：
  *  - 1ページ・4ページ：勘定科目と決算書の欄の対応（statementLayout）。売上（収入）金額・差引金額・所得金額は summarizeIncome
  *  - 2ページ：月別の売上・仕入（monthlySales）、給料賃金・専従者給与の内訳（payeeBreakdown と書き込み）
- *  - 3ページ：減価償却費の計算（固定資産台帳）、利子割引料・税理士等の報酬・地代家賃の内訳（payeeBreakdown と書き込み）、特殊事情
+ *  - 3ページ：売上（収入）金額・仕入金額の明細（partnerTotals と書き込み）、減価償却費の計算（固定資産台帳）、
+ *    利子割引料・税理士等の報酬・地代家賃の内訳（payeeBreakdown と書き込み）、特殊事情
+ * 収支内訳書（白色申告。whiteStatement.ts）も、明細はここで作ったものを使う
  * 書き込み（statement_notes）の鍵は画面と同じ（salary:<支払先>:age など）
  */
 import { closingBalances, summarizeIncome, type FlatLine, type IncomeSummary } from "./accounting";
-import { monthlySales, payeeBreakdown, type MonthlySales, type PayeeRow } from "./statements";
-import { statementLayout, type StatementLayout } from "./statementLines";
+import { monthlySales, partnerTotals, payeeBreakdown, type MonthlySales, type PayeeRow } from "./statements";
+import { lineOf, sectionOf, statementLayout, type StatementLayout } from "./statementLines";
 import { depreciationFor, type FixedAsset } from "./depreciation";
 import type { Account, HomeUseRate, OpeningBalances } from "./types";
 import { CODE } from "../constants/accounts";
@@ -25,7 +27,9 @@ export interface BlueStatementSource {
   /** 支払先の内訳に数えない仕訳（家事按分の年末の振替・減価償却の仕訳） */
   excludeEntryIds: number[];
   /** 支払先の名前（取引先 → 補助科目 → 指定なし） */
-  payeeName: (r: PayeeRow) => string;
+  payeeName: (r: Pick<PayeeRow, "counterpartyId" | "subId">) => string;
+  /** 取引先の登録番号（無ければ空） */
+  invoiceNoOf?: (counterpartyId: number) => string;
   /** 青色申告特別控除の上限（申告の種類から） */
   deductionLimit: number;
 }
@@ -76,6 +80,50 @@ export interface DepreciationLine {
   memo: string;
 }
 
+/** 売上先・仕入先の明細の1行 */
+export interface PartnerLine {
+  key: string;
+  name: string;
+  /** 所在地（決算書の書き込み） */
+  address: string;
+  /** 登録番号（取引先の。T を除いた13桁） */
+  invoiceNo: string;
+  amount: number;
+}
+
+/** 売上（収入）金額・仕入金額の明細（様式は4行）。other = 上記以外の計（total − 4行の計） */
+export interface PartnerTable {
+  rows: PartnerLine[];
+  other: number;
+  total: number;
+}
+
+/** 明細の行数 */
+export const PARTNER_ROWS = 4;
+
+/** 売上先の明細に数える科目（収益のうち、相手の無い家事消費等・雑収入を除く） */
+export const salesAccountIds = (accounts: Account[]) =>
+  accounts.filter((a) => a.category === "revenue" && a.code !== CODE.HOUSEHOLD_USE && a.code !== CODE.MISC_INCOME).map((a) => a.id);
+/** 仕入先の明細に数える科目（決算書の「仕入金額（製品製造原価）」の欄に書く科目） */
+export const purchaseAccountIds = (accounts: Account[]) =>
+  accounts.filter((a) => sectionOf(a) === "cogs" && lineOf(a) === "仕入金額（製品製造原価）").map((a) => a.id);
+
+/** 売上先・仕入先ごとの行（多い順。所在地は書き込み sales:<相手>:address ／ purchase:<相手>:address） */
+export const partnerLines = (
+  kind: "sales" | "purchase", accounts: Account[], lines: FlatLine[], notes: Record<string, string>,
+  payeeName: BlueStatementSource["payeeName"], invoiceNoOf?: BlueStatementSource["invoiceNoOf"],
+): PartnerLine[] =>
+  partnerTotals(kind === "sales" ? salesAccountIds(accounts) : purchaseAccountIds(accounts), lines, kind === "sales" ? "credit" : "debit").map((r) => ({
+    key: r.key, name: payeeName(r), address: notes[`${kind}:${r.key}:address`] ?? "",
+    invoiceNo: r.counterpartyId ? (invoiceNoOf?.(r.counterpartyId) ?? "").replace(/^T/, "") : "", amount: r.amount,
+  }));
+
+/** 明細の計を total にした表（上記以外 = total − 載せた行） */
+export const partnerTable = (lines: PartnerLine[], total: number): PartnerTable => {
+  const rows = lines.slice(0, PARTNER_ROWS);
+  return { rows, other: total - rows.reduce((s, r) => s + r.amount, 0), total };
+};
+
 export interface BlueStatement {
   pl: IncomeSummary;
   layout: StatementLayout;
@@ -88,6 +136,12 @@ export interface BlueStatement {
   fees: PayeeLine[];
   rent: PayeeLine[];
   depreciation: DepreciationLine[];
+  /** 売上先の明細（計は売上（収入）金額。家事消費等・雑収入は上記以外に入る）・仕入先の明細（計は仕入金額） */
+  sales: PartnerTable;
+  purchases: PartnerTable;
+  /** 売上先・仕入先の行（多い順。全部。収支内訳書は計の違う表を作る） */
+  salesPartners: PartnerLine[];
+  purchasePartners: PartnerLine[];
   special: string;
 }
 
@@ -143,6 +197,11 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
       memo: [a.method === "small" ? "措法28の2" : "", d!.disposed ? `${Number(a.disposed_on!.slice(5, 7))}月売却・除却` : "", a.memo].filter(Boolean).join(" "),
     }));
 
+  // 売上先・仕入先の明細（計は 1ページの売上（収入）金額・仕入金額。家事消費等・雑収入は上記以外に入る）
+  const salesPartners = partnerLines("sales", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf);
+  const purchasePartners = partnerLines("purchase", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf);
+  const purchaseTotal = layout.sections.cogs.find((r) => r.label === "仕入金額（製品製造原価）")?.amount ?? 0;
+
   return {
     pl,
     layout,
@@ -154,6 +213,10 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
     fees: payees(feeRows, "fees", "tax"),
     rent: payees(breakdown(CODE.RENT, true), "rent", ""),
     depreciation,
+    sales: partnerTable(salesPartners, pl.revenue),
+    purchases: partnerTable(purchasePartners, purchaseTotal),
+    salesPartners,
+    purchasePartners,
     special: notes.special ?? "",
   };
 };

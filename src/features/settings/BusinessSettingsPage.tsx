@@ -1,7 +1,7 @@
 /**
  * 事業者設定 と 年度の繰越
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Save, ArrowRightLeft, Lock, LockOpen, FileDown } from "lucide-react";
 import { anchorText, saveAnchorFile } from "../books/IntegrityModal";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -18,6 +18,7 @@ import { HolidaySection } from "./HolidaySection";
 import { EncryptionSection } from "./EncryptionSection";
 import { CODE } from "../../constants/accounts";
 import type { FilingType, Settings } from "../../lib/types";
+import { FILING_LABEL } from "../../lib/filing";
 import * as repo from "../../db/repo";
 import { closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
@@ -25,19 +26,14 @@ import { APP_DIR_NAME, BACKUP_DIR_NAME, DEFAULT_INPUT_PERIOD_DAYS, EXT_BACKUP, M
 import { TaxSection } from "./TaxSection";
 import { EtaxSection } from "./EtaxSection";
 
-export const FILING_LABEL: Record<FilingType, string> = {
-  blue65: "青色申告（65万円控除）",
-  blue55: "青色申告（55万円控除）",
-  blue10: "青色申告（10万円控除）",
-  white: "白色申告",
-};
-
-export const SettingsForm = ({ initial, onSubmit, submitLabel, extra }: {
+export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, filing = true }: {
   initial: Settings;
   onSubmit: (s: Settings) => Promise<void>;
   submitLabel: string;
   /** 送信ボタンの直前に差し込む欄（初期設定の保存方式など） */
   extra?: ReactNode;
+  /** 申告の種類の欄を出すか（帳簿を作るときだけ。そのあとは年度ごとの設定 FilingSection で変える） */
+  filing?: boolean;
 }) => {
   const [s, setS] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -90,12 +86,14 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra }: {
           <span>会計年度</span>
           <input className="input" type="number" min={2000} max={2100} value={s.fiscal_year} onChange={(e) => set("fiscal_year", Number(e.target.value))} />
         </label>
-        <label className="field">
-          <span>申告の種類</span>
-          <select className="input" value={s.filing_type} onChange={(e) => set("filing_type", e.target.value as FilingType)}>
-            {Object.entries(FILING_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </label>
+        {filing && (
+          <label className="field">
+            <span>申告の種類</span>
+            <select className="input" value={s.filing_type} onChange={(e) => set("filing_type", e.target.value as FilingType)}>
+              {Object.entries(FILING_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+        )}
       </div>
       {extra}
       {error && <p className="form-error-inline" role="alert">{error}</p>}
@@ -105,6 +103,59 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra }: {
         </button>
       </div>
     </form>
+  );
+};
+
+/** 申告の種類（年度ごと。決めた設定は、次に変える年まで引き継ぐ） */
+const FilingSection = () => {
+  const { db, year, filing, filingYears, settings, reloadFilingYears, isClosed, readOnly, can, bump } = useAppContext();
+  const toast = useToast();
+  const [type, setType] = useState<FilingType>(filing.type);
+  useEffect(() => setType(filing.type), [filing.type]);
+  const disabled = isClosed || readOnly || !can("settings");
+  const save = async () => {
+    try {
+      await repo.saveFilingYear(db, year, type);
+      await reloadFilingYears();
+      bump();
+      toast(`${year}年からの申告の種類を「${FILING_LABEL[type]}」にしました`);
+    } catch (e) {
+      toast(`保存できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+  return (
+    <>
+      <h2 className="sheet-h">申告の種類（{year}年）</h2>
+      <p className="prose">
+        申告の種類は年ごとに決めます。決めた種類は、次に変える年まで引き継がれます。白色申告の年は、決算書が収支内訳書の形になり、家族への給与の代わりに事業専従者控除を計算します。
+        青色申告にするには、青色申告承認申請書を出しておきます（その年の3月15日まで。1月16日以後に開業した年は、開業の日から2か月以内）。
+      </p>
+      <form className="settings-form" onSubmit={(e) => { e.preventDefault(); save(); }}>
+        <label className="field">
+          <span>{year}年の申告の種類</span>
+          <select className="input" value={type} onChange={(e) => setType(e.target.value as FilingType)} disabled={disabled}>
+            {Object.entries(FILING_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+        <div>
+          <button className="btn primary" type="submit" disabled={disabled || (type === filing.type && !filing.inherited)}>
+            <Save size={16} /> {year}年から、この種類にする
+          </button>
+        </div>
+      </form>
+      {filing.inherited && !isClosed && <p className="field-note">{filingYears.length ? "前の年" : "帳簿を作ったとき"}の設定を引き継いでいます。保存すると {year}年からの設定になります。</p>}
+      {isClosed && <p className="field-note">{year}年は締め済みのため変更できません。</p>}
+      {filingYears.length > 0 && (
+        <dl className="kv mode-years">
+          {settings.filing_type !== filingYears[0].filing_type && (
+            <><dt>{filingYears[0].from_year - 1}年まで</dt><dd>{FILING_LABEL[settings.filing_type]}</dd></>
+          )}
+          {filingYears.map((r) => (
+            <Fragment key={r.from_year}><dt>{r.from_year}年から</dt><dd>{FILING_LABEL[r.filing_type]}</dd></Fragment>
+          ))}
+        </dl>
+      )}
+    </>
   );
 };
 
@@ -174,12 +225,14 @@ export const BusinessSettingsPage = () => {
             key={JSON.stringify(settings)}
             initial={settings}
             submitLabel="保存する"
+            filing={false}
             onSubmit={async (s) => {
               await repo.saveSettings(db, s);
               await reloadSettings();
               toast("設定を保存しました");
             }}
           />
+          <FilingSection />
         </section>
 
         <section className="sheet">

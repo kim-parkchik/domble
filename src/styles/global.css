@@ -302,6 +302,8 @@ select { width: auto; padding-right: 24px; }
 .st-table td:first-child { width: 62%; white-space: normal; }
 .bs-table td:first-child { white-space: normal; }
 .st-table tr.st-strong td { font-weight: 700; border-bottom: 1px solid var(--rule-strong); }
+/* 収支内訳書の欄の記号（①・⑪・㋑ など） */
+.st-no { display: inline-block; min-width: 1.6em; color: var(--muted); font-weight: 400; }
 .bs-table td:first-child, .bs-table th:first-child { width: 40%; }
 .warn-box {
   display: flex; align-items: center; gap: 8px; width: 100%;

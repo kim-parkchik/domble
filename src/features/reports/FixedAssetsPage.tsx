@@ -27,6 +27,7 @@ import {
   type DepreciationMethod, type FixedAsset,
 } from "../../lib/depreciation";
 import * as repo from "../../db/repo";
+import { isBlue } from "../../lib/filing";
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 const ymd = (iso: string) => iso.replace(/-/g, "/");
@@ -265,7 +266,7 @@ export const FixedAssetsPage = () => {
         </section>
       )}
 
-      {editing && <AssetModal asset={editing === "new" ? null : editing} blue={settings.filing_type !== "white"} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); bump(); }} />}
+      {editing && <AssetModal asset={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); bump(); }} />}
       {viewing && <EntryEditModal entryId={viewing} onClose={() => setViewing(null)} />}
       {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
     </div>
@@ -279,8 +280,8 @@ const lineKey = (ls: { side: string; account_id: number; amount: number; memo: s
 /** 耐用年数の目安（よく使うもの） */
 const LIFE_EXAMPLES = "例：パソコン 4年、サーバー 5年、普通自動車 6年、軽自動車 4年、事務机・椅子（金属製）15年、ソフトウェア 5年";
 
-const AssetModal = ({ asset, blue, onClose, onSaved }: { asset: FixedAsset | null; blue: boolean; onClose: () => void; onSaved: () => void }) => {
-  const { db, year, accounts, can } = useAppContext();
+const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onClose: () => void; onSaved: () => void }) => {
+  const { db, year, accounts, can, filingTypeOf } = useAppContext();
   const toast = useToast();
   const choices = accounts.filter((a) => a.category === "asset" && (FIXED_ASSET_CODES.includes(a.code) || !a.is_system));
   const lumpId = accounts.find((a) => a.code === CODE.LUMP_ASSET)?.id;
@@ -304,6 +305,10 @@ const AssetModal = ({ asset, blue, onClose, onSaved }: { asset: FixedAsset | nul
     if (m === "lump3" && lumpId) setAccountId(lumpId);
     else if (accountId === lumpId) setAccountId(accounts.find((a) => a.code === "134")?.id ?? null);
   };
+
+  // 少額減価償却資産の特例は、事業に使い始めた年が青色申告の年だけ
+  const useYear = Number((used || acquired || String(year)).slice(0, 4)) || year;
+  const blue = isBlue(filingTypeOf(useYear));
 
   const input = (): repo.AssetInput => ({
     name, account_id: accountId ?? 0, acquired_on: acquired, used_on: used || acquired, cost: cost ?? 0, method,

@@ -1,14 +1,17 @@
 /**
- * 所得税の確定申告書と青色申告決算書を e-Tax のデータ（xtx）にする（純粋関数。数字は incomeTax.ts・blueStatement.ts の計算結果をそのまま使う）
+ * 所得税の確定申告書と青色申告決算書（白色申告は収支内訳書）を e-Tax のデータ（xtx）にする
+ * （純粋関数。数字は incomeTax.ts・blueStatement.ts・whiteStatement.ts の計算結果をそのまま使う）
  *
  * 手続 RKO0010（所得税及び復興特別所得税申告）。手続の版は年分で選ぶ（INCOME_XTX_VERSIONS）
  *  - KOA020：確定申告書の第一表・第二表（第三表・第四表は扱わない）
- *  - KOA210：青色申告決算書（一般用）の1〜4ページ（製造原価の計算、売上・仕入先の明細は書かない）
+ *  - KOA210：青色申告決算書（一般用）の1〜4ページ（製造原価の計算は書かない）
+ *  - KOA110：収支内訳書（一般用）の1・2ページ（白色申告の年）
  * 様式の行数より多い明細は、金額の大きい順に入れ、残りは「その他」の1行にまとめる（次葉合計の欄がある明細は次葉合計に）。
  * 配偶者・親族・事業専従者の欄より多い人は書かず、そのことを知らせる
  * 個人番号は書き出すときに入れてもらう（numbers。self・spouse・dep<添字>・family<添字>）。提出年月日は e-Tax の側で入れる
  */
-import type { BlueStatement, PayLine, PayeeLine } from "./blueStatement";
+import type { BlueStatement, PartnerTable, PayLine, PayeeLine } from "./blueStatement";
+import type { WhiteStatement } from "./whiteStatement";
 import { documentXml, filerProblems, formXml, itRefs, itXml, type EtaxFiler, type EtaxValue, type EtaxValues, type FormAttrs } from "./etax";
 import {
   dependentDeduction, fieldNo, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type Relative,
@@ -40,6 +43,8 @@ export interface IncomeTaxXtxSource {
   result: IncomeTaxResult;
   biz: BusinessFigures;
   statement: BlueStatement;
+  /** 収支内訳書（白色申告の年。あれば青色申告決算書の代わりに書く） */
+  white?: WhiteStatement;
   settings: Pick<Settings, "address" | "phone" | "office_address" | "office_phone" | "union_name">;
   /** 第一表の事業（営業等）の「区分」：1 優良な電子帳簿（届出あり） ／ 2 会計ソフトで記帳 */
   bookKeeping: 1 | 2;
@@ -68,16 +73,24 @@ const relativesShown = (x: IncomeTaxInput, year: number) =>
     .map((d, i) => ({ d, i, r: dependentDeduction(d, year) }))
     .filter((v) => v.r.kind !== "none" && v.r.kind !== "familyEmployee");
 
-/** 事業専従者（決算書の専従者給与の内訳。給与のある人） */
-const familyShown = (st: BlueStatement) => st.family.map((f, i) => ({ f, i })).filter((v) => v.f.total > 0);
+/** 事業専従者（青色：決算書の専従者給与の内訳で給与のある人 ／ 白色：収支内訳書の事業専従者で控除のある人）。key は個人番号の鍵 */
+const familyShown = (src: Pick<IncomeTaxXtxSource, "statement" | "white">) =>
+  src.white
+    ? src.white.family.filter((l) => l.deduction > 0).map((l, i) => ({
+      key: `family${i}`, name: l.name, relation: l.relation, birthday: l.birthday, detail: [l.months ? `${l.months}月` : "", l.work].filter(Boolean).join("・"), amount: l.deduction,
+    }))
+    : src.statement.family.filter((f) => f.total > 0).map((f, i) => ({
+      // 青色は従事月数だけ（「程度・仕事の内容」は白色申告者だけが書く。令和7年分 確定申告の手引き）
+      key: `family${i}`, name: f.name, relation: f.relation, birthday: "", detail: f.months ? `${f.months}月` : "", amount: f.total,
+    }));
 
 /** 個人番号を入れてもらう人（書き出す人だけ） */
-export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" | "result" | "statement">) => {
+export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" | "result" | "statement" | "white">) => {
   const out: { key: string; label: string }[] = [];
   const sp = spouseShown(src.input, src.year, src.result.totalIncome);
   if (sp) out.push({ key: "spouse", label: `配偶者（${sp.s.name || "氏名なし"}）` });
   for (const { d, i } of relativesShown(src.input, src.year).slice(0, RELATIVE_ROWS)) out.push({ key: `dep${i}`, label: `${d.relation || "親族"}（${d.name || "氏名なし"}）` });
-  for (const { f, i } of familyShown(src.statement).slice(0, FAMILY_ROWS)) out.push({ key: `family${i}`, label: `事業専従者（${f.name}）` });
+  for (const f of familyShown(src).slice(0, FAMILY_ROWS)) out.push({ key: f.key, label: `事業専従者（${f.name}）` });
   return out;
 };
 
@@ -85,7 +98,6 @@ export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" |
 export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer" | "input" | "result" | "biz">): string[] => {
   const p: string[] = [];
   if (src.year < INCOME_XTX_FIRST_YEAR) p.push(`e-Tax のデータは令和${INCOME_XTX_FIRST_YEAR - 2018}年（${INCOME_XTX_FIRST_YEAR}年）分から書き出せます`);
-  if (src.biz.filingType === "white") p.push("白色申告（収支内訳書）の e-Tax のデータには対応していません");
   if (src.result.totalIncome < 0) p.push("所得金額の合計がマイナスです。損失申告（第四表）には対応していません");
   const missing = filerProblems(src.filer);
   if (missing.length) p.push(`事業者設定の e-Tax の欄：${missing.join("、")}`);
@@ -95,15 +107,18 @@ export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer"
 };
 
 /** 書き出すけれど、データに入らないもの・確かめてほしいこと */
-export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" | "result" | "statement">): string[] => {
+export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" | "result" | "statement" | "white">): string[] => {
   const n: string[] = [];
   if (incomeXtxVersionFor(src.year).fallback) {
     n.push(`令和${src.year - 2018}年分の e-Tax の版はまだ domble に入っていないため、令和${INCOME_XTX_FIRST_YEAR - 2018}年分の版で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください`);
   }
   const rel = relativesShown(src.input, src.year);
   if (rel.length > RELATIVE_ROWS) n.push(`第二表の親族の欄は${RELATIVE_ROWS}人分です。${rel.slice(RELATIVE_ROWS).map((v) => v.d.name).join("・")}は書いていません`);
-  const fam = familyShown(src.statement);
-  if (fam.length > FAMILY_ROWS) n.push(`第二表の事業専従者の欄は${FAMILY_ROWS}人分です。${fam.slice(FAMILY_ROWS).map((v) => v.f.name).join("・")}は書いていません`);
+  const fam = familyShown(src);
+  if (fam.length > FAMILY_ROWS) n.push(`第二表の事業専従者の欄は${FAMILY_ROWS}人分です。${fam.slice(FAMILY_ROWS).map((v) => v.name).join("・")}は書いていません`);
+  const notCounted = src.white?.family.filter((l) => l.problem) ?? [];
+  if (notCounted.length) n.push(`事業専従者控除の対象にしていない人がいます（${notCounted.map((l) => `${l.name || "氏名なし"}：${l.problem}`).join("、")}）`);
+  if (src.white?.familySalaryBooked) n.push("専従者給与の科目に記帳した額は、白色申告では必要経費にならないため、収支内訳書の経費に入れていません");
   if (src.input.salaries.length > 0) n.push("給与があるため、保険料の「うち年末調整等以外」の欄は書いていません（源泉徴収票に載っていない分だけを書く欄です）");
   if (src.input.housingLoan > 0) n.push("住宅借入金等特別控除の区分は書いていません（計算明細書を添付して、区分を確かめてください）");
   // 医療費控除・セルフメディケーション税制は、明細書を付けて出す決まり。domble は合計だけを入れるので明細書を作れない。
@@ -145,7 +160,7 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     ABA00125: ref(refs, "NOZEISHA_BANGO"), ABA00130: ref(refs, "NOZEISHA_NM_KN"), ABA00140: ref(refs, "NOZEISHA_NM"),
     ABA00160: ref(refs, "SHOKUGYO"), ABA00170: ref(refs, "NOZEISHA_YAGO"), ABA00180: ref(refs, "SETAINUSHI_NM"), ABA00190: ref(refs, "SETAINUSHI_ZOKU"),
     ABA00200: ref(refs, "BIRTHDAY"), ABA00220: ref(refs, "NOZEISHA_TEL"),
-    ABA00240: { kubun: 1 }, // 青色申告
+    ABA00240: src.white ? undefined : { kubun: 1 }, // 青色申告
     // 収入金額等
     ABB00025: src.bookKeeping, ABB00030: amount(row("㋐")),
     ABB00080: amount(row("㋔")), ABB00100: amount(row("㋕")), ABB00105: amount(row("㋖")), ABB00110: amount(row("㋗")),
@@ -187,8 +202,10 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
   const localSum = (...kinds: string[]) => sumOf(donations.filter((d) => kinds.includes(d.local)), (d) => d.amount);
   const spouse = spouseShown(x, year, r.totalIncome);
   const relatives = relativesShown(x, year).slice(0, RELATIVE_ROWS);
-  const family = familyShown(src.statement).slice(0, FAMILY_ROWS);
-  const birthdayOf = (name: string) => [x.spouse, ...x.dependents].find((p): p is Relative => !!p && p.familyEmployee && p.name.trim() === name.trim())?.birthday ?? "";
+  const family = familyShown(src).slice(0, FAMILY_ROWS);
+  // 青色の事業専従者の生年月日は、所得税の入力で「専従者」に印を付けた同じ氏名の人から
+  const birthdayOf = (f: (typeof family)[number]) =>
+    f.birthday || ([x.spouse, ...x.dependents].find((p): p is Relative => !!p && p.familyEmployee && p.name.trim() === f.name.trim())?.birthday ?? "");
   const studentOk = x.student && (r.rows.find((v) => v.no === "⑲⑳")?.value ?? 0) > 0;
   const widowOk = (r.rows.find((v) => v.no === "⑰⑱")?.value ?? 0) > 0;
   return clean({
@@ -203,9 +220,9 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     ABD00064: rest.length ? { text: "次葉" } : undefined, ABD00066: rest.length ? sumOf(rest, (w) => w.withheld) : undefined,
     ABD00070: withholding.length ? sumOf(withholding, (w) => w.withheld) : undefined,
     ABE00010: family.length ? {
-      rows: family.map(({ f, i }) => clean({
-        ABE00020: text(f.name, 30), ABE00025: bango(src.numbers[`family${i}`]), ABE00030: isDate(birthdayOf(f.name)) ? { date: birthdayOf(f.name) } : undefined,
-        ABE00040: text(f.relation, 5), ABE00060: text([f.months ? `${f.months}月` : "", f.work].filter(Boolean).join("・"), 40), ABE00070: f.total,
+      rows: family.map((f) => clean({
+        ABE00020: text(f.name, 30), ABE00025: bango(src.numbers[f.key]), ABE00030: isDate(birthdayOf(f)) ? { date: birthdayOf(f) } : undefined,
+        ABE00040: text(f.relation, 5), ABE00060: text(f.detail, 40), ABE00070: f.amount,
       })),
     } : undefined,
     ABH00120: premiums.length ? {
@@ -268,6 +285,20 @@ const LIABILITY_TAGS: Record<string, [string | null, string]> = {
   支払手形: ["AMG00510", "AMG00640"], 買掛金: ["AMG00520", "AMG00650"], 借入金: ["AMG00530", "AMG00660"], 未払金: ["AMG00540", "AMG00670"],
   前受金: ["AMG00550", "AMG00680"], 預り金: ["AMG00560", "AMG00690"], 貸倒引当金: ["AMG00580", "AMG00710"], 事業主借: [null, "AMG00730"],
   元入金: ["AMG00600", "AMG00740"],
+};
+
+/** 売上先・仕入先の明細（4行・上記以外・計）。tags = [行, 名前, 所在地, 登録番号, 金額, 上記以外, 計] */
+const partnerValues = (t: PartnerTable, tags: [string, string, string, string, string, string, string]): Record<string, EtaxValue | undefined> => {
+  if (!t.total && !t.rows.length) return {};
+  const [rowTag, nameTag, addressTag, invoiceTag, amountTag, otherTag, totalTag] = tags;
+  return {
+    [rowTag]: t.rows.length ? {
+      rows: t.rows.map((r) => clean({
+        [nameTag]: text(r.name, 30), [addressTag]: text(r.address, 100), [invoiceTag]: /^\d{13}$/.test(r.invoiceNo) ? { text: r.invoiceNo } : undefined, [amountTag]: r.amount,
+      })),
+    } : undefined,
+    [otherTag]: amount(t.other), [totalTag]: t.total,
+  };
 };
 
 const mergePayee = (rows: PayeeLine[]): PayeeLine => ({
@@ -387,7 +418,10 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
   if (src.biz.filingType === "blue10") Object.assign(v, { AMF01570: Math.min(100_000, Math.max(0, pl.income)), AMF01580: st.deduction });
   else Object.assign(v, { AMF01540: st.deduction, AMF01550: st.deduction });
 
-  // 3ページ：減価償却費の計算（7件まで。残りは次葉合計）
+  // 3ページ：売上（収入）金額・仕入金額の明細（4件まで。残りは上記以外）
+  Object.assign(v, partnerValues(st.sales, ["AMF02230", "AMF02240", "AMF02250", "AMF02270", "AMF02290", "AMF02300", "AMF02310"]));
+  Object.assign(v, partnerValues(st.purchases, ["AMF02330", "AMF02340", "AMF02350", "AMF02370", "AMF02390", "AMF02400", "AMF02410"]));
+  // 減価償却費の計算（7件まで。残りは次葉合計）
   const dep = st.depreciation;
   if (dep.length) {
     const shown = dep.slice(0, 7);
@@ -447,7 +481,118 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
   return clean(v);
 };
 
-/** 確定申告書と青色申告決算書の xtx。書き出せないときは例外 */
+// ── 収支内訳書（KOA110） ──
+/** 収支内訳書の経費の決まった欄 */
+const WHITE_EXPENSE_TAGS: Record<string, string> = {
+  給料賃金: "AIG00150", 外注工賃: "AIG00160", 減価償却費: "AIG00170", 貸倒金: "AIG00180", 地代家賃: "AIG00190", 利子割引料: "AIG00200",
+  租税公課: "AIG00220", 荷造運賃: "AIG00230", 水道光熱費: "AIG00240", 旅費交通費: "AIG00250", 通信費: "AIG00260", 広告宣伝費: "AIG00270",
+  接待交際費: "AIG00280", 損害保険料: "AIG00290", 修繕費: "AIG00300", 消耗品費: "AIG00310", 福利厚生費: "AIG00320", 雑費: "AIG00340",
+};
+
+const whiteValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const w = src.white!;
+  const d = w.detail;
+  const change = src.input.businessTax;
+  const v: Record<string, EtaxValue | undefined> = {
+    // 1ページ：見出し
+    AIA00000: ref(refs, "NENBUN"), AIB00010: text(src.settings.address, 100), AIB00030: ref(refs, "NOZEISHA_NM_KN"), AIB00040: ref(refs, "NOZEISHA_NM"),
+    AIB00050: text(src.settings.office_address, 100), AIB00070: src.settings.phone ? { tel: src.settings.phone } : undefined,
+    AIB00080: src.settings.office_phone ? { tel: src.settings.office_phone } : undefined,
+    AIB00090: ref(refs, "SHOKUGYO"), AIB00100: ref(refs, "NOZEISHA_YAGO"), AIB00110: text(src.settings.union_name, 20),
+    AIC00010: ref(refs, "DAIRI_ADR"), AIC00020: ref(refs, "DAIRI_NM"), AIC00030: ref(refs, "DAIRI_TEL"),
+    AIR00000: { kubun: 1 }, // 営業等
+    AIF00010: { mmdd: change.change === "open" && isDate(change.changeDate) && change.changeDate.startsWith(`${src.year}-`) ? change.changeDate.slice(5) : "01-01" },
+    AIF00020: { mmdd: change.change === "close" && isDate(change.changeDate) && change.changeDate.startsWith(`${src.year}-`) ? change.changeDate.slice(5) : "12-31" },
+    // 収支内訳
+    AIG00030: amount(w.revenue.sales), AIG00040: amount(w.revenue.household), AIG00050: amount(w.revenue.other), AIG00060: w.revenue.total,
+    AIG00080: amount(w.cogs.opening), AIG00090: amount(w.cogs.purchases), AIG00100: amount(w.cogs.subtotal), AIG00110: amount(w.cogs.closing), AIG00120: amount(w.cogs.cost),
+    AIG00130: w.difference,
+    AIG00350: w.otherSubtotal, AIG00360: w.expenseTotal, AIG00370: w.beforeDeduction, AIG00380: amount(w.familyDeduction), AIG00400: w.income,
+  };
+  for (const r of [...w.mainExpenses, ...w.otherExpenses].filter((x) => !x.extra)) v[WHITE_EXPENSE_TAGS[r.label]] = amount(r.amount);
+  const extras = w.otherExpenses.filter((r) => r.extra && r.amount !== 0);
+  v.AIG00325 = extras.length ? { rows: extras.map((r) => clean({ AIG00010: text(r.label, 10), AIG00330: r.amount })) } : undefined;
+
+  // 給料賃金の内訳：3人まで。残りは「その他」の欄（人数・延べ従事月数）
+  const salaries = d.salaries.filter((r) => r.total !== 0);
+  if (salaries.length) {
+    const shown = salaries.slice(0, 3);
+    const others = salaries.slice(3);
+    v.AIH00010 = {
+      rows: shown.map((r) => clean({
+        AIH00020: text(r.name, 30), AIH00030: r.age ?? undefined, AIH00040: r.months ?? undefined,
+        AIH00050: r.salary, AIH00060: amount(r.bonus), AIH00070: r.total, AIH00080: amount(r.tax),
+      })),
+    };
+    if (others.length) {
+      Object.assign(v, {
+        AIH00100: others.length, AIH00110: monthsOf(others) || undefined,
+        AIH00120: sumOf(others, (r) => r.salary), AIH00130: amount(sumOf(others, (r) => r.bonus)), AIH00140: sumOf(others, (r) => r.total),
+        AIH00150: amount(sumOf(others, (r) => r.tax)),
+      });
+    }
+    Object.assign(v, {
+      AIH00170: monthsOf(salaries) || undefined, AIH00180: sumOf(salaries, (r) => r.salary), AIH00190: amount(sumOf(salaries, (r) => r.bonus)),
+      AIH00200: sumOf(salaries, (r) => r.total), AIH00210: amount(sumOf(salaries, (r) => r.tax)),
+    });
+  }
+  // 税理士・弁護士等の報酬・料金の内訳：2件まで
+  const fees = fit(d.fees.filter((r) => r.gross !== 0), 2, mergePayee);
+  v.AII00000 = fees.length ? {
+    rows: fees.map((r) => clean({ AII00020: text(r.address, 100), AII00030: text(r.name, 100), AII00040: r.gross, AII00050: r.business, AII00060: amount(r.extra) })),
+  } : undefined;
+  // 事業専従者の氏名等：3人まで。残りは次葉合計（従事月数）
+  const family = w.family.filter((l) => !l.problem);
+  if (family.length) {
+    const months = (rows: typeof family) => Math.min(sumOf(rows, (l) => l.months ?? 0), 99);
+    const others = family.slice(3);
+    v.AIJ00010 = {
+      rows: family.slice(0, 3).map((l) => clean({ AIJ00020: text(l.name, 30), AIJ00030: l.age ?? undefined, AIJ00040: text(l.relation, 5), AIJ00050: l.months ?? undefined })),
+    };
+    if (others.length) Object.assign(v, { AIJ00054: { text: "次葉" }, AIJ00056: months(others) || undefined });
+    v.AIJ00060 = months(family) || undefined;
+  }
+
+  // 2ページ：売上（収入）金額・仕入金額の明細（4件まで。残りは上記以外）
+  Object.assign(v, partnerValues(w.sales, ["AIK00010", "AIK00020", "AIK00030", "AIK00080", "AIK00040", "AIK00050", "AIK00060"]));
+  Object.assign(v, partnerValues(w.purchases, ["AIL00010", "AIL00020", "AIL00030", "AIL00080", "AIL00040", "AIL00050", "AIL00060"]));
+  // 減価償却費の計算（6件まで。残りは次葉合計）
+  const dep = d.depreciation;
+  if (dep.length) {
+    const others = dep.slice(6);
+    v.AIM00010 = {
+      rows: dep.slice(0, 6).map((x) => clean({
+        AIM00020: text(x.name, 16), AIM00030: text(x.quantity, 20), AIM00050: { yymm: x.acquired }, AIM00060: x.cost, AIM00070: x.cost,
+        AIM00080: text(x.method, 10), AIM00090: x.life !== null && x.life >= 2 ? x.life : undefined,
+        AIM00110: x.rate !== null ? { decimal: x.rate.toFixed(3) } : undefined, AIM00140: x.months >= 1 ? x.months : undefined,
+        AIM00150: x.depreciation, AIM00170: x.depreciation, AIM00180: { decimal: String(Number(x.businessRate.toFixed(2))) }, AIM00190: x.business, AIM00200: x.closing,
+        AIM00210: text(x.memo, 15),
+      })),
+    };
+    if (others.length) {
+      Object.assign(v, {
+        AIM00212: { text: "次葉" }, AIM00213: sumOf(others, (x) => x.depreciation), AIM00215: sumOf(others, (x) => x.depreciation),
+        AIM00216: sumOf(others, (x) => x.business), AIM00217: sumOf(others, (x) => x.closing),
+      });
+    }
+    Object.assign(v, {
+      AIM00230: sumOf(dep, (x) => x.depreciation), AIM00250: sumOf(dep, (x) => x.depreciation), AIM00260: sumOf(dep, (x) => x.business), AIM00270: sumOf(dep, (x) => x.closing),
+    });
+  }
+  // 地代家賃・利子割引料（金融機関を除く）の内訳：2件まで
+  const rent = fit(d.rent.filter((r) => r.gross !== 0), 2, mergePayee);
+  v.AIN00000 = rent.length ? {
+    rows: rent.map((r) => clean({ AIN00020: text(r.address, 100), AIN00030: text(r.name, 100), AIN00040: text(r.property, 14), AIN00080: r.gross, AIN00090: r.business })),
+  } : undefined;
+  const interest = fit(d.interest.filter((r) => r.gross !== 0), 2, mergePayee);
+  v.AIO00000 = interest.length ? {
+    rows: interest.map((r) => clean({ AIO00020: text(r.address, 100), AIO00030: text(r.name, 100), AIO00040: amount(r.extra), AIO00050: r.gross, AIO00060: r.business })),
+  } : undefined;
+  v.AIP00000 = text(d.special, 500);
+  return clean(v);
+};
+
+/** 確定申告書と青色申告決算書（白色申告は収支内訳書）の xtx。書き出せないときは例外 */
 export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
   const problems = incomeXtxProblems(src);
   if (problems.length) throw new Error(problems.join("。"));
@@ -466,10 +611,12 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
     procedure: PROCEDURE.procedure,
     procedureVersion: incomeXtxVersionFor(src.year).version,
     it: itXml(filer, { procedure: PROCEDURE.procedure, procedureName: PROCEDURE.name, shinkokuKbn: 1, ...it }),
-    // 手続の XSD の順番：申告書（KOA020）、青色申告決算書（KOA210）
+    // 手続の XSD の順番：申告書（KOA020）、収支内訳書（KOA110）・青色申告決算書（KOA210）
     forms: [
       { id: "KOA020", xml: formXml("KOA020", koa020, attrs) },
-      { id: "KOA210", xml: formXml("KOA210", statementValues(src, refs), attrs) },
+      src.white
+        ? { id: "KOA110", xml: formXml("KOA110", whiteValues(src, refs), attrs) }
+        : { id: "KOA210", xml: formXml("KOA210", statementValues(src, refs), attrs) },
     ],
   });
 };

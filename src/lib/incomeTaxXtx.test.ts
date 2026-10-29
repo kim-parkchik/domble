@@ -7,6 +7,10 @@ import { computeIncomeTax, EMPTY_INCOME_TAX_INPUT, emptyRelative, type BusinessF
 import type { BlueStatement, DepreciationLine, PayLine } from "./blueStatement";
 import type { StatementRow } from "./statementLines";
 import type { EtaxFiler } from "./etax";
+import type { FlatLine } from "./accounting";
+import type { Account } from "./types";
+import { ACCOUNT_SEEDS } from "../constants/accounts";
+import { buildWhiteStatement, familyMembers } from "./whiteStatement";
 
 const XSD = resolve(import.meta.dir, "../../spec/etax/shotoku/RKO0010-250.xsd");
 const dir = mkdtempSync(join(tmpdir(), "domble-it-xtx-"));
@@ -49,6 +53,8 @@ const statement = (o: Partial<BlueStatement> = {}): BlueStatement => ({
   deduction: 650_000,
   monthly: { sales: Array(12).fill(0).map((_, i) => (i === 11 ? 5_000_000 - 11 * 400_000 : 400_000)), purchases: Array(12).fill(0), householdUse: 0, miscIncome: 0 },
   salaries: [], family: [], interest: [], fees: [], rent: [], depreciation: [], special: "",
+  sales: { rows: [{ key: "cp:1", name: "株式会社エー", address: "", invoiceNo: "1234567890123", amount: 3_000_000 }], other: 2_000_000, total: 5_000_000 },
+  purchases: { rows: [], other: 0, total: 0 }, salesPartners: [], purchasePartners: [],
   ...o,
 });
 
@@ -96,6 +102,12 @@ describe("令和7年分の所得税の xtx（申告書＋青色申告決算書�
     expect(val(xml, "AMG00030")).toBe("ソフトウエア");
     expect(val(xml, "AMG00440")).toBe("5100000");
     expect(val(xml, "AMG00760")).toBe(String(1_100_000 + 4_000_000));
+  });
+  test("3ページ：売上先の明細（登録番号は T を除いた13桁）と上記以外の計。仕入の無い明細は書かない", () => {
+    expect(xml).toContain("<AMF02240>株式会社エー</AMF02240><AMF02260><AMF02270>1234567890123</AMF02270></AMF02260><AMF02290>3000000</AMF02290>");
+    expect(val(xml, "AMF02300")).toBe("2000000");
+    expect(val(xml, "AMF02310")).toBe("5000000");
+    expect(xml).not.toContain("AMF02320");
   });
   test("保険料は、給与が無ければ全部「うち年末調整等以外」", () => {
     expect(val(xml, "ABH00140")).toBe("210120");
@@ -168,6 +180,8 @@ describe("配偶者・親族・事業専従者と個人番号", () => {
     expect(count(xml, "ABY00150")).toBe(4);
     expect(xml).toContain("<ABY00270><kubun_CD>1</kubun_CD></ABY00270>");
     expect(val(xml, "ABE00040")).toBe("母");
+    // 青色は従事月数だけ（程度・仕事の内容は白色申告者だけが書く）
+    expect(val(xml, "ABE00060")).toBe("12月");
     expect(incomeXtxNotices(src).join()).toMatch(/子4・子5は書いていません/);
   });
 });
@@ -194,13 +208,11 @@ describe("還付・1月1日の住所・依頼税理士", () => {
 });
 
 describe("書き出せないとき・版", () => {
-  test("白色申告・損失・支払者の名称の無い源泉徴収・令和6年分以前・申告者の情報の不足", () => {
-    expect(incomeXtxProblems(source({}, { biz: { ...biz, filingType: "white" } })).join()).toMatch(/白色/);
+  test("損失・支払者の名称の無い源泉徴収・令和6年分以前・申告者の情報の不足", () => {
     expect(incomeXtxProblems(source({}, { biz: { ...biz, incomeBeforeBlue: -500_000 } })).join()).toMatch(/損失申告/);
     expect(incomeXtxProblems(source({ businessWithholding: [{ item: "報酬", payer: "", payerId: "", income: 100_000, withheld: 10_210 }] })).join()).toMatch(/支払者の名称/);
     expect(incomeXtxProblems(source({}, { year: 2024 })).join()).toMatch(/令和7年/);
     expect(incomeXtxProblems(source({}, { filer: { ...filer, userId: "" } })).join()).toMatch(/利用者識別番号/);
-    expect(() => buildIncomeTaxXtx(source({}, { biz: { ...biz, filingType: "white" } }))).toThrow(/白色/);
   });
   test("表に無い新しい年分は、いちばん新しい版で書き出して知らせる", () => {
     expect(incomeXtxVersionFor(2025)).toEqual({ version: "25.0.1", fallback: false });
@@ -214,5 +226,84 @@ describe("書き出せないとき・版", () => {
     // 控除額が 0（10万円などの足切り以下）なら知らせない
     expect(notice({ kind: "normal", paid: 50_000, reimbursed: 0 })).not.toMatch(/明細書/);
     expect(notice({ kind: "normal", paid: 0, reimbursed: 0 })).not.toMatch(/明細書/);
+  });
+});
+
+describe("白色申告（申告書＋収支内訳書）", () => {
+  const seeds: Account[] = ACCOUNT_SEEDS.map((x, i) => ({
+    ...x, id: i + 1, sort_order: i, is_active: 1, is_system: 1, default_tax_code: null, default_business_class: null, default_purchase_use: null, statement_line: null,
+  }));
+  const acc = (name: string) => seeds.find((a) => a.name === name)!;
+  let id = 0;
+  const je = (debit: string, credit: string, amount: number, cp: number | null = null): FlatLine[] => {
+    id += 1;
+    const base = { entry_id: id, date: "2025-06-30", description: "", memo: "", amount, counterparty_id: cp, row_no: 1, sub_account_id: null };
+    return [{ ...base, side: "debit", account_id: acc(debit).id }, { ...base, side: "credit", account_id: acc(credit).id }];
+  };
+  // 売上 500万（取引先1 300万・取引先2 120万・相手なし 80万）、家事消費 2万、雑収入 3万、仕入 100万、給料賃金 60万・地代家賃 24万・支払手数料 3万、専従者給与 100万
+  const lines = [
+    ...je("売掛金", "売上高", 3_000_000, 1), ...je("売掛金", "売上高", 1_200_000, 2), ...je("現金", "売上高", 800_000),
+    ...je("事業主貸", "家事消費等", 20_000), ...je("普通預金", "雑収入", 30_000), ...je("仕入高", "買掛金", 1_000_000, 3),
+    ...je("給料賃金", "普通預金", 600_000), ...je("地代家賃", "普通預金", 240_000), ...je("支払手数料", "普通預金", 30_000), ...je("専従者給与", "普通預金", 1_000_000),
+  ];
+  const spouse = { ...emptyRelative("妻"), name: "山田 花子", birthday: "1988-04-01", familyEmployee: true, months: 12, work: "毎日・経理" };
+  const white = buildWhiteStatement({
+    year: 2025, accounts: seeds, opening: {}, lines, notes: { "sales:cp:2:address": "大阪府大阪市1-1" }, assets: [], homeUseRates: [], excludeEntryIds: [],
+    payeeName: (r) => `取引先${r.counterpartyId}`, invoiceNoOf: (c) => (c === 1 ? "T1234567890123" : ""),
+    family: familyMembers({ spouse, dependents: [] }), periodMonths: 12,
+  });
+  const wbiz: BusinessFigures = { revenue: white.revenue.total, incomeBeforeBlue: white.income, filingType: "white", familySalary: white.familyDeduction };
+  const src = source({ spouse }, { biz: wbiz, white, numbers: { self: "123456789018", family0: "123456789018" } });
+  const xml = buildIncomeTaxXtx(src);
+
+  test("手続 RKO0010 の XSD に合う", () => expect(validate(xml)).toBe(""));
+  test("決算書は収支内訳書（KOA110）。第一表に青色の印と青色申告特別控除は無い", () => {
+    expect(xml).toContain('<KOA110 VR="12.0" id="KOA110-1"');
+    expect(xml).not.toContain("<KOA210");
+    expect(xml).not.toContain("ABA00240");
+    expect(xml).not.toContain("ABB00800");
+    expect(val(xml, "ABB00030")).toBe("5050000");
+    expect(val(xml, "ABB00300")).toBe("2320000");
+    expect(val(xml, "ABB00790")).toBe("860000");
+  });
+  test("第二表の事業専従者：従事月数・程度・仕事の内容と専従者控除額。配偶者は配偶者の欄に書かない", () => {
+    expect(val(xml, "ABE00020")).toBe("山田 花子");
+    expect(val(xml, "ABE00060")).toBe("12月・毎日・経理");
+    expect(val(xml, "ABE00070")).toBe("860000");
+    expect(xml).not.toContain("ABY00020");
+    expect(myNumberPersons(src).map((p) => p.key)).toEqual(["family0"]);
+  });
+  test("収支内訳書の1ページ：収入金額・経費（追加の欄）・専従者控除・所得金額、事業専従者の氏名等", () => {
+    expect(val(xml, "AIR00000")).toBe("1");
+    expect(val(xml, "AIG00030")).toBe("5000000");
+    expect(val(xml, "AIG00040")).toBe("20000");
+    expect(val(xml, "AIG00050")).toBe("30000");
+    expect(val(xml, "AIG00060")).toBe("5050000");
+    expect(val(xml, "AIG00090")).toBe("1000000");
+    expect(val(xml, "AIG00130")).toBe("4050000");
+    expect(val(xml, "AIG00150")).toBe("600000");
+    expect(val(xml, "AIG00190")).toBe("240000");
+    expect(xml).toContain("<AIG00325><AIG00010>支払手数料</AIG00010><AIG00330>30000</AIG00330></AIG00325>");
+    expect(val(xml, "AIG00350")).toBe("30000");
+    expect(val(xml, "AIG00360")).toBe("870000");
+    expect(val(xml, "AIG00370")).toBe("3180000");
+    expect(val(xml, "AIG00380")).toBe("860000");
+    expect(val(xml, "AIG00400")).toBe("2320000");
+    expect(val(xml, "AIJ00020")).toBe("山田 花子");
+    expect(val(xml, "AIJ00030")).toBe("37");
+    expect(val(xml, "AIJ00050")).toBe("12");
+    expect(val(xml, "AIJ00060")).toBe("12");
+  });
+  test("収支内訳書の2ページ：売上先の明細の計は①（家事消費・その他の収入を含まない）", () => {
+    expect(count(xml, "AIK00010")).toBe(2);
+    expect(xml).toContain("<AIK00020>取引先1</AIK00020><AIK00070><AIK00080>1234567890123</AIK00080></AIK00070><AIK00040>3000000</AIK00040>");
+    expect(xml).toContain("<AIK00020>取引先2</AIK00020><AIK00030>大阪府大阪市1-1</AIK00030><AIK00040>1200000</AIK00040>");
+    expect(val(xml, "AIK00050")).toBe("800000");
+    expect(val(xml, "AIK00060")).toBe("5000000");
+    expect(val(xml, "AIL00040")).toBe("1000000");
+    expect(val(xml, "AIL00060")).toBe("1000000");
+  });
+  test("専従者給与を経費に入れていないことを知らせる", () => {
+    expect(incomeXtxNotices(src).join()).toMatch(/専従者給与の科目に記帳した額は/);
   });
 });

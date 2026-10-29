@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type Database from "../db/connection";
-import type { Account, Counterparty, User, FiscalClosing, HomeUseRate, OpeningBalances, Settings, SubAccount, SubOpeningBalances, TaxYear } from "../lib/types";
+import type { Account, Counterparty, User, FilingType, FilingYear, FiscalClosing, HomeUseRate, OpeningBalances, Settings, SubAccount, SubOpeningBalances, TaxYear } from "../lib/types";
 import { toAccountMap, yearEnd, yearStart, type AccountMap, type FlatLine } from "../lib/accounting";
 import { closedMonthOf, closingOf, expectedNextOpening, openingMismatches, type OpeningMismatch } from "../lib/closing";
 import * as repo from "../db/repo";
 import { can as canRole, type Perm } from "../lib/permissions";
 import { taxActiveOn, taxYearOf } from "../lib/tax";
+import { filingOf, type FilingOfYear } from "../lib/filing";
 import { baseSalesInfo, type BaseSalesInfo } from "../lib/baseSales";
 import { interimPlan, prevTaxInfo, type InterimPlan, type PrevTaxInfo } from "../lib/taxInterim";
 
@@ -49,6 +50,13 @@ interface AppContextValue {
   /** その日の取引に税区分を付けるか（課税事業者の期間か） */
   isTaxActive: (date: string) => boolean;
   reloadTaxYears: () => Promise<void>;
+  /** 申告の種類（年度ごと。from_year の順。行の無い年は settings.filing_type） */
+  filingYears: FilingYear[];
+  /** 表示中の年度の申告の種類（inherited = その年の設定ではなく、前の年などから引き継ぎ） */
+  filing: FilingOfYear;
+  /** その年の申告の種類 */
+  filingTypeOf: (year: number) => FilingType;
+  reloadFilingYears: () => Promise<void>;
   /** 休みの日（祝日・事業者の休業日）。営業日の数え方に使う */
   daysOff: ReadonlySet<string>;
   /** 締め（年度ごとに何月まで締めたか） */
@@ -136,6 +144,12 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
     reloadTaxYears().catch(console.error);
   }, [reloadTaxYears]);
 
+  const [filingYears, setFilingYears] = useState<FilingYear[]>([]);
+  const reloadFilingYears = useCallback(async () => setFilingYears(await repo.getFilingYears(db)), [db]);
+  useEffect(() => {
+    reloadFilingYears().catch(console.error);
+  }, [reloadFilingYears]);
+
   // 祝日・休業日（事業者設定で変えたら bump で読み直す）
   const [daysOff, setDaysOff] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
@@ -187,6 +201,10 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       taxYear: taxYearOf(taxYears, settings.fiscal_year),
       isTaxActive: (date) => taxActiveOn(taxYears, date),
       reloadTaxYears,
+      filingYears,
+      filing: filingOf(filingYears, settings.filing_type, settings.fiscal_year),
+      filingTypeOf: (y) => filingOf(filingYears, settings.filing_type, y).type,
+      reloadFilingYears,
       closings,
       daysOff,
       isClosed: closedMonthOf(closings.find((c) => c.fiscal_year === settings.fiscal_year)) === 12,
@@ -197,7 +215,7 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       reloadSettings,
       reloadAccounts,
     };
-  }, [db, filePath, readOnly, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, taxYears, reloadTaxYears, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
+  }, [db, filePath, readOnly, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, taxYears, reloadTaxYears, filingYears, reloadFilingYears, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

@@ -12,7 +12,8 @@
  *   寡婦・ひとり親・勤労学生・障害者・配偶者（特別）・扶養・特定親族特別控除（令和7年分から）・基礎控除
  * 税額：課税される所得金額（千円未満切り捨て）× 税率、住宅借入金等特別控除（計算明細書の額を入れる）、復興特別所得税（基準所得税額 × 2.1%。1円未満切り捨て）、
  *   源泉徴収税額・予定納税額を差し引いて、納める税金（百円未満切り捨て）または還付される税金
- * 扱わないもの：不動産・利子・配当・譲渡・一時所得、分離課税、損失申告、雑損控除、所得金額調整控除、配当控除などほかの税額控除、災害減免、外国税額控除、白色申告の専従者控除
+ * 事業所得：青色申告は青色申告特別控除を差し引く。白色申告は収支内訳書の所得金額（事業専従者控除の後。lib/whiteStatement.ts）をそのまま使う
+ * 扱わないもの：不動産・利子・配当・譲渡・一時所得、分離課税、損失申告、雑損控除、所得金額調整控除、配当控除などほかの税額控除、災害減免、外国税額控除
  */
 import type { FilingType } from "./types";
 
@@ -71,6 +72,9 @@ export interface Relative {
   lineal: boolean;
   /** 事業専従者か（青色事業専従者として給与を受ける人・白色の事業専従者）。配偶者控除・扶養控除・障害者控除などの対象にならない */
   familyEmployee: boolean;
+  /** 白色の事業専従者：その年に事業に従事した月数（1〜12。null = 入れていない）と、従事の程度・仕事の内容（第二表）。青色は決算書に書き込む */
+  months: number | null;
+  work: string;
 }
 
 /**
@@ -127,7 +131,7 @@ export interface IncomeTaxInput {
 }
 
 export const emptyRelative = (relation = ""): Relative => ({
-  name: "", relation, birthday: "", income: 0, disability: "none", cohabiting: true, lineal: false, familyEmployee: false,
+  name: "", relation, birthday: "", income: 0, disability: "none", cohabiting: true, lineal: false, familyEmployee: false, months: null, work: "",
 });
 
 export const EMPTY_INCOME_TAX_INPUT: IncomeTaxInput = {
@@ -163,6 +167,15 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
     return s;
   };
   const disability = (v: unknown): Disability => (v === "normal" || v === "special" ? v : "none");
+  const monthsOf = (v: unknown, label: string): number | null => {
+    if (v === undefined || v === null || v === "") return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 1 || n > 12) {
+      problems.push(`${label}の従事月数は 1〜12 で入れてください`);
+      return null;
+    }
+    return n;
+  };
   const payer = (r: Partial<PayerRow>, label: string): PayerRow => ({
     item: text(r.item), payer: text(r.payer), payerId: text(r.payerId),
     income: amount(r.income, `${label}の収入金額`), withheld: amount(r.withheld, `${label}の源泉徴収税額`),
@@ -170,6 +183,7 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
   const relative = (r: Partial<Relative>, label: string): Relative => ({
     name: text(r.name), relation: text(r.relation, 20), birthday: date(r.birthday, label),
     income: amount(r.income, `${label}の合計所得金額`), disability: disability(r.disability), cohabiting: r.cohabiting !== false, lineal: !!r.lineal, familyEmployee: !!r.familyEmployee,
+    months: monthsOf(r.months, label), work: text(r.work, 40),
   });
   const list = <T,>(v: unknown, f: (r: never, i: number) => T): T[] => (Array.isArray(v) ? v.slice(0, 50).map((r, i) => f((r ?? {}) as never, i)) : []);
   const life = (x.life ?? {}) as Partial<IncomeTaxInput["life"]>;
@@ -442,12 +456,12 @@ export const BLUE_DEDUCTION_LIMIT: Record<FilingType, number> = { blue65: 650_00
 
 /** 帳簿と決算書から出す事業所得（営業等）の数字 */
 export interface BusinessFigures {
-  /** 売上（収入）金額（家事消費・雑収入を含む） */
+  /** 売上（収入）金額（家事消費・雑収入を含む。白色は収支内訳書の ④計） */
   revenue: number;
-  /** 青色申告特別控除前の所得金額 */
+  /** 青色申告特別控除前の所得金額（白色は収支内訳書の ㉑所得金額。事業専従者控除の後） */
   incomeBeforeBlue: number;
   filingType: FilingType;
-  /** 専従者給与の合計 */
+  /** 専従者給与の合計（白色は事業専従者控除の合計） */
   familySalary: number;
 }
 
@@ -494,7 +508,6 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const DEPENDENT_LIMIT = rules.dependentLimit;
   const white = biz.filingType === "white";
   const blue = white ? 0 : Math.min(BLUE_DEDUCTION_LIMIT[biz.filingType], Math.max(0, biz.incomeBeforeBlue));
-  if (white) notes.push("白色申告の事業専従者控除と収支内訳書には対応していません。事業所得は決算書の所得金額（専従者給与を経費にした額）のままです。");
 
   // 収入金額等・所得金額等
   const salaryIn = sum(input.salaries.map((r) => r.income));
@@ -578,13 +591,13 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const spouseLabel = spouse.kind === "special" ? "配偶者特別控除" : spouse.elderly ? "配偶者控除（老人控除対象配偶者）" : "配偶者控除";
   const rows: IncomeTaxRow[] = [
     { no: "", label: "収入金額等", value: null, head: true },
-    { no: "㋐", label: "事業（営業等）", value: biz.revenue, note: "決算書の売上（収入）金額（家事消費・雑収入を含む）" },
+    { no: "㋐", label: "事業（営業等）", value: biz.revenue, note: white ? "収支内訳書の収入金額の計（売上・家事消費・その他の収入）" : "決算書の売上（収入）金額（家事消費・雑収入を含む）" },
     { no: "㋔", label: "給与", value: salaryIn },
     { no: "㋕", label: "雑（公的年金等）", value: pensionIn },
     { no: "㋖", label: "雑（業務）", value: miscBizIn },
     { no: "㋗", label: "雑（その他）", value: miscOtherIn },
     { no: "", label: "所得金額等", value: null, head: true },
-    { no: "①", label: "事業（営業等）", value: r1, note: white ? "決算書の所得金額" : `青色申告特別控除 ${blue.toLocaleString()}円を差し引いた額` },
+    { no: "①", label: "事業（営業等）", value: r1, note: white ? "収支内訳書の所得金額（事業専従者控除の後）" : `青色申告特別控除 ${blue.toLocaleString()}円を差し引いた額` },
     { no: "⑥", label: "給与", value: r6, note: `給与所得控除後の金額（${reiwaYear(rules.year)}）` },
     { no: "⑦", label: "雑（公的年金等）", value: r7, note: pensionIn ? `公的年金等控除（${(age ?? 0) >= 65 ? "65歳以上" : "65歳未満"}）後の金額` : undefined },
     { no: "⑧", label: "雑（業務）", value: r8 },

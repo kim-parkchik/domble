@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
-  ageAt, basicDeduction, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, incomeTaxOn, lifeInsuranceDeduction,
+  ageAt, basicDeduction, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, fieldNo, incomeTaxOn, lifeInsuranceDeduction,
   medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, rulesFor, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
 } from "./incomeTax";
 
@@ -166,10 +166,13 @@ describe("申告書（第一表）", () => {
     expect(r.notes.join()).toMatch(/ひとり親控除は受けられません.*勤労学生控除は受けられません/);
   });
 
-  test("白色申告は青色申告特別控除なしで、対応していないことを知らせる", () => {
-    const r = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, { ...biz(1_000_000), filingType: "white" }, 2026);
-    expect(cell(r, "①")).toBe(1_000_000);
-    expect(r.notes.join()).toMatch(/白色申告/);
+  test("白色申告は青色申告特別控除なし。①は収支内訳書の所得金額（事業専従者控除の後）、(58)は事業専従者控除の合計", () => {
+    // 監査の例：専従者給与 100万円を経費にした所得 200万円 → 専従者控除前 300万円、配偶者の控除 86万円 → ① 2,140,000
+    const r = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, { revenue: 5_000_000, incomeBeforeBlue: 2_140_000, filingType: "white", familySalary: 860_000 }, 2026);
+    expect(cell(r, "①")).toBe(2_140_000);
+    expect(cell(r, fieldNo(58))).toBe(860_000);
+    expect(cell(r, fieldNo(59))).toBe(0);
+    expect(r.notes.join()).not.toMatch(/白色申告/);
   });
 });
 

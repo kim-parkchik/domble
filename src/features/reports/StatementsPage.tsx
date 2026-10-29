@@ -1,6 +1,7 @@
 /**
- * 決算書（青色申告決算書に近い形）
- *  1ページ：損益計算書 ／ 2〜3ページ：StatementPages.tsx ／ 4ページ：貸借対照表
+ * 決算書
+ *  青色申告の年：青色申告決算書に近い形（1ページ：損益計算書 ／ 2〜3ページ：StatementPages.tsx ／ 4ページ：貸借対照表）
+ *  白色申告の年：収支内訳書（WhiteStatementPages.tsx）
  */
 import { useMemo, useState } from "react";
 import { Printer } from "lucide-react";
@@ -13,6 +14,7 @@ import type { Account } from "../../lib/types";
 import { BLUE_DEDUCTION_LIMIT } from "../../lib/incomeTax";
 import { statementLayout } from "../../lib/statementLines";
 import { StatementPage2, StatementPage3 } from "./StatementPages";
+import { WhiteStatements } from "./WhiteStatementPages";
 import { isYearCompliant } from "../../lib/ebook";
 
 
@@ -29,7 +31,12 @@ const Line = ({ label, value, strong, indent }: { label: string; value: number |
 );
 
 export const StatementsPage = () => {
-  const { year, accounts, settings, closings, strict } = useAppContext();
+  const { filing } = useAppContext();
+  return filing.type === "white" ? <WhiteStatements /> : <BlueStatements />;
+};
+
+const BlueStatements = () => {
+  const { year, accounts, settings, closings, strict, filing } = useAppContext();
   // 締めたときの確認コード（厳密モード）。印刷した決算書が、帳簿ファイルの外の控えになる
   const closedHead = strict ? closings.find((c) => c.fiscal_year === year && c.period_end === `${year}-12-31`)?.chain_head : undefined;
   const { lines, opening } = useYearData();
@@ -43,9 +50,11 @@ export const StatementsPage = () => {
   const open = (a: Account) => opening[a.id] ?? 0;
 
   // e-Tax 用のデータの決算書では、追加の欄に上限がある（勘定科目の画面の「決算書の欄」で選べる）
-  const layoutWarnings = useMemo(() => statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0).warnings, [accounts, end, opening]);
+  const layout = useMemo(() => statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0), [accounts, end, opening]);
+  const layoutWarnings = layout.warnings;
+  const purchaseTotal = layout.sections.cogs.find((r) => r.label === "仕入金額（製品製造原価）")?.amount ?? 0;
 
-  const limit = BLUE_DEDUCTION_LIMIT[settings.filing_type];
+  const limit = BLUE_DEDUCTION_LIMIT[filing.type];
   const deduction = Math.min(limit, Math.max(0, pl.income));
 
   const cogs = by("cogs");
@@ -95,7 +104,7 @@ export const StatementsPage = () => {
         {tab === "p2" ? (
           <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} />
         ) : tab === "p3" ? (
-          <StatementPage3 lines={lines} />
+          <StatementPage3 lines={lines} salesTotal={pl.revenue} purchaseTotal={purchaseTotal} />
         ) : tab === "pl" ? (
           <div className="pl-grid">
             <table className="ledger st-table">
@@ -123,12 +132,8 @@ export const StatementsPage = () => {
                 <Line label="差引金額" value={pl.beforeSpecial} strong />
                 {by("special").map((a) => <Line key={a.id} label={a.name} value={val(a)} indent />)}
                 <Line label="青色申告特別控除前の所得金額" value={pl.income} strong />
-                {settings.filing_type !== "white" && (
-                  <>
-                    <Line label="青色申告特別控除額（目安）" value={deduction} indent />
-                    <Line label="所得金額" value={pl.income - deduction} strong />
-                  </>
-                )}
+                <Line label="青色申告特別控除額（目安）" value={deduction} indent />
+                <Line label="所得金額" value={pl.income - deduction} strong />
               </tbody>
             </table>
           </div>

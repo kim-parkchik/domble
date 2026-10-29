@@ -143,6 +143,11 @@ export interface VoucherRow {
 }
 
 export type FilingType = "blue65" | "blue55" | "blue10" | "white";
+/** 申告の種類（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ。無い年は settings.filing_type） */
+export interface FilingYear {
+  from_year: number;
+  filing_type: FilingType;
+}
 export type RefundMode = "none" | "bank" | "yucho" | "public";
 /** 課税区分：免税・本則課税・簡易課税・2割特例・3割特例 */
 export type TaxStatus = "exempt" | "standard" | "simplified" | "twenty" | "thirty";

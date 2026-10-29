@@ -107,12 +107,15 @@ export interface StatementLayout {
 /**
  * 決算書の欄ごとの金額。amount = 期末残高（損益の科目は年間の額）、opening = 期首残高（貸借の科目）
  * 決まった欄は金額が無くても並べる。追加の欄は金額のある科目だけ
+ * extra：追加の欄の数を変える（収支内訳書は経費の追加の欄が 5 つ）
  */
-export const statementLayout = (accounts: Account[], amount: (a: Account) => number, opening: (a: Account) => number = () => 0): StatementLayout => {
+export const statementLayout = (
+  accounts: Account[], amount: (a: Account) => number, opening: (a: Account) => number = () => 0, extra: Partial<Record<StatementSection, number>> = {},
+): StatementLayout => {
   const warnings: string[] = [];
   const sections = {} as Record<StatementSection, StatementRow[]>;
   for (const section of Object.keys(STATEMENT_SECTIONS) as StatementSection[]) {
-    const def = STATEMENT_SECTIONS[section];
+    const def = { ...STATEMENT_SECTIONS[section], extra: extra[section] ?? STATEMENT_SECTIONS[section].extra };
     const mine = accounts.filter((a) => sectionOf(a) === section);
     const fixed = def.fixed.map((label): StatementRow => ({ label, extra: false, opening: 0, amount: 0, accountIds: [] }));
     const add = (row: StatementRow, a: Account) => {

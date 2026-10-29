@@ -18,13 +18,14 @@ import { filingDeadline, filingFormName, isYearCompliant, keepingStartDate, MANU
 import { MODE_LABEL } from "../start/SetupScreen";
 import type { Page } from "../../App";
 import * as repo from "../../db/repo";
+import { isBlue } from "../../lib/filing";
 import pkg from "../../../package.json";
 
 /** 国税庁の電子帳簿等保存制度の案内 */
 const NTA_URL = "https://www.nta.go.jp/law/joho-zeikaishaku/sonota/jirei/index.htm";
 
 export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, settings, filePath, dataVersion, isClosed, can, readOnly } = useAppContext();
+  const { db, year, settings, filePath, dataVersion, isClosed, can, readOnly, filingTypeOf } = useAppContext();
   const toast = useToast();
   const [holidays, setHolidays] = useState<Set<string>>(new Set());
   const [inputDays, setInputDays] = useState(70);
@@ -39,7 +40,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
   }, [db, year, dataVersion]);
 
   const compliant = isYearCompliant(settings, year);
-  const blue = settings.filing_type !== "white";
+  const blue = isBlue(filingTypeOf(year));
   const deadline = filingDeadline(year, holidays);
   const fileName = filePath.split(/[\\/]/).pop() ?? "";
   const books = ["仕訳帳", "総勘定元帳", "現金出納帳・預金出納帳", ...(hasAssets ? ["固定資産台帳"] : [])];

@@ -90,3 +90,31 @@ export const payeeBreakdown = (
   }
   return out.sort((a, b) => b.gross - a.gross);
 };
+
+export interface PartnerRow {
+  /** cp:取引先ID / sub:補助科目ID */
+  key: string;
+  counterpartyId: number | null;
+  subId: number | null;
+  amount: number;
+}
+
+/**
+ * 売上先・仕入先ごとの金額（決算書の「売上（収入）金額の明細」「仕入金額の明細」）。多い順
+ * 相手は、仕訳の取引先 → 明細の補助科目の順で決める。どちらも無い明細は数えない（明細の「上記以外」に入る）
+ * @param side 売上は貸方（credit）、仕入は借方（debit）を足し、反対側は引く
+ */
+export const partnerTotals = (accountIds: number[], lines: FlatLine[], side: "debit" | "credit"): PartnerRow[] => {
+  const ids = new Set(accountIds);
+  const rows = new Map<string, PartnerRow>();
+  for (const l of lines) {
+    if (!ids.has(l.account_id)) continue;
+    const cp = l.counterparty_id ?? null;
+    if (!cp && !l.sub_account_id) continue;
+    const key = cp ? `cp:${cp}` : `sub:${l.sub_account_id}`;
+    const row = rows.get(key) ?? { key, counterpartyId: cp, subId: cp ? null : l.sub_account_id, amount: 0 };
+    row.amount += net(l, side);
+    rows.set(key, row);
+  }
+  return [...rows.values()].filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount);
+};

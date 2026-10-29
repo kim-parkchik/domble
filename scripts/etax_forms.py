@@ -21,6 +21,7 @@ FORMS = {
     "SHB067": "shohi/SHB067-001.xsd",  # 付表5-3
     "SHB070": "shohi/SHB070-001.xsd",  # 付表6
     "KOA020": "shotoku/KOA020-023.xsd",  # 所得税の確定申告書（第一表〜第四表。domble は第一表・第二表）
+    "KOA110": "shotoku/KOA110-012.xsd",  # 収支内訳書（一般用）
     "KOA210": "shotoku/KOA210-011.xsd",  # 青色申告決算書（一般用）
 }
 

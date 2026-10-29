@@ -8,7 +8,7 @@ import type Database from "./connection";
 import { RETIRED_TRIGGERS } from "./schema";
 import type {
   AccessLogRecord, Account, AccountCategory, Counterparty, User, EBookMode, EntrySnapshot, Evidence, EvidenceAction, EvidenceHistoryRecord, EvidenceKind, EvidenceMeta,
-  EvidenceSnapshot, FiscalClosing, HistoryAction, HistoryRecord, JournalEntry, JournalLine,
+  EvidenceSnapshot, FilingType, FilingYear, FiscalClosing, HistoryAction, HistoryRecord, JournalEntry, JournalLine,
   HomeUseRate, MasterHistoryRecord, OpeningBalances, PurchaseUse, Settings, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
 } from "../lib/types";
 import { subKey } from "../lib/types";
@@ -20,6 +20,7 @@ import {
   useLabel, validateTaxYear,
 } from "../lib/tax";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
+import { FILING_LABEL, filingOf, isBlue, isFilingType } from "../lib/filing";
 import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
@@ -314,16 +315,62 @@ const effectiveName = (type: "account" | "sub", alias: string) =>
   `COALESCE((SELECT m.name FROM master_names m WHERE m.target_type = '${type}' AND m.target_id = ${alias}.id
      AND m.from_year <= ? ORDER BY m.from_year DESC LIMIT 1), ${alias}.name)`;
 
-/** 事業者の情報（登録番号は消費税の設定で saveInvoiceRegistration から変える） */
+/** 事業者の情報（登録番号は消費税の設定で saveInvoiceRegistration から変える。申告の種類は saveFilingYear で年度ごとに） */
 const saveSettings_ = async (db: Database, s: Settings) => {
   const info = { postal_code: s.postal_code ?? "", address: (s.address ?? "").trim(), invoice_no: "" };
   const err = validateBusinessInfo(info);
   if (err) throw new Error(err);
+  // settings.filing_type は年度ごとの設定の無い年に効く。変えられるのは、まだ年度ごとに決めておらず、締めた年も無いとき（帳簿を作るとき）だけ
+  const before = await getSettings(db);
+  if (s.filing_type !== before.filing_type) {
+    if (!isFilingType(s.filing_type)) throw new Error("申告の種類が正しくありません");
+    if ((await getFilingYears(db)).length > 0 || (await getClosings(db)).length > 0) throw new Error("申告の種類は、年度ごとの設定で変えてください");
+  }
   await db.execute(
     `UPDATE settings SET business_name = ?, owner_name = ?, postal_code = ?, address = ?, industry = ?, fiscal_year = ?,
             filing_type = ? WHERE id = 1`,
     [s.business_name, s.owner_name, normalizePostalCode(info.postal_code), info.address, s.industry, s.fiscal_year, s.filing_type],
   );
+};
+
+// ────────────────────────────────────────────
+// 申告の種類（年度ごとの設定。考え方は lib/filing.ts）
+// ────────────────────────────────────────────
+export const getFilingYears = (db: Database) => db.select<FilingYear[]>("SELECT from_year, filing_type FROM filing_years ORDER BY from_year");
+
+/** その年の申告の種類 */
+export const filingTypeIn = async (db: Database, year: number): Promise<FilingType> =>
+  filingOf(await getFilingYears(db), (await getSettings(db)).filing_type, year).type;
+
+/** year 年からの申告の種類を保存する（前の年から引き継いでいた年も、その年の設定として持つ）。変更は履歴に残す（厳密モード） */
+const saveFilingYear_ = async (db: Database, year: number, type: FilingType) => {
+  if (!isFilingType(type)) throw new Error("申告の種類が正しくありません");
+  await assertYearOpen(db, year);
+  const rows = await getFilingYears(db);
+  const before = filingOf(rows, (await getSettings(db)).filing_type, year);
+  // 締めた年がこの設定を引き継ぐなら、その年の申告の種類まで変わってしまう
+  const next = rows.find((r) => r.from_year > year)?.from_year ?? Infinity;
+  const closedAfter = (await getClosings(db)).filter((c) => c.fiscal_year > year && c.fiscal_year < next && closedMonthOf(c) === 12).map((c) => c.fiscal_year);
+  if (before.type !== type && closedAfter.length) {
+    throw new Error(`${closedAfter[0]}年は締め済みで、${year}年の申告の種類を引き継いでいます。先に${closedAfter[0]}年の申告の種類を決めてから締めてください`);
+  }
+  // 青色だけの少額減価償却資産の特例を使っている資産があれば、白色にはできない（この設定を引き継ぐ年まで見る）
+  if (!isBlue(type)) {
+    const r = await db.select<{ n: number }[]>(
+      "SELECT COUNT(*) AS n FROM fixed_assets WHERE method = 'small' AND used_on >= ? AND used_on < ?", [yearStart(year), next === Infinity ? "9999" : yearStart(next)],
+    );
+    if (r[0].n > 0) throw new Error(`${year}年以降に使い始めた資産に、少額減価償却資産の特例（青色申告だけ）を使っています。固定資産台帳で償却方法を直してから、白色申告にしてください`);
+  }
+  await db.execute(
+    "INSERT INTO filing_years (from_year, filing_type) VALUES (?, ?) ON CONFLICT (from_year) DO UPDATE SET filing_type = excluded.filing_type",
+    [year, type],
+  );
+  if (before.type !== type || before.inherited) {
+    await logMaster(db, {
+      target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の申告の種類`,
+      old_value: before.inherited ? `${FILING_LABEL[before.type]}（前の年から引き継ぎ）` : FILING_LABEL[before.type], new_value: FILING_LABEL[type],
+    });
+  }
 };
 
 /** e-Tax の申告者の情報（形式は lib/etax.ts の normalizeEtaxInfo で確かめる） */
@@ -1541,8 +1588,8 @@ const normalizeAsset = (a: AssetInput): AssetInput => ({
 });
 
 const assertAsset = async (db: Database, a: AssetInput) => {
-  const settings = await getSettings(db);
-  const e = validateAsset(a, { blue: settings.filing_type !== "white" });
+  // 少額減価償却資産の特例は、事業に使い始めた年が青色申告の年だけ
+  const e = validateAsset(a, { blue: isBlue(await filingTypeIn(db, Number((a.used_on || a.acquired_on).slice(0, 4)))) });
   if (e) throw new Error(e);
   const acc = await db.select<{ category: string }[]>("SELECT category FROM accounts WHERE id = ?", [a.account_id]);
   if (acc[0]?.category !== "asset") throw new Error("資産の科目を選んでください");
@@ -2391,6 +2438,7 @@ export const registerBankLines = inTx(registerBankLines_, (items, source) => `�
 export const saveBankRule = inTx(saveBankRule_, (r) => `明細のルール「${r.keyword}」`, { perm: "entry" });
 export const deleteBankRule = inTx(deleteBankRule_, (id) => `明細のルール #${id} の削除`, { perm: "entry" });
 export const setAccountStatementLine = inTx(setAccountStatementLine_, (id) => `勘定科目 #${id} の決算書の欄`, { perm: "master" });
+export const saveFilingYear = inTx(saveFilingYear_, (year) => `${year}年の申告の種類`, { perm: "settings" });
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });

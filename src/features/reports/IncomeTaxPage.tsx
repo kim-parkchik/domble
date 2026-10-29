@@ -3,8 +3,10 @@
  *  - 入力：帳簿から出せないもの（給与・公的年金等・雑所得、源泉徴収、所得控除、配偶者・扶養親族、住宅借入金等特別控除、予定納税額）。年度ごとに保存
  *  - 第一表・第二表：事業所得は帳簿と決算書から。欄番号は令和7年分の様式と令和8年分の様式（案）で同じ
  *  - 決まりは年分の表（lib/incomeTax.ts の INCOME_TAX_RULES）。表に無い年分は、いちばん近い年分の決まりで計算して知らせる
- *  - 確定申告書（第一表・第二表）と青色申告決算書を e-Tax のデータ（.xtx）で書き出す（作るのは lib/incomeTaxXtx.ts。決算書の数字は lib/blueStatement.ts）。
- *    個人番号は書き出すときに入れてもらう（本人・配偶者・親族・事業専従者。保存しない）
+ *  - 白色申告の年は、事業所得は収支内訳書の所得金額（事業専従者控除の後。lib/whiteStatement.ts）。事業専従者は配偶者・扶養親族の「専従者」の印で決め、
+ *    従事月数・仕事の内容もここで入れる
+ *  - 確定申告書（第一表・第二表）と青色申告決算書（白色は収支内訳書）を e-Tax のデータ（.xtx）で書き出す（作るのは lib/incomeTaxXtx.ts。
+ *    決算書の数字は lib/blueStatement.ts・lib/whiteStatement.ts）。個人番号は書き出すときに入れてもらう（本人・配偶者・親族・事業専従者。保存しない）
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { FileDown, Plus, Printer, Save, Trash2, Undo2, Wand2 } from "lucide-react";
@@ -19,6 +21,7 @@ import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings } from "../../lib/etax";
 import { isYearCompliant } from "../../lib/ebook";
 import { buildBlueStatement } from "../../lib/blueStatement";
+import { buildWhiteStatement, businessMonths, familyDeductions, familyMembers, whiteSummary, type FamilyLine } from "../../lib/whiteStatement";
 import { buildIncomeTaxXtx, incomeXtxNotices, incomeXtxProblems, myNumberPersons, type IncomeTaxXtxSource } from "../../lib/incomeTaxXtx";
 import { MyNumberDialog } from "../../components/MyNumberDialog";
 import { CODE } from "../../constants/accounts";
@@ -39,7 +42,9 @@ const SOCIAL_WORDS = /国民健康保険|国保|国民年金|介護保険|後期
 const SMALL_WORDS = /小規模企業共済|iDeCo|イデコ|確定拠出年金|心身障害者扶養共済/i;
 
 export const IncomeTaxPage = () => {
-  const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump } = useAppContext();
+  const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump, filingTypeOf } = useAppContext();
+  const filingType = filingTypeOf(year);
+  const white = filingType === "white";
   const { lines, opening } = useYearData();
   const toast = useToast();
   const [view, setView] = useState<View>("input");
@@ -60,13 +65,23 @@ export const IncomeTaxPage = () => {
   const admin = can("settings") && !isClosed;
   const set = <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => setX((p) => ({ ...p, [k]: v }));
 
-  // 事業所得（営業等）：帳簿と決算書から
+  // 事業所得（営業等）：帳簿と決算書から。白色申告は収支内訳書（専従者給与を経費にせず、事業専従者控除を差し引く）
+  const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
+  const familyLines = useMemo<FamilyLine[]>(() => {
+    if (!white) return [];
+    const w = whiteSummary(accounts, (a) => end.get(a.id) ?? 0);
+    return familyDeductions(w.beforeDeduction, familyMembers(x), year, businessMonths(x.businessTax, year));
+  }, [white, accounts, end, x, year]);
   const biz = useMemo<BusinessFigures>(() => {
-    const end = closingBalances(accounts, opening, lines);
+    if (white) {
+      const w = whiteSummary(accounts, (a) => end.get(a.id) ?? 0);
+      const deduction = familyLines.reduce((t, l) => t + l.deduction, 0);
+      return { revenue: w.revenue.total, incomeBeforeBlue: w.beforeDeduction - deduction, filingType, familySalary: deduction };
+    }
     const pl = summarizeIncome(accounts, end);
     const family = accounts.find((a) => a.code === CODE.FAMILY_SALARY);
-    return { revenue: pl.revenue, incomeBeforeBlue: pl.income, filingType: settings.filing_type, familySalary: family ? end.get(family.id) ?? 0 : 0 };
-  }, [accounts, opening, lines, settings.filing_type]);
+    return { revenue: pl.revenue, incomeBeforeBlue: pl.income, filingType, familySalary: family ? end.get(family.id) ?? 0 : 0 };
+  }, [white, accounts, end, familyLines, filingType]);
   const result = useMemo(() => computeIncomeTax(x, biz, year), [x, biz, year]);
 
   // 事業主貸の補助科目ごとの合計（社会保険料などを拾うため）
@@ -112,14 +127,17 @@ export const IncomeTaxPage = () => {
       const [notes, assets, homeRun, depRun] = await Promise.all([
         repo.getStatementNotes(db, year), repo.getAssets(db), repo.getHomeUseRun(db, year), repo.getDepreciationRun(db, year),
       ]);
-      const statement = buildBlueStatement({
+      const books = {
         year, accounts, opening, lines, notes, assets, homeUseRates,
         excludeEntryIds: [homeRun, depRun].filter((v): v is number => v !== null),
-        payeeName: (r) => r.counterpartyId ? counterparties.find((c) => c.id === r.counterpartyId)?.name ?? "（取引先）" : r.subId ? subMap.get(r.subId)?.name ?? "（補助科目）" : "（支払先の指定なし）",
-        deductionLimit: BLUE_DEDUCTION_LIMIT[settings.filing_type],
-      });
+        payeeName: (r: { counterpartyId: number | null; subId: number | null }) =>
+          r.counterpartyId ? counterparties.find((c) => c.id === r.counterpartyId)?.name ?? "（取引先）" : r.subId ? subMap.get(r.subId)?.name ?? "（補助科目）" : "（支払先の指定なし）",
+        invoiceNoOf: (id: number) => counterparties.find((c) => c.id === id)?.invoice_no ?? "",
+      };
+      const statement = buildBlueStatement({ ...books, deductionLimit: BLUE_DEDUCTION_LIMIT[filingType] });
+      const whiteSt = white ? buildWhiteStatement({ ...books, family: familyMembers(x), periodMonths: businessMonths(x.businessTax, year) }) : undefined;
       setExportSrc({
-        year, filer, input: x, result, biz, statement, settings, numbers: {}, createdOn: todayIso(),
+        year, filer, input: x, result, biz, statement, white: whiteSt, settings, numbers: {}, createdOn: todayIso(),
         bookKeeping: isYearCompliant(settings, year) && notes["ebook:filed"] ? 1 : 2,
       });
     } catch (e) {
@@ -186,11 +204,11 @@ export const IncomeTaxPage = () => {
         <div className="scroll-y">
           {result.notes.map((n) => <p key={n} className="notice it-note">{n}</p>)}
           {view === "input" ? (
-            <InputView x={x} set={set} setX={setX} result={result} year={year} disabled={!admin} drawings={drawings.length > 0} onPick={pickFromBooks} />
+            <InputView x={x} set={set} setX={setX} result={result} year={year} disabled={!admin} drawings={drawings.length > 0} onPick={pickFromBooks} white={white} familyLines={familyLines} />
           ) : view === "first" ? (
             <FirstTable result={result} year={year} />
           ) : (
-            <SecondTable result={result} x={x} familySalary={biz.familySalary} />
+            <SecondTable result={result} x={x} familySalary={biz.familySalary} white={white} familyLines={familyLines} />
           )}
         </div>
       </section>
@@ -277,9 +295,9 @@ const PREMIUM_COLS = (placeholder: string): Col<PremiumRow>[] => [
   { key: "amount", label: "支払った額", kind: "amount", width: 150 },
 ];
 
-const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
+const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, white, familyLines }: {
   x: IncomeTaxInput; set: <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => void; setX: (f: (p: IncomeTaxInput) => IncomeTaxInput) => void;
-  result: IncomeTaxResult; year: number; disabled: boolean; drawings: boolean; onPick: () => void;
+  result: IncomeTaxResult; year: number; disabled: boolean; drawings: boolean; onPick: () => void; white: boolean; familyLines: FamilyLine[];
 }) => {
   const { rules } = rulesFor(year);
   const man = (n: number) => `${n / 10_000}万円`;
@@ -400,6 +418,15 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       <RelativesEditor rows={x.dependents} onChange={(v) => setX((p) => ({ ...p, dependents: v }))} year={year} ownIncome={result.totalIncome} disabled={disabled} />
     </Section>
 
+    {white && (
+      <Section
+        title="事業専従者（白色申告）"
+        note="配偶者・扶養親族で「専従者」に印を付けた人です。控除額は1人につき、86万円（配偶者以外は50万円）と、収支内訳書の専従者控除前の所得金額 ÷（事業専従者の数＋1）の少ない方です。12月31日に15歳以上で、その年に6か月を超えて（年の中途に開業・廃業したときは事業の期間の2分の1を超えて）事業に専ら従事した人が対象です。従事の程度・仕事の内容は第二表に書きます（例：毎日・経理）。"
+      >
+        <FamilyEditor x={x} setX={setX} lines={familyLines} disabled={disabled} />
+      </Section>
+    )}
+
     <Section title="税額控除・予定納税" note="住宅借入金等特別控除は、計算明細書で計算した額を入れます（所得税額が上限）。予定納税額は、税務署から通知された第1期分と第2期分の合計です。">
       <div className="field-row wrap it-amounts">
         <label className="field">
@@ -443,6 +470,42 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick }: {
       </div>
     </Section>
   </div>
+  );
+};
+
+/** 白色の事業専従者の従事月数・仕事の内容（配偶者・扶養親族の欄に持つ） */
+const FamilyEditor = ({ x, setX, lines, disabled }: {
+  x: IncomeTaxInput; setX: (f: (p: IncomeTaxInput) => IncomeTaxInput) => void; lines: FamilyLine[]; disabled: boolean;
+}) => {
+  const update = (from: string, patch: Partial<Relative>) => setX((p) => from === "spouse"
+    ? { ...p, spouse: p.spouse ? { ...p.spouse, ...patch } : null }
+    : { ...p, dependents: p.dependents.map((d, i) => (`dep${i}` === from ? { ...d, ...patch } : d)) });
+  const personOf = (from: string) => (from === "spouse" ? x.spouse : x.dependents[Number(from.slice(3))]);
+  if (lines.length === 0) return <p className="field-note">いません（配偶者・扶養親族の欄で「専従者」に印を付けると、ここに出ます）。</p>;
+  return (
+    <table className="ledger it-table">
+      <thead>
+        <tr><th>氏名</th><th style={{ width: 80 }}>続柄</th><th className="num" style={{ width: 70 }}>年齢</th><th style={{ width: 110 }}>従事月数</th><th>従事の程度・仕事の内容</th><th className="num" style={{ width: 120 }}>控除額</th><th>備考</th></tr>
+      </thead>
+      <tbody>
+        {lines.map((l) => (
+          <tr key={l.from}>
+            <td>{l.name}</td>
+            <td>{l.relation}</td>
+            <td className="num">{l.age === null ? "" : `${l.age}歳`}</td>
+            <td>
+              <select className="input" value={personOf(l.from)?.months ?? ""} onChange={(e) => update(l.from, { months: e.target.value ? Number(e.target.value) : null })} disabled={disabled} aria-label="従事月数">
+                <option value="">—</option>
+                {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{i + 1}か月</option>)}
+              </select>
+            </td>
+            <td><input className="input" value={personOf(l.from)?.work ?? ""} onChange={(e) => update(l.from, { work: e.target.value })} disabled={disabled} aria-label="従事の程度・仕事の内容" maxLength={40} placeholder="例：毎日・経理" /></td>
+            <td className="num">{yen(l.deduction)}</td>
+            <td>{l.problem ? <span className="balance-ng">{l.problem}</span> : <span className="muted">{l.spouse ? "配偶者 86万円まで" : "50万円まで"}</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 };
 
@@ -527,7 +590,9 @@ const FirstTable = ({ result, year }: { result: IncomeTaxResult; year: number })
   </div>
 );
 
-const SecondTable = ({ result, x, familySalary }: { result: IncomeTaxResult; x: IncomeTaxInput; familySalary: number }) => {
+const SecondTable = ({ result, x, familySalary, white, familyLines }: {
+  result: IncomeTaxResult; x: IncomeTaxInput; familySalary: number; white: boolean; familyLines: FamilyLine[];
+}) => {
   const s = result.second;
   const withheldTotal = s.withholding.reduce((t, r) => t + r.withheld, 0);
   const disabilityLabel = (d: Disability) => DISABILITIES.find((v) => v.value === d)?.label ?? "";
@@ -598,7 +663,24 @@ const SecondTable = ({ result, x, familySalary }: { result: IncomeTaxResult; x: 
       ) : <p className="field-note">ありません。</p>}
 
       <h3 className="sheet-sub">事業専従者に関する事項（(58)）</h3>
-      <p className="it-plain">専従者給与の合計額：{yen(familySalary)}円（氏名・従事月数は決算書の「月別売上・給料など」に書き込んだもの）</p>
+      {white ? (
+        familyLines.some((l) => l.deduction > 0) ? (
+          <table className="ledger tax-form-table">
+            <thead><tr><th>氏名</th><th>続柄</th><th>生年月日</th><th>従事月数・程度・仕事の内容</th><th className="num">専従者控除額</th></tr></thead>
+            <tbody>
+              {familyLines.filter((l) => l.deduction > 0).map((l) => (
+                <tr key={l.from}>
+                  <td>{l.name}</td><td>{l.relation}</td><td>{l.birthday}</td>
+                  <td>{[l.months ? `${l.months}月` : "", l.work].filter(Boolean).join("・")}</td><td className="num">{yen(l.deduction)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr><td colSpan={4}>(58) 専従者給与（控除）額の合計額</td><td className="num">{yen(familySalary)}</td></tr></tfoot>
+          </table>
+        ) : <p className="field-note">ありません。</p>
+      ) : (
+        <p className="it-plain">専従者給与の合計額：{yen(familySalary)}円（氏名・従事月数は決算書の「月別売上・給料など」に書き込んだもの）</p>
+      )}
 
       <p className="field-note">
         個人番号は domble に保存しません（e-Tax 用のデータを書き出すときに入れます）。住民税・事業税に関する事項は、入力の「住民税・事業税に関する事項」で入れたものを書き出します。

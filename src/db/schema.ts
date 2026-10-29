@@ -55,6 +55,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_statement_notes", "statement_notes", "fiscal_year"),
   ...yearGuards("trg_closed_master_names", "master_names", "from_year"),
   ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
+  ...yearGuards("trg_closed_filing_years", "filing_years", "from_year"),
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
   ...yearGuards("trg_closed_tax_prev_amounts", "tax_prev_amounts", "fiscal_year"),
@@ -203,6 +204,15 @@ export const SCHEMA: string[] = [
     taxable_from TEXT NOT NULL DEFAULT '',
     deduction TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump')),
     voluntary_interim INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))
+  );`,
+
+  /**
+   * 申告の種類（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ。lib/filing.ts）
+   * 行の無い年は、帳簿を作ったときの設定（settings.filing_type）
+   */
+  `CREATE TABLE IF NOT EXISTS filing_years (
+    from_year INTEGER PRIMARY KEY,
+    filing_type TEXT NOT NULL CHECK (filing_type IN ('blue65','blue55','blue10','white'))
   );`,
 
   /** 消費税の中間納付税額（年度ごと。申告した税額。消費税＝国税分と地方消費税＝譲渡割額） */
