@@ -55,6 +55,7 @@ const statement = (o: Partial<BlueStatement> = {}): BlueStatement => ({
   salaries: [], family: [], interest: [], fees: [], rent: [], depreciation: [], special: "",
   sales: { rows: [{ key: "cp:1", name: "株式会社エー", address: "", invoiceNo: "1234567890123", amount: 3_000_000 }], other: 2_000_000, total: 5_000_000 },
   purchases: { rows: [], other: 0, total: 0 }, salesPartners: [], purchasePartners: [],
+  allowance: { receivables: [], adjust: 0, base: 0, finance: false, limit: 0, bulk: 0, individual: 0, total: 0, reversal: 0, problems: [] },
   ...o,
 });
 
@@ -305,6 +306,30 @@ describe("白色申告（申告書＋収支内訳書）", () => {
   });
   test("専従者給与を経費に入れていないことを知らせる", () => {
     expect(incomeXtxNotices(src).join()).toMatch(/専従者給与の科目に記帳した額は/);
+  });
+});
+
+describe("貸倒引当金（青色申告決算書の1・2ページ）", () => {
+  const allowance = {
+    receivables: [{ name: "売掛金", amount: 1_000_000 }], adjust: 0, base: 1_000_000, finance: false, limit: 55_000, bulk: 44_000, individual: 10_000, total: 54_000,
+    reversal: 30_000, problems: [],
+  };
+  const st = (add: number, back: number) => {
+    const base = statement();
+    const sections = { ...base.layout.sections, addition: [row("専従者給与", 0), row("貸倒引当金", add)], reversal: [row("貸倒引当金", back)] };
+    return statement({ allowance, layout: { ...base.layout, sections } });
+  };
+  test("2ページの貸倒引当金繰入額の計算（①〜⑤）と、1ページの繰戻額等・繰入額等", () => {
+    const src = source({}, { statement: st(54_000, 30_000) });
+    const xml = buildIncomeTaxXtx(src);
+    expect(validate(xml)).toBe("");
+    expect(["AMF01010", "AMF01030", "AMF01040", "AMF01050", "AMF01060", "AMF00420", "AMF00470"].map((t) => val(xml, t))).toEqual([
+      "10000", "1000000", "55000", "44000", "54000", "30000", "54000",
+    ]);
+    expect(incomeXtxNotices(src).join()).not.toMatch(/貸倒引当金/);
+  });
+  test("帳簿の繰入・戻入が計算と違えば知らせる", () => {
+    expect(incomeXtxNotices(source({}, { statement: st(40_000, 30_000) })).join()).toMatch(/貸倒引当金の帳簿の額（繰入 40,000円・戻入 30,000円）/);
   });
 });
 

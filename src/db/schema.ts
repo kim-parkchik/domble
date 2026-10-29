@@ -52,6 +52,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_homeuse_rates", "home_use_rates", "from_year"),
   ...yearGuards("trg_closed_homeuse_runs", "home_use_runs", "fiscal_year"),
   ...yearGuards("trg_closed_depreciation_runs", "depreciation_runs", "fiscal_year"),
+  ...yearGuards("trg_closed_allowance_runs", "allowance_runs", "fiscal_year"),
   ...yearGuards("trg_closed_statement_notes", "statement_notes", "fiscal_year"),
   ...yearGuards("trg_closed_master_names", "master_names", "from_year"),
   ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
@@ -279,6 +280,12 @@ export const SCHEMA: string[] = [
 
   /** 年末の減価償却で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
   `CREATE TABLE IF NOT EXISTS depreciation_runs (
+    fiscal_year INTEGER PRIMARY KEY,
+    entry_id INTEGER NOT NULL REFERENCES journal_entries(id)
+  );`,
+
+  /** 年末の貸倒引当金（洗替：前年分の戻入と本年分の繰入）で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
+  `CREATE TABLE IF NOT EXISTS allowance_runs (
     fiscal_year INTEGER PRIMARY KEY,
     entry_id INTEGER NOT NULL REFERENCES journal_entries(id)
   );`,
@@ -587,6 +594,13 @@ export const SCHEMA: string[] = [
  * 既存ファイルへの列追加（古い帳簿を開いたときに足りない列を足す）
  * [テーブル, 列名, 定義]。今後スキーマを変えたらここに足していく
  */
+/**
+ * 初期科目を入れる（帳簿を開くたび）。コードも名前も無いものだけ足す（将来科目を足しても既存ファイルに自動で入る。
+ * 同じ名前の科目を自分で足していれば足さない）。引数：code, name, kana, category, normal_side, sort_order
+ */
+export const SEED_ACCOUNT_SQL = `INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system)
+  SELECT ?1, ?2, ?3, ?4, ?5, ?6, 1 WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE code = ?1 OR name = ?2)`;
+
 export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "e_book_mode", "TEXT CHECK (e_book_mode IN ('strict','standard'))"],
   // 通常 → 厳密に切り替えた帳簿：対応を始めた年と切り替えた日時（最初から厳密モードの帳簿は NULL = 全部の年が対応）

@@ -12,6 +12,7 @@ import { closingBalances, summarizeIncome, type FlatLine, type IncomeSummary } f
 import { monthlySales, partnerTotals, payeeBreakdown, type MonthlySales, type PayeeRow } from "./statements";
 import { lineOf, sectionOf, statementLayout, type StatementLayout } from "./statementLines";
 import { depreciationFor, isOldStraight, type FixedAsset } from "./depreciation";
+import { allowanceAccounts, allowanceCalc, type AllowanceCalc } from "./allowance";
 import type { Account, HomeUseRate, OpeningBalances } from "./types";
 import { CODE } from "../constants/accounts";
 
@@ -144,6 +145,8 @@ export interface BlueStatement {
   /** 売上先・仕入先の行（多い順。全部。収支内訳書は計の違う表を作る） */
   salesPartners: PartnerLine[];
   purchasePartners: PartnerLine[];
+  /** 貸倒引当金繰入額の計算（2ページ） */
+  allowance: AllowanceCalc;
   special: string;
 }
 
@@ -170,6 +173,7 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
     return payeeBreakdown(id, s.lines, { drawId, yearEndRate: rate?.rate ?? null, excludeEntryIds: s.excludeEntryIds });
   };
   const included = (k: string, defaultOn: boolean) => (notes[k] ? notes[k] === "1" : defaultOn);
+  const openingOf = (id: number | undefined) => (id ? s.opening[id] ?? 0 : 0);
 
   const pay = (rows: PayeeRow[], prefix: string): PayLine[] =>
     rows.map((r) => {
@@ -216,6 +220,7 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
     fees: payees(feeRows, "fees", "tax"),
     rent: payees(breakdown(CODE.RENT, true), "rent", ""),
     depreciation,
+    allowance: allowanceCalc(accounts, (a) => end.get(a.id) ?? 0, openingOf(allowanceAccounts(accounts).allowance?.id), notes, true),
     sales: partnerTable(salesPartners, pl.revenue),
     purchases: partnerTable(purchasePartners, purchaseTotal),
     salesPartners,

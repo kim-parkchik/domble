@@ -1,12 +1,13 @@
 /**
  * 青色申告決算書の2ページ・3ページ
- *  2ページ：月別売上（収入）金額及び仕入金額、給料賃金の内訳、専従者給与の内訳、青色申告特別控除額の計算
+ *  2ページ：月別売上（収入）金額及び仕入金額、給料賃金の内訳、専従者給与の内訳、貸倒引当金繰入額の計算（年末の洗替の仕訳を作る）、青色申告特別控除額の計算
  *  3ページ：売上（収入）金額・仕入金額の明細、減価償却費の計算（固定資産台帳から）、利子割引料・税理士等の報酬・地代家賃の内訳、本年中における特殊事情
  * 明細の表は収支内訳書（WhiteStatementPages.tsx）でも使う
  * 金額は帳簿から出す（lib/statements.ts）。帳簿から出せない項目（年齢・従事月数・住所・賃借物件など）は、
  * その場で書き込んで年度ごとに保存する（statement_notes）
  */
 import { useEffect, useState } from "react";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppContext } from "../../context/AppContext";
 import { useToast } from "../../components/Toast";
 import { yen } from "../../lib/format";
@@ -15,6 +16,8 @@ import { monthlySales, payeeBreakdown, type PayeeRow } from "../../lib/statement
 import { partnerLines, partnerTable, type PartnerTable } from "../../lib/blueStatement";
 import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
 import type { FlatLine } from "../../lib/accounting";
+import { ALLOWANCE_NOTE, allowanceAccounts, allowanceCalc, allowanceLines } from "../../lib/allowance";
+import type { OpeningBalances } from "../../lib/types";
 import * as repo from "../../db/repo";
 
 export type Notes = Record<string, string>;
@@ -157,7 +160,9 @@ export const PayTable = ({ rows, prefix, withRelation, notes, onSaved }: NotePro
 // ────────────────────────────────────────────
 // 2ページ
 // ────────────────────────────────────────────
-export const StatementPage2 = ({ lines, income, deductionLimit }: { lines: FlatLine[]; income: number; deductionLimit: number }) => {
+export const StatementPage2 = ({ lines, income, deductionLimit, end, opening }: {
+  lines: FlatLine[]; income: number; deductionLimit: number; end: Map<number, number>; opening: OpeningBalances;
+}) => {
   const { accounts } = useAppContext();
   const { notes, set } = useNotes();
   const { salaries, family } = useDetailRows(lines);
@@ -193,6 +198,8 @@ export const StatementPage2 = ({ lines, income, deductionLimit }: { lines: FlatL
           専従者の続柄と従事月数は、確定申告書の第二表「事業専従者に関する事項」にも書きます。
         </p>
 
+        <AllowanceSection end={end} opening={opening} notes={notes} onSaved={set} />
+
         <h3 className="st-h">青色申告特別控除額の計算</h3>
         <table className="ledger st-detail">
           <tbody>
@@ -204,6 +211,100 @@ export const StatementPage2 = ({ lines, income, deductionLimit }: { lines: FlatL
         <p className="field-note">不動産所得がある場合などは、控除額の配分が変わります（ここでは事業所得だけで計算した目安です）。</p>
       </section>
     </div>
+  );
+};
+
+/**
+ * 貸倒引当金繰入額の計算（① 個別評価・② 貸金・③ 繰入限度額・④ 一括評価の繰入額・⑤ 計）と、年末の洗替の仕訳
+ * ①・②の調整・④・金融業は書き込みに持つ（lib/allowance.ts）。印刷では表だけ出す
+ */
+const AllowanceSection = ({ end, opening, notes, onSaved }: NoteProps & { end: Map<number, number>; opening: OpeningBalances }) => {
+  const { db, year, accounts, dataVersion, bump, isClosed, can, readOnly } = useAppContext();
+  const toast = useToast();
+  const accs = allowanceAccounts(accounts);
+  const calc = allowanceCalc(accounts, (a) => end.get(a.id) ?? 0, accs.allowance ? opening[accs.allowance.id] ?? 0 : 0, notes, true);
+  const [runId, setRunId] = useState<number | null>(null);
+  useEffect(() => {
+    repo.getAllowanceRun(db, year).then(setRunId).catch(console.error);
+  }, [db, year, dataVersion]);
+  const booked = (id: number | undefined) => (id ? end.get(id) ?? 0 : 0);
+  const matches = booked(accs.add?.id) === calc.total && booked(accs.back?.id) === calc.reversal;
+  const disabled = isClosed || readOnly || !can("entry");
+  const toggleFinance = async (on: boolean) => {
+    try {
+      await repo.saveStatementNote(db, year, ALLOWANCE_NOTE.finance, on ? "1" : "");
+      onSaved(ALLOWANCE_NOTE.finance, on ? "1" : "");
+    } catch (e) {
+      toast(`保存できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+  const run = async () => {
+    const lines = allowanceLines(accounts, calc);
+    if (!lines) return toast("貸倒引当金・貸倒引当金繰入・貸倒引当金戻入の科目が見つかりません（勘定科目の画面で確かめてください）", "error");
+    const ok = await ask(
+      lines.length === 0
+        ? `${year}年は戻し入れも繰り入れも無いので、作成済みの貸倒引当金の仕訳を削除します。`
+        : `${year}年12月31日付で、前年分の戻入 ${yen(calc.reversal)} 円と本年分の繰入 ${yen(calc.total)} 円の決算整理仕訳を${runId ? "作り直します" : "作ります"}。`,
+      { title: "貸倒引当金の仕訳", okLabel: runId ? "作り直す" : "作成する", cancelLabel: "やめる" },
+    );
+    if (!ok) return;
+    try {
+      await repo.saveAllowanceRun(db, year, lines);
+      bump();
+      toast(lines.length === 0 ? "貸倒引当金の仕訳を削除しました" : "貸倒引当金の仕訳を作成しました");
+    } catch (e) {
+      toast(`作成できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+  return (
+    <>
+      <h3 className="st-h">貸倒引当金繰入額の計算</h3>
+      <table className="ledger st-detail st-allowance">
+        <tbody>
+          <tr><td>① 個別評価による本年分繰入額</td><td className="num"><Note k={ALLOWANCE_NOTE.individual} notes={notes} onSaved={onSaved} align="right" placeholder="0" /></td></tr>
+          <tr><td>② 年末における一括評価による貸倒引当金の繰入れの対象となる貸金の合計額</td><td className="num">{yen(calc.base)}</td></tr>
+          <tr className="screen-only">
+            <td className="indent muted">
+              {calc.receivables.map((r) => `${r.name} ${yen(r.amount)}`).join("・")}（年末の残高）に足し引きする額
+            </td>
+            <td className="num"><Note k={ALLOWANCE_NOTE.adjust} notes={notes} onSaved={onSaved} align="right" placeholder="0" /></td>
+          </tr>
+          <tr>
+            <td>
+              ③ 本年分繰入限度額（②×{calc.finance ? "3.3" : "5.5"}%）
+              <label className="check screen-only st-inline-check">
+                <input type="checkbox" checked={calc.finance} disabled={disabled} onChange={(e) => toggleFinance(e.target.checked)} /> 金融業
+              </label>
+            </td>
+            <td className="num">{yen(calc.limit)}</td>
+          </tr>
+          <tr>
+            <td>④ 本年分繰入額<span className="muted screen-only">（空なら繰入限度額）</span></td>
+            <td className="num">
+              <span className="screen-only"><Note k={ALLOWANCE_NOTE.amount} notes={notes} onSaved={onSaved} align="right" placeholder={yen(calc.limit)} /></span>
+              <span className="print-only">{yen(calc.bulk)}</span>
+            </td>
+          </tr>
+          <tr className="st-strong"><td>⑤ 本年分の貸倒引当金繰入額（①＋④）</td><td className="num">{yen(calc.total)}</td></tr>
+        </tbody>
+      </table>
+      {calc.problems.map((p) => <p key={p} className="notice screen-only">{p}。</p>)}
+      <div className="st-allowance-run screen-only">
+        <span>前年からの繰戻し（期首の貸倒引当金）{yen(calc.reversal)} 円。</span>
+        {runId
+          ? <span className={matches ? "muted" : "balance-ng"}>{matches ? "仕訳は作成済みです。" : "帳簿の繰入・戻入がこの計算と違います。作り直してください。"}</span>
+          : (calc.total > 0 || calc.reversal > 0) && <span className={matches ? "muted" : "balance-ng"}>{matches ? "帳簿の繰入・戻入はこの計算と同じです。" : "年末の仕訳はまだです。"}</span>}
+        <button type="button" className="btn ghost sm" onClick={run} disabled={disabled || (!runId && calc.total === 0 && calc.reversal === 0)}>
+          {runId ? "仕訳を作り直す" : "仕訳を作る"}
+        </button>
+      </div>
+      <p className="field-note screen-only">
+        青色申告の人は、年末の売掛金・受取手形・貸付金・未収入金などの貸金の5.5%（金融業は3.3%）まで貸倒引当金に繰り入れられます。
+        家事上の貸金、保証金・敷金、手付金・前渡金、仮払金・立替金、同じ相手の買掛金と相殺できる額、個別評価の相手の分などは対象にならないので「足し引きする額」で引き、
+        割り引いたり裏書譲渡したりした受取手形は足します。前年に繰り入れた額は、本年に戻し入れて収入にします（洗替）。
+        仕訳は12月31日付の決算整理仕訳で「貸倒引当金 / 貸倒引当金戻入」「貸倒引当金繰入 / 貸倒引当金」です。
+      </p>
+    </>
   );
 };
 

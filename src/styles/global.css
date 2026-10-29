@@ -466,6 +466,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 @media print {
   @page { size: A4; margin: 14mm; }
   .screen-only, .print-skip { display: none !important; }
+  .print-only { display: inline !important; }
   .note-input { border: none !important; background: none !important; padding: 0 !important; }
   .note-input::placeholder { color: transparent; }
   body { background: #fff; }
@@ -780,6 +781,9 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .statement-head h2.st-title-small { font-size: 17px; letter-spacing: .1em; }
 .note-input { width: 100%; min-width: 3.5em; border: 1px dashed var(--rule-strong); border-radius: 4px; background: #fffdf5; padding: 2px 6px; font: inherit; color: var(--ink); }
 .note-input.num { text-align: right; }
+.print-only { display: none; }
+.st-inline-check { display: inline-flex; margin-left: 10px; font-size: 12px; }
+.st-allowance-run { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
 .note-input.wide { display: block; margin-top: 3px; }
 .note-input:disabled { border-color: transparent; background: none; }
 /* 電子帳簿保存法の対応外の年 */

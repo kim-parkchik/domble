@@ -147,7 +147,9 @@ export const whiteSummary = (accounts: Account[], amount: (a: Account) => number
   const asExpense = accounts
     .filter((a) => a.code !== CODE.FAMILY_SALARY)
     .map((a): Account => (a.category === "special" ? { ...a, category: "expense", statement_line: null } : a));
-  const layout = statementLayout(asExpense, amount, () => 0, { expense: WHITE_EXPENSE_EXTRA });
+  // 繰戻額等（貸方の科目。貸倒引当金戻入など）は、経費から差し引く（マイナスの経費）
+  const credit = new Set(accounts.filter((a) => a.category === "special" && a.normal_side === "credit").map((a) => a.id));
+  const layout = statementLayout(asExpense, (a) => (credit.has(a.id) ? -amount(a) : amount(a)), () => 0, { expense: WHITE_EXPENSE_EXTRA });
   warnings.push(...layout.warnings.filter((w) => w.startsWith("経費")));
 
   const sumCat = (pred: (a: Account) => boolean) => accounts.filter(pred).reduce((s, a) => s + amount(a), 0);

@@ -9,7 +9,7 @@ import { RETIRED_TRIGGERS } from "./schema";
 import type {
   AccessLogRecord, Account, AccountCategory, Counterparty, User, EBookMode, EntrySnapshot, Evidence, EvidenceAction, EvidenceHistoryRecord, EvidenceKind, EvidenceMeta,
   EvidenceSnapshot, FilingType, FilingYear, FiscalClosing, HistoryAction, HistoryRecord, JournalEntry, JournalLine,
-  HomeUseRate, MasterHistoryRecord, OpeningBalances, PurchaseUse, Settings, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
+  HomeUseRate, MasterHistoryRecord, OpeningBalances, PurchaseUse, Settings, Side, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
 } from "../lib/types";
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
@@ -865,6 +865,8 @@ export interface AccountInputData {
   name: string;
   kana: string;
   category: AccountCategory;
+  /** 専従者給与等の科目だけ選べる残高の側（debit 繰入額等 ／ credit 繰戻額等）。ほかは区分で決まる */
+  side?: Side;
 }
 
 export const validateAccount = (accounts: Account[], data: AccountInputData, editingId?: number): string | null => {
@@ -883,7 +885,7 @@ export const validateAccount = (accounts: Account[], data: AccountInputData, edi
 const createAccount_ = async (db: Database, data: AccountInputData) => {
   const res = await db.execute(
     `INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system) VALUES (?, ?, ?, ?, ?, ?, 0)`,
-    [data.code, data.name.trim(), data.kana.trim(), data.category, normalSideOf(data.category), Number(data.code) * 10],
+    [data.code, data.name.trim(), data.kana.trim(), data.category, data.category === "special" && data.side ? data.side : normalSideOf(data.category), Number(data.code) * 10],
   );
   await logMaster(db, {
     target_type: "account", target_id: Number(res.lastInsertId), action: "create",
@@ -1428,6 +1430,7 @@ const deleteEntry_ = async (db: Database, id: number, reason = "") => {
     // 家事按分の年末振替の仕訳なら、振替の記録も消す（次は作り直しになる）
     await db.execute("DELETE FROM home_use_runs WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM depreciation_runs WHERE entry_id = ?", [id]);
+    await db.execute("DELETE FROM allowance_runs WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_lines WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_entries WHERE id = ?", [id]);
     return;
@@ -1664,6 +1667,38 @@ const saveDepreciationRun_ = async (db: Database, year: number, lines: JournalLi
   const id = await createEntry_(db, yearEnd(year), lines, null, "", true);
   await db.execute(
     "INSERT INTO depreciation_runs (fiscal_year, entry_id) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET entry_id = excluded.entry_id",
+    [year, id],
+  );
+  return id;
+};
+
+export const getAllowanceRun = async (db: Database, year: number) => {
+  const r = await db.select<{ entry_id: number }[]>(
+    `SELECT r.entry_id FROM allowance_runs r JOIN journal_entries e ON e.id = r.entry_id
+      WHERE r.fiscal_year = ? AND e.is_deleted = 0`,
+    [year],
+  );
+  return r[0]?.entry_id ?? null;
+};
+
+/**
+ * 年末の貸倒引当金の仕訳を作る（洗替。作り直すときは同じ仕訳を訂正する。戻入も繰入も無くなったら、その仕訳を削除する）。
+ * 12月31日付の決算整理仕訳。仕訳の id を返す（削除したときは null）
+ */
+const saveAllowanceRun_ = async (db: Database, year: number, lines: JournalLine[]) => {
+  await assertYearOpen(db, year);
+  const runId = await getAllowanceRun(db, year);
+  if (lines.length === 0) {
+    if (runId) await deleteEntry_(db, runId, "貸倒引当金の再計算（戻入・繰入なし）");
+    return null;
+  }
+  if (runId) {
+    await updateEntry_(db, runId, yearEnd(year), lines, "貸倒引当金の再計算", null, true);
+    return runId;
+  }
+  const id = await createEntry_(db, yearEnd(year), lines, null, "", true);
+  await db.execute(
+    "INSERT INTO allowance_runs (fiscal_year, entry_id) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET entry_id = excluded.entry_id",
     [year, id],
   );
   return id;
@@ -2509,4 +2544,5 @@ export const saveStatementNote = inTx(saveStatementNote_, (year) => `${year}年�
 export const saveAsset = inTx(saveAsset_, (id) => (id === null ? "固定資産の追加" : `固定資産 #${id} の変更`), { perm: "master" });
 export const deleteAsset = inTx(deleteAsset_, (id) => `固定資産 #${id} の削除`, { perm: "master" });
 export const saveDepreciationRun = inTx(saveDepreciationRun_, (year) => `${year}年の減価償却`, { perm: "entry" });
+export const saveAllowanceRun = inTx(saveAllowanceRun_, (year) => `${year}年の貸倒引当金`, { perm: "entry" });
 export const saveHomeUseRunEntry = inTx(saveHomeUseRunEntry_, (year) => `${year}年の家事按分の振替`, { perm: "entry" });

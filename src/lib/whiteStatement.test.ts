@@ -144,6 +144,13 @@ describe("収支内訳書の1ページ", () => {
     expect(at(2022)).toMatchObject({ method: "旧定額法", base: 9_000_000, rate: 0.046, depreciation: 414_000, memo: "" });
     expect(at(2025)).toMatchObject({ method: "旧定額法", base: 500_000, rate: 0.2, depreciation: 100_000, closing: 300_000, memo: "均等償却" });
   });
+  test("白色の年の貸倒引当金（個別評価）：繰入は経費、戻入は経費から差し引く（追加の欄。知らせる）", () => {
+    const amounts = new Map([[acc("貸倒引当金繰入").id, 30_000], [acc("貸倒引当金戻入").id, 20_000]]);
+    const w = whiteSummary(seeds, (a) => amounts.get(a.id) ?? 0);
+    expect(w.otherExpenses.filter((r) => r.extra).map((r) => [r.label, r.amount])).toEqual([["貸倒引当金繰入", 30_000], ["貸倒引当金戻入", -20_000]]);
+    expect(w.expenseTotal).toBe(10_000);
+    expect(w.warnings.join()).toMatch(/貸倒引当金繰入・貸倒引当金戻入は、収支内訳書に欄が無い/);
+  });
   test("経費の追加の欄は 5 つ。多ければ金額の小さい科目を雑費にまとめて知らせる", () => {
     const names = ["支払手数料", "車両費", "新聞図書費", "会議費", "研修費", "諸会費"];
     const amounts = new Map(names.map((n, i) => [acc(n).id, (i + 1) * 1_000]));

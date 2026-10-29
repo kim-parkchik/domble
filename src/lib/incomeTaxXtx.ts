@@ -117,6 +117,15 @@ export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" 
   if (fam.length > FAMILY_ROWS) n.push(`第二表の事業専従者の欄は${FAMILY_ROWS}人分です。${fam.slice(FAMILY_ROWS).map((v) => v.name).join("・")}は書いていません`);
   const notCounted = src.white?.family.filter((l) => l.problem) ?? [];
   if (notCounted.length) n.push(`事業専従者控除の対象にしていない人がいます（${notCounted.map((l) => `${l.name || "氏名なし"}：${l.problem}`).join("、")}）`);
+  // 貸倒引当金：2ページの計算と、1ページ（帳簿）の繰入額等・繰戻額等が合っているか
+  if (!src.white) {
+    const al = src.statement.allowance;
+    const sec = src.statement.layout.sections;
+    const booked = (rows: typeof sec.addition) => rows.find((r) => !r.extra && r.label === "貸倒引当金")?.amount ?? 0;
+    if (booked(sec.addition) !== al.total || booked(sec.reversal) !== al.reversal) {
+      n.push(`貸倒引当金の帳簿の額（繰入 ${booked(sec.addition).toLocaleString()}円・戻入 ${booked(sec.reversal).toLocaleString()}円）が、決算書2ページの計算（繰入 ${al.total.toLocaleString()}円・戻入 ${al.reversal.toLocaleString()}円）と合いません。決算書の2ページで仕訳を作り直してください`);
+    }
+  }
   if (src.white?.familySalaryBooked) n.push("専従者給与の科目に記帳した額は、白色申告では必要経費にならないため、収支内訳書の経費に入れていません");
   if (src.input.salaries.length > 0) n.push("給与があるため、保険料の「うち年末調整等以外」の欄は書いていません（源泉徴収票に載っていない分だけを書く欄です）");
   if (src.input.housingLoan > 0) n.push("住宅借入金等特別控除の区分は書いていません（計算明細書を添付して、区分を確かめてください）");
@@ -446,6 +455,11 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
     })),
   } : undefined;
   // 青色申告特別控除額の計算（不動産所得は扱わない）
+  // 貸倒引当金繰入額の計算（① 個別評価・② 貸金の合計・③ 繰入限度額・④ 一括評価の繰入額・⑤ ①＋④）
+  const al = st.allowance;
+  if (al.total || al.base) {
+    Object.assign(v, { AMF01010: amount(al.individual), AMF01030: amount(al.base), AMF01040: amount(al.limit), AMF01050: amount(al.bulk), AMF01060: al.total });
+  }
   v.AMF01520 = pl.income;
   if (src.biz.filingType === "blue10") Object.assign(v, { AMF01570: Math.min(100_000, Math.max(0, pl.income)), AMF01580: st.deduction });
   else Object.assign(v, { AMF01540: st.deduction, AMF01550: st.deduction });

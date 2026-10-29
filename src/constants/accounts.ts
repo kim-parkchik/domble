@@ -50,6 +50,8 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("205", "前受金", "まえうけきん", "liability", "credit"),
   a("206", "預り金", "あずかりきん", "liability", "credit"),
   a("207", "仮受金", "かりうけきん", "liability", "credit"),
+  // 追加の科目は空いている小さいコードから振るので、あとから足した初期科目は離れたコードにする
+  a("250", "貸倒引当金", "かしだおれひきあてきん", "liability", "credit"),
 
   // ── 資本 ──
   a("301", "事業主借", "じぎょうぬしかり", "equity", "credit"),
@@ -93,6 +95,8 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
 
   // ── 所得計算の後段 ──
   a("701", "専従者給与", "せんじゅうしゃきゅうよ", "special", "debit"),
+  a("750", "貸倒引当金繰入", "かしだおれひきあてきんくりいれ", "special", "debit"),
+  a("751", "貸倒引当金戻入", "かしだおれひきあてきんもどしいれ", "special", "credit"),
 ];
 
 /** ロジックで特別扱いする科目のコード */
@@ -112,6 +116,13 @@ export const CODE = {
   RENT: "616",         // 地代家賃
   FEES: "620",         // 支払手数料（税理士・弁護士等の報酬の候補）
   FAMILY_SALARY: "701", // 専従者給与
+  ALLOWANCE: "250",     // 貸倒引当金
+  ALLOWANCE_ADD: "750", // 貸倒引当金繰入
+  ALLOWANCE_BACK: "751", // 貸倒引当金戻入
+  NOTES_RECEIVABLE: "110", // 受取手形
+  RECEIVABLE: "111",    // 売掛金
+  LOAN: "115",          // 貸付金
+  ACCRUED: "116",       // 未収入金
 } as const;
 
 /** 固定資産台帳で選ぶ資産の科目（減価償却するもの。土地は償却しないので入れない） */

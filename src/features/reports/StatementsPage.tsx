@@ -63,6 +63,9 @@ const BlueStatements = () => {
   const cogsSubtotal = cogsDebit.reduce((s, a) => s + val(a), 0);
 
   const showRow = (a: Account) => a.is_active || val(a) !== 0 || open(a) !== 0;
+  // 各種引当金・準備金等：繰戻額等（貸方の科目。所得に足す）と繰入額等（借方の科目。所得から差し引く）
+  const specialBack = by("special").filter((a) => a.normal_side === "credit" && (a.is_active || val(a) !== 0));
+  const specialAdd = by("special").filter((a) => a.normal_side === "debit" && (a.is_active || val(a) !== 0));
   const assets = by("asset").filter(showRow);
   const liabilities = by("liability").filter(showRow);
   const equity = by("equity");
@@ -102,7 +105,7 @@ const BlueStatements = () => {
         </header>
 
         {tab === "p2" ? (
-          <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} />
+          <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} end={end} opening={opening} />
         ) : tab === "p3" ? (
           <StatementPage3 lines={lines} salesTotal={pl.revenue} purchaseTotal={purchaseTotal} />
         ) : tab === "pl" ? (
@@ -130,7 +133,11 @@ const BlueStatements = () => {
                 ))}
                 <Line label="経費 計" value={pl.expenses} strong />
                 <Line label="差引金額" value={pl.beforeSpecial} strong />
-                {by("special").map((a) => <Line key={a.id} label={a.name} value={val(a)} indent />)}
+                <tr className="cat-row"><td colSpan={2}>各種引当金・準備金等</td></tr>
+                {specialBack.map((a) => <Line key={a.id} label={`繰戻額等　${a.name}`} value={val(a)} indent />)}
+                <Line label="繰戻額等 計" value={specialBack.reduce((s, a) => s + val(a), 0)} indent />
+                {specialAdd.map((a) => <Line key={a.id} label={`繰入額等　${a.name}`} value={val(a)} indent />)}
+                <Line label="繰入額等 計" value={specialAdd.reduce((s, a) => s + val(a), 0)} indent />
                 <Line label="青色申告特別控除前の所得金額" value={pl.income} strong />
                 <Line label="青色申告特別控除額（目安）" value={deduction} indent />
                 <Line label="所得金額" value={pl.income - deduction} strong />

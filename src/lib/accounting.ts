@@ -149,7 +149,8 @@ export const summarizeIncome = (accounts: Account[], balances: Map<number, numbe
       // 期末商品棚卸高（貸方科目）は原価から差し引く
       case "cogs": cogs += a.normal_side === "debit" ? b : -b; break;
       case "expense": expenses += b; break;
-      case "special": special += b; break;
+      // 専従者給与等：繰入額等（借方）は差し引き、繰戻額等（貸方。貸倒引当金戻入など）は足す
+      case "special": special += a.normal_side === "debit" ? b : -b; break;
     }
   }
   const grossProfit = revenue - cogs;

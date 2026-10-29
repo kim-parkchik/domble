@@ -5,12 +5,13 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Database as Sqlite } from "bun:sqlite";
 import type Database from "./connection";
-import { COLUMN_MIGRATIONS, SCHEMA } from "./schema";
+import { COLUMN_MIGRATIONS, SCHEMA, SEED_ACCOUNT_SQL } from "./schema";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import * as repo from "./repo";
 import type { JournalLine } from "../lib/types";
 import { subKey } from "../lib/types";
 import { depreciationLines } from "../lib/depreciation";
+import { allowanceCalc, allowanceLines } from "../lib/allowance";
 import { taxYearOf } from "../lib/tax";
 import { emptyRow } from "../lib/accounting";
 import { EMPTY_INCOME_TAX_INPUT } from "../lib/incomeTax";
@@ -274,6 +275,48 @@ describe("固定資産台帳・減価償却（repo）", () => {
     repo.setActor(editor, "editor");
     await expect(repo.saveAsset(db, null, base)).rejects.toThrow(/権限/);
     expect(await repo.saveDepreciationRun(db, 2026, depreciationLines(await repo.getAssets(db), 2026, ids))).toBeGreaterThan(0);
+  });
+});
+
+describe("貸倒引当金（repo）", () => {
+  test("初期科目に貸倒引当金・繰入・戻入がある。戻入は貸方（繰戻額等）。同じ名前の科目を自分で足していれば、開いたときに足さない", async () => {
+    const { db, raw } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const of = (n: string) => accts.find((a) => a.name === n)!;
+    expect([of("貸倒引当金"), of("貸倒引当金繰入"), of("貸倒引当金戻入")].map((a) => [a.code, a.category, a.normal_side])).toEqual([
+      ["250", "liability", "credit"], ["750", "special", "debit"], ["751", "special", "credit"],
+    ]);
+    // 古い帳簿で、利用者が「貸倒引当金」を 208 で足していた → 250 には足さない。コードが使われていれば足さない
+    raw.run("DELETE FROM accounts WHERE code IN ('250', '751')");
+    raw.run("INSERT INTO accounts (code, name, kana, category, normal_side) VALUES ('208', '貸倒引当金', '', 'liability', 'credit'), ('751', '未払費用', '', 'special', 'debit')");
+    for (const [code, name] of [["250", "貸倒引当金"], ["751", "貸倒引当金戻入"], ["752", "新しい科目"]]) raw.run(SEED_ACCOUNT_SQL, [code, name, "", "special", "credit", 0]);
+    const after = await repo.getAccounts(db, 2026);
+    expect(after.filter((a) => a.name === "貸倒引当金").map((a) => a.code)).toEqual(["208"]);
+    expect(after.some((a) => a.name === "貸倒引当金戻入")).toBe(false);
+    expect(after.find((a) => a.code === "752")?.name).toBe("新しい科目");
+  });
+  test("自分で足す専従者給与等の科目は、繰入額等（借方）か繰戻額等（貸方）を選べる", async () => {
+    const { db } = strict;
+    await repo.createAccount(db, { code: "702", name: "退職給与引当金繰入", kana: "", category: "special", side: "debit" });
+    await repo.createAccount(db, { code: "703", name: "退職給与引当金戻入", kana: "", category: "special", side: "credit" });
+    await repo.createAccount(db, { code: "630", name: "サブスク費", kana: "", category: "expense", side: "credit" }); // 経費は選べない
+    const accts = await repo.getAccounts(db, 2026);
+    expect(["702", "703", "630"].map((c) => accts.find((a) => a.code === c)!.normal_side)).toEqual(["debit", "credit", "debit"]);
+  });
+  test("年末の洗替の仕訳：決算整理仕訳で作り、作り直すときは同じ仕訳を訂正し、無くなれば削除する。締めた年度は作れない", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const calc = (notes: Record<string, string>, opening: number) =>
+      allowanceCalc(accts, (a) => (a.name === "売掛金" ? 1_000_000 : 0), opening, notes, true);
+    const e1 = await repo.saveAllowanceRun(db, 2026, allowanceLines(accts, calc({}, 30_000))!);
+    const entry = (await repo.getEntry(db, e1!))!;
+    expect([entry.date, entry.is_adjustment, entry.lines.map((l) => l.amount)]).toEqual(["2026-12-31", 1, [30_000, 30_000, 55_000, 55_000]]);
+    expect(await repo.saveAllowanceRun(db, 2026, allowanceLines(accts, calc({ "allowance:amount": "40000" }, 30_000))!)).toBe(e1);
+    expect((await repo.getEntry(db, e1!))!.lines.map((l) => l.amount)).toEqual([30_000, 30_000, 40_000, 40_000]);
+    expect(await repo.saveAllowanceRun(db, 2026, [])).toBeNull();
+    expect(await repo.getAllowanceRun(db, 2026)).toBeNull();
+    await repo.closeYear(db, 2025);
+    await expect(repo.saveAllowanceRun(db, 2025, allowanceLines(accts, calc({}, 0))!)).rejects.toThrow(/締め/);
   });
 });
 

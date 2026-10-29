@@ -17,7 +17,7 @@ import { CATEGORY_CODE_RANGE, CATEGORY_LABEL, FIXED_ASSET_CODES, LOCKED_CODES } 
 import { MAX_SUB_ACCOUNTS_PER_ACCOUNT } from "../../constants/appConfig";
 import { BUSINESS_CLASSES, PURCHASE_USES, TAX_CODES } from "../../constants/tax";
 import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, useLabel } from "../../lib/tax";
-import type { Account, AccountCategory, PurchaseUse, TaxCode } from "../../lib/types";
+import type { Account, AccountCategory, PurchaseUse, Side, TaxCode } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../../lib/statementLines";
 
@@ -262,6 +262,7 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
   const [code, setCode] = useState(isNew ? repo.nextAccountCode(accounts, "expense") ?? "" : target.code);
   const [name, setName] = useState(isNew ? "" : target.name);
   const [kana, setKana] = useState(isNew ? "" : target.kana);
+  const [side, setSide] = useState<Side>(isNew ? "debit" : target.normal_side);
   const [error, setError] = useState("");
   const codeLocked = !isNew && target.is_system === 1;
 
@@ -271,7 +272,7 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
   };
 
   const submit = async () => {
-    const data = { code, name, kana, category };
+    const data = { code, name, kana, category, side };
     const err = repo.validateAccount(accounts, data, isNew ? undefined : target.id);
     if (err) return setError(err);
     if (isNew && !repo.nextAccountCode(accounts, category)) return setError("この区分のコードがいっぱいです");
@@ -296,6 +297,16 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
           </select>
           {!isNew && <small className="field-note">区分はあとから変えられません（過去の集計が変わってしまうため）</small>}
         </label>
+        {category === "special" && (
+          <div className="field">
+            <span>決算書の欄（残高の側）</span>
+            <div className="field-row wrap">
+              <label className="check"><input type="radio" name="special-side" checked={side === "debit"} disabled={!isNew} onChange={() => setSide("debit")} /> 繰入額等（借方。所得から差し引く）</label>
+              <label className="check"><input type="radio" name="special-side" checked={side === "credit"} disabled={!isNew} onChange={() => setSide("credit")} /> 繰戻額等（貸方。所得に足す）</label>
+            </div>
+            <small className="field-note">青色申告決算書の「各種引当金・準備金等」の欄です。引当金・準備金を繰り入れる科目は繰入額等、前年の分を戻し入れる科目は繰戻額等にします。あとから変えられません。</small>
+          </div>
+        )}
         <div className="field-row">
           <label className="field" style={{ maxWidth: 120 }}>
             <span>コード</span>

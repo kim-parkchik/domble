@@ -2,7 +2,7 @@ import Database from "./connection";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { copyFile, exists, mkdir, readDir, remove } from "@tauri-apps/plugin-fs";
 import { basename, documentDir, join } from "@tauri-apps/api/path";
-import { COLUMN_MIGRATIONS, SCHEMA } from "./schema";
+import { COLUMN_MIGRATIONS, SCHEMA, SEED_ACCOUNT_SQL } from "./schema";
 import type { EncryptionStatus, Unlock } from "./encryption";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import { backupsToRemove } from "../lib/backup";
@@ -114,13 +114,9 @@ export const openDatabase = async (
     ]);
   }
 
-  // 初期科目：コードが無いものだけ追加（将来科目を足しても既存ファイルに自動で入る）
+  // 初期科目：コードも名前も無いものだけ追加
   for (const [i, seed] of ACCOUNT_SEEDS.entries()) {
-    await db.execute(
-      `INSERT OR IGNORE INTO accounts (code, name, kana, category, normal_side, sort_order, is_system)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
-      [seed.code, seed.name, seed.kana, seed.category, seed.normal_side, (i + 1) * 10],
-    );
+    await db.execute(SEED_ACCOUNT_SQL, [seed.code, seed.name, seed.kana, seed.category, seed.normal_side, (i + 1) * 10]);
   }
 
   return { db, triggersBefore, encryption, backupError };
