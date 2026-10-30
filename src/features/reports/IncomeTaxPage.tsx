@@ -31,12 +31,13 @@ import {
   BLUE_DEDUCTION_LIMIT, CARRY_LABELS, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, fieldNo, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES,
   DONATION_LOCALS, emptyRelative, EMPTY_INCOME_TAX_INPUT, spouseDeduction,
   type CarriedLoss, type Disability, type Donation, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PastIncomeTax, type PayerRow, type PremiumRow,
-  type Relative,
+  type Relative, HEALTH_EFFORTS, MEDICAL_KINDS, hasMedicalDetail, medicalTotals, type MedicalRow, type SelfMedRow,
 } from "../../lib/incomeTax";
 import * as repo from "../../db/repo";
+import { medicalStatement, selfMedStatement, statementProblem } from "../../lib/medicalStatement";
 import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
 
-type View = "input" | "first" | "second" | "fourth";
+type View = "input" | "first" | "second" | "fourth" | "medical";
 
 const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
 const emptyPayer = (): PayerRow => ({ item: "", payer: "", payerId: "", income: 0, withheld: 0 });
@@ -194,7 +195,10 @@ export const IncomeTaxPage = () => {
 
       <div className="filters print-skip it-bar">
         <div className="seg" role="tablist">
-          {([["input", "入力"], ["first", "第一表"], ["second", "第二表"], ...(fourth ? [["fourth", "第四表"]] : [])] as [View, string][]).map(([v, label]) => (
+          {([
+            ["input", "入力"], ["first", "第一表"], ["second", "第二表"], ...(fourth ? [["fourth", "第四表"]] : []),
+            ...(hasMedicalDetail(x.medical) ? [["medical", x.medical.kind === "self" ? "セルフメディケーションの明細書" : "医療費控除の明細書"]] : []),
+          ] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>{label}</button>
           ))}
         </div>
@@ -238,6 +242,8 @@ export const IncomeTaxPage = () => {
             <FirstTable result={result} year={year} />
           ) : view === "fourth" ? (
             <FourthTable result={result} year={year} />
+          ) : view === "medical" ? (
+            <MedicalStatementView x={x} result={result} year={year} />
           ) : (
             <SecondTable result={result} x={x} familySalary={biz.familySalary} white={white} familyLines={familyLines} />
           )}
@@ -410,33 +416,17 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, whi
     </Section>
 
     <Section title="医療費" note={`医療費控除は「支払った医療費 − 補填される金額 − 10万円（総所得金額等の5%が少なければその額）」、200万円まで。セルフメディケーション税制は対象の医薬品の購入費から1万2千円を引いた額（8万8千円まで）。どちらか一方です。申告には医療費控除の明細書（またはセルフメディケーション税制の明細書）が要ります。`}>
-      <div className="field-row wrap it-amounts">
-        <label className="field">
-          <span>控除の種類</span>
-          <select className="input" value={x.medical.kind} onChange={(e) => set("medical", { ...x.medical, kind: e.target.value as "normal" | "self" })} disabled={disabled}>
-            <option value="normal">医療費控除</option>
-            <option value="self">セルフメディケーション税制</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>{x.medical.kind === "self" ? "対象の医薬品の購入費" : "支払った医療費"}</span>
-          <Amount value={x.medical.paid} onChange={(n) => set("medical", { ...x.medical, paid: n })} disabled={disabled} />
-        </label>
-        <label className="field">
-          <span>保険金などで補填される金額</span>
-          <Amount value={x.medical.reimbursed} onChange={(n) => set("medical", { ...x.medical, reimbursed: n })} disabled={disabled} />
-        </label>
-      </div>
+      <MedicalInputs x={x} set={set} disabled={disabled} />
     </Section>
 
     <Section title="寄附金（ふるさと納税など）" note="寄附金の合計から2千円を引いた額（総所得金額等の40%まで）を控除します。ワンストップ特例は確定申告をすると使えなくなるので、その分もここに入れてください。「住民税の寄附金税額控除」は、第二表の住民税の欄に書く区分です（ふるさと納税など＝都道府県・市区町村への寄附。条例指定は、住所地の都道府県・市区町村が条例で指定した寄附金）。">
       <RowsEditor
         rows={x.donations}
         cols={[
-          { key: "name", label: "寄附先の名称等", kind: "text" }, { key: "amount", label: "寄附金", kind: "amount", width: 150 },
+          { key: "name", label: "寄附先の名称等", kind: "text" }, { key: "address", label: "寄附先の所在地", kind: "text" }, { key: "amount", label: "寄附金", kind: "amount", width: 150 },
           { key: "local", label: "住民税の寄附金税額控除", kind: "select", width: 260, options: DONATION_LOCALS },
         ] satisfies Col<Donation>[]}
-        onChange={(v) => set("donations", v)} make={(): Donation => ({ name: "", amount: 0, local: "" })} addLabel="寄附先を足す" disabled={disabled}
+        onChange={(v) => set("donations", v)} make={(): Donation => ({ name: "", address: "", amount: 0, local: "" })} addLabel="寄附先を足す" disabled={disabled}
       />
     </Section>
 
@@ -726,6 +716,158 @@ const FourthTable = ({ result, year }: { result: IncomeTaxResult; year: number }
   );
 };
 
+// ────────────────────────────────────────────
+// 医療費（明細・医療費通知。明細があれば合計は明細から）
+// ────────────────────────────────────────────
+const MedicalInputs = ({ x, set, disabled }: { x: IncomeTaxInput; set: <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => void; disabled: boolean }) => {
+  const m = x.medical;
+  const put = (patch: Partial<IncomeTaxInput["medical"]>) => set("medical", { ...m, ...patch });
+  const detail = hasMedicalDetail(m);
+  const t = medicalTotals(m);
+  const notice = m.notice ?? { amount: 0, paid: 0, reimbursed: 0 };
+  const effort = m.effort ?? { kind: "" as const, issuer: "" };
+  const problem = detail ? statementProblem(m) : null;
+  return (
+    <>
+      <div className="field-row wrap it-amounts">
+        <label className="field">
+          <span>控除の種類</span>
+          <select className="input" value={m.kind} onChange={(e) => put({ kind: e.target.value as "normal" | "self" })} disabled={disabled}>
+            <option value="normal">医療費控除</option>
+            <option value="self">セルフメディケーション税制</option>
+          </select>
+        </label>
+        {detail ? (
+          <p className="field-note it-medical-total">
+            明細の合計：{m.kind === "self" ? "支払った金額" : "支払った医療費"} {yen(t.paid)}円・補填される金額 {yen(t.reimbursed)}円（明細書のタブで確かめられます）
+          </p>
+        ) : (
+          <>
+            <label className="field">
+              <span>{m.kind === "self" ? "対象の医薬品の購入費（合計）" : "支払った医療費（合計）"}</span>
+              <Amount value={m.paid} onChange={(n) => put({ paid: n })} disabled={disabled} />
+            </label>
+            <label className="field">
+              <span>保険金などで補填される金額（合計）</span>
+              <Amount value={m.reimbursed} onChange={(n) => put({ reimbursed: n })} disabled={disabled} />
+            </label>
+          </>
+        )}
+      </div>
+      {m.kind === "normal" ? (
+        <>
+          <h4 className="it-sub">医療費通知（健康保険組合などの「医療費のお知らせ」を使うとき）</h4>
+          <div className="field-row wrap it-amounts">
+            <label className="field"><span>(1) 記載された医療費の額（自己負担額）</span><Amount value={notice.amount} onChange={(n) => put({ notice: { ...notice, amount: n } })} disabled={disabled} /></label>
+            <label className="field"><span>(2) (1) のうちその年に支払った額</span><Amount value={notice.paid} onChange={(n) => put({ notice: { ...notice, paid: n } })} disabled={disabled} /></label>
+            <label className="field"><span>(3) (2) のうち補填される金額</span><Amount value={notice.reimbursed} onChange={(n) => put({ notice: { ...notice, reimbursed: n } })} disabled={disabled} /></label>
+          </div>
+          <h4 className="it-sub">医療費の明細（医療費通知に載っていない分。同じ人・同じ支払先はまとめて明細書に書きます）</h4>
+          <RowsEditor
+            rows={m.rows ?? []}
+            cols={[
+              { key: "person", label: "医療を受けた人", kind: "text", width: 150 }, { key: "payee", label: "病院・薬局などの支払先", kind: "text" },
+              { key: "kind", label: "区分", kind: "select", width: 150, options: MEDICAL_KINDS }, { key: "paid", label: "支払った医療費", kind: "amount", width: 130 },
+              { key: "reimbursed", label: "補填される金額", kind: "amount", width: 130 },
+            ] satisfies Col<MedicalRow>[]}
+            onChange={(v) => put({ rows: v })} make={(): MedicalRow => ({ person: "", payee: "", kind: "treatment", paid: 0, reimbursed: 0 })} addLabel="明細を足す" disabled={disabled}
+          />
+        </>
+      ) : (
+        <>
+          <h4 className="it-sub">健康の保持増進及び疾病の予防への取組</h4>
+          <div className="field-row wrap it-amounts">
+            <label className="field">
+              <span>取組</span>
+              <select className="input" value={effort.kind} onChange={(e) => put({ effort: { ...effort, kind: e.target.value as typeof effort.kind } })} disabled={disabled}>
+                {HEALTH_EFFORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </label>
+            <label className="field"><span>書類の発行者名（市区町村・勤務先など）</span><input className="input" value={effort.issuer} onChange={(e) => put({ effort: { ...effort, issuer: e.target.value } })} disabled={disabled} maxLength={60} /></label>
+          </div>
+          <h4 className="it-sub">特定一般用医薬品等購入費の明細</h4>
+          <RowsEditor
+            rows={m.selfRows ?? []}
+            cols={[
+              { key: "payee", label: "薬局などの支払先", kind: "text" }, { key: "medicine", label: "医薬品の名称", kind: "text" },
+              { key: "paid", label: "支払った金額", kind: "amount", width: 130 }, { key: "reimbursed", label: "補填される金額", kind: "amount", width: 130 },
+            ] satisfies Col<SelfMedRow>[]}
+            onChange={(v) => put({ selfRows: v })} make={(): SelfMedRow => ({ payee: "", medicine: "", paid: 0, reimbursed: 0 })} addLabel="明細を足す" disabled={disabled}
+          />
+        </>
+      )}
+      {problem && <p className="notice">{problem}</p>}
+    </>
+  );
+};
+
+/** 医療費控除の明細書・セルフメディケーション税制の明細書（入力の明細から。印刷できる） */
+const MedicalStatementView = ({ x, result, year }: { x: IncomeTaxInput; result: IncomeTaxResult; year: number }) => {
+  const { settings } = useAppContext();
+  const head = (title: string) => (
+    <header className="statement-head">
+      <h2 className="st-title-small">{title}</h2>
+      <p>{settings.address}<br />{settings.owner_name}　{year}年分</p>
+    </header>
+  );
+  if (x.medical.kind === "self") {
+    const s = selfMedStatement(x.medical);
+    return (
+      <div className="it-form print-area">
+        {head("セルフメディケーション税制の明細書")}
+        <h3 className="sheet-sub">1 健康の保持増進及び疾病の予防への取組</h3>
+        <p>{HEALTH_EFFORTS.find(([v]) => v === s.effort.kind)?.[1] ?? ""}{s.effort.issuer && `（発行者：${s.effort.issuer}）`}</p>
+        <h3 className="sheet-sub">2 特定一般用医薬品等購入費の明細</h3>
+        <table className="ledger tax-form-table">
+          <thead><tr><th>薬局などの支払先の名称</th><th>医薬品の名称</th><th className="num">支払った金額</th><th className="num">補填される金額</th></tr></thead>
+          <tbody>{s.rows.map((r, i) => <tr key={i}><td>{r.payee}</td><td>{r.medicine}</td><td className="num">{yen(r.paid)}</td><td className="num">{yen(r.reimbursed)}</td></tr>)}</tbody>
+        </table>
+        <h3 className="sheet-sub">3 控除額の計算</h3>
+        <table className="ledger tax-form-table">
+          <tbody>
+            <tr><td>支払った金額（合計） A</td><td className="num">{yen(s.a)}</td></tr>
+            <tr><td>保険金などで補填される金額 B</td><td className="num">{yen(s.b)}</td></tr>
+            <tr><td>差引金額（A − B） C</td><td className="num">{yen(s.c)}</td></tr>
+            <tr className="st-strong"><td>セルフメディケーション税制による医療費控除額（C − 12,000円。最高 88,000円）</td><td className="num">{yen(s.deduction)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  const s = medicalStatement(x.medical, result.loss.forDeductions);
+  const kinds = (k: string[]) => MEDICAL_KINDS.filter(([v]) => k.includes(v)).map(([, l]) => l).join("・");
+  return (
+    <div className="it-form print-area">
+      {head("医療費控除の明細書")}
+      <h3 className="sheet-sub">1 医療費通知に関する事項</h3>
+      <table className="ledger tax-form-table">
+        <tbody>
+          <tr><td>(1) 医療費通知に記載された医療費の額（自己負担額）</td><td className="num">{yen(s.notice.amount)}</td></tr>
+          <tr><td>(2) (1) のうちその年中に実際に支払った医療費の額</td><td className="num">{yen(s.notice.paid)}</td></tr>
+          <tr><td>(3) (2) のうち生命保険や社会保険（高額療養費など）などで補填される金額</td><td className="num">{yen(s.notice.reimbursed)}</td></tr>
+        </tbody>
+      </table>
+      <h3 className="sheet-sub">2 医療費（上記 1 以外）の明細</h3>
+      <table className="ledger tax-form-table">
+        <thead><tr><th>医療を受けた方の氏名</th><th>病院・薬局などの支払先の名称</th><th>医療費の区分</th><th className="num">(4) 支払った医療費の額</th><th className="num">(5) (4) のうち補填される金額</th></tr></thead>
+        <tbody>{s.rows.map((r, i) => <tr key={i}><td>{r.person}</td><td>{r.payee}</td><td>{kinds(r.kinds)}</td><td className="num">{yen(r.paid)}</td><td className="num">{yen(r.reimbursed)}</td></tr>)}</tbody>
+      </table>
+      <h3 className="sheet-sub">3 控除額の計算</h3>
+      <table className="ledger tax-form-table">
+        <tbody>
+          <tr><td>支払った医療費 A（(2) ＋ (4) の合計）</td><td className="num">{yen(s.a)}</td></tr>
+          <tr><td>保険金などで補填される金額 B（(3) ＋ (5) の合計）</td><td className="num">{yen(s.b)}</td></tr>
+          <tr><td>差引金額（A − B） C</td><td className="num">{yen(s.c)}</td></tr>
+          <tr><td>所得金額の合計額 D</td><td className="num">{yen(s.d)}</td></tr>
+          <tr><td>D × 0.05 E</td><td className="num">{yen(s.e)}</td></tr>
+          <tr><td>E と 10万円のいずれか少ない方の金額 F</td><td className="num">{yen(s.f)}</td></tr>
+          <tr className="st-strong"><td>医療費控除額（C − F。最高 200万円）</td><td className="num">{yen(s.deduction)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 const SecondTable = ({ result, x, familySalary, white, familyLines }: {
   result: IncomeTaxResult; x: IncomeTaxInput; familySalary: number; white: boolean; familyLines: FamilyLine[];
 }) => {
@@ -778,8 +920,8 @@ const SecondTable = ({ result, x, familySalary, white, familyLines }: {
       <h3 className="sheet-sub">㉙ 寄附金控除に関する事項</h3>
       {s.donations.length ? (
         <table className="ledger tax-form-table">
-          <thead><tr><th>寄附先の名称等</th><th className="num">寄附金</th></tr></thead>
-          <tbody>{s.donations.map((d, i) => <tr key={i}><td>{d.name}</td><td className="num">{yen(d.amount)}</td></tr>)}</tbody>
+          <thead><tr><th>寄附先の所在地</th><th>寄附先の名称等</th><th className="num">寄附金</th></tr></thead>
+          <tbody>{s.donations.map((d, i) => <tr key={i}><td>{d.address}</td><td>{d.name}</td><td className="num">{yen(d.amount)}</td></tr>)}</tbody>
         </table>
       ) : <p className="field-note">ありません。</p>}
 

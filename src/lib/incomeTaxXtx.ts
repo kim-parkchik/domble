@@ -16,9 +16,10 @@ import type { WhiteStatement } from "./whiteStatement";
 import type { BalanceRow, RealEstateBook } from "./realEstateStatement";
 import { documentXml, filerProblems, formXml, itRefs, itXml, type EtaxFiler, type EtaxValue, type EtaxValues, type FormAttrs } from "./etax";
 import {
-  dependentDeduction, fieldNo, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type Relative,
+  dependentDeduction, fieldNo, hasMedicalDetail, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type MedicalKind, type Relative,
 } from "./incomeTax";
 import type { Settings } from "./types";
+import { medicalStatement, selfMedStatement, statementProblem } from "./medicalStatement";
 import { circled, manufacturingForm } from "./statementForm";
 
 const NAMESPACE = "http://xml.e-tax.nta.go.jp/XSD/shotoku";
@@ -107,6 +108,9 @@ export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer"
   if (missing.length) p.push(`事業者設定の e-Tax の欄：${missing.join("、")}`);
   const noPayer = src.result.second.withholding.filter((r) => r.withheld > 0 && (!r.payer.trim() || !r.payerId.trim()));
   if (noPayer.length) p.push(`源泉徴収された収入の「支払者の名称」と「法人番号又は所在地」（${noPayer.map((r) => r.item || r.kind).join("、")}）`);
+  // 医療費控除・セルフメディケーション税制の明細書（明細を入れたとき）
+  const medical = hasMedicalDetail(src.input.medical) ? statementProblem(src.input.medical) : null;
+  if (medical) p.push(medical);
   return p;
 };
 
@@ -141,14 +145,18 @@ export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" 
   if (src.white?.familySalaryBooked) n.push("専従者給与の科目に記帳した額は、白色申告では必要経費にならないため、収支内訳書の経費に入れていません");
   if (src.input.salaries.length > 0) n.push("給与があるため、保険料の「うち年末調整等以外」の欄は書いていません（源泉徴収票に載っていない分だけを書く欄です）");
   if (src.input.housingLoan > 0) n.push("住宅借入金等特別控除の区分は書いていません（計算明細書を添付して、区分を確かめてください）");
-  // 医療費控除・セルフメディケーション税制は、明細書を付けて出す決まり。domble は合計だけを入れるので明細書を作れない。
-  // 合計だけで申告するときは、e-Tax で出しても明細書を書面で別に出す（確定申告書等作成コーナーの「医療費の合計額のみを入力」と同じ）
-  if ((src.result.rows.find((v) => v.no === "㉘")?.value ?? 0) > 0) {
+  // 医療費控除・セルフメディケーション税制は、明細書を付けて出す決まり。明細を入れていれば明細書（KOB560・KOB570）も書き出す。
+  // 合計だけを入れたときは、e-Tax で出しても明細書を書面で別に出す（確定申告書等作成コーナーの「医療費の合計額のみを入力」と同じ）
+  if (medicalDeductionOf(src) > 0 && !hasMedicalDetail(src.input.medical)) {
     const name = src.input.medical.kind === "self" ? "セルフメディケーション税制の明細書" : "医療費控除の明細書";
-    n.push(`${name}は書き出していません（domble は支払額の合計だけを入れるため）。e-Tax で申告するときも、明細書を書面で作って別に税務署へ出してください`);
+    n.push(`${name}は書き出していません（医療費の合計だけを入れたため）。所得税の入力で明細を入れると書き出せます。合計だけで申告するときは、明細書を書面で作って別に税務署へ出してください`);
   }
   return n;
 };
+
+/** 医療費控除（またはセルフメディケーション税制）の額（第一表の欄） */
+const medicalDeductionOf = (src: Pick<IncomeTaxXtxSource, "result">) =>
+  src.result.rows.find((v) => v.label.startsWith("医療費控除"))?.value ?? 0;
 
 // ── 欄の値の作り方 ──
 const text = (s: string, max: number): EtaxValue | undefined => (s.trim() ? { text: [...s.trim()].slice(0, max).join("") } : undefined);
@@ -187,7 +195,7 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     ABB00025: src.bookKeeping, ABB00030: amount(row("㋐")),
     // 不動産：区分2（事業と同じ記帳の区分）・収入金額 ㋒（区分1 は国外中古建物の特例で、扱わない）
     ABB00046: src.biz.realEstate ? src.bookKeeping : undefined, ABB00050: src.biz.realEstate ? row("㋒") : undefined,
-    ABB00080: amount(row("㋔")), ABB00100: amount(row("㋕")), ABB00105: amount(row("㋖")), ABB00110: amount(row("㋗")),
+    ABB00075: src.result.incomeAdjust?.kubun || undefined, ABB00080: amount(row("㋔")), ABB00100: amount(row("㋕")), ABB00105: amount(row("㋖")), ABB00110: amount(row("㋗")),
     // 所得金額等
     ABB00300: row("①"), ABB00340: src.biz.realEstate ? row("③") : undefined, ABB00370: amount(row("⑥")), ABB01060: amount(row("⑦")), ABB01090: amount(row("⑧")), ABB01120: amount(row("⑨")),
     ABB01130: amount(row("⑩")), ABB00410: fourth ? undefined : row("⑫"),
@@ -259,6 +267,7 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     ABH00235: lifeText(life.care), ABH00237: noAdjust ? lifeText(life.care) : undefined,
     ABH00250: lifeText(s.quake.quake), ABH00255: noAdjust ? lifeText(s.quake.quake) : undefined,
     ABH00260: lifeText(s.quake.oldLong), ABH00265: noAdjust ? lifeText(s.quake.oldLong) : undefined,
+    ABH00280: donations.length && donations[0].address ? text(donations[0].address, 100) : undefined,
     ABH00290: donations.length ? text(`${donations[0].name || "寄附先"}${donations.length > 1 ? " ほか" : ""}`, 100) : undefined,
     ABH00300: donations.length ? sumOf(donations, (d) => d.amount) : undefined,
     ABH00350: yes(widowOk && x.widow === "widow"), ABH00365: yes(widowOk && x.widow === "single_parent"), ABH00380: yes(studentOk),
@@ -940,6 +949,43 @@ const reWhiteValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =
 };
 
 /** 確定申告書と青色申告決算書（白色申告は収支内訳書）の xtx。書き出せないときは例外 */
+// ── 医療費控除の明細書（KOB560）・セルフメディケーション税制の明細書（KOB570） ──
+const medicalValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const st = medicalStatement(src.input.medical, src.result.loss.forDeductions);
+  const flag = (r: { kinds: MedicalKind[] }, k: MedicalKind) => (r.kinds.includes(k) ? { kubun: 1 } : undefined);
+  const noticed = st.notice.amount > 0 || st.notice.paid > 0;
+  return clean({
+    DHA00000: ref(refs, "NENBUN"), DHB00015: ref(refs, "NOZEISHA_ADR"), DHB00020: ref(refs, "NOZEISHA_NM"),
+    DHE00010: noticed ? st.notice.amount : undefined, DHE00020: noticed ? st.notice.paid : undefined, DHE00030: noticed ? st.notice.reimbursed : undefined,
+    DHC00010: st.rows.length ? {
+      rows: st.rows.map((r) => clean({
+        DHC00020: text(r.person, 30), DHC00050: text(r.payee, 30),
+        DHC00230: flag(r, "treatment"), DHC00240: flag(r, "medicine"), DHC00250: flag(r, "care"), DHC00260: flag(r, "other"),
+        DHC00080: r.paid, DHC00090: amount(r.reimbursed),
+      })),
+    } : undefined,
+    DHC00120: st.rows.length ? st.rows.reduce((s, r) => s + r.paid, 0) : undefined,
+    DHC00130: st.rows.length ? st.rows.reduce((s, r) => s + r.reimbursed, 0) : undefined,
+    DHC00280: st.a, DHC00290: st.b,
+    DHD00010: st.a, DHD00020: st.b, DHD00030: st.c, DHD00040: st.d, DHD00050: st.e, DHD00060: st.f, DHD00070: st.deduction,
+  });
+};
+
+const EFFORT_TAGS: Record<string, string> = { checkup: "KMC00020", vaccination: "KMC00030", workplace: "KMC00040", specific: "KMC00050", cancer: "KMC00060" };
+const selfMedValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const st = selfMedStatement(src.input.medical);
+  return clean({
+    KMA00000: ref(refs, "NENBUN"), KMF00000: ref(refs, "NOZEISHA_ADR"), KMB00000: ref(refs, "NOZEISHA_NM"),
+    ...(st.effort.kind ? { [EFFORT_TAGS[st.effort.kind]]: { kubun: 1 } } : {}),
+    KMC00100: text(st.effort.issuer, 30),
+    KMD00010: st.rows.length ? {
+      rows: st.rows.map((r) => clean({ KMD00020: text(r.payee, 30), KMD00030: text(r.medicine, 100), KMD00040: r.paid, KMD00050: amount(r.reimbursed) })),
+    } : undefined,
+    KMD00110: st.a, KMD00160: st.b,
+    KME00010: st.a, KME00020: st.b, KME00030: st.c, KME00040: st.deduction,
+  });
+};
+
 export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
   const problems = incomeXtxProblems(src);
   if (problems.length) throw new Error(problems.join("。"));
@@ -955,6 +1001,7 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
   const koa020 = { ...firstValues({ ...src, filer }, refs, refund), ...secondValues(src, refs), ...fourthValues(src, refs) };
   const white = src.biz.filingType === "white";
   const business = src.realEstate ? src.realEstate.hasBusiness : true;
+  const medicalOut = medicalDeductionOf(src) > 0 && hasMedicalDetail(src.input.medical) ? src.input.medical.kind : null;
   return documentXml({
     namespace: NAMESPACE,
     procedure: PROCEDURE.procedure,
@@ -968,6 +1015,9 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
       ...(white && src.realEstate ? [{ id: "KOA130", xml: formXml("KOA130", reWhiteValues(src, refs), attrs) }] : []),
       ...(!white && business ? [{ id: "KOA210", xml: formXml("KOA210", statementValues(src, refs), attrs) }] : []),
       ...(!white && src.realEstate ? [{ id: "KOA220", xml: formXml("KOA220", reBlueValues(src, refs), attrs) }] : []),
+      // 医療費控除の明細書・セルフメディケーション税制の明細書（明細を入れて、控除があるとき）
+      ...(medicalOut === "normal" ? [{ id: "KOB560", xml: formXml("KOB560", medicalValues(src, refs), attrs) }] : []),
+      ...(medicalOut === "self" ? [{ id: "KOB570", xml: formXml("KOB570", selfMedValues(src, refs), attrs) }] : []),
     ],
   });
 };

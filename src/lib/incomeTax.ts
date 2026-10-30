@@ -18,7 +18,10 @@
  * 税額：課税される所得金額（千円未満切り捨て）× 税率、住宅借入金等特別控除（計算明細書の額を入れる）、復興特別所得税（基準所得税額 × 2.1%。1円未満切り捨て）、
  *   源泉徴収税額・予定納税額を差し引いて、納める税金（百円未満切り捨て）または還付される税金
  * 事業所得：青色申告は青色申告特別控除を差し引く。白色申告は収支内訳書の所得金額（事業専従者控除の後。lib/whiteStatement.ts）をそのまま使う
- * 扱わないもの：不動産・利子・配当・譲渡・一時所得、分離課税、雑損控除、所得金額調整控除、配当控除などほかの税額控除、災害減免、外国税額控除
+ * 所得金額調整控除（No.1411。給与所得から差し引く）：(1) 給与の収入が 850万円超で、本人が特別障害者・23歳未満の扶養親族がいる・特別障害者の同一生計配偶者か扶養親族がいる
+ *   ＝（収入（1,000万円まで）− 850万円）× 10%（1円未満切り上げ）、(2) 給与所得と公的年金等の雑所得の両方がある ＝ それぞれ 10万円までの合計 − 10万円。
+ *   収入金額等 ㋔ の区分に (1) は 1、(2) は 2、両方は 3 を書く
+ * 扱わないもの：利子・配当・譲渡・一時所得、分離課税、雑損控除、特定支出控除、配当控除などほかの税額控除、災害減免、外国税額控除
  */
 import type { FilingType, RealEstateScale } from "./types";
 
@@ -95,9 +98,39 @@ export const DONATION_LOCALS: [DonationLocal, string][] = [
 
 export interface Donation {
   name: string;
+  /** 寄附先の所在地（第二表の「寄附先の所在地・名称等」） */
+  address?: string;
   amount: number;
   local: DonationLocal;
 }
+
+/** 医療費の区分（医療費控除の明細書） */
+export type MedicalKind = "treatment" | "medicine" | "care" | "other";
+export const MEDICAL_KINDS: [MedicalKind, string][] = [["treatment", "診療・治療"], ["medicine", "医薬品購入"], ["care", "介護保険サービス"], ["other", "その他の医療費"]];
+
+/** 医療費控除の明細書の1行（医療を受けた人・支払先ごと） */
+export interface MedicalRow {
+  person: string;
+  payee: string;
+  kind: MedicalKind;
+  paid: number;
+  /** 生命保険や社会保険（高額療養費など）などで補填される金額 */
+  reimbursed: number;
+}
+
+/** セルフメディケーション税制の明細書の1行 */
+export interface SelfMedRow {
+  payee: string;
+  medicine: string;
+  paid: number;
+  reimbursed: number;
+}
+
+/** 健康の保持増進及び疾病の予防への取組（セルフメディケーション税制） */
+export type HealthEffort = "" | "checkup" | "vaccination" | "workplace" | "specific" | "cancer";
+export const HEALTH_EFFORTS: [HealthEffort, string][] = [
+  ["", "選んでいない"], ["checkup", "健康診査"], ["vaccination", "予防接種"], ["workplace", "定期健康診断"], ["specific", "特定健康診査"], ["cancer", "がん検診"],
+];
 
 /** 前の年から繰り越した純損失（青色申告の年の、山林以外の所得の損失）。第四表（二）「4 繰越損失を差し引く計算」の Ⓐ */
 export interface CarriedLoss {
@@ -131,8 +164,19 @@ export interface IncomeTaxInput {
   /** 生命保険料（その年に払った額。剰余金・割戻金を差し引いた額） */
   life: { newLife: number; oldLife: number; newPension: number; oldPension: number; care: number };
   quake: { quake: number; oldLong: number };
-  /** normal = 医療費控除 ／ self = セルフメディケーション税制（どちらか一方） */
-  medical: { kind: "normal" | "self"; paid: number; reimbursed: number };
+  /**
+   * normal = 医療費控除 ／ self = セルフメディケーション税制（どちらか一方）。
+   * 明細（rows・selfRows）か医療費通知（notice）があれば、支払額と補填額はその合計（medicalTotals）。無ければ paid・reimbursed（合計だけ入れたとき）
+   */
+  medical: {
+    kind: "normal" | "self"; paid: number; reimbursed: number;
+    /** 医療費通知（健康保険組合などの「医療費のお知らせ」）：記載された医療費の額（自己負担額）・うちその年に実際に支払った額・補填される金額 */
+    notice?: { amount: number; paid: number; reimbursed: number };
+    rows?: MedicalRow[];
+    selfRows?: SelfMedRow[];
+    /** セルフメディケーション税制：健康の保持増進の取組と、その書類の発行者名 */
+    effort?: { kind: HealthEffort; issuer: string };
+  };
   donations: Donation[];
   spouse: Relative | null;
   dependents: Relative[];
@@ -161,7 +205,7 @@ export const EMPTY_INCOME_TAX_INPUT: IncomeTaxInput = {
   socialInsurance: [], smallBusiness: [],
   life: { newLife: 0, oldLife: 0, newPension: 0, oldPension: 0, care: 0 },
   quake: { quake: 0, oldLong: 0 },
-  medical: { kind: "normal", paid: 0, reimbursed: 0 },
+  medical: { kind: "normal", paid: 0, reimbursed: 0, notice: { amount: 0, paid: 0, reimbursed: 0 }, rows: [], selfRows: [], effort: { kind: "", issuer: "" } },
   donations: [], spouse: null, dependents: [], housingLoan: 0, prepaid: 0,
   residentTax: "", businessTax: { otherPrefecture: false, change: "", changeDate: "" },
   carry: { mode: "auto", amounts: [0, 0, 0] },
@@ -243,9 +287,26 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
       newPension: amount(life.newPension, "新個人年金保険料"), oldPension: amount(life.oldPension, "旧個人年金保険料"), care: amount(life.care, "介護医療保険料"),
     },
     quake: { quake: amount(quake.quake, "地震保険料"), oldLong: amount(quake.oldLong, "旧長期損害保険料") },
-    medical: { kind: medical.kind === "self" ? "self" : "normal", paid: amount(medical.paid, "医療費"), reimbursed: amount(medical.reimbursed, "保険金などで補填される金額") },
+    medical: {
+      kind: medical.kind === "self" ? "self" : "normal", paid: amount(medical.paid, "医療費"), reimbursed: amount(medical.reimbursed, "保険金などで補填される金額"),
+      notice: {
+        amount: amount(medical.notice?.amount, "医療費通知の医療費の額"), paid: amount(medical.notice?.paid, "医療費通知のうち支払った額"),
+        reimbursed: amount(medical.notice?.reimbursed, "医療費通知の補填される金額"),
+      },
+      rows: list(medical.rows, (r: Partial<MedicalRow>, i) => ({
+        person: text(r.person), payee: text(r.payee), kind: MEDICAL_KINDS.some(([k]) => k === r.kind) ? r.kind! : "treatment",
+        paid: amount(r.paid, `医療費の明細 ${i + 1}行目の支払った医療費`), reimbursed: amount(r.reimbursed, `医療費の明細 ${i + 1}行目の補填される金額`),
+      })),
+      selfRows: list(medical.selfRows, (r: Partial<SelfMedRow>, i) => ({
+        payee: text(r.payee), medicine: text(r.medicine),
+        paid: amount(r.paid, `医薬品の明細 ${i + 1}行目の支払った金額`), reimbursed: amount(r.reimbursed, `医薬品の明細 ${i + 1}行目の補填される金額`),
+      })),
+      effort: {
+        kind: HEALTH_EFFORTS.some(([k]) => k === medical.effort?.kind) ? medical.effort!.kind : "", issuer: text(medical.effort?.issuer),
+      },
+    },
     donations: list(x.donations, (r: Partial<Donation>, i) => ({
-      name: text(r.name), amount: amount(r.amount, `寄附金 ${i + 1}行目`), local: DONATION_LOCALS.some(([v]) => v === r.local) ? r.local! : "",
+      name: text(r.name), address: text(r.address), amount: amount(r.amount, `寄附金 ${i + 1}行目`), local: DONATION_LOCALS.some(([v]) => v === r.local) ? r.local! : "",
     })),
     spouse: x.spouse ? relative(x.spouse, "配偶者") : null,
     dependents: list(x.dependents, (r: Partial<Relative>, i) => relative(r, `扶養親族 ${i + 1}人目`)),
@@ -363,7 +424,18 @@ export const rulesFor = (year: number): { rules: IncomeTaxRules; fallback: boole
 };
 const LATEST = Math.max(...INCOME_TAX_RULES.map((r) => r.year));
 
-/** 給与所得の金額（所得金額調整控除・特定支出控除は扱わない） */
+/**
+ * 所得金額調整控除（No.1411）。salaryIn = 給与の収入金額、salary = 給与所得控除後の金額、pension = 公的年金等に係る雑所得の金額、
+ * qualifies = (1) の要件（本人が特別障害者・23歳未満の扶養親族・特別障害者の同一生計配偶者か扶養親族）。kubun = 収入金額等 ㋔ の区分（1・2・3。無ければ 0）
+ */
+export const incomeAdjustment = (salaryIn: number, salary: number, pension: number, qualifies: boolean) => {
+  const first = qualifies && salaryIn > 8_500_000 ? Math.ceil(((Math.min(salaryIn, 10_000_000) - 8_500_000) * 10) / 100) : 0;
+  const afterFirst = Math.max(salary - first, 0);
+  const second = afterFirst > 0 && pension > 0 ? Math.max(Math.min(afterFirst, 100_000) + Math.min(pension, 100_000) - 100_000, 0) : 0;
+  return { first, second, total: first + second, kubun: (first > 0 ? 1 : 0) + (second > 0 ? 2 : 0) };
+};
+
+/** 給与所得控除後の給与等の金額（所得金額調整控除は incomeAdjustment。特定支出控除は扱わない） */
 export const salaryIncome = (x: number, year = LATEST): number => {
   const r = rulesFor(year).rules;
   if (x < r.salaryMin + 1_000) return 0;
@@ -433,9 +505,28 @@ export const quakeDeduction = (q: IncomeTaxInput["quake"]) => {
   return Math.min(Math.min(q.quake, 50_000) + old, 50_000);
 };
 
+/** 明細（医療費通知を含む）があるか */
+export const hasMedicalDetail = (m: IncomeTaxInput["medical"]) =>
+  m.kind === "self" ? (m.selfRows?.length ?? 0) > 0 : (m.rows?.length ?? 0) > 0 || (m.notice?.paid ?? 0) > 0 || (m.notice?.amount ?? 0) > 0;
+
+/** 支払額と補填額：明細（医療費通知を含む）があればその合計、無ければ合計だけ入れた額 */
+export const medicalTotals = (m: IncomeTaxInput["medical"]) => {
+  if (!hasMedicalDetail(m)) return { paid: m.paid, reimbursed: m.reimbursed };
+  if (m.kind === "self") {
+    const rows = m.selfRows ?? [];
+    return { paid: rows.reduce((s, r) => s + r.paid, 0), reimbursed: rows.reduce((s, r) => s + r.reimbursed, 0) };
+  }
+  const rows = m.rows ?? [];
+  return {
+    paid: (m.notice?.paid ?? 0) + rows.reduce((s, r) => s + r.paid, 0),
+    reimbursed: (m.notice?.reimbursed ?? 0) + rows.reduce((s, r) => s + r.reimbursed, 0),
+  };
+};
+
 /** 医療費控除（総所得金額等の 5% と 10万円の少ないほうを超える額。200万円まで）・セルフメディケーション税制（1万2千円を超える額。8万8千円まで） */
 export const medicalDeduction = (m: IncomeTaxInput["medical"], totalIncome: number) => {
-  const net = Math.max(m.paid - m.reimbursed, 0);
+  const t = medicalTotals(m);
+  const net = Math.max(t.paid - t.reimbursed, 0);
   if (m.kind === "self") return Math.min(Math.max(net - 12_000, 0), 88_000);
   return Math.min(Math.max(net - Math.min(100_000, Math.floor((Math.max(totalIncome, 0) * 5) / 100)), 0), 2_000_000);
 };
@@ -583,6 +674,8 @@ export interface IncomeTaxResult {
   loss: LossResult;
   /** 不動産所得から差し引いた青色申告特別控除額（第二表の事業税の欄） */
   blueRealEstate: number;
+  /** 所得金額調整控除（kubun = 収入金額等 ㋔ の区分。無ければ 0） */
+  incomeAdjust: { first: number; second: number; total: number; kubun: number };
   /** 納める税金（＋）・還付される税金（−） */
   balance: number;
   notes: string[];
@@ -692,18 +785,27 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const r3 = re && r3Raw < 0 && re.landInterest > 0 ? Math.min(0, r3Raw + re.landInterest) : r3Raw;
   if (re && re.familySalary > 0 && re.scale !== "business") notes.push("不動産の貸付けが事業的規模でないので、不動産所得の専従者給与は必要経費になりません（事業者設定の「不動産所得」で規模を確かめてください）。");
   if (re && r3 !== r3Raw) notes.push(`不動産所得の赤字のうち、土地等を取得するために要した負債の利子の額（${re.landInterest.toLocaleString()}円）までは、ほかの所得から差し引けません（③ は ${r3.toLocaleString()}円）。`);
-  const r6 = salaryIncome(salaryIn, rules.year);
+  const salaryAfter = salaryIncome(salaryIn, rules.year);
+  // 所得金額調整控除 (1) の要件：本人が特別障害者、23歳未満の扶養親族、特別障害者の同一生計配偶者・扶養親族（事業専従者は除く）
+  const household = [input.spouse, ...input.dependents].filter((r): r is Relative => !!r && !r.familyEmployee && r.income <= DEPENDENT_LIMIT);
+  const youngDependent = input.dependents.some((d) => !d.familyEmployee && d.income <= DEPENDENT_LIMIT && (ageAt(d.birthday, year) ?? 99) < 23);
+  const adjustQualifies = input.disability === "special" || youngDependent || household.some((r) => r.disability === "special");
+  const r6First = salaryAfter - incomeAdjustment(salaryIn, salaryAfter, 0, adjustQualifies).first;
   const r8 = sum(input.misc.filter((r) => r.kind === "business").map((r) => r.income - r.expenses));
   const r9 = sum(input.misc.filter((r) => r.kind === "other").map((r) => r.income - r.expenses));
   // 公的年金等以外の合計所得金額（雑所得の損失はほかの所得から引けない）
-  const other = r1 + r3 + r6 + Math.max(r8 + r9, 0);
+  const other = r1 + r3 + r6First + Math.max(r8 + r9, 0);
   const age = ageAt(input.birthday, year);
   if (pensionIn > 0 && age === null) notes.push("公的年金等の控除額は、本人の生年月日が分からないため65歳未満として計算しています。");
   const r7 = pensionIncome(pensionIn, (age ?? 0) >= 65, other);
+  const adjust = incomeAdjustment(salaryIn, salaryAfter, r7, adjustQualifies);
+  const r6 = salaryAfter - adjust.total;
+  if (adjust.total > 0) {
+    notes.push(`所得金額調整控除 ${adjust.total.toLocaleString()}円を給与所得から差し引いています（${[adjust.first ? `給与の収入が850万円超で${input.disability === "special" ? "本人が特別障害者" : youngDependent ? "23歳未満の扶養親族がいる" : "特別障害者の配偶者・扶養親族がいる"} ${adjust.first.toLocaleString()}円` : "", adjust.second ? `給与所得と公的年金等の雑所得の両方がある ${adjust.second.toLocaleString()}円` : ""].filter(Boolean).join("・")}。収入金額等 ㋔ の区分 ${adjust.kubun}）。`);
+  }
   const r10 = Math.max(r7 + r8 + r9, 0);
   // 合計所得金額（繰越控除の前）
   const r12 = r1 + r3 + r6 + r10;
-  if (salaryIn > 8_500_000) notes.push("給与の収入が850万円を超えています。所得金額調整控除（23歳未満の扶養親族・特別障害者がいる場合など）には対応していません。");
   // 純損失の繰越控除。total = 総所得金額等（繰越控除の後。医療費控除・寄附金控除に使う）
   const loss = lossOf(r12, carried, year, white);
   const total = loss.forDeductions;
@@ -806,7 +908,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "", label: "所得金額等", value: null, head: true },
     { no: "①", label: "事業（営業等）", value: r1, note: white ? "収支内訳書の所得金額（事業専従者控除の後）" : `青色申告特別控除 ${(blue - blueRealEstate).toLocaleString()}円を差し引いた額` },
     ...(re ? [{ no: "③", label: "不動産", value: r3, note: white ? "収支内訳書（不動産所得用）の所得金額" : `青色申告特別控除 ${blueRealEstate.toLocaleString()}円を差し引いた額（不動産所得から先に差し引く）` }] : []),
-    { no: "⑥", label: "給与", value: r6, note: `給与所得控除後の金額（${reiwaYear(rules.year)}）` },
+    { no: "⑥", label: "給与", value: r6, note: adjust.total ? `給与所得控除後の金額 ${salaryAfter.toLocaleString()}円から所得金額調整控除 ${adjust.total.toLocaleString()}円を差し引いた額（区分 ${adjust.kubun}）` : `給与所得控除後の金額（${reiwaYear(rules.year)}）` },
     { no: "⑦", label: "雑（公的年金等）", value: r7, note: pensionIn ? `公的年金等控除（${(age ?? 0) >= 65 ? "65歳以上" : "65歳未満"}）後の金額` : undefined },
     { no: "⑧", label: "雑（業務）", value: r8 },
     { no: "⑨", label: "雑（その他）", value: r9 },
@@ -879,6 +981,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     },
     totalIncome: r12,
     blueRealEstate,
+    incomeAdjust: adjust,
     loss,
     balance: r52 - r53,
     notes,

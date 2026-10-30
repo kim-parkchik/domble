@@ -974,3 +974,8 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .tax-amount-field { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
 .tax-amount-input { height: 24px; font-size: 12px; padding: 0 6px; }
 .tax-amount-input.is-default::placeholder { color: #9aa5b1; }
+/* 所得税：医療費の明細と明細書 */
+.it-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 14px 0 6px; }
+.it-medical-total { align-self: flex-end; margin: 0 0 6px; }
+.it-form .tax-form-table { margin-bottom: 8px; }
+.it-form .tax-form-table th { white-space: normal; line-height: 1.35; }

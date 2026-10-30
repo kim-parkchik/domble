@@ -477,3 +477,49 @@ describe("製造原価の計算（青色申告決算書の4ページ）", () => 
     expect(count(buildIncomeTaxXtx(source()), "AMH00000")).toBe(0);
   });
 });
+
+describe("医療費控除・セルフメディケーション税制の明細書、所得金額調整控除の区分、寄附先の所在地", () => {
+  test("医療費の明細を入れれば KOB560 を書く（同じ人・同じ支払先はまとめる）。XSD に合う", () => {
+    const input = {
+      medical: {
+        kind: "normal" as const, paid: 0, reimbursed: 0, notice: { amount: 60_000, paid: 60_000, reimbursed: 0 },
+        rows: [
+          { person: "山田 太郎", payee: "あおば歯科", kind: "treatment" as const, paid: 120_000, reimbursed: 0 },
+          { person: "山田 太郎", payee: "あおば歯科", kind: "medicine" as const, paid: 30_000, reimbursed: 0 },
+          { person: "山田 花子", payee: "みどり病院", kind: "treatment" as const, paid: 200_000, reimbursed: 50_000 },
+        ],
+      },
+      donations: [{ name: "〇〇市", address: "東京都〇〇市1-1", amount: 30_000, local: "furusato" as const }],
+    };
+    const src = source(input);
+    const xml = buildIncomeTaxXtx(src);
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain('<rdf:li><rdf:description about="#KOB560-1"/></rdf:li>');
+    expect(count(xml, "DHC00010")).toBe(2);
+    expect([val(xml, "DHE00020"), val(xml, "DHC00280"), val(xml, "DHC00290"), val(xml, "DHD00030")]).toEqual(["60000", "410000", "50000", "360000"]);
+    expect(val(xml, "DHD00070")).toBe(String(360_000 - 100_000));
+    expect(val(xml, "ABH00280")).toBe("東京都〇〇市1-1");
+    expect(incomeXtxNotices(src).some((n) => n.includes("明細書は書き出していません"))).toBe(false);
+  });
+  test("セルフメディケーション税制の明細を入れれば KOB570 を書く。取組を選んでいなければ書き出せない", () => {
+    const medical = {
+      kind: "self" as const, paid: 0, reimbursed: 0, effort: { kind: "checkup" as const, issuer: "〇〇市" },
+      selfRows: [{ payee: "ひかり薬局", medicine: "かぜ薬", paid: 30_000, reimbursed: 0 }, { payee: "ひかり薬局", medicine: "湿布", paid: 10_000, reimbursed: 0 }],
+    };
+    const xml = buildIncomeTaxXtx(source({ medical }));
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain("KOB570");
+    expect([val(xml, "KME00010"), val(xml, "KME00040")]).toEqual(["40000", "28000"]);
+    expect(incomeXtxProblems(source({ medical: { ...medical, effort: { kind: "" as const, issuer: "" } } }))).toEqual([expect.stringMatching(/健康の保持増進の取組/)]);
+  });
+  test("給与と年金の両方があれば、収入金額等 ㋔ の区分 2（ABB00075）", () => {
+    const src = source({
+      birthday: "1958-04-01",
+      salaries: [{ item: "給料", payer: "B社", payerId: "1234567890123", income: 2_000_000, withheld: 0 }],
+      pensions: [{ item: "老齢年金", payer: "日本年金機構", payerId: "", income: 2_000_000, withheld: 0 }],
+    });
+    const xml = buildIncomeTaxXtx(src);
+    expect(validate(xml)).toBe("");
+    expect(val(xml, "ABB00075")).toBe("2");
+  });
+});

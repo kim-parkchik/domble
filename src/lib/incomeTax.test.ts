@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import {
   ageAt, basicDeduction, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, fieldNo, incomeTaxOn, lifeInsuranceDeduction,
   medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, rulesFor, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
-  type PastIncomeTax, businessPeriod } from "./incomeTax";
+  type PastIncomeTax, businessPeriod, incomeAdjustment } from "./incomeTax";
 
 const cell = (r: IncomeTaxResult, no: string) => r.rows.find((x) => x.no === no)!.value;
 
@@ -143,12 +143,15 @@ describe("申告書（第一表）", () => {
       prepaid: 30_000,
     };
     const r = computeIncomeTax(input, biz(1_000_000), 2026);
-    expect([cell(r, "①"), cell(r, "⑥"), cell(r, "⑦"), cell(r, "⑫")]).toEqual([350_000, 2_020_000, 1_400_000, 3_770_000]);
-    expect(cell(r, "㉛")).toBe(2_330_000);
-    expect(cell(r, "㉜")).toBe(135_500);
-    expect(cell(r, "㊺")).toBe(2_845);
-    expect(cell(r, "㊿")).toBe(68_300);
-    expect(cell(r, "(52)")).toBe(38_300);
+    // 給与所得と公的年金等の雑所得の両方があるので、所得金額調整控除 10万円（10万円 ＋ 10万円 − 10万円）を ⑥ から差し引く（区分 2）
+    expect([cell(r, "①"), cell(r, "⑥"), cell(r, "⑦"), cell(r, "⑫")]).toEqual([350_000, 1_920_000, 1_400_000, 3_670_000]);
+    expect(r.incomeAdjust).toEqual({ first: 0, second: 100_000, total: 100_000, kubun: 2 });
+    expect(cell(r, "㉛")).toBe(2_230_000);
+    expect(cell(r, "㉜")).toBe(125_500);
+    expect(cell(r, "㊺")).toBe(2_635);
+    expect(cell(r, "㊿")).toBe(58_100);
+    expect(cell(r, "(52)")).toBe(28_100);
+    // 公的年金等以外の合計所得金額は、所得金額調整控除 (2) の前の給与所得で
     expect(cell(r, "(56)")).toBe(2_370_000);
     expect(cell(r, "(60)")).toBe(20_000);
   });
@@ -402,5 +405,25 @@ describe("決算書の事業期間", () => {
     expect(businessPeriod(b("open", "2026-04-15"), 2026)).toEqual({ from: "4月15日", to: "12月31日" });
     expect(businessPeriod(b("close", "2026-09-30"), 2026)).toEqual({ from: "1月1日", to: "9月30日" });
     expect(businessPeriod(b("open", "2025-04-15"), 2026)).toEqual({ from: "1月1日", to: "12月31日" });
+  });
+});
+
+describe("所得金額調整控除", () => {
+  test("(1) 給与 850万円超で 23歳未満の扶養親族・特別障害者がいる：（収入（1,000万円まで）− 850万円）× 10%。(2) 給与と年金の両方：それぞれ 10万円まで − 10万円", () => {
+    expect(incomeAdjustment(9_000_000, 7_050_000, 0, true)).toEqual({ first: 50_000, second: 0, total: 50_000, kubun: 1 });
+    expect(incomeAdjustment(12_000_000, 10_050_000, 0, true).first).toBe(150_000);
+    expect(incomeAdjustment(9_000_000, 7_050_000, 0, false).total).toBe(0);
+    expect(incomeAdjustment(9_000_005, 7_050_000, 0, true).first).toBe(50_001); // 1円未満切り上げ
+    expect(incomeAdjustment(1_000_000, 50_000, 80_000, false)).toEqual({ first: 0, second: 30_000, total: 30_000, kubun: 2 });
+    expect(incomeAdjustment(9_000_000, 7_050_000, 500_000, true)).toEqual({ first: 50_000, second: 100_000, total: 150_000, kubun: 3 });
+  });
+  test("23歳未満の扶養親族（16歳未満も）がいれば (1)。事業専従者・所得の多い親族は数えない", () => {
+    const biz = (n: number): BusinessFigures => ({ revenue: 0, incomeBeforeBlue: n, filingType: "blue65", familySalary: 0 });
+    const base: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, salaries: [{ item: "給料", payer: "C社", payerId: "", income: 9_000_000, withheld: 0 }] };
+    const child = { ...emptyRelative("子"), name: "子", birthday: "2015-04-01" };
+    expect(computeIncomeTax({ ...base, dependents: [child] }, biz(0), 2026).incomeAdjust.first).toBe(50_000);
+    expect(computeIncomeTax({ ...base, dependents: [{ ...child, familyEmployee: true }] }, biz(0), 2026).incomeAdjust.first).toBe(0);
+    expect(computeIncomeTax({ ...base, dependents: [{ ...child, birthday: "1990-01-01" }] }, biz(0), 2026).incomeAdjust.first).toBe(0);
+    expect(computeIncomeTax({ ...base, disability: "special" }, biz(0), 2026).incomeAdjust.first).toBe(50_000);
   });
 });
