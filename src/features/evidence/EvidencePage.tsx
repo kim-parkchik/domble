@@ -23,7 +23,7 @@ import * as repo from "../../db/repo";
 import { DOC_CLASS_LABEL, scanStatusOf, type DocClass, type ScanInputMethod } from "../../lib/scan";
 
 export const EvidencePage = () => {
-  const { db, year, settings, dataVersion, strict, counterparties, daysOff } = useAppContext();
+  const { db, year, settings, dataVersion, counterparties, daysOff } = useAppContext();
   const toast = useToast();
   const [all, setAll] = useState<Evidence[]>([]);
   const [dateFrom, setDateFrom] = useState(yearStart(year));
@@ -45,9 +45,12 @@ export const EvidencePage = () => {
   const [viewing, setViewing] = useState<number | null>(null);
   const [openEntry, setOpenEntry] = useState<number | null>(null);
   const [check, setCheck] = useState<repo.EvidenceCheckResult[] | null>(null);
+  /** 本当に削除した証憑の記録（通常モード） */
+  const [deletions, setDeletions] = useState<repo.EvidenceDeletion[]>([]);
 
   useEffect(() => {
     repo.getEvidences(db).then(setAll).catch(console.error);
+    repo.getEvidenceDeletions(db).then(setDeletions).catch(console.error);
     repo.getScanInputMethod(db).then(setScanMethod).catch(console.error);
   }, [db, dataVersion]);
 
@@ -125,7 +128,7 @@ export const EvidencePage = () => {
       {dragging && <div className="drop-overlay">ここに離すと、このファイルを証憑として取り込みます</div>}
       <PageHeader
         title="証憑"
-        note="受け取った請求書・領収書などのファイルを保存し、仕訳とひも付けます。取引年月日・金額・取引先を組み合わせて検索できます。ファイルをこの画面にドラッグ＆ドロップしても取り込めます。"
+        note="受け取った請求書・領収書などのファイルを保存し、仕訳とひも付けます。取引年月日・金額・取引先を組み合わせて検索できます。ファイルをこの画面にドラッグ＆ドロップしても取り込めます。電子取引データは、訂正・削除の防止に関する事務処理規程を定めて保存します（ひな形は電子帳簿保存法の画面）。"
       >
         <button className="btn ghost" onClick={verify} disabled={all.length === 0}><ShieldCheck size={16} /> 改ざんの確認</button>
         <button className="btn ghost" onClick={exportCsv} disabled={list.length === 0}><Download size={16} /> CSV</button>
@@ -156,7 +159,7 @@ export const EvidencePage = () => {
           {EVIDENCE_DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         <label className="check"><input type="checkbox" checked={unlinkedOnly} onChange={(e) => setUnlinkedOnly(e.target.checked)} /> 仕訳にひも付いていないもの</label>
-        <label className="check"><input type="checkbox" checked={includeVoid} onChange={(e) => setIncludeVoid(e.target.checked)} /> {strict ? "無効も表示" : "（削除したものは残りません）"}</label>
+        <label className="check"><input type="checkbox" checked={includeVoid} onChange={(e) => setIncludeVoid(e.target.checked)} /> 無効も表示</label>
       </div>
 
       <section className="sheet sheet-fill">
@@ -209,6 +212,34 @@ export const EvidencePage = () => {
         </div>
       </section>
 
+      {deletions.length > 0 && (
+        <section className="sheet">
+          <details className="asset-others">
+            <summary>削除した証憑（{deletions.length}件：ファイルと履歴は残っていません）</summary>
+            <table className="ledger">
+              <thead>
+                <tr><th>削除した日時</th><th className="num">No.</th><th>書類</th><th>取引年月日</th><th className="num">取引金額</th><th>取引先</th><th>ファイル</th><th>理由</th><th>操作した人</th></tr>
+              </thead>
+              <tbody>
+                {deletions.map((d) => (
+                  <tr key={d.id}>
+                    <td>{d.deleted_at}</td>
+                    <td className="num">{d.evidence_id}</td>
+                    <td>{d.doc_type}{d.is_void ? "（無効）" : ""}</td>
+                    <td>{d.txn_date.replace(/-/g, "/")}</td>
+                    <td className="num">{yen(d.amount)}</td>
+                    <td>{d.counterparty}</td>
+                    <td title={`SHA-256 ${d.sha256}`}>{d.file_name}</td>
+                    <td>{d.reason}</td>
+                    <td>{d.user_name ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        </section>
+      )}
+
       {adding && (
         <EvidenceAddModal
           initialFile={droppedFile}
@@ -224,7 +255,7 @@ export const EvidencePage = () => {
       {check && (
         <Modal title="改ざんの確認" onClose={() => setCheck(null)} width={640}>
           <p className="prose">
-            保存しているファイルの中身からハッシュ（SHA-256）を計算し、登録したときの記録{strict ? "と、書き換えられない履歴の両方" : ""}と照らし合わせました。
+            保存しているファイルの中身からハッシュ（SHA-256）を計算し、登録したときの記録と、書き換えられない登録時の履歴（あるもの）の両方と照らし合わせました。
           </p>
           {check.every((c) => c.status === "ok") ? (
             <p className="balance-banner ok">{check.length}件すべて、登録したときのまま変わっていません。</p>

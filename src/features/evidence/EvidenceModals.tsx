@@ -151,13 +151,15 @@ export const EvidenceModal = ({ evidenceId, onClose, onOpenEntry }: {
   const [ev, setEv] = useState<Evidence | null>(null);
   const [history, setHistory] = useState<EvidenceHistoryRecord[]>([]);
   const [editing, setEditing] = useState(false);
-  const [voiding, setVoiding] = useState(false);
+  // 無効にする（どちらの保存方式でも）／本当に削除する（通常モードだけ）の入力を開いているか
+  const [voiding, setVoiding] = useState<"void" | "delete" | null>(null);
   const [voidReason, setVoidReason] = useState("");
 
   useEffect(() => {
     repo.getEvidence(db, evidenceId).then(setEv).catch(console.error);
-    if (strict) repo.getEvidenceHistory(db, evidenceId).then(setHistory).catch(console.error);
-  }, [db, evidenceId, strict, dataVersion]);
+    // 証憑の履歴は、どちらの保存方式でも残る（電子取引データの保存は帳簿の保存方式によらない義務のため）
+    repo.getEvidenceHistory(db, evidenceId).then(setHistory).catch(console.error);
+  }, [db, evidenceId, dataVersion]);
 
   if (!ev) return <Modal title={`証憑 No.${evidenceId}`} onClose={onClose}><p className="muted">読み込んでいます…</p></Modal>;
   const isVoid = ev.is_void === 1;
@@ -173,17 +175,26 @@ export const EvidenceModal = ({ evidenceId, onClose, onOpenEntry }: {
   };
 
   const doVoid = async () => {
-    if (strict && !voidReason.trim()) return toast("無効にする理由を入れてください", "error");
-    if (!strict) {
-      const ok = await ask("この証憑を削除します。元に戻せません。", { title: "証憑の削除", kind: "warning", okLabel: "削除", cancelLabel: "やめる" });
-      if (!ok) return;
-    }
+    if (!voidReason.trim()) return toast("無効にする理由を入れてください", "error");
     try {
       await repo.voidEvidence(db, ev.id, voidReason);
       bump();
-      toast(strict ? "証憑を無効にしました" : "証憑を削除しました");
-      if (!strict) onClose();
-      setVoiding(false);
+      toast("証憑を無効にしました");
+      setVoiding(null);
+    } catch (e) {
+      toast(errText(e), "error");
+    }
+  };
+
+  /** 本当に削除する（通常モードだけ。削除したことは「削除した証憑」に残る） */
+  const doDelete = async () => {
+    const ok = await ask("この証憑を削除します。ファイル・ひも付け・履歴が消え、元に戻せません。", { title: "証憑の削除", kind: "warning", okLabel: "削除", cancelLabel: "やめる" });
+    if (!ok) return;
+    try {
+      await repo.deleteEvidence(db, ev.id, voidReason);
+      bump();
+      toast("証憑を削除しました");
+      onClose();
     } catch (e) {
       toast(errText(e), "error");
     }
@@ -271,20 +282,29 @@ export const EvidenceModal = ({ evidenceId, onClose, onOpenEntry }: {
               <button className="btn ghost" onClick={doExport}><Download size={16} /> 書き出す</button>
               <div className="spacer" />
               {!isVoid && <button className="btn ghost" onClick={() => setEditing(true)}><Pencil size={16} /> 訂正</button>}
-              {!isVoid && (strict
-                ? <button className="btn danger-ghost" onClick={() => setVoiding((v) => !v)}><Ban size={16} /> 無効にする</button>
-                : <button className="btn danger-ghost" onClick={doVoid}><Trash2 size={16} /> 削除</button>)}
+              {!isVoid && <button className="btn danger-ghost" onClick={() => setVoiding((v) => (v === "void" ? null : "void"))}><Ban size={16} /> 無効にする</button>}
+              {!strict && <button className="btn danger-ghost" onClick={() => setVoiding((v) => (v === "delete" ? null : "delete"))}><Trash2 size={16} /> 削除</button>}
             </div>
           )}
-          {voiding && !isVoid && (
+          {voiding === "void" && !isVoid && (
             <form className="void-form" onSubmit={(e) => { e.preventDefault(); doVoid(); }}>
               <p className="prose">無効にすると、検索や仕訳のひも付けの対象から外れます。ファイルと履歴は残り、元には戻せません。</p>
               <input className="input" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} placeholder="無効にする理由（例：二重に取り込んだため）" autoFocus maxLength={200} />
               <button className="btn danger-ghost" type="submit" disabled={!voidReason.trim()}><Ban size={16} /> 無効にする</button>
             </form>
           )}
+          {voiding === "delete" && (
+            <form className="void-form" onSubmit={(e) => { e.preventDefault(); doDelete(); }}>
+              <p className="prose">
+                削除すると、ファイル・ひも付け・履歴が消え、元に戻せません。削除したこと（日時・理由・最後の内容）は、証憑の画面の「削除した証憑」に残ります。
+                電子取引データは保存期間のあいだ消さず、取り消すときは「無効にする」を使ってください（事務処理規程）。
+              </p>
+              <input className="input" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} placeholder="削除する理由（任意）" autoFocus maxLength={200} />
+              <button className="btn danger-ghost" type="submit"><Trash2 size={16} /> 削除する</button>
+            </form>
+          )}
 
-          {strict && history.length > 0 && (
+          {history.length > 0 && (
             <>
               <h3 className="sub-h">履歴</h3>
               <ol className="evidence-history">

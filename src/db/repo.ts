@@ -1971,9 +1971,11 @@ const evidenceSnapshot = (e: Evidence): EvidenceSnapshot => ({
   ...(e.doc_class ? { doc_class: e.doc_class } : {}),
 });
 
-/** 今の状態を履歴に積む（厳密モードのみ。呼ぶ前に revision を上げておく） */
+/**
+ * 今の状態を履歴に積む（呼ぶ前に revision を上げておく）。
+ * 電子取引データの保存は帳簿の保存方式によらない義務なので、通常モードでも残す（記録の連鎖に入れるのは厳密モードだけ）
+ */
 const writeEvidenceHistory = async (db: Database, id: number, action: EvidenceAction, reason: string) => {
-  if (!(await isStrict(db))) return;
   const e = await getEvidence(db, id);
   if (!e) return;
   const res = await db.execute(
@@ -2138,16 +2140,11 @@ const updateEvidence_ = async (db: Database, id: number, meta: EvidenceMeta, rea
   await writeEvidenceHistory(db, id, "update", reason);
 };
 
-/** 厳密モード：無効の印をつける（中身と履歴は残る）。通常モード：削除する */
+/** 無効の印をつける（中身と履歴は残る。どちらの保存方式でも）。理由は必須 */
 const voidEvidence_ = async (db: Database, id: number, reason = "") => {
   const before = await getEvidence(db, id);
   if (!before || before.is_void) return;
-  if (!(await isStrict(db))) {
-    await db.execute("DELETE FROM evidence_links WHERE evidence_id = ?", [id]);
-    await db.execute("DELETE FROM evidence_files WHERE evidence_id = ?", [id]);
-    await db.execute("DELETE FROM evidences WHERE id = ?", [id]);
-    return;
-  }
+  if (!reason.trim()) throw new Error("無効にする理由を入れてください");
   // 無効にしてから履歴を積む（記録の連鎖に無効にしたあとの状態を残すため。無効にした行は以後変更できない）
   await db.execute(
     `UPDATE evidences SET is_void = 1, revision = revision + 1, voided_at = DATETIME('now','localtime'),
@@ -2156,6 +2153,49 @@ const voidEvidence_ = async (db: Database, id: number, reason = "") => {
   );
   await writeEvidenceHistory(db, id, "void", reason);
 };
+
+/**
+ * 本当に削除する（通常モードだけ）。ファイル・ひも付け・履歴を消し、削除したこと（日時・理由・最後の内容・消した履歴の件数）を evidence_deletions に残す。
+ * 厳密モードでは削除できない（無効にする）
+ */
+const deleteEvidence_ = async (db: Database, id: number, reason = "") => {
+  if (await isStrict(db)) throw new Error("電子帳簿保存法に対応した帳簿では、証憑を削除できません。無効にしてください");
+  const before = await getEvidence(db, id);
+  if (!before) return;
+  const n = (await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM evidence_history WHERE evidence_id = ?", [id]))[0].n;
+  await db.execute(
+    "INSERT INTO evidence_deletions (evidence_id, reason, snapshot, history_count, user_id) VALUES (?, ?, ?, ?, ?)",
+    [id, reason.trim(), JSON.stringify({ ...evidenceSnapshot(before), is_void: before.is_void }), n, currentActor],
+  );
+  await db.execute("DELETE FROM evidence_history WHERE evidence_id = ?", [id]);
+  await db.execute("DELETE FROM evidence_links WHERE evidence_id = ?", [id]);
+  await db.execute("DELETE FROM evidence_files WHERE evidence_id = ?", [id]);
+  await db.execute("DELETE FROM evidences WHERE id = ?", [id]);
+};
+
+export interface EvidenceDeletion {
+  id: number;
+  evidence_id: number;
+  deleted_at: string;
+  reason: string;
+  history_count: number;
+  user_name: string | null;
+  /** 削除する前の項目 */
+  doc_type: string; txn_date: string; amount: number; counterparty: string; file_name: string; sha256: string; is_void: number;
+}
+
+/** 削除した証憑の記録（新しい順） */
+export const getEvidenceDeletions = async (db: Database): Promise<EvidenceDeletion[]> =>
+  (await db.select<{ id: number; evidence_id: number; deleted_at: string; reason: string; history_count: number; user_name: string | null; snapshot: string }[]>(
+    `SELECT d.id, d.evidence_id, d.deleted_at, d.reason, d.history_count, u.name AS user_name, d.snapshot
+       FROM evidence_deletions d LEFT JOIN users u ON u.id = d.user_id ORDER BY d.id DESC`,
+  )).map(({ snapshot, ...d }) => {
+    const s = JSON.parse(snapshot);
+    return {
+      ...d, doc_type: s.doc_type ?? "", txn_date: s.txn_date ?? "", amount: s.amount ?? 0, counterparty: s.counterparty ?? "",
+      file_name: s.file_name ?? "", sha256: s.sha256 ?? "", is_void: s.is_void ?? 0,
+    };
+  });
 
 /** 仕訳とひも付ける */
 const linkEvidence_ = async (db: Database, evidenceId: number, entryId: number) => {
@@ -2730,7 +2770,8 @@ export const reopenYear = inTx(reopenYear_, (year) => `${year}年の締めの解
 export const initClosings = inTx(initClosings_, () => "繰越済みの年度の締め");
 export const createEvidence = inTx(createEvidence_, (m) => `証憑（${m.txn_date} ${m.counterparty}）の取り込み`, { perm: "entry" });
 export const updateEvidence = inTx(updateEvidence_, (id) => `証憑 No.${id} の訂正`, { perm: "entry" });
-export const voidEvidence = inTx(voidEvidence_, (id) => `証憑 No.${id} の無効・削除`, { perm: "entry" });
+export const voidEvidence = inTx(voidEvidence_, (id) => `証憑 No.${id} の無効`, { perm: "entry" });
+export const deleteEvidence = inTx(deleteEvidence_, (id) => `証憑 No.${id} の削除`, { perm: "entry" });
 export const linkEvidence = inTx(linkEvidence_, (e, entry) => `証憑 No.${e} と伝票 No.${entry} のひも付け`, { perm: "entry" });
 export const unlinkEvidence = inTx(unlinkEvidence_, (e, entry) => `証憑 No.${e} と伝票 No.${entry} のひも付け解除`, { perm: "entry" });
 export const initChain = inTx(initChain_, () => "記録の連鎖の開始");

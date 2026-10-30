@@ -166,8 +166,8 @@ describe("証憑（repo）", () => {
     expect((await repo.verifyEvidences(db))[0].detail).toMatch(/履歴/);
   });
 
-  test("通常モード：削除は物理削除。仕訳を削除してもひも付けだけ外れる", async () => {
-    const { db } = makeDb("standard");
+  test("通常モード：仕訳を削除してもひも付けだけ外れる。証憑の履歴は残り、無効にも本当の削除もできる（削除したことは記録に残る）", async () => {
+    const { db, raw } = makeDb("standard");
     const accts = await repo.getAccounts(db, 2026);
     const ls = lines.map((l) => ({ ...l, account_id: accts[l.account_id - 1]?.id ?? l.account_id }));
     const entry = await repo.createEntry(db, "2026-01-31", ls);
@@ -176,9 +176,28 @@ describe("証憑（repo）", () => {
     await repo.linkEvidence(db, a, entry);
     await repo.deleteEntry(db, entry);
     expect((await repo.getEvidence(db, a))!.entry_ids).toEqual([]);
-    await repo.voidEvidence(db, b);
+    // 電子取引データの保存は帳簿の保存方式によらないので、通常モードでも履歴を残す（記録の連鎖には入れない）
+    await repo.updateEvidence(db, b, { ...meta, amount: 12_000 });
+    await expect(repo.voidEvidence(db, b)).rejects.toThrow(/理由/);
+    await repo.voidEvidence(db, b, "二重に取り込んだ");
+    expect((await repo.getEvidence(db, b))!.is_void).toBe(1);
+    expect((await repo.getEvidenceHistory(db, b)).map((h) => [h.action, h.reason])).toEqual([["void", "二重に取り込んだ"], ["update", ""], ["create", ""]]);
+    expect(raw.query("SELECT COUNT(*) AS n FROM audit_chain").get()).toEqual({ n: 0 });
+    // 本当に削除：ファイル・ひも付け・履歴は消え、削除したことと最後の内容が残る
+    await repo.deleteEvidence(db, b, "不要になった");
     expect(await repo.getEvidence(db, b)).toBeNull();
-    expect(await repo.getEvidenceHistory(db)).toEqual([]);
+    expect(await repo.getEvidenceHistory(db, b)).toEqual([]);
+    const [d] = await repo.getEvidenceDeletions(db);
+    expect(d).toMatchObject({ evidence_id: b, reason: "不要になった", history_count: 3, amount: 12_000, file_name: "b.pdf", is_void: 1 });
+    expect(() => raw.run("DELETE FROM evidence_deletions")).toThrow(/削除できません/);
+  });
+
+  test("厳密モード：証憑は削除できない（無効にする）。履歴も消せない", async () => {
+    const { db, raw } = strict;
+    const a = await repo.createEvidence(db, meta, { name: "a.pdf", bytes: pdf("a") });
+    await expect(repo.deleteEvidence(db, a)).rejects.toThrow(/削除できません/);
+    expect(() => raw.run("DELETE FROM evidence_history WHERE evidence_id = ?", [a])).toThrow(/削除できません/);
+    expect(() => raw.run("DELETE FROM evidences WHERE id = ?", [a])).toThrow(/削除できません/);
   });
 });
 

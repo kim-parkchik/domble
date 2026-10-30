@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filingDeadline, filingFormName, isBeforeStrict, isYearCompliant, processingManual } from "./ebook";
+import { electronicRule, filingDeadline, filingFormName, isBeforeStrict, isYearCompliant, processingManual } from "./ebook";
 
 describe("年ごとの電子帳簿保存法への対応", () => {
   test("最初から厳密：全部の年。途中から：その年から。通常：どの年も対応外", () => {
@@ -28,5 +28,17 @@ describe("届出", () => {
     expect(m).toContain("2027年1月1日");
     // タイムスタンプを付けないので、読み取った書類も紙の原本を保存する
     expect(m).toContain("紙の原本を保存する");
+  });
+});
+
+describe("電子取引データの事務処理規程（ひな形）", () => {
+  test("国税庁の個人事業者の例に沿い、訂正・削除は domble の訂正・無効で行う。施行日は令和の年", () => {
+    const r = electronicRule({ businessName: "テスト商店", ownerName: "山田 太郎", year: 2026, fileName: "a.dmbl" });
+    expect(r).toContain("電子取引データの訂正及び削除の防止に関する事務処理規程");
+    expect(r).toContain("（訂正削除の原則禁止）");
+    expect(r).toContain("正当な理由がある場合に限る。");
+    expect(r).toContain("「無効」にする");
+    expect(r).toContain("a.dmbl");
+    expect(r).toContain("令和8年1月1日から施行する");
   });
 });

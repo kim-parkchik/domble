@@ -14,6 +14,8 @@
 // ── 締め済みの年度への書き込みを拒否するトリガー ──
 // 画面側（repo.ts）でも先に確認するが、ここが最後の砦。メッセージは repo.ts の CLOSED_MESSAGE と揃える
 const CLOSED_MSG = "締め済みの年度は変更できません";
+/** 電子帳簿保存法に対応した保存方式（厳密モード）の帳簿か */
+const STRICT_MODE = "(SELECT e_book_mode FROM settings WHERE id = 1) = 'strict'";
 const dateClosed = (date: string) =>
   `EXISTS (SELECT 1 FROM fiscal_closings c WHERE ${date} BETWEEN c.period_start AND c.period_end)`;
 const entryClosed = (entryId: string) => dateClosed(`(SELECT e.date FROM journal_entries e WHERE e.id = ${entryId})`);
@@ -123,6 +125,8 @@ const CLOSED_TRIGGERS: string[] = [
  */
 export const RETIRED_TRIGGERS = [
   "trg_settings_mode_fixed",
+  // 通常モードでも証憑の履歴を残すようにしたとき、削除の止め方を厳密モードだけにした（_s）
+  "trg_evidence_history_no_delete", "trg_evidences_no_delete", "trg_evidence_files_no_delete",
   ...YEAR_GUARD_PREFIXES.flatMap((p) => ["ins", "upd", "del"].map((x) => `${p}_${x}`)),
 ];
 
@@ -429,7 +433,8 @@ export const SCHEMA: string[] = [
    *  - 取引年月日・取引金額・取引先は、電子取引データの検索要件の項目。仕訳とは別に証憑そのものに持つ
    *  - kind：electronic = 電子取引データ（メールで受け取った PDF など）／ scan = スキャナ保存（紙を読み取ったもの。タイムスタンプは付けないので、紙の原本も保存してもらう。lib/scan.ts）
    *  - ファイルの中身・名前・ハッシュは、登録したあと変えられない（差し替えるときは新しく登録して古い方を無効にする）
-   *  - 厳密モードでは削除できない（無効の印をつけるだけ）。登録・訂正・無効・ひも付けは evidence_history に残す
+   *  - 登録・訂正・無効・ひも付けは、どちらの保存方式でも evidence_history に残す（電子取引データの保存は、帳簿の保存方式によらない義務のため）
+   *  - 厳密モードでは削除できない（無効の印をつけるだけ）。通常モードでは本当に削除もできる（履歴も消え、削除したことを evidence_deletions に残す）
    */
   `CREATE TABLE IF NOT EXISTS evidences (
     id INTEGER PRIMARY KEY AUTOINCREMENT,  -- 証憑番号。欠番になっても再利用しない
@@ -477,6 +482,20 @@ export const SCHEMA: string[] = [
     reason TEXT NOT NULL DEFAULT '',
     snapshot TEXT NOT NULL,
     UNIQUE (evidence_id, revision)
+  );`,
+
+  /**
+   * 削除した証憑の記録（通常モードで本当に削除したとき。ファイルと履歴は消えるので、削除したことと最後の内容だけを残す）
+   *  snapshot：削除する前の項目（evidence_history の snapshot と同じ形）、history_count：消した履歴の件数
+   */
+  `CREATE TABLE IF NOT EXISTS evidence_deletions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    evidence_id INTEGER NOT NULL,
+    deleted_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
+    reason TEXT NOT NULL DEFAULT '',
+    snapshot TEXT NOT NULL,
+    history_count INTEGER NOT NULL DEFAULT 0,
+    user_id INTEGER REFERENCES users(id)
   );`,
 
   /**
@@ -656,20 +675,27 @@ export const SCHEMA: string[] = [
   // ── 証憑を守るトリガー ──
   `CREATE TRIGGER IF NOT EXISTS trg_evidence_history_no_update BEFORE UPDATE ON evidence_history
    BEGIN SELECT RAISE(ABORT, '証憑の履歴は変更できません'); END;`,
-  `CREATE TRIGGER IF NOT EXISTS trg_evidence_history_no_delete BEFORE DELETE ON evidence_history
+  // 通常モードでは証憑を本当に削除できる（そのときは履歴も消し、削除したことを evidence_deletions に残す）。厳密モードでは削除させない
+  `CREATE TRIGGER IF NOT EXISTS trg_evidence_history_no_delete_s BEFORE DELETE ON evidence_history
+   WHEN ${STRICT_MODE}
    BEGIN SELECT RAISE(ABORT, '証憑の履歴は削除できません'); END;`,
   // ファイルの中身は、どちらのモードでも書き換えさせない
   `CREATE TRIGGER IF NOT EXISTS trg_evidence_files_no_update BEFORE UPDATE ON evidence_files
    BEGIN SELECT RAISE(ABORT, '証憑のファイルは変更できません'); END;`,
   `CREATE TRIGGER IF NOT EXISTS trg_evidences_file_fixed BEFORE UPDATE OF file_name, mime, size, sha256 ON evidences
    BEGIN SELECT RAISE(ABORT, '証憑のファイルは変更できません'); END;`,
-  // 履歴がある証憑（厳密モード）は削除させない（登録途中の失敗の後始末だけは許す）
-  `CREATE TRIGGER IF NOT EXISTS trg_evidences_no_delete BEFORE DELETE ON evidences
-   WHEN EXISTS (SELECT 1 FROM evidence_history WHERE evidence_id = OLD.id)
+  // 厳密モードで、履歴がある証憑は削除させない（登録途中の失敗の後始末だけは許す）。通常モードでは削除できる
+  `CREATE TRIGGER IF NOT EXISTS trg_evidences_no_delete_s BEFORE DELETE ON evidences
+   WHEN ${STRICT_MODE} AND EXISTS (SELECT 1 FROM evidence_history WHERE evidence_id = OLD.id)
    BEGIN SELECT RAISE(ABORT, '証憑は削除できません（無効の印をつけてください）'); END;`,
-  `CREATE TRIGGER IF NOT EXISTS trg_evidence_files_no_delete BEFORE DELETE ON evidence_files
-   WHEN EXISTS (SELECT 1 FROM evidence_history WHERE evidence_id = OLD.evidence_id)
+  `CREATE TRIGGER IF NOT EXISTS trg_evidence_files_no_delete_s BEFORE DELETE ON evidence_files
+   WHEN ${STRICT_MODE} AND EXISTS (SELECT 1 FROM evidence_history WHERE evidence_id = OLD.evidence_id)
    BEGIN SELECT RAISE(ABORT, '証憑は削除できません（無効の印をつけてください）'); END;`,
+  // 削除した証憑の記録は書き換え・削除させない
+  `CREATE TRIGGER IF NOT EXISTS trg_evidence_deletions_no_update BEFORE UPDATE ON evidence_deletions
+   BEGIN SELECT RAISE(ABORT, '削除した証憑の記録は変更できません'); END;`,
+  `CREATE TRIGGER IF NOT EXISTS trg_evidence_deletions_no_delete BEFORE DELETE ON evidence_deletions
+   BEGIN SELECT RAISE(ABORT, '削除した証憑の記録は削除できません'); END;`,
   // スキャナ保存の画質の確認は、取り込んだときのまま（あとから書き換えさせない）
   `CREATE TRIGGER IF NOT EXISTS trg_evidences_scan_fixed BEFORE UPDATE OF scan_info ON evidences
    WHEN OLD.scan_info <> NEW.scan_info

@@ -4,6 +4,7 @@
  *  - 受けられる優遇措置（過少申告加算税の軽減・青色申告特別控除）とその条件
  *  - 要件のチェックリスト：domble が満たしているもの（自動）と、自分で行うこと（チェックを年度ごとに残す）
  *  - 届出書に書く内容（コピー用）と提出期限、事務処理マニュアルのひな形
+ *  - 電子取引データの保存（帳簿の保存方式によらない義務）：要件と、訂正及び削除の防止に関する事務処理規程のひな形
  * 内容は国税庁の案内（令和8年時点）に基づく。最新の様式・要件は国税庁の案内で確かめてもらう
  */
 import { useEffect, useState } from "react";
@@ -14,7 +15,7 @@ import { useToast } from "../../components/Toast";
 import { copyText } from "../../lib/clipboard";
 import { longDate } from "../../lib/format";
 import { saveAnchorFile } from "../books/IntegrityModal";
-import { filingDeadline, filingFormName, isYearCompliant, keepingStartDate, MANUAL_ITEMS, processingManual } from "../../lib/ebook";
+import { ELECTRONIC_ITEMS, electronicRule, filingDeadline, filingFormName, isYearCompliant, keepingStartDate, MANUAL_ITEMS, processingManual } from "../../lib/ebook";
 import { MODE_LABEL } from "../start/SetupScreen";
 import type { Page } from "../../App";
 import * as repo from "../../db/repo";
@@ -79,6 +80,14 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
     { label: "検索機能", detail: "取引年月日・取引金額・取引先で検索でき、日付と金額は範囲で、条件は組み合わせて指定できます", page: "journal" },
     { label: "画面と書面に整然と出力できる", detail: "仕訳日記帳・総勘定元帳（補助元帳）・出納帳・残高試算表・固定資産台帳・訂正削除履歴を、ページ番号と見出しつきの A4 で印刷できます（印刷の画面から PDF にも保存できます）", page: "ledger" },
     { label: "ダウンロードの求めに応じられる", detail: "仕訳日記帳・総勘定元帳・残高試算表・固定資産台帳・訂正削除履歴などを CSV で書き出せます", page: "journal" },
+  ];
+
+  // 電子取引データ：domble が満たしているもの（帳簿の保存方式によらない）
+  const electronicAuto: { label: string; detail: string }[] = [
+    { label: "検索機能", detail: "取引年月日・取引金額・取引先で検索でき、日付と金額は範囲で、条件は組み合わせて指定できます" },
+    { label: "画面と書面に出力できる", detail: "証憑の画面で表示し、書き出したファイルを印刷できます" },
+    { label: "ダウンロードの求めに応じられる", detail: "検索した証憑のファイルを、一覧の CSV と一緒にフォルダへ書き出せます" },
+    { label: "訂正・削除の記録が残る", detail: "証憑の訂正（理由つき）・無効にしたこと・ひも付けを、証憑ごとの履歴に残します（帳簿の保存方式によらず）。ファイルの中身は差し替えられません" },
   ];
 
   return (
@@ -196,6 +205,61 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
             const text = processingManual({ businessName: settings.business_name, ownerName: settings.owner_name, year, inputDays, fileName });
             try {
               if (await saveAnchorFile(text, `事務処理マニュアル_${year}年.txt`)) toast("保存しました");
+            } catch (e) {
+              toast(`保存できませんでした：${String(e)}`, "error");
+            }
+          }}
+        >
+          <FileDown size={16} /> ひな形を保存
+        </button>
+      </section>
+
+      <section className="sheet">
+        <h2 className="sheet-h">電子取引データの保存（{year}年）</h2>
+        <p className="prose">
+          メールやウェブで受け取った請求書・領収書などのデータ（電子取引データ）は、紙に印刷して済ませず、データのまま保存する義務があります
+          （令和6年1月1日以後。すべての事業者。帳簿の保存方式によりません）。domble では「証憑」の画面に取り込んで保存します。
+        </p>
+        <h3 className="st-h">domble が満たしているもの</h3>
+        <ul className="ebook-list">
+          {electronicAuto.map((x) => (
+            <li key={x.label} className="ok">
+              <CheckCircle2 size={16} />
+              <div>
+                <b>{x.label}</b>
+                <button className="link-btn" onClick={() => go("evidence")}>画面を開く</button>
+                <p>{x.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <h3 className="st-h">ご自身で行うこと</h3>
+        <ul className="ebook-list manual">
+          {ELECTRONIC_ITEMS.map((x) => {
+            const done = notes[`ebook:${x.key}`];
+            return (
+              <li key={x.key}>
+                <input type="checkbox" checked={!!done} onChange={(e) => toggle(x.key, e.target.checked)} disabled={isClosed || readOnly || !can("master")} aria-label={x.label} />
+                <div>
+                  <b>{x.label}</b>
+                  {done && <span className="hint">{done.replace(/-/g, "/")} にチェック</span>}
+                  <p>{x.note}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <h3 className="st-h">訂正及び削除の防止に関する事務処理規程のひな形</h3>
+        <p className="prose">
+          domble はタイムスタンプを付けません。また、メールなどで受け取ったデータを取り込むのは「保存」だけなので、訂正・削除の履歴が残る仕組みで受け取ったことにもなりません。
+          そのため、真実性の要件は、この事務処理規程を定めてそのとおり運用することで満たします。国税庁のサンプル（個人事業者の例）に沿い、訂正・削除の手順を domble の操作に合わせてあります。自分の運用に合わせて直してから使ってください。
+        </p>
+        <button
+          className="btn ghost"
+          onClick={async () => {
+            const text = electronicRule({ businessName: settings.business_name, ownerName: settings.owner_name, year, fileName });
+            try {
+              if (await saveAnchorFile(text, `電子取引データの事務処理規程_${year}年.txt`)) toast("保存しました");
             } catch (e) {
               toast(`保存できませんでした：${String(e)}`, "error");
             }
