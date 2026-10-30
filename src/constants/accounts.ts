@@ -47,6 +47,8 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("137", "一括償却資産", "いっかつしょうきゃくしさん", "asset", "debit"),
   a("138", "ソフトウェア", "そふとうぇあ", "asset", "debit"),
   a("140", "敷金", "しききん", "asset", "debit"),
+  // 繰延資産（開業の準備のための支出。任意償却）
+  a("160", "開業費", "かいぎょうひ", "asset", "debit"),
   a("190", "事業主貸", "じぎょうぬしかし", "asset", "debit"),
 
   // ── 負債 ──
@@ -59,6 +61,8 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("207", "仮受金", "かりうけきん", "liability", "credit"),
   // 追加の科目は空いている小さいコードから振るので、あとから足した初期科目は離れたコードにする
   a("250", "貸倒引当金", "かしだおれひきあてきん", "liability", "credit"),
+  // 年末に計上する、納める消費税（税込経理。次の年に納めたら取り崩す）
+  a("260", "未払消費税等", "みばらいしょうひぜいとう", "liability", "credit"),
 
   // ── 資本 ──
   a("301", "事業主借", "じぎょうぬしかり", "equity", "credit"),
@@ -98,6 +102,9 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("623", "会議費", "かいぎひ", "expense", "debit"),
   a("624", "研修費", "けんしゅうひ", "expense", "debit"),
   a("625", "諸会費", "しょかいひ", "expense", "debit"),
+  // 従業員の社会保険・労働保険の事業主負担（対象外）／ 固定資産を捨てたときの帳簿価額（固定資産台帳の除却の仕訳で使う）
+  a("670", "法定福利費", "ほうていふくりひ", "expense", "debit"),
+  a("671", "固定資産除却損", "こていしさんじょきゃくそん", "expense", "debit"),
   a("699", "雑費", "ざっぴ", "expense", "debit"),
 
   // ── 所得計算の後段 ──
@@ -138,6 +145,11 @@ export const CODE = {
   RENT: "616",         // 地代家賃
   FEES: "620",         // 支払手数料（税理士・弁護士等の報酬の候補）
   FAMILY_SALARY: "701", // 専従者給与
+  ORGANIZATION_COST: "160",  // 開業費（繰延資産）
+  ACCRUED_CONSUMPTION_TAX: "260", // 未払消費税等
+  LEGAL_WELFARE: "670",      // 法定福利費
+  DISPOSAL_LOSS: "671",      // 固定資産除却損
+  WELFARE: "612",            // 福利厚生費
   ALLOWANCE: "250",     // 貸倒引当金
   ALLOWANCE_ADD: "750", // 貸倒引当金繰入
   ALLOWANCE_BACK: "751", // 貸倒引当金戻入

@@ -87,6 +87,8 @@ export const ACCOUNT_TAX_DEFAULTS: Record<string, TaxCode> = {
   "611": "none", "612": "purchase10", "613": "none", "614": "purchase10", "615": "purchase_nontax",
   "616": "purchase10", "617": "baddebt10", "620": "purchase10", "621": "purchase10", "622": "purchase10",
   "623": "purchase10", "624": "purchase10", "625": "none", "699": "purchase10",
+  // 法定福利費（社会保険料・労働保険料の事業主負担）・固定資産除却損は対象外。開業費は支出したときの課税仕入。未払消費税等は対象外
+  "670": "none", "671": "none", "160": "purchase10", "260": "none",
   "701": "none",
 };
 

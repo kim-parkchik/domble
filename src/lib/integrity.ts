@@ -92,12 +92,15 @@ export const closingState = (c: { period_start: string; period_end: string } | n
 export interface AssetStateInput {
   name: string; account_id: number; acquired_on: string; used_on: string; cost: number; method: string; useful_life: number; business_rate: number;
   opening_year: number | null; opening_book_value: number | null; disposed_on: string | null; memo: string; income_kind: string;
+  /** 売却・除却の区分と売却額。あとから足した項目なので、入っているときだけ正規形に入れる（それまでの記録のハッシュを変えないため） */
+  disposal_kind?: string | null; sale_price?: number | null;
 }
 /** 固定資産台帳の1件（あとの年から変えた事業専用割合を含む） */
 export const assetState = (a: AssetStateInput | null, rates: { from_year: number; rate: number }[]) =>
   JSON.stringify(a
     ? [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year ?? null, a.opening_book_value ?? null,
-      a.disposed_on ?? null, a.memo, a.income_kind, rates.map((r) => [r.from_year, r.rate]).sort(cmp)]
+      a.disposed_on ?? null, a.memo, a.income_kind, rates.map((r) => [r.from_year, r.rate]).sort(cmp),
+      ...(a.disposal_kind ? [["disposal", a.disposal_kind, a.sale_price ?? null]] : [])]
     : null);
 
 /**

@@ -36,8 +36,8 @@ import {
   openingState, sourceLabel, stateLabel, verifyChain, type ChainRow, type ChainSource, type IntegrityIssue,
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
-import { CATEGORY_CODE_RANGE, isBalanceSheet, LOCKED_CODES, normalSideOf } from "../constants/accounts";
-import { assetLockError, businessRateIn, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
+import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, normalSideOf } from "../constants/accounts";
+import { assetLockError, businessRateIn, DISPOSAL_LABEL, disposalLines, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import type { InventoryAdjust } from "../lib/taxReturn";
 import {
@@ -1730,7 +1730,7 @@ const setHomeUseRun_ = (db: Database, year: number, entryId: number) =>
 // ────────────────────────────────────────────
 export type AssetInput = Omit<FixedAsset, "id">;
 
-const ASSET_COLUMNS = "id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind";
+const ASSET_COLUMNS = "id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind, disposal_kind, sale_price";
 
 /** 資産に、あとの年から変えた事業専用割合（あれば）をつける */
 const withRates = (assets: FixedAsset[], rates: (AssetRate & { asset_id: number })[]): FixedAsset[] =>
@@ -1760,7 +1760,7 @@ const assetText = (a: AssetInput) =>
     methodLabel(a) + (a.method === "straight" ? ` ${a.useful_life}年` : ""),
     `事業 ${a.business_rate}%` + (a.rates ?? []).map((r) => `・${r.from_year}年から ${r.rate}%`).join(""),
     a.opening_year !== null ? `${a.opening_year}年期首の未償却残高 ${a.opening_book_value?.toLocaleString()}円` : "",
-    a.disposed_on ? `売却・除却 ${a.disposed_on}` : "",
+    a.disposed_on ? `${a.disposal_kind ? DISPOSAL_LABEL[a.disposal_kind] : "売却・除却"} ${a.disposed_on}${a.disposal_kind === "sale" ? `（${(a.sale_price ?? 0).toLocaleString()}円）` : ""}` : "",
     a.memo ? `備考 ${a.memo}` : "",
     a.income_kind === "realestate" ? "不動産所得" : "",
   ].filter(Boolean).join("、");
@@ -1771,6 +1771,9 @@ const normalizeAsset = (a: AssetInput): AssetInput => ({
   memo: a.memo.trim(),
   useful_life: a.method === "straight" ? a.useful_life : 0,
   disposed_on: a.disposed_on || null,
+  // 区分と売却額は、売却・除却した日があるときだけ（除却なら売却額は無し）
+  disposal_kind: a.disposed_on && (a.disposal_kind === "sale" || a.disposal_kind === "scrap") ? a.disposal_kind : null,
+  sale_price: a.disposed_on && a.disposal_kind === "sale" ? a.sale_price ?? null : null,
   income_kind: a.income_kind === "realestate" ? "realestate" : "business",
 });
 
@@ -1797,9 +1800,9 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
     const err = assetLockError(null, added, closed);
     if (err) throw new Error(err);
     const r = await db.execute(
-      `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind],
+      `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind, disposal_kind, sale_price)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind, a.disposal_kind ?? null, a.sale_price ?? null],
     );
     const newId = Number(r.lastInsertId);
     await logMaster(db, { target_type: "asset", target_id: newId, action: "create", fiscal_year, label: a.name, old_value: "", new_value: assetText(added) });
@@ -1825,8 +1828,9 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
   if (err) throw new Error(err);
   await db.execute(
     `UPDATE fixed_assets SET name = ?, account_id = ?, acquired_on = ?, used_on = ?, cost = ?, method = ?, useful_life = ?, business_rate = ?,
-       opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, income_kind = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
-    [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, base, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind, id],
+       opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, income_kind = ?, disposal_kind = ?, sale_price = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
+    [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, base, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind,
+      a.disposal_kind ?? null, a.sale_price ?? null, id],
   );
   for (const r of before.rates ?? []) {
     if (!rates.some((x) => x.from_year === r.from_year)) await db.execute("DELETE FROM asset_rates WHERE asset_id = ? AND from_year = ?", [id, r.from_year]);
@@ -1852,8 +1856,49 @@ const deleteAsset_ = async (db: Database, id: number) => {
   const err = assetLockError(before, null, await yearClosedYears(db));
   if (err) throw new Error(err);
   await db.execute("DELETE FROM asset_rates WHERE asset_id = ?", [id]);
+  await db.execute("DELETE FROM asset_disposals WHERE asset_id = ?", [id]);
   await db.execute("DELETE FROM fixed_assets WHERE id = ?", [id]);
   await logMaster(db, { target_type: "asset", target_id: id, action: "delete", fiscal_year: await currentYear(db), label: before.name, old_value: assetText(before), new_value: "" });
+};
+
+/** 台帳から作った売却・除却の仕訳（削除した仕訳は除く） */
+export const getAssetDisposals = (db: Database) =>
+  db.select<{ asset_id: number; entry_id: number; receive_account_id: number | null }[]>(
+    `SELECT d.asset_id, d.entry_id, d.receive_account_id FROM asset_disposals d JOIN journal_entries e ON e.id = d.entry_id WHERE e.is_deleted = 0`,
+  );
+
+/**
+ * 売却・除却の仕訳を作る（売却・除却した日付で1本。作り直すときは同じ仕訳を訂正する。lib/depreciation.ts の disposalLines）。
+ * receiveAccountId = 売却額を受け取った科目（現金・預金など）。除却は使わない。仕訳の id を返す（作るものが無ければ null）
+ */
+const saveDisposalEntry_ = async (db: Database, assetId: number, receiveAccountId: number | null) => {
+  const a = await getAsset(db, assetId);
+  if (!a) throw new Error("固定資産が見つかりません");
+  if (!a.disposed_on || !a.disposal_kind) throw new Error("売却・除却した日と、売却か除却かを台帳に入れてください");
+  const accounts = await getAccounts(db, Number(a.disposed_on.slice(0, 4)));
+  const idOf = (code: string) => accounts.find((x) => x.code === code)?.id ?? 0;
+  const receive = accounts.find((x) => x.id === receiveAccountId);
+  if (a.disposal_kind === "sale" && receive?.category !== "asset") throw new Error("売却額を受け取った科目（現金・預金など）を選んでください");
+  // 除却損は、不動産所得の資産なら雑費（不動産）
+  const loss = idOf(a.income_kind === "realestate" ? "698" : CODE.DISPOSAL_LOSS);
+  const lines = disposalLines(a, { receive: receive?.id ?? 0, ownerLoan: idOf(CODE.OWNER_LOAN), ownerDraw: idOf(CODE.OWNER_DRAW), loss });
+  if (lines === null) throw new Error("売却・除却の仕訳は、定額法の資産だけ作れます（一括償却資産・少額減価償却資産は振替伝票で入れてください）");
+  const before = (await getAssetDisposals(db)).find((x) => x.asset_id === assetId);
+  if (lines.length === 0) {
+    if (before) await deleteEntry_(db, before.entry_id, "売却・除却の仕訳の作り直し（金額なし）");
+    return null;
+  }
+  if (before) {
+    await updateEntry_(db, before.entry_id, a.disposed_on, lines, "売却・除却の仕訳の作り直し");
+    await db.execute("UPDATE asset_disposals SET receive_account_id = ? WHERE asset_id = ?", [receive?.id ?? null, assetId]);
+    return before.entry_id;
+  }
+  const id = await createEntry_(db, a.disposed_on, lines);
+  await db.execute(
+    "INSERT INTO asset_disposals (asset_id, entry_id, receive_account_id) VALUES (?, ?, ?) ON CONFLICT (asset_id) DO UPDATE SET entry_id = excluded.entry_id, receive_account_id = excluded.receive_account_id",
+    [assetId, id, receive?.id ?? null],
+  );
+  return id;
 };
 
 export const getDepreciationRun = async (db: Database, year: number) => {
@@ -2354,7 +2399,7 @@ const currentState = async (db: Database, key: string): Promise<string> => {
     return closingState(c[0] ?? null);
   }
   if (kind === "asset") {
-    const a = await db.select<Parameters<typeof assetState>[0][]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets WHERE id = ?`, [id]);
+    const a = await db.select<NonNullable<Parameters<typeof assetState>[0]>[]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets WHERE id = ?`, [id]);
     const rates = await db.select<{ from_year: number; rate: number }[]>("SELECT from_year, rate FROM asset_rates WHERE asset_id = ?", [id]);
     return assetState(a[0] ?? null, rates);
   }
@@ -2820,5 +2865,6 @@ export const saveStatementNote = inTx(saveStatementNote_, (year) => `${year}年�
 export const saveAsset = inTx(saveAsset_, (id) => (id === null ? "固定資産の追加" : `固定資産 #${id} の変更`), { perm: "master" });
 export const deleteAsset = inTx(deleteAsset_, (id) => `固定資産 #${id} の削除`, { perm: "master" });
 export const saveDepreciationRun = inTx(saveDepreciationRun_, (year) => `${year}年の減価償却`, { perm: "entry" });
+export const saveDisposalEntry = inTx(saveDisposalEntry_, (id) => `固定資産 #${id} の売却・除却の仕訳`, { perm: "entry" });
 export const saveAllowanceRun = inTx(saveAllowanceRun_, (year) => `${year}年の貸倒引当金`, { perm: "entry" });
 export const saveHomeUseRunEntry = inTx(saveHomeUseRunEntry_, (year) => `${year}年の家事按分の振替`, { perm: "entry" });

@@ -22,6 +22,8 @@ import type { IncomeKind, JournalLine } from "./types";
  */
 
 export type DepreciationMethod = "straight" | "lump3" | "small";
+export type DisposalKind = "sale" | "scrap";
+export const DISPOSAL_LABEL: Record<DisposalKind, string> = { sale: "売却", scrap: "除却" };
 
 export const METHOD_LABEL: Record<DepreciationMethod, string> = {
   straight: "定額法",
@@ -70,6 +72,10 @@ export interface FixedAsset {
   opening_book_value: number | null;
   /** 売却・除却した日（その月まで償却し、翌年からは台帳に出さない） */
   disposed_on: string | null;
+  /** 売却（sale）か除却（scrap）か（売却・除却した日があるときだけ） */
+  disposal_kind?: DisposalKind | null;
+  /** 売却した額（税込。売却のときだけ） */
+  sale_price?: number | null;
   memo: string;
   /** 所得の区分（不動産所得の資産は減価償却費（不動産）にし、不動産所得用の決算書に出す。無ければ事業所得） */
   income_kind?: IncomeKind;
@@ -188,7 +194,7 @@ export const assetLockError = (
     return `締め済みの年（${yearsText(was)}）に使っている資産のため、${changed.join("・")}は変えられません（売却・除却の日と、締めていない年からの事業専用割合は変えられます）。${LOCK_HINT}`;
   }
   const years = [...new Set([...was, ...will])].sort((x, y) => x - y);
-  if (norm(before.disposed_on) !== norm(after.disposed_on)) {
+  if (norm(before.disposed_on) !== norm(after.disposed_on) || norm(before.disposal_kind) !== norm(after.disposal_kind) || norm(before.sale_price) !== norm(after.sale_price)) {
     const from = Math.min(before.disposed_on ? yearOf(before.disposed_on) : Infinity, after.disposed_on ? yearOf(after.disposed_on) : Infinity);
     const hit = years.filter((y) => y >= from);
     if (hit.length) return `売却・除却の日の変更は、締め済みの年（${yearsText(hit)}）の台帳が変わるためできません。${LOCK_HINT}`;
@@ -279,6 +285,9 @@ export const validateAsset = (a: Omit<FixedAsset, "id">, opts: { blue: boolean }
   }
   if (a.method === "small" && !opts.blue) return "少額減価償却資産の特例は、青色申告のときだけ使えます";
   if (a.disposed_on && a.disposed_on < a.used_on) return "売却・除却した日は、使い始めた日より後にしてください";
+  if (a.disposed_on && a.disposal_kind === "sale" && (a.sale_price == null || !Number.isInteger(a.sale_price) || a.sale_price < 0)) {
+    return "売却した額（税込）を 0円以上の整数で入れてください";
+  }
   if ((a.opening_year === null) !== (a.opening_book_value === null)) return "期首の未償却残高は、年と金額の両方を入れてください";
   if (a.opening_book_value !== null && (!Number.isInteger(a.opening_book_value) || a.opening_book_value < 0 || a.opening_book_value > a.cost)) {
     return "期首の未償却残高は、0円以上・取得価額以下の整数で入れてください";
@@ -313,6 +322,52 @@ export const depreciationLines = (assets: FixedAsset[], year: number, ids: { exp
       lines.push({ row_no: row, side: "debit", account_id: ids.draw, sub_account_id: null, amount: d.private, memo: privateMemo });
       lines.push({ row_no: row, side: "credit", account_id: a.account_id, sub_account_id: null, amount: d.depreciation, memo });
     }
+  }
+  return lines;
+};
+
+/**
+ * 売却・除却の仕訳の明細（売却・除却した日付で1本。定額法の資産だけ。一括償却資産・少額減価償却資産は null）
+ * 個人の事業用資産の売却損益は事業所得ではなく譲渡所得なので、帳簿価額との差は事業主借（益）・事業主貸（損）にする（除却損は事業所得の経費）
+ *  売却：受け取った科目 X ／ 資産の科目 X（課税売上 10%。家事と兼用する資産は事業用の部分だけ。簡易課税は第4種）
+ *        差額は 資産の科目 ／ 事業主借（益）、または 事業主貸 ／ 資産の科目（損）
+ *  除却：固定資産除却損（事業用の部分）＋ 事業主貸（家事分） ／ 資産の科目（帳簿価額）
+ * 帳簿価額は、売却・除却した年の期末の未償却残高（その年の減価償却費は、年末の減価償却の仕訳で売却・除却した月まで差し引く）。
+ * 税区分は付けておき、免税事業者の期間なら登録のときに外れる
+ */
+export const disposalLines = (
+  a: FixedAsset, ids: { receive: number; ownerLoan: number; ownerDraw: number; loss: number },
+): JournalLine[] | null => {
+  if (!a.disposed_on || !a.disposal_kind || a.method !== "straight") return null;
+  const year = yearOf(a.disposed_on);
+  const book = depreciationFor(a, year)?.closing ?? 0;
+  const rate = businessRateIn(a, year);
+  const memo = `${DISPOSAL_LABEL[a.disposal_kind]} ${a.name}`;
+  const lines: JournalLine[] = [];
+  let row = 0;
+  const push = (side: JournalLine["side"], account_id: number, amount: number, extra: Partial<JournalLine> = {}, sameRow = false) => {
+    if (amount <= 0) return;
+    lines.push({ row_no: sameRow ? row : ++row, side, account_id, sub_account_id: null, amount, memo, tax_code: "none", ...extra });
+  };
+  if (a.disposal_kind === "sale") {
+    const price = a.sale_price ?? 0;
+    // 課税売上は事業用の部分だけ（家事と兼用する資産。消費税は事業用の部分の譲渡だけが課税）
+    const taxable = rate >= 100 ? price : Math.floor((price * rate) / 100);
+    push("debit", ids.receive, price);
+    push("credit", a.account_id, taxable, { tax_code: "sales10", business_class: 4 }, true);
+    push("credit", a.account_id, price - taxable, {}, true);
+    if (price > book) {
+      push("debit", a.account_id, price - book);
+      push("credit", ids.ownerLoan, price - book, {}, true);
+    } else if (price < book) {
+      push("debit", ids.ownerDraw, book - price);
+      push("credit", a.account_id, book - price, {}, true);
+    }
+  } else {
+    const business = rate >= 100 ? book : Math.floor((book * rate) / 100);
+    push("debit", ids.loss, business);
+    push("debit", ids.ownerDraw, book - business, {}, lines.length > 0);
+    push("credit", a.account_id, book, {}, true);
   }
   return lines;
 };

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  assetLockError, assetYears, businessRateIn, depreciationFor, depreciationLines, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset,
+  assetLockError, assetYears, businessRateIn, depreciationFor, depreciationLines, disposalLines, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset,
   type FixedAsset,
 } from "./depreciation";
 
@@ -181,5 +181,35 @@ describe("年の締めをした年の固定資産", () => {
     expect(assetLockError(pc, { ...pc, rates: [{ from_year: 2026, rate: 80 }] }, [2027])).toMatch(/2027年は締め済み/);
     const changed = asset({ rates: [{ from_year: 2028, rate: 50 }] });
     expect(assetLockError(changed, { ...changed, business_rate: 70 }, [2028])).toBeNull();
+  });
+});
+
+describe("売却・除却の仕訳", () => {
+  // 車 180万円・6年・2025年4月から。2026年6月30日に売却・除却 → 2026年の期末の未償却残高（6月まで償却）1,424,250円
+  const car = asset({ name: "営業車", account_id: 133, cost: 1_800_000, useful_life: 6, acquired_on: "2025-04-01", used_on: "2025-04-01", disposed_on: "2026-06-30" });
+  const ids = { receive: 103, ownerLoan: 301, ownerDraw: 190, loss: 671 };
+  const rows = (ls: ReturnType<typeof disposalLines>) => ls!.map((l) => [l.row_no, l.side, l.account_id, l.amount, l.tax_code, l.business_class ?? null]);
+  test("売却：売却額を課税売上（第4種）、帳簿価額との差は事業主貸・事業主借（譲渡所得）", () => {
+    expect(depreciationFor(car, 2026)!.closing).toBe(1_424_250);
+    expect(rows(disposalLines({ ...car, disposal_kind: "sale", sale_price: 1_100_000 }, ids))).toEqual([
+      [1, "debit", 103, 1_100_000, "none", null], [1, "credit", 133, 1_100_000, "sales10", 4],
+      [2, "debit", 190, 324_250, "none", null], [2, "credit", 133, 324_250, "none", null],
+    ]);
+    expect(rows(disposalLines({ ...car, disposal_kind: "sale", sale_price: 1_600_000 }, ids)).slice(2)).toEqual([
+      [2, "debit", 133, 175_750, "none", null], [2, "credit", 301, 175_750, "none", null],
+    ]);
+  });
+  test("家事と兼用する資産：課税売上は事業用の部分だけ。除却損も事業用の部分だけ", () => {
+    const shared = { ...car, business_rate: 60 };
+    expect(rows(disposalLines({ ...shared, disposal_kind: "sale", sale_price: 1_100_000 }, ids)).slice(0, 3)).toEqual([
+      [1, "debit", 103, 1_100_000, "none", null], [1, "credit", 133, 660_000, "sales10", 4], [1, "credit", 133, 440_000, "none", null],
+    ]);
+    expect(rows(disposalLines({ ...shared, disposal_kind: "scrap" }, ids))).toEqual([
+      [1, "debit", 671, 854_550, "none", null], [1, "debit", 190, 569_700, "none", null], [1, "credit", 133, 1_424_250, "none", null],
+    ]);
+  });
+  test("定額法でない資産・区分の無い資産は作らない", () => {
+    expect(disposalLines({ ...car, method: "lump3", cost: 150_000, disposal_kind: "scrap" }, ids)).toBeNull();
+    expect(disposalLines(car, ids)).toBeNull();
   });
 });

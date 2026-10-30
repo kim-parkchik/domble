@@ -15,6 +15,8 @@ import { deductionProblem, isPurchaseCode, isSalesCode, statusProblem, taxActive
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
 import { INTERIM_KIND_LABEL, type InterimPlan } from "./taxInterim";
 import type { InventoryAdjust } from "./taxReturn";
+import { businessRateIn, type FixedAsset } from "./depreciation";
+import { CODE } from "../constants/accounts";
 
 export type TaxKind = "sales" | "salesReturn" | "badDebt" | "badDebtRecovered" | "purchase" | "purchaseReturn" | "other";
 
@@ -196,7 +198,81 @@ export interface TaxCheckInput {
   interim?: { plan: InterimPlan; entered: { national: number; local: number } } | null;
   /** 棚卸資産の調整（付表2-3 ⑯）と、帳簿の期首・期末の棚卸高（読み込み中は null） */
   inventory?: { adjust: InventoryAdjust | null; opening: number; closing: number } | null;
+  /** 固定資産台帳（売却の漏れ・家事と兼用する資産の取得を確かめる。読み込み中は null） */
+  assets?: FixedAsset[] | null;
 }
+
+/**
+ * 固定資産と、課税・非課税の取り違えやすい科目の確かめ
+ *  - 売却した固定資産：その年の資産の科目に課税売上の明細が無ければ知らせる（事業用の資産の売却は課税売上。簡易課税は第4種）
+ *  - 本則課税で家事と兼用する資産を取得した年：資産の科目の課税仕入が、取得価額 × 事業専用割合 を超えていれば知らせる（事業用の部分だけが課税仕入）
+ *  - 念のため：雑収入の課税売上（預金利息・補助金・保険金・還付金）、本則課税の地代家賃・福利厚生費の課税仕入（地代・住宅の家賃・社会保険料）、給料賃金の通勤手当
+ */
+const assetAndAccountIssues = (x: TaxCheckInput, scoped: FlatLine[], status: TaxStatus): TaxIssue[] => {
+  const out: TaxIssue[] = [];
+  const idOf = (code: string) => x.accounts.find((a) => a.code === code)?.id;
+  const linesOf = (ids: (number | undefined)[], pick: (l: FlatLine) => boolean) => scoped.filter((l) => ids.includes(l.account_id) && pick(l));
+  const assets = x.assets ?? [];
+  // 売却した固定資産（課税事業者の期間に売ったもの）
+  const sold = assets.filter((a) => a.disposed_on && a.disposal_kind !== "scrap" && a.disposed_on.slice(0, 4) === String(x.year) && taxActiveOn(x.taxYears, a.disposed_on));
+  const missing = sold.filter((a) => linesOf([a.account_id], (l) => l.side === "credit" && isSalesCode(l.tax_code) && taxCodeDef(l.tax_code!).rate > 0).length === 0);
+  if (missing.length) {
+    out.push({
+      level: "warn", title: "売却した固定資産の売却額が、課税売上に入っていません", entryIds: [],
+      detail: `${missing.map((a) => `${a.name}（${a.disposed_on!.slice(5).replace("-", "/")}）`).join("、")}。事業用の資産の売却は課税売上です（簡易課税は第4種）。`
+        + "固定資産台帳の「売却・除却の仕訳」で作れます。捨てたもの（除却）なら、台帳で「除却した」を選んでください。",
+    });
+  }
+  if (status === "standard") {
+    // 家事と兼用する資産を取得した科目ごとに、課税仕入が事業用の部分を超えていないか
+    const shared = assets.filter((a) => a.acquired_on.slice(0, 4) === String(x.year) && businessRateIn(a, x.year) < 100);
+    const over: { names: string[]; lines: FlatLine[] }[] = [];
+    for (const accountId of new Set(shared.map((a) => a.account_id))) {
+      const bought = assets.filter((a) => a.account_id === accountId && a.acquired_on.slice(0, 4) === String(x.year));
+      const allowed = bought.reduce((t, a) => t + Math.floor((a.cost * businessRateIn(a, x.year)) / 100), 0);
+      const purchase = linesOf([accountId], (l) => l.side === "debit" && isPurchaseCode(l.tax_code));
+      if (purchase.reduce((t, l) => t + l.amount, 0) > allowed) over.push({ names: shared.filter((a) => a.account_id === accountId).map((a) => `${a.name}（事業 ${businessRateIn(a, x.year)}%）`), lines: purchase });
+    }
+    if (over.length) {
+      out.push({
+        level: "warn", title: "家事と兼用する資産の取得が、全額課税仕入になっています", fix: "entries", entryIds: entryIdsOf(over.flatMap((o) => o.lines)),
+        detail: `${over.flatMap((o) => o.names).join("、")}。事業用の部分だけが課税仕入です。仕訳を、事業用（課税仕入）と家事用（対象外）の行に分けてください。`,
+      });
+    }
+  }
+  // 念のため：課税・非課税・不課税を取り違えやすい科目
+  const misc = linesOf([idOf(CODE.MISC_INCOME)], (l) => l.side === "credit" && isSalesCode(l.tax_code) && taxCodeDef(l.tax_code!).rate > 0);
+  if (misc.length) {
+    out.push({
+      level: "info", title: "念のため：雑収入が課税売上になっています", fix: "entries", entryIds: entryIdsOf(misc),
+      detail: "預金の利息は非課税、補助金・保険金・消費税の還付金は対象外（不課税）で、課税売上ではありません。そうしたものがあれば、明細の税区分を直してください。",
+    });
+  }
+  if (status === "standard") {
+    const rent = linesOf([idOf(CODE.RENT), idOf(CODE.RE_RENT)], (l) => l.side === "debit" && isPurchaseCode(l.tax_code) && taxCodeDef(l.tax_code!).rate > 0);
+    if (rent.length) {
+      out.push({
+        level: "info", title: "念のため：地代家賃が課税仕入になっています", fix: "entries", entryIds: entryIdsOf(rent),
+        detail: "土地の賃借料（地代）と住宅の家賃は非課税です（事務所・店舗の家賃は課税）。そうしたものがあれば、明細の税区分を「非課税仕入」にしてください。",
+      });
+    }
+    const welfare = linesOf([idOf(CODE.WELFARE)], (l) => l.side === "debit" && isPurchaseCode(l.tax_code) && taxCodeDef(l.tax_code!).rate > 0);
+    if (welfare.length) {
+      out.push({
+        level: "info", title: "念のため：福利厚生費が課税仕入になっています", fix: "entries", entryIds: entryIdsOf(welfare),
+        detail: "労災保険・雇用保険など社会保険料の事業主負担や慶弔見舞金は、対象外です（社会保険料は法定福利費の科目を使えます）。",
+      });
+    }
+    const salaries = linesOf([idOf(CODE.SALARIES)], (l) => l.side === "debit");
+    if (salaries.length && !salaries.some((l) => isPurchaseCode(l.tax_code))) {
+      out.push({
+        level: "info", title: "念のため：給料賃金の通勤手当は課税仕入です", fix: "entries", entryIds: [],
+        detail: "通勤手当（通勤に通常必要な額）は課税仕入になります。給料と分けて、明細の税区分を「課税仕入 10%」にしてください（補助科目で分けると入れやすくなります）。",
+      });
+    }
+  }
+  return out;
+};
 
 const yenText = (n: number) => `${n.toLocaleString()}円`;
 
@@ -397,6 +473,7 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       }
     }
   }
+  issues.push(...assetAndAccountIssues(x, scoped, ty.status));
   if (ty.status === "standard") {
     const d = deductionProblem(x.taxYears, x.year, ty.deduction);
     if (d) issues.push({ level: "error", title: "控除の方式を確かめてください", fix: "settings", entryIds: [], detail: `${d}。事業者設定の「消費税」で選び直してください。` });

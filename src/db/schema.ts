@@ -51,6 +51,8 @@ const assetClosed = (t: string, extra = "") =>
 /** 締めた年にかかる資産で変えられない列（売却・除却の日と事業専用割合は別に見る） */
 const ASSET_LOCKED_COLUMNS = ["name", "account_id", "acquired_on", "used_on", "cost", "method", "useful_life", "opening_year", "opening_book_value", "memo", "income_kind"];
 const disposedFrom = `MIN(COALESCE(${yearOfCol("OLD.disposed_on")}, 9999), COALESCE(${yearOfCol("NEW.disposed_on")}, 9999))`;
+/** 売却・除却の日・区分・売却額のどれかが変わったか */
+const disposalChanged = "(OLD.disposed_on IS NOT NEW.disposed_on OR OLD.disposal_kind IS NOT NEW.disposal_kind OR OLD.sale_price IS NOT NEW.sale_price)";
 /** 事業専用割合を変えた年の行 R が、締めた年の割合を変えるか（R の年から、次に変えた年の前までに締めた年がある） */
 const assetRateClosed = (r: string) =>
   `EXISTS (SELECT 1 FROM fiscal_closings c JOIN fixed_assets a ON a.id = ${r}.asset_id
@@ -102,9 +104,10 @@ const CLOSED_TRIGGERS: string[] = [
   // 固定資産台帳：締めた年に台帳に出る資産の追加・削除、売却・除却の日と事業専用割合のほかの変更、締めた年にかかる売却・除却の日の変更
   guard("trg_closed_assets_ins", "INSERT", "fixed_assets", assetClosed("NEW")),
   guard("trg_closed_assets_del", "DELETE", "fixed_assets", assetClosed("OLD")),
-  guard("trg_closed_assets_upd", "UPDATE", "fixed_assets",
+  // 売却・除却の区分と売却額を足したときに条件を変えたので、名前に _2 をつけて作り直した（古い名前は RETIRED_TRIGGERS）
+  guard("trg_closed_assets_upd_2", "UPDATE", "fixed_assets",
     `(${assetClosed("OLD")} AND (${ASSET_LOCKED_COLUMNS.map((c) => `OLD.${c} IS NOT NEW.${c}`).join(" OR ")}
-       OR (OLD.disposed_on IS NOT NEW.disposed_on AND (${assetClosed("OLD", ` AND c.fiscal_year >= ${disposedFrom}`)} OR ${assetClosed("NEW", ` AND c.fiscal_year >= ${disposedFrom}`)}))
+       OR (${disposalChanged} AND (${assetClosed("OLD", ` AND c.fiscal_year >= ${disposedFrom}`)} OR ${assetClosed("NEW", ` AND c.fiscal_year >= ${disposedFrom}`)}))
        OR (OLD.business_rate IS NOT NEW.business_rate
            AND ${assetClosed("OLD", " AND NOT EXISTS (SELECT 1 FROM asset_rates x WHERE x.asset_id = OLD.id AND x.from_year <= c.fiscal_year)")})))
      OR (${assetClosed("NEW")} AND NOT ${assetClosed("OLD")})`),
@@ -128,6 +131,8 @@ export const RETIRED_TRIGGERS = [
   "trg_settings_mode_fixed",
   // 通常モードでも証憑の履歴を残すようにしたとき、削除の止め方を厳密モードだけにした（_s）
   "trg_evidence_history_no_delete", "trg_evidences_no_delete", "trg_evidence_files_no_delete",
+  // 固定資産に売却・除却の区分と売却額を足したとき
+  "trg_closed_assets_upd",
   ...YEAR_GUARD_PREFIXES.flatMap((p) => ["ins", "upd", "del"].map((x) => `${p}_${x}`)),
 ];
 
@@ -380,6 +385,13 @@ export const SCHEMA: string[] = [
     from_year INTEGER NOT NULL,
     rate INTEGER NOT NULL CHECK (rate BETWEEN 0 AND 100),
     PRIMARY KEY (asset_id, from_year)
+  );`,
+
+  /** 固定資産台帳から作った売却・除却の仕訳（資産ごとに1本。作り直すときはこの仕訳を訂正する）。receive_account_id = 売却額を受け取った科目 */
+  `CREATE TABLE IF NOT EXISTS asset_disposals (
+    asset_id INTEGER PRIMARY KEY REFERENCES fixed_assets(id),
+    entry_id INTEGER NOT NULL REFERENCES journal_entries(id),
+    receive_account_id INTEGER REFERENCES accounts(id)
   );`,
 
   /** 年末の減価償却で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
@@ -823,6 +835,9 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["accounts", "statement_line", "TEXT"],
   // 所得の区分（損益の科目ごと）：business 事業所得 ／ realestate 不動産所得
   ["accounts", "income_kind", "TEXT NOT NULL DEFAULT 'business' CHECK (income_kind IN ('business','realestate'))"],
+  // 固定資産の売却・除却の区分（sale / scrap）と売却額（税込）
+  ["fixed_assets", "disposal_kind", "TEXT CHECK (disposal_kind IN ('sale','scrap'))"],
+  ["fixed_assets", "sale_price", "INTEGER CHECK (sale_price >= 0)"],
   ["fixed_assets", "income_kind", "TEXT NOT NULL DEFAULT 'business' CHECK (income_kind IN ('business','realestate'))"],
   // 不動産所得：none なし ／ small 事業的規模でない ／ business 事業的規模
   ["settings", "real_estate", "TEXT NOT NULL DEFAULT 'none' CHECK (real_estate IN ('none','small','business'))"],

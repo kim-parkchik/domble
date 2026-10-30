@@ -286,3 +286,44 @@ describe("棚卸資産の調整（確認）", () => {
     ]);
   });
 });
+
+describe("確認の一覧：固定資産と、課税・非課税を取り違えやすい科目", () => {
+  const standard: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" }];
+  const car = {
+    id: 1, name: "営業車", account_id: id("車両運搬具"), acquired_on: "2026-02-01", used_on: "2026-02-01", cost: 3_300_000, method: "straight" as const,
+    useful_life: 6, business_rate: 70, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
+  };
+  const check = (lines: FlatLine[], assets: typeof car[], taxYears = standard) =>
+    taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears, invoiceNo: "", registeredOn: "", summary: buildTaxSummary(lines, accounts, taxYears), assets });
+  const titles = (xs: ReturnType<typeof check>) => xs.map((i) => i.title);
+
+  test("家事と兼用する資産の取得が全額課税仕入なら知らせる（事業用の部分だけなら知らせない）", () => {
+    const all = [line("2026-02-01", "debit", "車両運搬具", 3_300_000, "purchase10", "qualified")];
+    expect(titles(check(all, [car]))).toEqual(["家事と兼用する資産の取得が、全額課税仕入になっています"]);
+    const split = [line("2026-02-01", "debit", "車両運搬具", 2_310_000, "purchase10", "qualified"), line("2026-02-01", "debit", "車両運搬具", 990_000, "none")];
+    expect(check(split, [car])).toEqual([]);
+  });
+
+  test("売却した資産の売却額が課税売上に無ければ知らせる。除却なら知らせない", () => {
+    const sold = { ...car, business_rate: 100, disposed_on: "2026-11-30", disposal_kind: "sale" as const, sale_price: 1_100_000 };
+    const buy = [line("2026-02-01", "debit", "車両運搬具", 3_300_000, "purchase10", "qualified")];
+    expect(titles(check(buy, [sold]))).toEqual(["売却した固定資産の売却額が、課税売上に入っていません"]);
+    expect(check([...buy, line("2026-11-30", "credit", "車両運搬具", 1_100_000, "sales10")], [sold])).toEqual([]);
+    expect(check(buy, [{ ...sold, disposal_kind: "scrap" as const }])).toEqual([]);
+  });
+
+  test("念のため：雑収入の課税売上、本則課税の地代家賃・福利厚生費の課税仕入、給料賃金の通勤手当", () => {
+    const ls = [
+      line("2026-03-01", "credit", "雑収入", 5_000, "sales10"),
+      line("2026-03-02", "debit", "地代家賃", 50_000, "purchase10", "qualified"),
+      line("2026-03-03", "debit", "福利厚生費", 8_000, "purchase10", "qualified"),
+      line("2026-03-25", "debit", "給料賃金", 200_000, "none"),
+    ];
+    expect(titles(check(ls, []))).toEqual([
+      "念のため：雑収入が課税売上になっています", "念のため：地代家賃が課税仕入になっています",
+      "念のため：福利厚生費が課税仕入になっています", "念のため：給料賃金の通勤手当は課税仕入です",
+    ]);
+    // 2割特例では仕入の区分は計算に使わないので、雑収入だけ
+    expect(titles(check(ls.map((l) => ({ ...l, date: l.date.replace("-03-", "-05-") })), [], twenty))).toEqual(["念のため：雑収入が課税売上になっています"]);
+  });
+});

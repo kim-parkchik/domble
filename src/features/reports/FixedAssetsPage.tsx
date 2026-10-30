@@ -5,6 +5,7 @@
  *  - 帳簿の資産の科目の残高と、台帳の未償却残高を並べて、ずれていないか確かめられる
  *  - 事業専用割合は「表示中の年から」の割合として変える（前の年はそのまま）
  *  - 年の締めをした年に使っている資産は、売却・除却の日と、締めていない年からの事業専用割合だけ変えられる（削除もできない）
+ *  - 売却・除却した資産は、台帳の区分と売却額から売却・除却の仕訳を作る（lib/depreciation.ts の disposalLines）
  * 資産を買った仕訳（工具器具備品 / 普通預金 など）は、振替伝票でふつうに入れる
  * 台帳（その年に償却する資産）は印刷と CSV の書き出しができる
  */
@@ -25,9 +26,9 @@ import { ASSET_CSV_HEADER, assetCsvRows, assetSection, type AssetPrintLine } fro
 import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
 import {
-  businessRateIn, closedYearsOf, depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear,
+  businessRateIn, closedYearsOf, depreciationFor, depreciationLines, DISPOSAL_LABEL, disposalLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear,
   validateAsset,
-  type DepreciationMethod, type FixedAsset,
+  type DepreciationMethod, type DisposalKind, type FixedAsset,
 } from "../../lib/depreciation";
 import type { IncomeKind } from "../../lib/types";
 import * as repo from "../../db/repo";
@@ -46,12 +47,18 @@ export const FixedAssetsPage = () => {
   const [assets, setAssets] = useState<FixedAsset[]>([]);
   const [runId, setRunId] = useState<number | null>(null);
   const [runLines, setRunLines] = useState<string | null>(null);
+  // 台帳から作った売却・除却の仕訳（資産ごと）と、その明細
+  const [disposals, setDisposals] = useState<{ asset_id: number; entry_id: number; receive_account_id: number | null; lines: string }[]>([]);
+  const [receiveId, setReceiveId] = useState<number | null>(null);
   const [editing, setEditing] = useState<FixedAsset | "new" | null>(null);
   const [viewing, setViewing] = useState<number | null>(null);
   const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     repo.getAssets(db).then(setAssets).catch(console.error);
+    repo.getAssetDisposals(db)
+      .then(async (ds) => setDisposals(await Promise.all(ds.map(async (d) => ({ ...d, lines: lineKey((await repo.getEntry(db, d.entry_id))?.lines ?? []) })))))
+      .catch(console.error);
     repo.getDepreciationRun(db, year)
       .then(async (id) => {
         setRunId(id);
@@ -115,6 +122,26 @@ export const FixedAssetsPage = () => {
       toast(planned.length === 0 ? "減価償却の仕訳を削除しました" : "減価償却の仕訳を作成しました");
     } catch (e) {
       toast(`作成できませんでした：${errText(e)}`, "error");
+    }
+  };
+
+  // 売却・除却の仕訳（この年に売却・除却した資産）
+  const bankId = accounts.find((a) => a.code === CODE.BANK)?.id ?? null;
+  const receiveChoices = accounts.filter((a) => a.category === "asset" && a.is_active && !FIXED_ASSET_CODES.includes(a.code));
+  const disposalIds = (receive: number | null) => ({
+    receive: receive ?? 0, ownerLoan: accounts.find((a) => a.code === CODE.OWNER_LOAN)?.id ?? 0, ownerDraw: ids.draw,
+    loss: accounts.find((a) => a.code === CODE.DISPOSAL_LOSS)?.id ?? 0,
+  });
+  const disposedThisYear = assets.filter((a) => a.disposed_on && Number(a.disposed_on.slice(0, 4)) === year);
+  const makeDisposal = async (a: FixedAsset) => {
+    const made = disposals.find((d) => d.asset_id === a.id);
+    const receive = a.disposal_kind === "sale" ? receiveId ?? made?.receive_account_id ?? bankId : null;
+    try {
+      const id = await repo.saveDisposalEntry(db, a.id, receive);
+      bump();
+      toast(id ? `売却・除却の仕訳（No.${id}）を${made ? "作り直しました" : "作りました"}` : "金額が無いので、仕訳は作りませんでした");
+    } catch (e) {
+      toast(errText(e), "error");
     }
   };
 
@@ -255,6 +282,58 @@ export const FixedAssetsPage = () => {
         </div>
       </section>
 
+      {disposedThisYear.length > 0 && (
+        <section className="sheet">
+          <h2 className="sheet-h">売却・除却の仕訳（{year}年）</h2>
+          <p className="field-note">
+            売却・除却した日付で仕訳を1本作ります。売却は売却額を課税売上（簡易課税は第4種。家事と兼用する資産は事業用の部分だけ）にし、帳簿価額（その年の期末の未償却残高）との差は事業主貸・事業主借にします
+            （個人の事業用資産の売却損益は、事業所得ではなく譲渡所得のため）。除却は帳簿価額を固定資産除却損（家事分は事業主貸）にします。その年の減価償却費は、年末の減価償却の仕訳で売却・除却した月まで計算します。
+          </p>
+          {disposedThisYear.some((a) => a.disposal_kind === "sale") && (
+            <label className="field" style={{ maxWidth: 280 }}>
+              <span>売却額を受け取った科目</span>
+              <select className="input" value={receiveId ?? bankId ?? ""} onChange={(e) => setReceiveId(Number(e.target.value) || null)}>
+                {receiveChoices.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </label>
+          )}
+          <table className="ledger">
+            <thead>
+              <tr><th>名称</th><th>日付</th><th>区分</th><th className="num">売却額</th><th className="num">帳簿価額</th><th>仕訳</th><th /></tr>
+            </thead>
+            <tbody>
+              {disposedThisYear.map((a) => {
+                const made = disposals.find((d) => d.asset_id === a.id);
+                const planned = disposalLines(a, disposalIds(a.disposal_kind === "sale" ? receiveId ?? made?.receive_account_id ?? bankId : null));
+                const book = depreciationFor(a, year)?.closing ?? 0;
+                const state = a.method !== "straight" ? "定額法の資産だけ作れます（振替伝票で入れてください）"
+                  : !a.disposal_kind ? "台帳の「編集」で、売却か除却かを選んでください"
+                    : !made ? "未作成"
+                      : planned && made.lines !== lineKey(planned) ? `作成済み（No.${made.entry_id}）：台帳の計算と違います。作り直してください`
+                        : `作成済み（No.${made.entry_id}）`;
+                return (
+                  <tr key={a.id}>
+                    <td>{a.name}</td>
+                    <td>{ymd(a.disposed_on!)}</td>
+                    <td>{a.disposal_kind ? DISPOSAL_LABEL[a.disposal_kind] : "—"}</td>
+                    <td className="num">{a.disposal_kind === "sale" ? yen(a.sale_price ?? 0) : ""}</td>
+                    <td className="num">{a.method === "straight" ? yen(book) : ""}</td>
+                    <td>
+                      {made ? <button className="link-btn" onClick={() => setViewing(made.entry_id)}>{state}</button> : <span className={state === "未作成" ? "" : "muted"}>{state}</span>}
+                    </td>
+                    <td className="row-actions">
+                      <button className="btn ghost sm" onClick={() => makeDisposal(a)} disabled={!can("entry") || a.method !== "straight" || !a.disposal_kind}>
+                        <Wand2 size={14} /> {made ? "作り直す" : "仕訳を作る"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {checkAccounts.length > 0 && (
         <section className="sheet">
           <h2 className="sheet-h">帳簿の残高との照合（{year}年12月31日）</h2>
@@ -323,6 +402,8 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
   const [openingYear, setOpeningYear] = useState(String(asset?.opening_year ?? year));
   const [openingValue, setOpeningValue] = useState<number | null>(asset?.opening_book_value ?? null);
   const [disposed, setDisposed] = useState(asset?.disposed_on ?? "");
+  const [disposalKind, setDisposalKind] = useState<DisposalKind>(asset?.disposal_kind ?? "sale");
+  const [salePrice, setSalePrice] = useState<number | null>(asset?.sale_price ?? null);
   const [memo, setMemo] = useState(asset?.memo ?? "");
   const [kind, setKind] = useState<IncomeKind>(asset?.income_kind ?? "business");
   // 不動産所得があるとき（または不動産所得の資産のとき）だけ、所得の区分を選ぶ
@@ -343,6 +424,7 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
     name, account_id: accountId ?? 0, acquired_on: acquired, used_on: used || acquired, cost: cost ?? 0, method,
     useful_life: Number(life) || 0, business_rate: Number(rate), opening_year: hasOpening ? Number(openingYear) || 0 : null,
     opening_book_value: hasOpening ? openingValue ?? null : null, disposed_on: disposed || null, memo, income_kind: kind,
+    disposal_kind: disposed ? disposalKind : null, sale_price: disposed && disposalKind === "sale" ? salePrice : null,
   });
 
   /** 日付の欄に読めない日付が入っているもの（そのままだと前の日付で保存されるので止める） */
@@ -480,7 +562,23 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
             割合の変わり方：{[`${asset.used_on.slice(0, 4)}年から ${asset.business_rate}%`, ...asset.rates.map((r) => `${r.from_year}年から ${r.rate}%`)].join("、")}
           </p>
         )}
-        {disposed && <p className="field-note">売却・除却した月まで償却します。帳簿から外す仕訳（売却・除却損など）は振替伝票で入れてください。</p>}
+        {disposed && (
+          <div className="field-row wrap">
+            <label className="check"><input type="radio" name="disposal-kind" checked={disposalKind === "sale"} onChange={() => setDisposalKind("sale")} /> 売却した</label>
+            <label className="check"><input type="radio" name="disposal-kind" checked={disposalKind === "scrap"} onChange={() => setDisposalKind("scrap")} /> 除却した（捨てた）</label>
+            {disposalKind === "sale" && (
+              <label className="field" style={{ maxWidth: 220 }}>
+                <span>売却した額（税込）</span>
+                <AmountInput value={salePrice} onChange={setSalePrice} aria-label="売却した額" />
+              </label>
+            )}
+          </div>
+        )}
+        {disposed && (
+          <p className="field-note">
+            売却・除却した月まで償却します。売却・除却の仕訳は、台帳の「売却・除却の仕訳」で作れます（売却損益は事業所得ではなく譲渡所得なので、帳簿価額との差は事業主貸・事業主借にします。除却損は経費）。
+          </p>
+        )}
         {error && <p className="notice" role="alert">{error}</p>}
         <div className="voucher-actions">
           <div className="spacer" />

@@ -25,9 +25,9 @@ describe("自動の欄", () => {
     expect(sectionOf(acc("売上高"))).toBeNull();
     expect(sectionOf(acc("元入金"))).toBe("liability");
   });
-  test("初期の経費の追加科目はちょうど6つ", () => {
+  test("初期の経費の追加科目（追加の欄は金額のある科目だけに割り当てるので、6つを超えてもよい）", () => {
     const extras = seeds.filter((a) => a.income_kind !== "realestate" && sectionOf(a) === "expense" && lineOf(a) === EXTRA_LINE).map((a) => a.name);
-    expect(extras).toEqual(["支払手数料", "車両費", "新聞図書費", "会議費", "研修費", "諸会費"]);
+    expect(extras).toEqual(["支払手数料", "車両費", "新聞図書費", "会議費", "研修費", "諸会費", "法定福利費", "固定資産除却損"]);
   });
   test("選んだ欄を使う（その部分に無い欄なら自動）", () => {
     expect(lineOf({ ...acc("車両費"), statement_line: "旅費交通費" })).toBe("旅費交通費");

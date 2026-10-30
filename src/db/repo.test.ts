@@ -294,6 +294,33 @@ describe("固定資産台帳・減価償却（repo）", () => {
   });
 });
 
+describe("固定資産の売却・除却の仕訳（repo）", () => {
+  test("台帳の売却額から仕訳を作り、直したら同じ仕訳を作り直す。除却は固定資産除却損", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const car: repo.AssetInput = {
+      name: "営業車", account_id: id("車両運搬具"), acquired_on: "2025-04-01", used_on: "2025-04-01", cost: 1_800_000, method: "straight",
+      useful_life: 6, business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: "2026-06-30", memo: "",
+      disposal_kind: "sale", sale_price: 1_100_000,
+    };
+    const a = await repo.saveAsset(db, null, car);
+    await expect(repo.saveDisposalEntry(db, a, null)).rejects.toThrow(/受け取った科目/);
+    const e = await repo.saveDisposalEntry(db, a, id("普通預金"));
+    const entry = (await repo.getEntry(db, e!))!;
+    expect([entry.date, entry.lines.map((l) => [l.side, l.amount])]).toEqual(["2026-06-30", [["debit", 1_100_000], ["credit", 1_100_000], ["debit", 324_250], ["credit", 324_250]]]);
+    expect(await repo.getAssetDisposals(db)).toEqual([{ asset_id: a, entry_id: e!, receive_account_id: id("普通預金") }]);
+    // 除却に直して作り直す → 同じ仕訳の訂正
+    await repo.saveAsset(db, a, { ...car, disposal_kind: "scrap" }, 2026);
+    expect(await repo.saveDisposalEntry(db, a, null)).toBe(e);
+    expect((await repo.getEntry(db, e!))!.lines.map((l) => [l.side, l.account_id, l.amount])).toEqual([
+      ["debit", id("固定資産除却損"), 1_424_250], ["credit", id("車両運搬具"), 1_424_250],
+    ]);
+    // 除却に変えたら売却額は消える
+    expect((await repo.getAssets(db))[0]).toMatchObject({ disposal_kind: "scrap", sale_price: null });
+  });
+});
+
 describe("固定資産台帳と年の締め・年ごとの事業専用割合（repo）", () => {
   const setup = async () => {
     const { db, raw } = strict;

@@ -5,7 +5,7 @@
  *  - 申告書：方式の比較と、付表・第二表・第一表の数字（TaxReturnView.tsx）
  *  - 中間申告：前年の確定消費税額から、その年の中間申告の回数・期限・額（TaxInterimView.tsx）
  */
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Download, TriangleAlert, CircleAlert, Info } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -21,6 +21,8 @@ import { INVOICE_KINDS, TAX_STATUS_OPTIONS, TAX_METHOD_OPTIONS } from "../../con
 import { classLabel, taxCodeDef, useLabel } from "../../lib/tax";
 import { buildTaxSummary, taxChecks, TAX_KIND_LABEL, type TaxIssue, type TaxSummaryRow } from "../../lib/taxSummary";
 import { TaxReturnView, useInventory } from "./TaxReturnView";
+import * as repo from "../../db/repo";
+import type { FixedAsset } from "../../lib/depreciation";
 import { TaxInterimView } from "./TaxInterimView";
 
 type View = "summary" | "checks" | "return" | "interim";
@@ -32,9 +34,14 @@ const invoiceLabel = (r: TaxSummaryRow) =>
 const MAX_ENTRIES = 20;
 
 export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
-  const { year, accounts, accountMap, counterparties, taxYears, taxYear, settings } = useAppContext();
+  const { db, year, accounts, accountMap, counterparties, taxYears, taxYear, settings, dataVersion } = useAppContext();
   const { lines, opening, loading } = useYearData();
   const inventory = useInventory(lines, opening);
+  // 固定資産台帳（売却の漏れ・家事と兼用する資産の取得の確かめに使う）
+  const [assets, setAssets] = useState<FixedAsset[] | null>(null);
+  useEffect(() => {
+    repo.getAssets(db).then(setAssets).catch(console.error);
+  }, [db, dataVersion]);
   const toast = useToast();
   const [view, setView] = useState<View>("summary");
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -45,9 +52,9 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
   const interim = useInterim();
   const issues = useMemo(
     () => taxChecks({
-      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary, baseSales, interim, inventory,
+      year, lines, accounts, counterparties, taxYears, invoiceNo: settings.invoice_no, registeredOn: settings.invoice_registered_on, summary, baseSales, interim, inventory, assets,
     }),
-    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales, interim, inventory],
+    [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales, interim, inventory, assets],
   );
   const byEntry = useMemo(() => groupByEntry(lines), [lines]);
 
