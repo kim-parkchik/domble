@@ -141,7 +141,11 @@ export const CODE = {
   ALLOWANCE: "250",     // 貸倒引当金
   ALLOWANCE_ADD: "750", // 貸倒引当金繰入
   ALLOWANCE_BACK: "751", // 貸倒引当金戻入
+  RE_REPAIR: "662",     // 修繕費（不動産）
   RE_DEPRECIATION: "663", // 減価償却費（不動産）
+  RE_INTEREST: "664",   // 借入金利子（不動産）
+  RE_RENT: "665",       // 地代家賃（不動産）
+  RE_SALARIES: "666",   // 給料賃金（不動産）
   RE_FAMILY_SALARY: "760", // 専従者給与（不動産）
   NOTES_RECEIVABLE: "110", // 受取手形
   RECEIVABLE: "111",    // 売掛金

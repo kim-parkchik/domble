@@ -34,6 +34,8 @@ export interface BlueStatementSource {
   invoiceNoOf?: (counterpartyId: number) => string;
   /** 青色申告特別控除の上限（申告の種類から） */
   deductionLimit: number;
+  /** 不動産所得の青色申告特別控除前の所得金額（不動産所得用の決算書の ㉑。無ければ帳簿の不動産所得の科目から） */
+  realEstateIncome?: number;
 }
 
 /** 給料賃金・専従者給与の1人分 */
@@ -167,6 +169,36 @@ const int = (v: string | undefined, min: number, max: number) => {
 
 const METHOD_LABEL: Record<FixedAsset["method"], string> = { straight: "定額法", lump3: "一括償却", small: "少額" };
 
+type PayeeName = (r: Pick<PayeeRow, "counterpartyId" | "subId">) => string;
+/** 給料賃金・専従者給与の内訳の行（年齢・従事月数・賞与・源泉徴収税額は書き込み prefix:key:…） */
+export const payLinesOf = (rows: PayeeRow[], prefix: string, notes: Record<string, string>, payeeName: PayeeName): PayLine[] =>
+  rows.map((r) => {
+    const bonus = num(notes[`${prefix}:${r.key}:bonus`]);
+    return {
+      name: payeeName(r), relation: notes[`${prefix}:${r.key}:relation`] ?? "", work: notes[`${prefix}:${r.key}:work`] ?? "",
+      age: int(notes[`${prefix}:${r.key}:age`], 1, 999), months: int(notes[`${prefix}:${r.key}:months`], 1, 12),
+      salary: r.gross - bonus, bonus, total: r.gross, tax: num(notes[`${prefix}:${r.key}:tax`]),
+    };
+  });
+/** 支払先の内訳の行（住所・賃借物件・extraKey の金額は書き込み） */
+export const payeeLinesOf = (rows: PayeeRow[], prefix: string, extraKey: string, notes: Record<string, string>, payeeName: PayeeName): PayeeLine[] =>
+  rows.map((r) => ({
+    name: payeeName(r), address: notes[`${prefix}:${r.key}:address`] ?? "", gross: r.gross, business: r.business,
+    extra: extraKey ? num(notes[`${prefix}:${r.key}:${extraKey}`]) : 0, property: notes[`${prefix}:${r.key}:property`] ?? "",
+  }));
+/** 減価償却費の計算の行（その年に償却する資産。数量は書き込み dep:id:qty） */
+export const depreciationLinesOf = (assets: FixedAsset[], year: number, notes: Record<string, string>): DepreciationLine[] =>
+  assets
+    .map((a) => ({ a, d: depreciationFor(a, year) }))
+    .filter((x) => x.d && !(x.d.opening === 0 && x.d.depreciation === 0))
+    .map(({ a, d }): DepreciationLine => ({
+      name: a.name, quantity: notes[`dep:${a.id}:qty`] ?? "", acquired: a.acquired_on.slice(0, 7), cost: a.cost, base: d!.base,
+      method: isOldStraight(a) ? "旧定額法" : METHOD_LABEL[a.method],
+      life: a.method === "straight" ? a.useful_life : a.method === "lump3" ? 3 : null, rate: d!.rate, months: d!.months,
+      depreciation: d!.depreciation, businessRate: a.business_rate, business: d!.business, closing: d!.closing,
+      memo: [a.method === "small" ? "措法28の2" : "", d!.equal ? "均等償却" : "", d!.disposed ? `${Number(a.disposed_on!.slice(5, 7))}月売却・除却` : "", a.memo].filter(Boolean).join(" "),
+    }));
+
 export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   const { notes } = s;
   // 一般用の決算書は事業所得の科目だけ（貸借対照表の科目は共通）
@@ -174,7 +206,7 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   const end = closingBalances(s.accounts, s.opening, s.lines);
   const pl = summarizeIncome(accounts, end);
   // 青色申告特別控除は不動産所得から先に差し引く（2ページの ⑥〜⑨）
-  const realEstateIncome = Math.max(0, summarizeIncome(accountsOfKind(s.accounts, "realestate"), end).income);
+  const realEstateIncome = Math.max(0, s.realEstateIncome ?? summarizeIncome(accountsOfKind(s.accounts, "realestate"), end).income);
   const realEstateDeduction = Math.min(s.deductionLimit, realEstateIncome);
   const layout = statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => s.opening[a.id] ?? 0);
   const idOf = (code: string) => accounts.find((a) => a.code === code)?.id ?? 0;
@@ -187,35 +219,13 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   const included = (k: string, defaultOn: boolean) => (notes[k] ? notes[k] === "1" : defaultOn);
   const openingOf = (id: number | undefined) => (id ? s.opening[id] ?? 0 : 0);
 
-  const pay = (rows: PayeeRow[], prefix: string): PayLine[] =>
-    rows.map((r) => {
-      const bonus = num(notes[`${prefix}:${r.key}:bonus`]);
-      return {
-        name: s.payeeName(r), relation: notes[`${prefix}:${r.key}:relation`] ?? "", work: notes[`${prefix}:${r.key}:work`] ?? "",
-        age: int(notes[`${prefix}:${r.key}:age`], 1, 999), months: int(notes[`${prefix}:${r.key}:months`], 1, 12),
-        salary: r.gross - bonus, bonus, total: r.gross, tax: num(notes[`${prefix}:${r.key}:tax`]),
-      };
-    });
-  const payees = (rows: PayeeRow[], prefix: string, extraKey: string): PayeeLine[] =>
-    rows.map((r) => ({
-      name: s.payeeName(r), address: notes[`${prefix}:${r.key}:address`] ?? "", gross: r.gross, business: r.business,
-      extra: extraKey ? num(notes[`${prefix}:${r.key}:${extraKey}`]) : 0, property: notes[`${prefix}:${r.key}:property`] ?? "",
-    }));
+  const pay = (rows: PayeeRow[], prefix: string) => payLinesOf(rows, prefix, notes, s.payeeName);
+  const payees = (rows: PayeeRow[], prefix: string, extraKey: string) => payeeLinesOf(rows, prefix, extraKey, notes, s.payeeName);
 
   const interestRows = breakdown(CODE.INTEREST, true).filter((r) => included(`interest:${r.key}:use`, true));
   const feeRows = breakdown(CODE.FEES, true).filter((r) => included(`fees:${r.key}:use`, false));
 
-  const depreciation = s.assets
-    .filter((a) => a.income_kind !== "realestate")
-    .map((a) => ({ a, d: depreciationFor(a, s.year) }))
-    .filter((x) => x.d && !(x.d.opening === 0 && x.d.depreciation === 0))
-    .map(({ a, d }): DepreciationLine => ({
-      name: a.name, quantity: notes[`dep:${a.id}:qty`] ?? "", acquired: a.acquired_on.slice(0, 7), cost: a.cost, base: d!.base,
-      method: isOldStraight(a) ? "旧定額法" : METHOD_LABEL[a.method],
-      life: a.method === "straight" ? a.useful_life : a.method === "lump3" ? 3 : null, rate: d!.rate, months: d!.months,
-      depreciation: d!.depreciation, businessRate: a.business_rate, business: d!.business, closing: d!.closing,
-      memo: [a.method === "small" ? "措法28の2" : "", d!.equal ? "均等償却" : "", d!.disposed ? `${Number(a.disposed_on!.slice(5, 7))}月売却・除却` : "", a.memo].filter(Boolean).join(" "),
-    }));
+  const depreciation = depreciationLinesOf(s.assets.filter((a) => a.income_kind !== "realestate"), s.year, notes);
 
   // 売上先・仕入先の明細（計は 1ページの売上（収入）金額・仕入金額。家事消費等・雑収入は上記以外に入る）
   const salesPartners = partnerLines("sales", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf);

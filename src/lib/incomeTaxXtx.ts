@@ -6,12 +6,14 @@
  *  - KOA020：確定申告書の第一表・第二表と、損失申告の年（純損失を繰り越す・繰越損失が残る）は第四表（一）（二）（第三表・第四表の付表は扱わない）
  *  - KOA210：青色申告決算書（一般用）の1〜4ページ（製造原価の計算は書かない）
  *  - KOA110：収支内訳書（一般用）の1・2ページ（白色申告の年）
+ *  - KOA220：青色申告決算書（不動産所得用）の1〜4ページ（4ページの貸借対照表は事業所得が無いときだけ）、KOA130：収支内訳書（不動産所得用）の1・2ページ
  * 様式の行数より多い明細は、金額の大きい順に入れ、残りは「その他」の1行にまとめる（次葉合計の欄がある明細は次葉合計に）。
  * 配偶者・親族・事業専従者の欄より多い人は書かず、そのことを知らせる
  * 個人番号は書き出すときに入れてもらう（numbers。self・spouse・dep<添字>・family<添字>）。提出年月日は e-Tax の側で入れる
  */
 import type { BlueStatement, PartnerTable, PayLine, PayeeLine } from "./blueStatement";
 import type { WhiteStatement } from "./whiteStatement";
+import type { BalanceRow, RealEstateBook } from "./realEstateStatement";
 import { documentXml, filerProblems, formXml, itRefs, itXml, type EtaxFiler, type EtaxValue, type EtaxValues, type FormAttrs } from "./etax";
 import {
   dependentDeduction, fieldNo, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type Relative,
@@ -45,6 +47,8 @@ export interface IncomeTaxXtxSource {
   statement: BlueStatement;
   /** 収支内訳書（白色申告の年。あれば青色申告決算書の代わりに書く） */
   white?: WhiteStatement;
+  /** 不動産所得用の決算書（不動産所得がある年。青色は KOA220、白色は KOA130） */
+  realEstate?: RealEstateBook;
   settings: Pick<Settings, "address" | "phone" | "office_address" | "office_phone" | "union_name">;
   /** 第一表の事業（営業等）の「区分」：1 優良な電子帳簿（届出あり） ／ 2 会計ソフトで記帳 */
   bookKeeping: 1 | 2;
@@ -98,7 +102,6 @@ export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" |
 export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer" | "input" | "result" | "biz">): string[] => {
   const p: string[] = [];
   if (src.year < INCOME_XTX_FIRST_YEAR) p.push(`e-Tax のデータは令和${INCOME_XTX_FIRST_YEAR - 2018}年（${INCOME_XTX_FIRST_YEAR}年）分から書き出せます`);
-  if (src.biz.realEstate) p.push("不動産所得があるときの e-Tax 用のデータ（青色申告決算書・収支内訳書（不動産所得用））は、まだ書き出せません");
   const missing = filerProblems(src.filer);
   if (missing.length) p.push(`事業者設定の e-Tax の欄：${missing.join("、")}`);
   const noPayer = src.result.second.withholding.filter((r) => r.withheld > 0 && (!r.payer.trim() || !r.payerId.trim()));
@@ -107,7 +110,7 @@ export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer"
 };
 
 /** 書き出すけれど、データに入らないもの・確かめてほしいこと */
-export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" | "result" | "statement" | "white">): string[] => {
+export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" | "result" | "statement" | "white" | "realEstate">): string[] => {
   const n: string[] = [];
   if (incomeXtxVersionFor(src.year).fallback) {
     n.push(`令和${src.year - 2018}年分の e-Tax の版はまだ domble に入っていないため、令和${INCOME_XTX_FIRST_YEAR - 2018}年分の版で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください`);
@@ -126,6 +129,13 @@ export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" 
     if (booked(sec.addition) !== al.total || booked(sec.reversal) !== al.reversal) {
       n.push(`貸倒引当金の帳簿の額（繰入 ${booked(sec.addition).toLocaleString()}円・戻入 ${booked(sec.reversal).toLocaleString()}円）が、決算書2ページの計算（繰入 ${al.total.toLocaleString()}円・戻入 ${al.reversal.toLocaleString()}円）と合いません。決算書の2ページで仕訳を作り直してください`);
     }
+  }
+  // 不動産所得用の決算書
+  const re = src.realEstate;
+  if (re) {
+    if (re.income.some((r) => r.keyMoney)) n.push("不動産所得の収入の内訳では、礼金・権利金・更新料を「礼金」の欄にまとめて書いています（帳簿の科目が1つのため。必要なら e-Tax で分けてください）");
+    if (re.st.form === "blue" && re.st.family > 0 && re.family.filter((r) => r.total > 0).length > 1) n.push("青色申告決算書（不動産所得用）の専従者給与の内訳は1人分の欄です。2人目からは書いていません");
+    if (re.st.warnings.length) n.push(...re.st.warnings);
   }
   if (src.white?.familySalaryBooked) n.push("専従者給与の科目に記帳した額は、白色申告では必要経費にならないため、収支内訳書の経費に入れていません");
   if (src.input.salaries.length > 0) n.push("給与があるため、保険料の「うち年末調整等以外」の欄は書いていません（源泉徴収票に載っていない分だけを書く欄です）");
@@ -645,6 +655,275 @@ const whiteValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => 
   return clean(v);
 };
 
+// ── 不動産所得用：青色申告決算書（KOA220）・収支内訳書（KOA130） ──
+const periodOf = (src: IncomeTaxXtxSource) => {
+  const c = src.input.businessTax;
+  return {
+    from: { mmdd: c.change === "open" && isDate(c.changeDate) ? c.changeDate.slice(5) : "01-01" },
+    to: { mmdd: c.change === "close" && isDate(c.changeDate) ? c.changeDate.slice(5) : "12-31" },
+  };
+};
+const decimalOf = (s: string): EtaxValue | undefined => (/^\d+(\.\d+)?$/.test(s) ? { decimal: s } : undefined);
+const ymOf = (s: string): EtaxValue | undefined => (/^\d{4}-\d{2}$/.test(s) ? { yymm: s } : undefined);
+
+/** 収入の内訳の行（rows 行まで。残りは次葉合計） */
+const incomeRows = (lines: RealEstateBook["income"], max: number) => ({ shown: lines.slice(0, max), rest: lines.slice(max) });
+
+/** 貸借対照表（不動産所得用。事業所得が無いときだけ）：決まった欄と追加の欄 */
+const RE_ASSET_TAGS: Record<string, [string, string]> = {
+  現金: ["ANG00060", "ANG00280"], 普通預金: ["ANG00070", "ANG00290"], 定期預金: ["ANG00080", "ANG00300"], その他の預金: ["ANG00090", "ANG00310"],
+  受取手形: ["ANG00100", "ANG00320"], 未収賃貸料: ["ANG00110", "ANG00330"], 未収金: ["ANG00120", "ANG00340"], 未収入金: ["ANG00120", "ANG00340"],
+  有価証券: ["ANG00130", "ANG00350"], 前払金: ["ANG00140", "ANG00360"], 貸付金: ["ANG00150", "ANG00370"], 建物: ["ANG00160", "ANG00380"],
+  建物附属設備: ["ANG00170", "ANG00390"], 構築物: ["ANG00180", "ANG00400"], 船舶: ["ANG00190", "ANG00410"], 工具器具備品: ["ANG00200", "ANG00420"],
+  土地: ["ANG00210", "ANG00430"], 借地権: ["ANG00220", "ANG00440"], 公共施設負担金: ["ANG00230", "ANG00450"],
+};
+const RE_LIABILITY_TAGS: Record<string, [string, string]> = {
+  借入金: ["ANG00530", "ANG00610"], 未払金: ["ANG00540", "ANG00620"], 保証金敷金: ["ANG00550", "ANG00630"], 預り保証金: ["ANG00550", "ANG00630"],
+  預り敷金: ["ANG00550", "ANG00630"], 元入金: ["ANG00570", "ANG00660"],
+};
+const reBalanceSheet = (src: IncomeTaxXtxSource, v: Record<string, EtaxValue | undefined>) => {
+  const bs = src.realEstate?.balance;
+  if (!bs) return;
+  const squash = (n: string) => n.normalize("NFKC").replace(/[\s・]/g, "");
+  const side = (rows: BalanceRow[], tags: Record<string, [string, string]>, max: number, extraTag: string, nameTag: string, openTag: string, endTag: string) => {
+    const extras: BalanceRow[] = [];
+    for (const r of rows) {
+      const t = tags[squash(r.name)];
+      if (t) {
+        v[t[0]] = ((v[t[0]] as number | undefined) ?? 0) + r.opening || undefined;
+        v[t[1]] = ((v[t[1]] as number | undefined) ?? 0) + r.closing || undefined;
+      } else if (r.opening || r.closing) extras.push(r);
+    }
+    const fitted = fit(extras, max, (rest) => ({ name: "その他", opening: sumOf(rest, (r) => r.opening), closing: sumOf(rest, (r) => r.closing) }));
+    if (fitted.length) v[extraTag] = { rows: fitted.map((r) => clean({ [nameTag]: text(r.name, 10), [openTag]: amount(r.opening), [endTag]: amount(r.closing) })) };
+  };
+  side(bs.assets.filter((r) => r.name !== "事業主貸"), RE_ASSET_TAGS, 5, "ANG00025", "ANG00030", "ANG00240", "ANG00460");
+  side(bs.liabilities.filter((r) => r.name !== "事業主借"), RE_LIABILITY_TAGS, 18, "ANG00495", "ANG00500", "ANG00560", "ANG00640");
+  const draw = bs.assets.find((r) => r.name === "事業主貸");
+  const loan = bs.liabilities.find((r) => r.name === "事業主借");
+  Object.assign(v, {
+    ANG00010: { date: `${src.year}-12-31` }, ANG00050: { mmdd: "01-01" }, ANG00270: { mmdd: "12-31" }, ANG00520: { mmdd: "01-01" }, ANG00600: { mmdd: "12-31" },
+    ANG00470: amount(draw?.closing ?? 0), ANG00650: amount(loan?.closing ?? 0), ANG00670: bs.income,
+    ANG00250: sumOf(bs.assets, (r) => r.opening), ANG00480: sumOf(bs.assets, (r) => r.closing),
+    ANG00580: sumOf(bs.liabilities, (r) => r.opening), ANG00680: sumOf(bs.liabilities, (r) => r.closing) + bs.income,
+  });
+};
+
+const reBlueValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const b = src.realEstate!;
+  const st = b.st;
+  const fixed = (label: string) => st.main.find((l) => !l.extra && l.label === label)?.amount ?? 0;
+  const period = periodOf(src);
+  const v: Record<string, EtaxValue | undefined> = {
+    ANA00000: ref(refs, "NENBUN"), ANB00010: ref(refs, "NOZEISHA_ADR"), ANB00030: ref(refs, "NOZEISHA_NM_KN"), ANB00040: ref(refs, "NOZEISHA_NM"),
+    ANB00050: ref(refs, "SHOKUGYO"), ANB00060: ref(refs, "NOZEISHA_TEL"),
+    ANC00010: ref(refs, "DAIRI_ADR"), ANC00020: ref(refs, "DAIRI_NM"), ANC00030: ref(refs, "DAIRI_TEL"),
+    ANF00030: period.from, ANF00040: period.to,
+    // 1ページ：損益計算書
+    ANF00050: st.revenue.other ? text(st.revenue.otherLabel, 10) : undefined, ANF00080: st.revenue.rent, ANF00090: amount(st.revenue.keyMoney),
+    ANF00100: amount(st.revenue.other), ANF00110: st.revenue.total,
+    ANF00130: amount(fixed("租税公課")), ANF00140: amount(fixed("損害保険料")), ANF00150: amount(fixed("修繕費")), ANF00160: amount(fixed("減価償却費")),
+    ANF00170: amount(fixed("借入金利子")), ANF00180: amount(fixed("地代家賃")), ANF00190: amount(fixed("給料賃金")),
+    ANF00195: st.main.some((l) => l.extra) ? { rows: st.main.filter((l) => l.extra).map((l) => clean({ ANF00060: text(l.label, 10), ANF00200: l.amount })) } : undefined,
+    ANF00210: amount(st.otherTotal), ANF00220: st.expenseTotal, ANF00230: st.difference, ANF00240: amount(st.family), ANF00250: st.beforeDeduction,
+    ANF00260: amount(st.deduction), ANF00270: st.income, ANF00280: amount(b.landInterest),
+    // 2ページ
+    ANF00288: ref(refs, "NENBUN"), ANF00300: ref(refs, "NOZEISHA_NM_KN"), ANF00310: ref(refs, "NOZEISHA_NM"),
+  };
+  // 不動産所得の収入の内訳（15行。残りは次葉合計。礼金・権利金・更新料は礼金の欄にまとめる）
+  const { shown, rest } = incomeRows(b.income, 15);
+  if (b.income.length) {
+    v.ANF00340 = {
+      rows: shown.map((r) => clean({
+        ANF00350: text(r.kind, 10), ANF00355: text(r.use, 10), ANF00360: text(r.location, 100), ANF00380: text(r.address, 100), ANF00390: text(r.name, 30),
+        ANF00410: ymOf(r.from), ANF00420: ymOf(r.to), ANF00430: decimalOf(r.area), ANF00470: amount(r.monthly), ANF00500: r.rent, ANF00510: amount(r.keyMoney),
+        ANF00540: amount(r.other), ANF00550: amount(r.deposit),
+      })),
+    };
+    if (rest.length) {
+      Object.assign(v, {
+        ANF00552: { text: "次葉" }, ANF00553: sumOf(rest, (r) => r.rent), ANF00554: amount(sumOf(rest, (r) => r.keyMoney)),
+        ANF00555: amount(sumOf(rest, (r) => r.other)), ANF00556: amount(sumOf(rest, (r) => r.deposit)),
+      });
+    }
+    Object.assign(v, {
+      ANF00570: sumOf(b.income, (r) => r.rent), ANF00580: amount(sumOf(b.income, (r) => r.keyMoney)), ANF00590: amount(sumOf(b.income, (r) => r.other)),
+      ANF00600: amount(sumOf(b.income, (r) => r.deposit)),
+    });
+  }
+  // 給料賃金の内訳（2行。残りは次葉合計）
+  const salaries = b.salaries.filter((r) => r.total > 0);
+  if (salaries.length) {
+    const others = salaries.slice(2);
+    v.ANF00620 = {
+      rows: salaries.slice(0, 2).map((r) => clean({
+        ANF00630: text(r.name, 30), ANF00640: r.age ?? undefined, ANF00650: r.months ?? undefined, ANF00670: r.salary, ANF00680: amount(r.bonus), ANF00690: r.total, ANF00700: amount(r.tax),
+      })),
+    };
+    if (others.length) {
+      Object.assign(v, {
+        ANF00702: { text: "次葉" }, ANF00703: monthsOf(others) || undefined, ANF00705: sumOf(others, (r) => r.salary), ANF00706: amount(sumOf(others, (r) => r.bonus)),
+        ANF00707: sumOf(others, (r) => r.total), ANF00708: amount(sumOf(others, (r) => r.tax)),
+      });
+    }
+    Object.assign(v, {
+      ANF00720: monthsOf(salaries) || undefined, ANF00740: sumOf(salaries, (r) => r.salary), ANF00750: amount(sumOf(salaries, (r) => r.bonus)),
+      ANF00760: sumOf(salaries, (r) => r.total), ANF00770: amount(sumOf(salaries, (r) => r.tax)),
+    });
+  }
+  // 専従者給与の内訳（1人）
+  const fam = st.family > 0 ? b.family.find((r) => r.total > 0) : undefined;
+  if (fam) {
+    Object.assign(v, {
+      ANF00790: text(fam.name, 30), ANF00800: text(fam.relation, 5), ANF00810: fam.age ?? undefined, ANF00820: fam.months ?? undefined,
+      ANF00840: fam.salary, ANF00850: amount(fam.bonus), ANF00860: fam.total, ANF00870: amount(fam.tax),
+    });
+  }
+  // 3ページ：減価償却費の計算（13行。残りは次葉合計）・地代家賃（2行）・借入金利子（3行）
+  const dep = b.depreciation;
+  if (dep.length) {
+    const others = dep.slice(13);
+    v.ANF00890 = {
+      rows: dep.slice(0, 13).map((x) => clean({
+        ANF00900: text(x.name, 16), ANF00910: text(x.quantity, 13), ANF00920: { yymm: x.acquired }, ANF00930: x.cost, ANF00940: x.base, ANF00950: text(x.method, 10),
+        ANF00960: x.life !== null && x.life >= 2 ? x.life : undefined, ANF00980: x.rate !== null ? { decimal: x.rate.toFixed(3) } : undefined,
+        ANF01010: x.months >= 1 ? x.months : undefined, ANF01020: x.depreciation, ANF01040: x.depreciation, ANF01050: { decimal: String(Number(x.businessRate.toFixed(2))) },
+        ANF01060: x.business, ANF01070: x.closing, ANF01080: text(x.memo, 15),
+      })),
+    };
+    if (others.length) {
+      Object.assign(v, {
+        ANF01082: { text: "次葉" }, ANF01083: sumOf(others, (x) => x.depreciation), ANF01085: sumOf(others, (x) => x.depreciation),
+        ANF01086: sumOf(others, (x) => x.business), ANF01087: sumOf(others, (x) => x.closing),
+      });
+    }
+    Object.assign(v, {
+      ANF01100: sumOf(dep, (x) => x.depreciation), ANF01120: sumOf(dep, (x) => x.depreciation), ANF01130: sumOf(dep, (x) => x.business), ANF01140: sumOf(dep, (x) => x.closing),
+    });
+  }
+  const rent = fit(b.rent.filter((r) => r.gross !== 0), 2, mergePayee);
+  v.ANF01160 = rent.length ? {
+    rows: rent.map((r) => clean({ ANF01180: text(r.address, 100), ANF01190: text(r.name, 100), ANF01200: text(r.property, 14), ANF01220: amount(r.extra), ANF01240: r.gross, ANF01250: r.business })),
+  } : undefined;
+  const interest = fit(b.interest.filter((r) => r.gross !== 0), 3, mergePayee);
+  v.ANF01260 = interest.length ? {
+    rows: interest.map((r) => clean({ ANF01280: text(r.address, 100), ANF01290: text(r.name, 100), ANF01300: amount(r.extra), ANF01310: r.gross, ANF01320: r.business })),
+  } : undefined;
+  // 4ページ：貸借対照表は事業所得が無いときだけ（あれば一般用の決算書に書く）
+  if (!b.hasBusiness) reBalanceSheet(src, v);
+  v.ANG00690 = text(b.special, 750);
+  return clean(v);
+};
+
+const reWhiteValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const b = src.realEstate!;
+  const st = b.st;
+  const main = (label: string) => st.main.find((l) => l.label === label)?.amount ?? 0;
+  const other = (label: string) => st.others.find((l) => !l.extra && l.label === label)?.amount ?? 0;
+  const extra = st.others.find((l) => l.extra);
+  const period = periodOf(src);
+  const v: Record<string, EtaxValue | undefined> = {
+    AKA00000: ref(refs, "NENBUN"), AKB00010: ref(refs, "NOZEISHA_ADR"), AKB00030: ref(refs, "NOZEISHA_NM_KN"), AKB00040: ref(refs, "NOZEISHA_NM"),
+    AKB00050: ref(refs, "SHOKUGYO"), AKB00060: ref(refs, "NOZEISHA_TEL"),
+    AKC00010: ref(refs, "DAIRI_ADR"), AKC00020: ref(refs, "DAIRI_NM"), AKC00030: ref(refs, "DAIRI_TEL"),
+    AKF00010: period.from, AKF00020: period.to,
+    AKG00010: extra ? text(extra.label, 10) : undefined, AKG00030: st.revenue.rent, AKG00050: amount(st.revenue.keyMoney), AKG00060: amount(st.revenue.other),
+    AKG00070: amount(st.revenue.keyMoney + st.revenue.other), AKG00080: st.revenue.total,
+    AKG00100: amount(main("給料賃金")), AKG00110: amount(main("減価償却費")), AKG00120: amount(main("貸倒金")), AKG00130: amount(main("地代家賃")), AKG00140: amount(main("借入金利子")),
+    AKG00160: amount(other("租税公課")), AKG00170: amount(other("損害保険料")), AKG00180: amount(other("修繕費")), AKG00190: extra ? amount(extra.amount) : undefined,
+    AKG00200: amount(other("雑費")), AKG00210: amount(st.otherTotal), AKG00220: st.expenseTotal, AKG00230: st.difference, AKG00250: st.income, AKG00260: amount(b.landInterest),
+  };
+  // 不動産所得の収入の内訳（10行。残りは次葉合計）
+  const { shown, rest } = incomeRows(b.income, 10);
+  if (b.income.length) {
+    v.AKH00010 = {
+      rows: shown.map((r) => clean({
+        AKH00020: text(r.kind, 10), AKH00025: text(r.use, 10), AKH00030: text(r.location, 100), AKH00050: text(r.address, 100), AKH00060: text(r.name, 30),
+        AKH00080: ymOf(r.from), AKH00090: ymOf(r.to), AKH00100: decimalOf(r.area), AKH00140: amount(r.monthly), AKH00170: r.rent, AKH00180: amount(r.keyMoney),
+        AKH00210: amount(r.other), AKH00220: amount(r.deposit),
+      })),
+    };
+    if (rest.length) {
+      Object.assign(v, {
+        AKH00222: { text: "次葉" }, AKH00223: sumOf(rest, (r) => r.rent), AKH00224: amount(sumOf(rest, (r) => r.keyMoney)),
+        AKH00225: amount(sumOf(rest, (r) => r.other)), AKH00226: amount(sumOf(rest, (r) => r.deposit)),
+      });
+    }
+    Object.assign(v, {
+      AKH00240: sumOf(b.income, (r) => r.rent), AKH00250: amount(sumOf(b.income, (r) => r.keyMoney)), AKH00260: amount(sumOf(b.income, (r) => r.other)),
+      AKH00270: amount(sumOf(b.income, (r) => r.deposit)),
+    });
+  }
+  // 給料賃金の内訳（1行と、その他。計）
+  const salaries = b.salaries.filter((r) => r.total > 0);
+  if (salaries.length) {
+    const [first, ...others] = salaries;
+    Object.assign(v, {
+      AKI00020: text(first.name, 30), AKI00030: first.age ?? undefined, AKI00040: first.months ?? undefined, AKI00050: first.salary, AKI00060: amount(first.bonus),
+      AKI00070: first.total, AKI00080: amount(first.tax),
+    });
+    if (others.length) {
+      Object.assign(v, {
+        AKI00100: others.length, AKI00110: monthsOf(others) || undefined, AKI00120: sumOf(others, (r) => r.salary), AKI00130: amount(sumOf(others, (r) => r.bonus)),
+        AKI00140: sumOf(others, (r) => r.total), AKI00150: amount(sumOf(others, (r) => r.tax)),
+      });
+    }
+    Object.assign(v, {
+      AKI00170: monthsOf(salaries) || undefined, AKI00180: sumOf(salaries, (r) => r.salary), AKI00190: amount(sumOf(salaries, (r) => r.bonus)),
+      AKI00200: sumOf(salaries, (r) => r.total), AKI00210: amount(sumOf(salaries, (r) => r.tax)),
+    });
+  }
+  // 2ページ：減価償却費の計算（8行。残りは次葉合計）
+  const dep = b.depreciation;
+  if (dep.length) {
+    const others = dep.slice(8);
+    v.AKK00010 = {
+      rows: dep.slice(0, 8).map((x) => clean({
+        AKK00020: text(x.name, 16), AKK00030: text(x.quantity, 20), AKK00050: { yymm: x.acquired }, AKK00060: x.cost, AKK00070: x.base, AKK00080: text(x.method, 10),
+        AKK00090: x.life !== null && x.life >= 2 ? x.life : undefined, AKK00110: x.rate !== null ? { decimal: x.rate.toFixed(3) } : undefined,
+        AKK00140: x.months >= 1 ? x.months : undefined, AKK00150: x.depreciation, AKK00170: x.depreciation, AKK00180: { decimal: String(Number(x.businessRate.toFixed(2))) },
+        AKK00190: x.business, AKK00200: x.closing, AKK00210: text(x.memo, 15),
+      })),
+    };
+    if (others.length) {
+      Object.assign(v, {
+        AKK00212: { text: "次葉" }, AKK00213: sumOf(others, (x) => x.depreciation), AKK00215: sumOf(others, (x) => x.depreciation),
+        AKK00216: sumOf(others, (x) => x.business), AKK00217: sumOf(others, (x) => x.closing),
+      });
+    }
+    Object.assign(v, {
+      AKK00230: sumOf(dep, (x) => x.depreciation), AKK00250: sumOf(dep, (x) => x.depreciation), AKK00260: sumOf(dep, (x) => x.business), AKK00270: sumOf(dep, (x) => x.closing),
+    });
+  }
+  const interest = fit(b.interest.filter((r) => r.gross !== 0), 2, mergePayee);
+  v.AKL00000 = interest.length ? {
+    rows: interest.map((r) => clean({ AKL00020: text(r.address, 100), AKL00030: text(r.name, 100), AKL00040: amount(r.extra), AKL00050: r.gross, AKL00060: r.business })),
+  } : undefined;
+  const repair = b.repair.filter((r) => r.gross !== 0).slice(0, 3);
+  v.AKM00000 = repair.length ? {
+    rows: repair.map((r) => clean({
+      AKM00020: text(r.address, 100), AKM00030: text(r.name, 100), AKM00040: text(r.work, 20), AKM00050: isDate(r.date) ? { date: r.date } : undefined, AKM00060: r.gross, AKM00070: r.business,
+    })),
+  } : undefined;
+  const hold = (k: string) => {
+    const n = b.holding[k];
+    return n && Number.isInteger(n) && n >= 1 && n <= 999 ? n : undefined;
+  };
+  Object.assign(v, {
+    AKN00030: hold("house-detached"), AKN00040: hold("house-other"), AKN00060: hold("house-land-count"),
+    AKN00070: b.holding["house-land-area"] ? { decimal: String(b.holding["house-land-area"]) } : undefined,
+    AKN00100: hold("other-detached"), AKN00110: hold("other-other"), AKN00130: hold("other-land-count"),
+    AKN00140: b.holding["other-land-area"] ? { decimal: String(b.holding["other-land-area"]) } : undefined,
+    AKN00160: hold("parking-roof"), AKN00170: hold("parking-open"),
+  });
+  const rent = fit(b.rent.filter((r) => r.gross !== 0), 2, mergePayee);
+  v.AKO00000 = rent.length ? {
+    rows: rent.map((r) => clean({ AKO00020: text(r.address, 100), AKO00030: text(r.name, 100), AKO00040: text(r.property, 14), AKO00060: amount(r.extra), AKO00080: r.gross, AKO00090: r.business })),
+  } : undefined;
+  v.AKQ00000 = text(b.special, 350);
+  return clean(v);
+};
+
 /** 確定申告書と青色申告決算書（白色申告は収支内訳書）の xtx。書き出せないときは例外 */
 export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
   const problems = incomeXtxProblems(src);
@@ -659,17 +938,21 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
   const refs = itRefs(filer, it);
   const attrs: FormAttrs = { author: filer.yago.trim() || filer.name.trim(), createdOn: src.createdOn };
   const koa020 = { ...firstValues({ ...src, filer }, refs, refund), ...secondValues(src, refs), ...fourthValues(src, refs) };
+  const white = src.biz.filingType === "white";
+  const business = src.realEstate ? src.realEstate.hasBusiness : true;
   return documentXml({
     namespace: NAMESPACE,
     procedure: PROCEDURE.procedure,
     procedureVersion: incomeXtxVersionFor(src.year).version,
     it: itXml(filer, { procedure: PROCEDURE.procedure, procedureName: PROCEDURE.name, shinkokuKbn: 1, ...it }),
-    // 手続の XSD の順番：申告書（KOA020）、収支内訳書（KOA110）・青色申告決算書（KOA210）
+    // 手続の XSD の順番：申告書（KOA020）、収支内訳書（一般用 KOA110・不動産所得用 KOA130）、青色申告決算書（一般用 KOA210・不動産所得用 KOA220）。
+    // 事業所得が無く不動産所得だけなら、一般用は書かない
     forms: [
       { id: "KOA020", xml: formXml("KOA020", koa020, attrs) },
-      src.white
-        ? { id: "KOA110", xml: formXml("KOA110", whiteValues(src, refs), attrs) }
-        : { id: "KOA210", xml: formXml("KOA210", statementValues(src, refs), attrs) },
+      ...(white && business ? [{ id: "KOA110", xml: formXml("KOA110", whiteValues(src, refs), attrs) }] : []),
+      ...(white && src.realEstate ? [{ id: "KOA130", xml: formXml("KOA130", reWhiteValues(src, refs), attrs) }] : []),
+      ...(!white && business ? [{ id: "KOA210", xml: formXml("KOA210", statementValues(src, refs), attrs) }] : []),
+      ...(!white && src.realEstate ? [{ id: "KOA220", xml: formXml("KOA220", reBlueValues(src, refs), attrs) }] : []),
     ],
   });
 };

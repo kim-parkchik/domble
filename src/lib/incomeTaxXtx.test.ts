@@ -4,13 +4,16 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { buildIncomeTaxXtx, incomeXtxNotices, incomeXtxProblems, incomeXtxVersionFor, myNumberPersons, type IncomeTaxXtxSource } from "./incomeTaxXtx";
 import { computeIncomeTax, EMPTY_INCOME_TAX_INPUT, emptyRelative, type BusinessFigures, type CarriedLoss, type IncomeTaxInput } from "./incomeTax";
-import type { BlueStatement, DepreciationLine, PayLine } from "./blueStatement";
+import { buildBlueStatement, type BlueStatement, type DepreciationLine, type PayLine } from "./blueStatement";
 import type { StatementRow } from "./statementLines";
 import type { EtaxFiler } from "./etax";
-import type { FlatLine } from "./accounting";
+import { type FlatLine } from "./accounting";
 import type { Account } from "./types";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import { buildWhiteStatement, familyMembers } from "./whiteStatement";
+import { buildRealEstateBook } from "./realEstateStatement";
+import { businessFigures } from "./incomeTaxBooks";
+import { closingBalances } from "./accounting";
 
 const XSD = resolve(import.meta.dir, "../../spec/etax/shotoku/RKO0010-250.xsd");
 const dir = mkdtempSync(join(tmpdir(), "domble-it-xtx-"));
@@ -377,5 +380,78 @@ describe("損失申告（第四表）と繰越控除", () => {
     expect(xml).not.toContain("ABM00000");
     expect(val(xml, "ABB00830")).toBe("500000");
     expect(val(xml, "ABB00410")).toBe("850000");
+  });
+});
+
+describe("不動産所得（青色申告決算書・収支内訳書の不動産所得用）", () => {
+  const seeds: Account[] = ACCOUNT_SEEDS.map((x, i) => ({
+    ...x, id: i + 1, sort_order: i, is_active: 1, is_system: 1, default_tax_code: null, default_business_class: null, default_purchase_use: null, statement_line: null,
+  }));
+  const acc = (name: string) => seeds.find((a) => a.name === name)!;
+  let id = 0;
+  const je = (debit: string, credit: string, amount: number, cp: number | null = null): FlatLine[] => {
+    id += 1;
+    const base = { entry_id: id, date: "2025-06-30", description: "", memo: "", amount, counterparty_id: cp, row_no: 1, sub_account_id: null };
+    return [{ ...base, side: "debit", account_id: acc(debit).id }, { ...base, side: "credit", account_id: acc(credit).id }];
+  };
+  const reLines = [
+    ...je("普通預金", "賃貸料", 1_200_000, 7), ...je("普通預金", "礼金・権利金・更新料", 100_000, 7), ...je("租税公課（不動産）", "普通預金", 150_000),
+    ...je("借入金利子（不動産）", "普通預金", 120_000, 8), ...je("修繕費（不動産）", "普通預金", 80_000, 9), ...je("貸倒金（不動産）", "未収入金", 10_000),
+  ];
+  const bizLines = [...je("普通預金", "売上高", 3_000_000), ...je("消耗品費", "普通預金", 1_000_000)];
+  const notes = {
+    "re-income:cp:7:kind": "アパート", "re-income:cp:7:use": "住宅用", "re-income:cp:7:location": "東京都中野区1-2-3", "re-income:cp:7:from": "2024-04",
+    "re-income:cp:7:to": "2026-03", "re-income:cp:7:area": "25.5", "re-income:cp:7:monthly": "100,000", "re-income:cp:7:deposit": "200000",
+    "re-interest:cp:8:loan": "15,000,000", "re-repair:cp:9:work": "外壁塗装", "re-repair:cp:9:date": "2025-07-10", "re-holding:house-other": "6", "re:special": "1室が空室",
+  };
+  const make = (white: boolean, withBusiness: boolean) => {
+    const lines = [...reLines, ...(withBusiness ? bizLines : [])];
+    const opening = { [acc("普通預金").id]: 2_000_000, [acc("元入金").id]: 2_000_000 };
+    const books = { year: 2025, accounts: seeds, opening, lines, notes, assets: [], homeUseRates: [], excludeEntryIds: [], payeeName: (r: { counterpartyId: number | null }) => `相手${r.counterpartyId}` };
+    const realEstate = buildRealEstateBook({ ...books, white, scale: "business", filingType: white ? "white" : "blue65" });
+    const end = closingBalances(seeds, opening, lines);
+    const figures = businessFigures(seeds, end, white ? "white" : "blue65", EMPTY_INCOME_TAX_INPUT, 2025, { scale: "business", landInterest: 0 }).biz;
+    const whiteSt = white ? buildWhiteStatement({ ...books, family: [], periodMonths: 12 }) : undefined;
+    const statement = buildBlueStatement({ ...books, deductionLimit: 650_000, realEstateIncome: figures.realEstate?.incomeBeforeBlue });
+    return { ...source({}, { biz: figures, white: whiteSt, realEstate, statement }), result: computeIncomeTax({ ...EMPTY_INCOME_TAX_INPUT, birthday: "1985-06-01" }, figures, 2025) };
+  };
+  const forms = (xml: string) => [...xml.matchAll(/<(KOA\d{3}) VR=/g)].map((m) => m[1]);
+
+  test("青色・事業所得あり：申告書・一般用・不動産所得用（貸借対照表は一般用）。第一表 ㋒・③", () => {
+    const src = make(false, true);
+    const xml = buildIncomeTaxXtx(src);
+    expect(validate(xml)).toBe("");
+    expect(forms(xml)).toEqual(["KOA020", "KOA210", "KOA220"]);
+    // 不動産所得：1,300,000 − 360,000 = 940,000、青色申告特別控除は不動産所得から先に 650,000 → ③ 290,000
+    expect([val(xml, "ABB00050"), val(xml, "ABB00340"), val(xml, "ABB00046")]).toEqual(["1300000", "290000", "2"]);
+    expect([val(xml, "ANF00080"), val(xml, "ANF00090"), val(xml, "ANF00130"), val(xml, "ANF00170"), val(xml, "ANF00250"), val(xml, "ANF00260"), val(xml, "ANF00270")])
+      .toEqual(["1200000", "100000", "150000", "120000", "940000", "650000", "290000"]);
+    expect([val(xml, "ANF00150"), val(xml, "ANF00060"), val(xml, "ANF00200")]).toEqual(["80000", "貸倒金", "10000"]);
+    expect([val(xml, "ANF00350"), val(xml, "ANF00390"), val(xml, "ANF00470"), val(xml, "ANF00550")]).toEqual(["アパート", "相手7", "100000", "200000"]);
+    expect([val(xml, "ANF01290"), val(xml, "ANF01300")]).toEqual(["相手8", "15000000"]);
+    expect(xml).not.toContain("<ANG00060>");
+    // 一般用の 2ページ：⑥ 不動産所得 940,000、⑧ 650,000、⑨ 0
+    expect([val(xml, "AMF01510"), val(xml, "AMF01540"), val(xml, "AMF01550")]).toEqual(["940000", "650000", "0"]);
+    expect(val(xml, "ABI00170")).toBe("650000");
+  });
+  test("青色・不動産所得だけ：一般用は書かず、不動産所得用の4ページに貸借対照表", () => {
+    const xml = buildIncomeTaxXtx(make(false, false));
+    expect(validate(xml)).toBe("");
+    expect(forms(xml)).toEqual(["KOA020", "KOA220"]);
+    expect(val(xml, "ANG00070")).toBe("2000000");
+    expect(val(xml, "ANG00690")).toBe("1室が空室");
+  });
+  test("白色・事業所得あり：収支内訳書の一般用と不動産所得用（修繕費の内訳・保有状況）", () => {
+    const xml = buildIncomeTaxXtx(make(true, true));
+    expect(validate(xml)).toBe("");
+    expect(forms(xml)).toEqual(["KOA020", "KOA110", "KOA130"]);
+    expect([val(xml, "AKG00030"), val(xml, "AKG00120"), val(xml, "AKG00140"), val(xml, "AKG00160"), val(xml, "AKG00180"), val(xml, "AKG00250")])
+      .toEqual(["1200000", "10000", "120000", "150000", "80000", "940000"]);
+    expect([val(xml, "AKM00040"), val(xml, "AKN00040"), val(xml, "AKH00020")]).toEqual(["外壁塗装", "6", "アパート"]);
+  });
+  test("白色・不動産所得だけ：申告書と不動産所得用の収支内訳書", () => {
+    const xml = buildIncomeTaxXtx(make(true, false));
+    expect(validate(xml)).toBe("");
+    expect(forms(xml)).toEqual(["KOA020", "KOA130"]);
   });
 });

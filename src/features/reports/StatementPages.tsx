@@ -15,9 +15,9 @@ import { CODE } from "../../constants/accounts";
 import { monthlySales, payeeBreakdown, type PayeeRow } from "../../lib/statements";
 import { partnerLines, partnerTable, type PartnerTable } from "../../lib/blueStatement";
 import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
-import type { FlatLine } from "../../lib/accounting";
+import { summarizeBalanceSheet, type FlatLine } from "../../lib/accounting";
 import { ALLOWANCE_NOTE, allowanceAccounts, allowanceCalc, allowanceLines } from "../../lib/allowance";
-import type { IncomeKind, OpeningBalances } from "../../lib/types";
+import type { Account, IncomeKind, OpeningBalances } from "../../lib/types";
 import * as repo from "../../db/repo";
 
 export type Notes = Record<string, string>;
@@ -113,7 +113,7 @@ export const useAssets = (kind: IncomeKind = "business") => {
   return assets;
 };
 
-type NoteProps = { notes: Notes; onSaved: (k: string, v: string) => void };
+export type NoteProps = { notes: Notes; onSaved: (k: string, v: string) => void };
 
 /** 給料賃金・専従者給与の内訳（氏名は支払先、年齢・従事月数・賞与・源泉徴収税額は書き込み） */
 export const PayTable = ({ rows, prefix, withRelation, notes, onSaved }: NoteProps & { rows: PayeeRow[]; prefix: string; withRelation: boolean }) => {
@@ -388,7 +388,8 @@ export const PartnerSections = ({ lines, salesTotal, purchaseTotal, salesOther, 
 
 const METHOD_SHORT: Record<FixedAsset["method"], string> = { straight: "定額法", lump3: "一括償却", small: "少額" };
 
-export const DepreciationSection = ({ assets, notes, onSaved }: NoteProps & { assets: FixedAsset[] }) => {
+/** rateLabel：不動産所得用は「貸付割合」 */
+export const DepreciationSection = ({ assets, notes, onSaved, rateLabel = "事業専用割合" }: NoteProps & { assets: FixedAsset[]; rateLabel?: string }) => {
   const { year } = useAppContext();
   const deps = assets
     .map((a) => ({ a, d: depreciationFor(a, year) }))
@@ -407,7 +408,7 @@ export const DepreciationSection = ({ assets, notes, onSaved }: NoteProps & { as
                 <th>減価償却資産の名称等</th><th>面積又は数量</th><th>取得年月</th><th className="num">取得価額</th><th className="num">償却の基礎になる金額</th>
                 <th>償却方法</th><th className="num">耐用年数</th><th className="num">償却率</th><th className="num">本年中の償却期間</th>
                 <th className="num">本年分の普通償却費</th><th className="num">特別償却費</th><th className="num">本年分の償却費合計</th>
-                <th className="num">事業専用割合</th><th className="num">本年分の必要経費算入額</th><th className="num">未償却残高（期末残高）</th><th>摘要</th>
+                <th className="num">{rateLabel}</th><th className="num">本年分の必要経費算入額</th><th className="num">未償却残高（期末残高）</th><th>摘要</th>
               </tr>
             </thead>
             <tbody>
@@ -448,20 +449,21 @@ export const DepreciationSection = ({ assets, notes, onSaved }: NoteProps & { as
   );
 };
 
-export const InterestSection = ({ rows, notes, onSaved }: NoteProps & { rows: PayeeRow[] }) => {
+/** 不動産所得用は「借入金利子の内訳」（prefix = re-interest。金融機関の分も書く） */
+export const InterestSection = ({ rows, notes, onSaved, prefix = "interest", title = "利子割引料の内訳（金融機関を除く）" }: NoteProps & { rows: PayeeRow[]; prefix?: string; title?: string }) => {
   const payeeName = usePayeeName();
   return (
     <>
-      <h3 className="st-h">利子割引料の内訳（金融機関を除く）</h3>
+      <h3 className="st-h">{title}</h3>
       {rows.length === 0 ? <p className="muted">該当する支払いはありません。</p> : (
         <table className="ledger st-detail">
           <thead><tr><th className="screen-only">書く</th><th>支払先の住所・氏名</th><th className="num">期末現在の借入金等の金額</th><th className="num">本年中の利子割引料</th><th className="num">左のうち必要経費算入額</th></tr></thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.key} className={included(notes, `interest:${r.key}:use`, true) ? "" : "print-skip"}>
-                <td className="screen-only"><Include k={`interest:${r.key}:use`} defaultOn notes={notes} onSaved={onSaved} /></td>
-                <td>{payeeName(r)}<Note k={`interest:${r.key}:address`} notes={notes} onSaved={onSaved} placeholder="住所" wide /></td>
-                <td><Note k={`interest:${r.key}:loan`} notes={notes} onSaved={onSaved} placeholder="借入金の残高" align="right" /></td>
+              <tr key={r.key} className={included(notes, `${prefix}:${r.key}:use`, true) ? "" : "print-skip"}>
+                <td className="screen-only"><Include k={`${prefix}:${r.key}:use`} defaultOn notes={notes} onSaved={onSaved} /></td>
+                <td>{payeeName(r)}<Note k={`${prefix}:${r.key}:address`} notes={notes} onSaved={onSaved} placeholder="住所" wide /></td>
+                <td><Note k={`${prefix}:${r.key}:loan`} notes={notes} onSaved={onSaved} placeholder="借入金の残高" align="right" /></td>
                 <td className="num">{yen(r.gross)}</td>
                 <td className="num">{yen(r.business)}</td>
               </tr>
@@ -469,7 +471,7 @@ export const InterestSection = ({ rows, notes, onSaved }: NoteProps & { rows: Pa
           </tbody>
         </table>
       )}
-      <p className="field-note screen-only">金融機関（銀行など）への利子は決算書に書かないので、「書く」のチェックを外してください（印刷に出ません）。</p>
+      {prefix === "interest" && <p className="field-note screen-only">金融機関（銀行など）への利子は決算書に書かないので、「書く」のチェックを外してください（印刷に出ません）。</p>}
     </>
   );
 };
@@ -500,7 +502,7 @@ export const FeesSection = ({ rows, notes, onSaved }: NoteProps & { rows: PayeeR
   );
 };
 
-export const RentSection = ({ rows, notes, onSaved }: NoteProps & { rows: PayeeRow[] }) => {
+export const RentSection = ({ rows, notes, onSaved, prefix = "rent" }: NoteProps & { rows: PayeeRow[]; prefix?: string }) => {
   const payeeName = usePayeeName();
   return (
     <>
@@ -511,9 +513,9 @@ export const RentSection = ({ rows, notes, onSaved }: NoteProps & { rows: PayeeR
           <tbody>
             {rows.map((r) => (
               <tr key={r.key}>
-                <td>{payeeName(r)}<Note k={`rent:${r.key}:address`} notes={notes} onSaved={onSaved} placeholder="住所" wide /></td>
-                <td><Note k={`rent:${r.key}:property`} notes={notes} onSaved={onSaved} placeholder="例：事務所" /></td>
-                <td><Note k={`rent:${r.key}:key`} notes={notes} onSaved={onSaved} placeholder="権利金等" align="right" /></td>
+                <td>{payeeName(r)}<Note k={`${prefix}:${r.key}:address`} notes={notes} onSaved={onSaved} placeholder="住所" wide /></td>
+                <td><Note k={`${prefix}:${r.key}:property`} notes={notes} onSaved={onSaved} placeholder="例：事務所" /></td>
+                <td><Note k={`${prefix}:${r.key}:key`} notes={notes} onSaved={onSaved} placeholder="権利金等" align="right" /></td>
                 <td className="num">{yen(r.gross)}</td>
                 <td className="num">{yen(r.business)}</td>
               </tr>
@@ -526,10 +528,10 @@ export const RentSection = ({ rows, notes, onSaved }: NoteProps & { rows: PayeeR
   );
 };
 
-export const SpecialSection = ({ notes, onSaved }: NoteProps) => (
+export const SpecialSection = ({ notes, onSaved, k = "special", title = "本年中における特殊事情" }: NoteProps & { k?: string; title?: string }) => (
   <>
-    <h3 className="st-h">本年中における特殊事情</h3>
-    <Note k="special" notes={notes} onSaved={onSaved} placeholder="例：4月に開業、10月に事務所を移転 など" wide />
+    <h3 className="st-h">{title}</h3>
+    <Note k={k} notes={notes} onSaved={onSaved} placeholder="例：4月に開業、10月に事務所を移転 など" wide />
   </>
 );
 
@@ -552,5 +554,75 @@ export const StatementPage3 = ({ lines, salesTotal, purchaseTotal }: { lines: Fl
         <SpecialSection notes={notes} onSaved={set} />
       </section>
     </div>
+  );
+};
+
+/** 貸借対照表（帳簿全体。「青色申告特別控除前の所得金額」は事業所得と不動産所得を合わせた額）。不動産所得用の決算書でも使う */
+export const BalanceSheetView = ({ end, opening }: { end: Map<number, number>; opening: Record<number, number> }) => {
+  const { accounts } = useAppContext();
+  const bs = summarizeBalanceSheet(accounts, end);
+  const val = (a: Account) => end.get(a.id) ?? 0;
+  const open = (a: Account) => opening[a.id] ?? 0;
+  const by = (cat: Account["category"]) => accounts.filter((a) => a.category === cat);
+  const showRow = (a: Account) => a.is_active || val(a) !== 0 || open(a) !== 0;
+  const assets = by("asset").filter(showRow);
+  const liabilities = by("liability").filter(showRow);
+  const equity = by("equity");
+  const openAssetsTotal = assets.reduce((s, a) => s + open(a), 0);
+  const openRightTotal = [...liabilities, ...equity].reduce((s, a) => s + open(a), 0);
+  return (
+    <>
+      <div className="bs-grid">
+        <table className="ledger st-table bs-table">
+          <thead>
+            <tr><th>資産の部</th><th className="num">1月1日（期首）</th><th className="num">12月31日（期末）</th></tr>
+          </thead>
+          <tbody>
+            {assets.map((a) => (
+              <tr key={a.id}>
+                <td>{a.name}</td>
+                <td className="num">{yen(open(a), { blankZero: true })}</td>
+                <td className={`num${val(a) < 0 ? " negative" : ""}`}>{yen(val(a), { blankZero: true })}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr><td>合計</td><td className="num">{yen(openAssetsTotal)}</td><td className="num">{yen(bs.assets)}</td></tr>
+          </tfoot>
+        </table>
+
+        <table className="ledger st-table bs-table">
+          <thead>
+            <tr><th>負債・資本の部</th><th className="num">1月1日（期首）</th><th className="num">12月31日（期末）</th></tr>
+          </thead>
+          <tbody>
+            {[...liabilities, ...equity].map((a) => (
+              <tr key={a.id}>
+                <td>{a.name}</td>
+                <td className="num">{yen(open(a), { blankZero: true })}</td>
+                <td className={`num${val(a) < 0 ? " negative" : ""}`}>{yen(val(a), { blankZero: true })}</td>
+              </tr>
+            ))}
+            <tr>
+              <td>青色申告特別控除前の所得金額</td>
+              <td className="num" />
+              <td className={`num${bs.income < 0 ? " negative" : ""}`}>{yen(bs.income)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>合計</td>
+              <td className="num">{yen(openRightTotal)}</td>
+              <td className="num">{yen(bs.liabilities + bs.equity + bs.income)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {bs.difference !== 0 && (
+        <p className="warn-box" role="alert">
+          資産と負債・資本の合計が {yen(Math.abs(bs.difference))} 円ずれています。「期首残高」の貸借が一致しているか確認してください。
+        </p>
+      )}
+    </>
   );
 };

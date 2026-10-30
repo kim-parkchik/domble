@@ -10,6 +10,7 @@ import { buildBlueStatement } from "./blueStatement";
 import { businessFigures, realEstateFigures } from "./incomeTaxBooks";
 import { computeIncomeTax, EMPTY_INCOME_TAX_INPUT, type BusinessFigures, type IncomeTaxResult } from "./incomeTax";
 import { depreciationLines, type FixedAsset } from "./depreciation";
+import { realEstateStatement, rentIncomeRows } from "./realEstateStatement";
 
 const seeds: Account[] = ACCOUNT_SEEDS.map((s, i) => ({
   ...s, id: i + 1, sort_order: i, is_active: s.hidden ? 0 : 1, is_system: 1, default_tax_code: null, default_business_class: null, default_purchase_use: null,
@@ -99,5 +100,47 @@ describe("固定資産：不動産所得の資産", () => {
     };
     const lines = depreciationLines([a], 2026, { expense: acc("減価償却費").id, draw: acc("事業主貸").id, expenseRealEstate: acc("減価償却費（不動産）").id });
     expect(lines[0]).toMatchObject({ side: "debit", account_id: acc("減価償却費（不動産）").id, amount: 1_012_000 });
+  });
+});
+
+describe("不動産所得用の決算書の1ページ", () => {
+  const jeCp = (debit: string, credit: string, amount: number, cp: number | null): FlatLine[] =>
+    je(debit, credit, amount).map((l) => ({ ...l, counterparty_id: cp }));
+  const lines = [
+    ...jeCp("普通預金", "賃貸料", 1_200_000, 1), ...jeCp("普通預金", "賃貸料", 600_000, 2), ...jeCp("普通預金", "礼金・権利金・更新料", 100_000, 1),
+    ...je("普通預金", "名義書換料その他", 50_000),
+    ...je("租税公課（不動産）", "普通預金", 150_000), ...je("損害保険料（不動産）", "普通預金", 30_000), ...je("修繕費（不動産）", "普通預金", 80_000),
+    ...je("減価償却費（不動産）", "建物", 400_000), ...je("借入金利子（不動産）", "普通預金", 120_000), ...je("貸倒金（不動産）", "未収入金", 10_000),
+    ...je("雑費（不動産）", "普通預金", 20_000), ...je("専従者給与（不動産）", "普通預金", 300_000),
+  ];
+  const end = closingBalances(seeds, {}, lines);
+  const amount = (a: Account) => end.get(a.id) ?? 0;
+
+  test("青色：①〜④、決まった欄 ⑤〜⑪ と追加の欄（貸倒金）、⑰ その他の経費、⑲〜㉓（事業的規模で専従者給与あり）", () => {
+    const st = realEstateStatement(seeds, amount, "blue", { familyAllowed: true, deductionLimit: 650_000 });
+    expect(st.revenue).toEqual({ rent: 1_800_000, keyMoney: 100_000, other: 50_000, otherLabel: "名義書換料その他", total: 1_950_000 });
+    expect(st.main.filter((l) => l.amount).map((l) => [l.no, l.label, l.amount])).toEqual([
+      ["⑤", "租税公課", 150_000], ["⑥", "損害保険料", 30_000], ["⑦", "修繕費", 80_000], ["⑧", "減価償却費", 400_000], ["⑨", "借入金利子", 120_000], ["⑫", "貸倒金", 10_000],
+    ]);
+    expect([st.otherTotal, st.expenseTotal, st.difference, st.family, st.beforeDeduction, st.deduction, st.income]).toEqual([20_000, 810_000, 1_140_000, 300_000, 840_000, 650_000, 190_000]);
+    // 所得税の数字と同じ
+    expect(realEstateFigures(seeds, end, "blue65", { scale: "business", landInterest: 0 })?.incomeBeforeBlue).toBe(840_000);
+  });
+  test("青色で事業的規模でなければ、専従者給与は必要経費にせず知らせる", () => {
+    const st = realEstateStatement(seeds, amount, "blue", { familyAllowed: false, deductionLimit: 100_000 });
+    expect([st.family, st.beforeDeduction, st.deduction]).toEqual([0, 1_140_000, 100_000]);
+    expect(st.warnings.join()).toMatch(/事業的規模でない/);
+  });
+  test("白色：⑥〜⑩、㋑〜㋭、⑪ 小計・⑫ 経費計・⑬〜⑮（専従者給与は経費にしない）", () => {
+    const st = realEstateStatement(seeds, amount, "white", { familyAllowed: false, deductionLimit: 0 });
+    expect(st.main.map((l) => [l.no, l.amount])).toEqual([["⑥", 0], ["⑦", 400_000], ["⑧", 10_000], ["⑨", 0], ["⑩", 120_000]]);
+    expect(st.others.map((l) => [l.no, l.label, l.amount])).toEqual([["㋑", "租税公課", 150_000], ["㋺", "損害保険料", 30_000], ["㋩", "修繕費", 80_000], ["㋭", "雑費", 20_000]]);
+    expect([st.otherTotal, st.expenseTotal, st.difference, st.income]).toEqual([280_000, 810_000, 1_140_000, 1_140_000]);
+    expect(st.warnings.join()).toMatch(/白色申告では/);
+  });
+  test("収入の内訳：賃借人（取引先）ごと。分からない分は最後の1行", () => {
+    expect(rentIncomeRows(seeds, lines).map((r) => [r.key, r.rent, r.keyMoney, r.other])).toEqual([
+      ["cp:1", 1_200_000, 100_000, 0], ["cp:2", 600_000, 0, 0], ["none", 0, 0, 50_000],
+    ]);
   });
 });

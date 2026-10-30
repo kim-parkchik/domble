@@ -7,6 +7,7 @@
  */
 import { summarizeIncome } from "./accounting";
 import { accountsOfKind, hasRealEstate } from "./incomeKind";
+import { realEstateStatement } from "./realEstateStatement";
 import { businessMonths, familyDeductions, familyMembers, whiteSummary, type FamilyLine } from "./whiteStatement";
 import type { BusinessFigures, IncomeTaxInput, RealEstateFigures } from "./incomeTax";
 import type { Account, FilingType, RealEstateScale } from "./types";
@@ -18,15 +19,11 @@ export const realEstateFigures = (
 ): RealEstateFigures | undefined => {
   const amount = (a: Account) => end.get(a.id) ?? 0;
   if (re.scale === "none" && !hasRealEstate(accounts, amount)) return undefined;
-  const pl = summarizeIncome(accountsOfKind(accounts, "realestate"), end);
-  const family = accounts.find((a) => a.code === CODE.RE_FAMILY_SALARY);
-  const familySalary = family ? amount(family) : 0;
-  // 専従者給与は、事業的規模の青色申告のときだけ必要経費（それ以外は所得に戻す）
-  const allowed = filingType !== "white" && re.scale === "business";
-  return {
-    revenue: pl.revenue, incomeBeforeBlue: pl.income + (allowed ? 0 : familySalary), familySalary: allowed ? familySalary : 0, scale: re.scale,
-    landInterest: Math.max(0, re.landInterest),
-  };
+  // 不動産所得用の決算書と同じ計算（専従者給与は事業的規模の青色申告のときだけ必要経費）
+  const st = realEstateStatement(accounts, amount, filingType === "white" ? "white" : "blue", {
+    familyAllowed: filingType !== "white" && re.scale === "business", deductionLimit: 0,
+  });
+  return { revenue: st.revenue.total, incomeBeforeBlue: st.beforeDeduction, familySalary: st.family, scale: re.scale, landInterest: Math.max(0, re.landInterest) };
 };
 
 /** end = 期末残高（closingBalances）。familyLines は白色の事業専従者（青色は空）。re を渡せば不動産所得も入れる */
