@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FlatLine } from "./accounting";
 import {
-  findBookDuplicate, guessColumns, guessLine, learnFromBooks, parseStatement, parseStatementAmount, parseStatementDate, type BankRule,
+  bankEntryLines, findBookDuplicate, guessColumns, guessLine, learnFromBooks, parseStatement, parseStatementAmount, parseStatementDate, type BankRule,
 } from "./bankImport";
 import { parseCsv } from "./csv";
 
@@ -93,7 +93,7 @@ describe("列の推測と読み取り", () => {
 describe("推測", () => {
   const rule = (x: Partial<BankRule>): BankRule => ({
     id: 1, keyword: "デンキ", direction: "decrease", target_account_id: null, account_id: 603, sub_account_id: null,
-    tax_code: "purchase10", invoice_kind: "qualified", counterparty_id: 7, memo: "電気代", sort_order: 0, ...x,
+    tax_code: "purchase10", invoice_kind: "qualified", counterparty_id: 7, memo: "電気代", sort_order: 0, splits: [], ...x,
   });
   const line = (id: number, entry: number, date: string, side: FlatLine["side"], account: number, amount: number, memo: string, sub: number | null = null): FlatLine => ({
     entry_id: entry, date, description: "", row_no: id, side, account_id: account, sub_account_id: sub, amount, memo, tax_code: null, invoice_kind: null,
@@ -116,9 +116,39 @@ describe("推測", () => {
     const h2 = learnFromBooks(books, 3, 5, [{ entryId: 11, description: "ｱﾏｿﾞﾝ ﾏｰｹｯﾄ" }]);
     expect(guessLine({ description: "ｱﾏｿﾞﾝ ﾏｰｹｯﾄ", side: "credit" }, bankAccount, [], h2).counterId).toBe(622);
   });
+  test("ルールの分け方も推測に入る（前の仕訳からの推測は分けない）", () => {
+    const loan = rule({ keyword: "ローン", account_id: 250, tax_code: null, invoice_kind: null, memo: "返済", splits: [{ account_id: 680, sub_account_id: null, tax_code: "outside", invoice_kind: null, amount: 6_000, memo: "" }] });
+    expect(guessLine({ description: "ローン返済", side: "credit" }, bankAccount, [loan], new Map())).toMatchObject({ counterId: 250, splits: loan.splits });
+    expect(guessLine({ description: "x", side: "credit" }, bankAccount, [], new Map()).splits).toEqual([]);
+  });
   test("帳簿に同じ日・同じ増減・同じ金額の仕訳があれば重複かも", () => {
     expect(findBookDuplicate({ date: "2026-09-01", side: "credit", amount: 4_400 }, books, 3, 5)).toBe(10);
     expect(findBookDuplicate({ date: "2026-09-01", side: "debit", amount: 4_400 }, books, 3, 5)).toBeNull();
     expect(findBookDuplicate({ date: "2026-09-01", side: "credit", amount: 4_400 }, books, 3, 5, new Set([10]))).toBeNull();
+  });
+});
+
+describe("明細から仕訳の行（分ける）", () => {
+  const main = { accountId: 250, subId: null, tax: { tax_code: null, invoice_kind: null }, memo: "ローン返済" };
+  test("この口座は明細の金額、分けた行は決まった額、最初の相手科目は残り（出金なら相手科目が借方で先）", () => {
+    const lines = bankEntryLines({ side: "credit", amount: 50_000 }, 3, 5, main, [{ accountId: 680, subId: null, tax: { tax_code: "outside" }, memo: "", amount: 6_000 }]);
+    expect(lines).toEqual([
+      { row_no: 1, side: "debit", account_id: 250, sub_account_id: null, amount: 44_000, memo: "ローン返済" },
+      { row_no: 2, side: "debit", account_id: 680, sub_account_id: null, amount: 6_000, memo: "ローン返済", tax_code: "outside" },
+      { row_no: 3, side: "credit", account_id: 3, sub_account_id: 5, amount: 50_000, memo: "ローン返済" },
+    ]);
+    // 分けなければ2行（入金ならこの口座が借方で先）
+    expect(bankEntryLines({ side: "debit", amount: 1_000 }, 3, 5, { ...main, accountId: 400 }, [])).toEqual([
+      { row_no: 1, side: "debit", account_id: 3, sub_account_id: 5, amount: 1_000, memo: "ローン返済" },
+      { row_no: 2, side: "credit", account_id: 400, sub_account_id: null, amount: 1_000, memo: "ローン返済" },
+    ]);
+  });
+  test("分けた行の合計が明細の金額以上・金額や科目が無い・この口座と同じ科目は作れない", () => {
+    const split = (x: object) => [{ accountId: 680, subId: null, tax: {}, memo: "", amount: 6_000, ...x }];
+    expect(bankEntryLines({ side: "credit", amount: 6_000 }, 3, 5, main, split({}))).toMatch(/以上/);
+    expect(bankEntryLines({ side: "credit", amount: 9_000 }, 3, 5, main, split({ amount: null }))).toMatch(/金額/);
+    expect(bankEntryLines({ side: "credit", amount: 9_000 }, 3, 5, main, split({ accountId: null }))).toMatch(/相手科目/);
+    expect(bankEntryLines({ side: "credit", amount: 9_000 }, 3, 5, main, split({ accountId: 3, subId: 5 }))).toMatch(/同じ科目/);
+    expect(bankEntryLines({ side: "credit", amount: 9_000 }, 3, 5, { ...main, accountId: null }, [])).toMatch(/相手科目/);
   });
 });

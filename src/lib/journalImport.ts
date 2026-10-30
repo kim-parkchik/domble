@@ -1,7 +1,8 @@
 /**
  * 仕訳の CSV 取り込み（純粋関数）
  *
- * 形式は仕訳日記帳の CSV 書き出しと同じ（書き出したものをそのまま取り込める）。列は見出しの名前で探すので、順番は問わない
+ * 形式は仕訳日記帳の CSV 書き出しと同じ（書き出したものをそのまま取り込める）。列は見出しの名前で探すので、順番は問わない。
+ * ほかの会計ソフトの CSV は、見出しの名前から列を推測し（guessJournalColumns）、画面で選び直せる（map）。日付は和暦（R7.1.5・令和7年1月5日）も読む
  *  - 必須：日付・借方科目・借方金額・貸方科目・貸方金額
  *  - 任意：伝票No（同じ番号の行を1つの仕訳にまとめる。無ければ1行 = 1仕訳）・借方補助・貸方補助・摘要・取引先・状態（「削除済み」の行は飛ばす）・
  *    決算整理（何か入っていれば決算整理仕訳。日付は年度末）・借方税区分・借方インボイス・借方事業区分・借方用途区分・貸方税区分・貸方インボイス・貸方事業区分・貸方用途区分
@@ -11,7 +12,7 @@
  * 1つでも問題があれば取り込まない（画面で行番号つきで知らせる）
  */
 import type { Account, Counterparty, JournalLine, SubAccount, VoucherRow } from "./types";
-import { emptyRow, rowsToLines } from "./accounting";
+import { emptyRow, rowsToLines, type FlatLine } from "./accounting";
 import { parseAmount, toHalfWidth } from "./format";
 import { normName } from "./counterparty";
 import { parseCsv, unguardCell } from "./csv";
@@ -48,19 +49,22 @@ export interface ImportResult {
   issues: ImportIssue[];
   /** 「削除済み」で飛ばした行の数 */
   skipped: number;
+  /** 見出し（列の名前）と、使った列の対応（画面で選び直すため） */
+  header: string[];
+  map: JournalColumnMap;
 }
 
-const COLUMNS = {
-  no: ["伝票No", "伝票番号", "No"],
-  date: ["日付", "取引日"],
+export const COLUMNS = {
+  no: ["伝票No", "伝票番号", "No", "伝票NO", "取引No", "取引番号", "仕訳番号", "仕訳No"],
+  date: ["日付", "取引日", "取引日付", "伝票日付", "計上日", "年月日"],
   drAcc: ["借方科目", "借方勘定科目"],
   drSub: ["借方補助", "借方補助科目"],
   drAmt: ["借方金額"],
   crAcc: ["貸方科目", "貸方勘定科目"],
   crSub: ["貸方補助", "貸方補助科目"],
   crAmt: ["貸方金額"],
-  memo: ["摘要"],
-  cp: ["取引先"],
+  memo: ["摘要", "摘要文", "備考"],
+  cp: ["取引先", "取引先名"],
   state: ["状態"],
   adj: ["決算整理"],
   drTax: ["借方税区分"],
@@ -72,13 +76,40 @@ const COLUMNS = {
   drUse: ["借方用途区分"],
   crUse: ["貸方用途区分"],
 } as const;
-type Col = keyof typeof COLUMNS;
-const REQUIRED: Col[] = ["date", "drAcc", "drAmt", "crAcc", "crAmt"];
+export type JournalCol = keyof typeof COLUMNS;
+type Col = JournalCol;
+export const REQUIRED_COLUMNS: Col[] = ["date", "drAcc", "drAmt", "crAcc", "crAmt"];
+const REQUIRED = REQUIRED_COLUMNS;
+/** 列の対応（列の番号。-1 = 使わない） */
+export type JournalColumnMap = Record<Col, number>;
+/** 画面に出す列の名前 */
+export const COLUMN_LABELS: Record<Col, string> = {
+  no: "伝票番号", date: "日付", drAcc: "借方科目", drSub: "借方補助科目", drAmt: "借方金額", crAcc: "貸方科目", crSub: "貸方補助科目", crAmt: "貸方金額",
+  memo: "摘要", cp: "取引先", state: "状態", adj: "決算整理", drTax: "借方税区分", drInv: "借方インボイス", crTax: "貸方税区分", crInv: "貸方インボイス",
+  drCls: "借方事業区分", crCls: "貸方事業区分", drUse: "借方用途区分", crUse: "貸方用途区分",
+};
 
-/** 2026-01-05・2026/1/5・2026年1月5日・20260105 → 2026-01-05（年の省略は不可） */
+/** 見出しの名前から列を推測する（無ければ -1） */
+export const guessJournalColumns = (header: string[]): JournalColumnMap => {
+  const h = header.map((x) => normName(x));
+  const map = {} as JournalColumnMap;
+  for (const k of Object.keys(COLUMNS) as Col[]) map[k] = h.findIndex((v) => COLUMNS[k].some((name) => normName(name) === v));
+  return map;
+};
+
+/** 元号の始まりの年の前の年（令和 1年 = 2019年） */
+const ERAS: Record<string, number> = { 令和: 2018, R: 2018, 平成: 1988, H: 1988, 昭和: 1925, S: 1925 };
+
+/**
+ * 2026-01-05・2026/1/5・2026年1月5日・20260105 → 2026-01-05（年の省略は不可）。
+ * 和暦：R7.1.5・R07/01/05・令和7年1月5日・令和元年5月1日・H31.4.30
+ */
 export const parseImportDate = (raw: string): string | null => {
-  const s = toHalfWidth(raw).trim();
-  const m = s.match(/^(\d{4})[/\-.年](\d{1,2})[/\-.月](\d{1,2})日?$/) ?? s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  const s = toHalfWidth(raw).trim().replace(/元年/, "1年");
+  const era = s.match(/^(令和|平成|昭和|[RHS])\s*(\d{1,2})[/\-.年](\d{1,2})[/\-.月](\d{1,2})日?$/i);
+  const m = era
+    ? [era[0], String(ERAS[era[1].toUpperCase()] + Number(era[2])), era[3], era[4]]
+    : s.match(/^(\d{4})[/\-.年](\d{1,2})[/\-.月](\d{1,2})日?$/) ?? s.match(/^(\d{4})(\d{2})(\d{2})$/);
   if (!m) return null;
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const dt = new Date(y, mo - 1, d);
@@ -93,22 +124,22 @@ interface Group {
   rows: { line: number; vr: VoucherRow }[];
 }
 
-export const importJournalCsv = (text: string, ctx: ImportContext): ImportResult => {
+/** map = 列の対応（無ければ見出しから推測） */
+export const importJournalCsv = (text: string, ctx: ImportContext, map?: JournalColumnMap): ImportResult => {
   const table = parseCsv(text);
   const issues: ImportIssue[] = [];
   const headerAt = table.findIndex((r) => r.some((c) => c.trim() !== ""));
-  if (headerAt < 0) return { entries: [], issues: [{ row: 1, message: "中身がありません" }], skipped: 0 };
+  const empty = (h: string[], m: JournalColumnMap) => ({ entries: [], skipped: 0, header: h, map: m });
+  if (headerAt < 0) return { ...empty([], guessJournalColumns([])), issues: [{ row: 1, message: "中身がありません" }] };
 
-  // 見出しから列の位置を決める
-  const header = table[headerAt].map((h) => normName(h));
-  const col = {} as Record<Col, number>;
-  for (const k of Object.keys(COLUMNS) as Col[]) col[k] = header.findIndex((h) => COLUMNS[k].some((name) => normName(name) === h));
-  const missing = REQUIRED.filter((k) => col[k] < 0);
+  // 見出しから列の位置を決める（画面で選び直したらその対応）
+  const headerNames = table[headerAt].map((h) => h.trim());
+  const col = map ?? guessJournalColumns(headerNames);
+  const missing = REQUIRED.filter((k) => !(col[k] >= 0));
   if (missing.length > 0) {
     return {
-      entries: [],
-      issues: [{ row: headerAt + 1, message: `見出しに次の列がありません：${missing.map((k) => COLUMNS[k][0]).join("、")}（仕訳日記帳の CSV 書き出しと同じ見出しにしてください）` }],
-      skipped: 0,
+      ...empty(headerNames, col),
+      issues: [{ row: headerAt + 1, message: `次の列を選んでください：${missing.map((k) => COLUMN_LABELS[k]).join("、")}（見出しの名前から見つかりませんでした）` }],
     };
   }
 
@@ -129,7 +160,7 @@ export const importJournalCsv = (text: string, ctx: ImportContext): ImportResult
     const err = (message: string) => issues.push({ row: line, message });
 
     const date = parseImportDate(get("date"));
-    if (!date) err(`日付「${get("date")}」が読めません（例：2026-01-05、2026/1/5）`);
+    if (!date) err(`日付「${get("date")}」が読めません（例：2026-01-05、2026/1/5、R8.1.5、令和8年1月5日）`);
 
     const vr = emptyRow();
     vr.memo = get("memo");
@@ -227,5 +258,43 @@ export const importJournalCsv = (text: string, ctx: ImportContext): ImportResult
   }
 
   issues.sort((a, b) => a.row - b.row);
-  return { entries: issues.length ? [] : entries, issues, skipped };
+  return { entries: issues.length ? [] : entries, issues, skipped, header: headerNames, map: col };
+};
+
+/** 仕訳の中身の鍵：日付と、貸借・科目・補助科目・金額の組（摘要・税区分は見ない） */
+export const entryKey = (date: string, lines: Pick<JournalLine, "side" | "account_id" | "sub_account_id" | "amount">[]) =>
+  `${date}|${lines.map((l) => `${l.side === "debit" ? "D" : "C"}${l.account_id}.${l.sub_account_id ?? 0}:${l.amount}`).sort().join(",")}`;
+
+/**
+ * 重複かも：帳簿にある仕訳と同じもの（日付・科目・補助科目・金額が同じ）と、ファイルの中で前に同じ仕訳があるもの。
+ * 取り込む仕訳の番号 → わけ。alt = 家事按分で分けたあとの明細（帳簿の仕訳は分けたあとなので、どちらかが合えば同じとみなす）
+ */
+export const findDuplicates = (
+  entries: Pick<ImportEntry, "date" | "lines">[], existing: FlatLine[], alt?: (i: number) => JournalLine[],
+): Map<number, string> => {
+  const byEntry = new Map<number, FlatLine[]>();
+  for (const l of existing) {
+    if (l.is_deleted) continue;
+    const list = byEntry.get(l.entry_id) ?? [];
+    list.push(l);
+    byEntry.set(l.entry_id, list);
+  }
+  const book = new Map<string, number>();
+  for (const [id, ls] of byEntry) {
+    const k = entryKey(ls[0].date, ls);
+    if (!book.has(k)) book.set(k, id);
+  }
+  const out = new Map<number, string>();
+  const seen = new Map<string, number>();
+  entries.forEach((e, i) => {
+    const keys = [entryKey(e.date, e.lines), ...(alt ? [entryKey(e.date, alt(i))] : [])];
+    const hit = keys.map((k) => book.get(k)).find((x) => x !== undefined);
+    if (hit !== undefined) out.set(i, `帳簿に同じ仕訳があります（伝票 No.${hit}）`);
+    else {
+      const before = keys.map((k) => seen.get(k)).find((x) => x !== undefined);
+      if (before !== undefined) out.set(i, `ファイルの中で同じ仕訳が前にあります（${before + 1}件目）`);
+    }
+    for (const k of keys) if (!seen.has(k)) seen.set(k, i);
+  });
+  return out;
 };

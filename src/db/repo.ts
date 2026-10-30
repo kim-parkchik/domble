@@ -14,7 +14,7 @@ import type {
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
 import { closedLabel, closedMonthOf, inheritingClosedYears, inheritMessage, monthEnd, yearsToAutoClose } from "../lib/closing";
-import { isValidInvoiceNo, normalizeInvoiceNo, type CounterpartyInput } from "../lib/counterparty";
+import { isValidInvoiceNo, normalizeInvoiceNo, validateCounterparty, type CounterpartyInput } from "../lib/counterparty";
 import {
   builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isInvoiceKind, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
   useLabel, validateTaxYear,
@@ -25,7 +25,8 @@ import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
 import { isExclusiveOn, taxAmountProblem } from "../lib/taxExclusive";
-import { columnMapProblem, parseColumnMap, type BankRule, type ColumnMap, type StatementLine } from "../lib/bankImport";
+import type { AccountListRow } from "../lib/masterCsv";
+import { columnMapProblem, parseColumnMap, type BankRule, type BankRuleSplit, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import { checkScanQuality, docClassOf, type DocClass, type ScanInputMethod } from "../lib/scan";
 import { lastHolidayYear, mergeHolidays, type Holiday } from "../lib/holidays";
@@ -645,14 +646,19 @@ const registerBankLines_ = async (
   return ids;
 };
 
-export const getBankRules = (db: Database) =>
-  db.select<BankRule[]>(
+export const getBankRules = async (db: Database): Promise<BankRule[]> => {
+  const rules = await db.select<Omit<BankRule, "splits">[]>(
     `SELECT id, keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, sort_order
        FROM bank_rules ORDER BY sort_order, id`,
   );
+  const splits = await db.select<(BankRuleSplit & { rule_id: number })[]>(
+    "SELECT rule_id, account_id, sub_account_id, tax_code, invoice_kind, amount, memo FROM bank_rule_splits ORDER BY rule_id, row_no",
+  );
+  return rules.map((r) => ({ ...r, splits: splits.filter((x) => x.rule_id === r.id).map(({ rule_id: _, ...x }) => x) }));
+};
 
 /** ルールを保存する（id が 0 なら足す）。足したルールの id */
-const saveBankRule_ = async (db: Database, r: Omit<BankRule, "sort_order"> & { sort_order?: number }) => {
+const saveBankRule_ = async (db: Database, r: Omit<BankRule, "sort_order" | "splits"> & { sort_order?: number; splits?: BankRuleSplit[] }) => {
   const keyword = r.keyword.normalize("NFKC").trim();
   if (!keyword) throw new Error("摘要に含む言葉を入れてください");
   if (keyword.length > 50) throw new Error("摘要に含む言葉は50文字までです");
@@ -660,26 +666,44 @@ const saveBankRule_ = async (db: Database, r: Omit<BankRule, "sort_order"> & { s
   if (!r.account_id) throw new Error("相手科目を選んでください");
   if (r.tax_code !== null && !isTaxCode(r.tax_code)) throw new Error("税区分が正しくありません");
   if (r.invoice_kind !== null && !isInvoiceKind(r.invoice_kind)) throw new Error("インボイス区分が正しくありません");
+  const splits = r.splits ?? [];
+  if (splits.length > 10) throw new Error("分け方は10行までです");
+  for (const x of splits) {
+    if (!x.account_id) throw new Error("分ける行の相手科目を選んでください");
+    if (!Number.isSafeInteger(x.amount) || x.amount <= 0) throw new Error("分ける行の金額を入れてください");
+    if (x.tax_code !== null && !isTaxCode(x.tax_code)) throw new Error("分ける行の税区分が正しくありません");
+    if (x.invoice_kind !== null && !isInvoiceKind(x.invoice_kind)) throw new Error("分ける行のインボイス区分が正しくありません");
+  }
   const memo = r.memo.trim().slice(0, 200);
   const vals = [keyword, r.direction, r.target_account_id, r.account_id, r.sub_account_id, r.tax_code, r.invoice_kind, r.counterparty_id, memo];
-  if (r.id) {
+  let id = r.id;
+  if (id) {
     await db.execute(
       `UPDATE bank_rules SET keyword = ?, direction = ?, target_account_id = ?, account_id = ?, sub_account_id = ?, tax_code = ?, invoice_kind = ?,
               counterparty_id = ?, memo = ? WHERE id = ?`,
-      [...vals, r.id],
+      [...vals, id],
     );
-    return r.id;
+  } else {
+    const next = await db.select<{ n: number }[]>("SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM bank_rules");
+    const res = await db.execute(
+      `INSERT INTO bank_rules (keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [...vals, r.sort_order ?? next[0].n],
+    );
+    id = Number(res.lastInsertId);
   }
-  const next = await db.select<{ n: number }[]>("SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM bank_rules");
-  const res = await db.execute(
-    `INSERT INTO bank_rules (keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [...vals, r.sort_order ?? next[0].n],
-  );
-  return Number(res.lastInsertId);
+  await db.execute("DELETE FROM bank_rule_splits WHERE rule_id = ?", [id]);
+  for (const [i, x] of splits.entries()) {
+    await db.execute(
+      "INSERT INTO bank_rule_splits (rule_id, row_no, account_id, sub_account_id, tax_code, invoice_kind, amount, memo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [id, i + 1, x.account_id, x.sub_account_id, x.tax_code, x.invoice_kind, x.amount, x.memo.trim().slice(0, 200)],
+    );
+  }
+  return id;
 };
 
 const deleteBankRule_ = async (db: Database, id: number) => {
+  await db.execute("DELETE FROM bank_rule_splits WHERE rule_id = ?", [id]);
   await db.execute("DELETE FROM bank_rules WHERE id = ?", [id]);
 };
 
@@ -1048,8 +1072,9 @@ export const accountUsage = async (db: Database, id: number) => {
           + (SELECT COUNT(*) FROM fixed_assets WHERE account_id = ?)
           + (SELECT COUNT(*) FROM bank_lines WHERE account_id = ?)
           + (SELECT COUNT(*) FROM bank_formats WHERE account_id = ?)
-          + (SELECT COUNT(*) FROM bank_rules WHERE account_id = ? OR target_account_id = ?) AS n`,
-    [id, id, id, id, id, id, id, id],
+          + (SELECT COUNT(*) FROM bank_rules WHERE account_id = ? OR target_account_id = ?)
+          + (SELECT COUNT(*) FROM bank_rule_splits WHERE account_id = ?) AS n`,
+    [id, id, id, id, id, id, id, id, id],
   );
   return r[0].n;
 };
@@ -1222,8 +1247,9 @@ export const subUsage = async (db: Database, id: number) => {
           + (SELECT COUNT(*) FROM opening_balances WHERE sub_account_id = ?)
           + (SELECT COUNT(*) FROM bank_lines WHERE sub_account_id = ?)
           + (SELECT COUNT(*) FROM bank_formats WHERE sub_account_id = ?)
-          + (SELECT COUNT(*) FROM bank_rules WHERE sub_account_id = ?) AS n`,
-    [id, id, id, id, id],
+          + (SELECT COUNT(*) FROM bank_rules WHERE sub_account_id = ?)
+          + (SELECT COUNT(*) FROM bank_rule_splits WHERE sub_account_id = ?) AS n`,
+    [id, id, id, id, id, id],
   );
   return r[0].n;
 };
@@ -1270,6 +1296,40 @@ const createCounterparty_ = async (db: Database, d: CounterpartyInput) => {
     target_type: "counterparty", target_id: id, action: "create", fiscal_year: await currentYear(db), label: c.name, old_value: "", new_value: cpText(c),
   });
   return id;
+};
+
+/**
+ * 一覧の CSV 取り込み（lib/masterCsv.ts で読んだ、無い名前のものだけ）。1つのトランザクションで足し、足した数を返す。
+ * 科目のコードは、CSV のコードが使えればそれ、使えなければその区分の空いているコード
+ */
+const importAccountList_ = async (db: Database, rows: AccountListRow[]) => {
+  let accounts = await getAccounts(db, await currentYear(db));
+  for (const r of rows) {
+    const asGiven = r.code ? { code: r.code, name: r.name, kana: r.kana, category: r.category } : null;
+    const code = asGiven && !validateAccount(accounts, asGiven) ? r.code! : nextAccountCode(accounts, r.category);
+    if (!code) throw new Error(`科目「${r.name}」：この区分のコードに空きがありません`);
+    const data = { code, name: r.name, kana: r.kana, category: r.category };
+    const p = validateAccount(accounts, data);
+    if (p) throw new Error(`科目「${r.name}」：${p}`);
+    await createAccount_(db, data);
+    accounts = await getAccounts(db, await currentYear(db));
+  }
+  return rows.length;
+};
+const importSubList_ = async (db: Database, rows: { accountId: number; name: string; kana: string }[]) => {
+  for (const r of rows) {
+    if (r.name.length > 30) throw new Error(`補助科目「${r.name}」：30文字までです`);
+    await createSub_(db, r.accountId, r.name, r.kana);
+  }
+  return rows.length;
+};
+const importCounterpartyList_ = async (db: Database, rows: CounterpartyInput[]) => {
+  for (const r of rows) {
+    const p = validateCounterparty(await getCounterparties(db), r);
+    if (p) throw new Error(`取引先「${r.name}」：${p}`);
+    await createCounterparty_(db, r);
+  }
+  return rows.length;
 };
 
 /** 名前の変更はすべての年度・過去の仕訳の表示に反映される（履歴の写しには記録時点の名前が残る） */
@@ -3015,6 +3075,9 @@ export const setCashbookAccounts = inTx(setCashbookAccounts_, () => "帳簿入�
 export const setAccountActive = inTx(setAccountActive_, (id) => `勘定科目 #${id} の表示切り替え`, { perm: "master" });
 export const setManufacturing = inTx(setManufacturing_, (on) => `製造原価を${on ? "使う" : "使わない"}`, { perm: "master" });
 export const createAccount = inTx(createAccount_, (d) => `勘定科目「${d.name}」の追加`, { perm: "master" });
+export const importAccountList = inTx(importAccountList_, (rows) => `勘定科目 ${rows.length} 件の CSV 取り込み`, { perm: "master" });
+export const importSubList = inTx(importSubList_, (rows) => `補助科目 ${rows.length} 件の CSV 取り込み`, { perm: "master" });
+export const importCounterpartyList = inTx(importCounterpartyList_, (rows) => `取引先 ${rows.length} 件の CSV 取り込み`, { perm: "entry" });
 export const updateAccount = inTx(updateAccount_, (id) => `勘定科目 #${id} の変更`, { perm: "master" });
 export const deleteAccount = inTx(deleteAccount_, (id) => `勘定科目 #${id} の削除`, { perm: "master" });
 export const setAccountBusinessClass = inTx(setAccountBusinessClass_, (id) => `勘定科目 #${id} の事業区分の初期値`, { perm: "master" });

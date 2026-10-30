@@ -979,3 +979,18 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .it-medical-total { align-self: flex-end; margin: 0 0 6px; }
 .it-form .tax-form-table { margin-bottom: 8px; }
 .it-form .tax-form-table th { white-space: normal; line-height: 1.35; }
+/* 仕訳の CSV 取り込み：列の対応・重複かも */
+.import-map { display: flex; flex-direction: column; gap: 6px; }
+.import-map .link-btn { align-self: flex-start; }
+.import-map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 12px; }
+.import-dups { display: flex; flex-direction: column; gap: 6px; }
+/* 一覧の CSV（勘定科目・取引先・期首残高） */
+.csv-tools { align-items: center; gap: 6px 8px; }
+.csv-issues ul { margin: 6px 0; padding-left: 18px; font-size: 12.5px; }
+.bank-table tr.bank-split td { border-top: none; background: #fafbfd; }
+.bank-split-label { font-size: 12px; color: #5a6b7d; padding-left: 14px !important; }
+.bank-rest { font-size: 12px; color: #5a6b7d; margin-top: 2px; }
+.bank-rest.bad { color: #b3261e; }
+.bank-rule-splits { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.bank-rule-splits > .btn { align-self: flex-start; }
+.bank-rule-splits .field-row { align-items: flex-end; }

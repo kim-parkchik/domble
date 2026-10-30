@@ -1555,8 +1555,17 @@ describe("銀行・カードの明細（repo）", () => {
     expect((await repo.getBankRules(db))[0].memo).toBe("電気料金");
     await expect(repo.saveBankRule(db, { ...rule, keyword: " " })).rejects.toThrow(/言葉/);
     await expect(repo.saveBankRule(db, { ...rule, tax_code: "x" as never })).rejects.toThrow(/税区分/);
+    // 分け方：保存し直すと置き換わる。分ける行に使った科目は消せない
+    const split = { account_id: id("支払手数料"), sub_account_id: null, tax_code: null, invoice_kind: null, amount: 330, memo: "手数料" };
+    await repo.saveBankRule(db, { ...rule, id: ruleId, splits: [split, { ...split, amount: 110, memo: "" }] });
+    expect((await repo.getBankRules(db))[0].splits).toEqual([split, { ...split, amount: 110, memo: "" }]);
+    await repo.saveBankRule(db, { ...rule, id: ruleId, splits: [split] });
+    expect((await repo.getBankRules(db))[0].splits).toEqual([split]);
+    expect(await repo.accountUsage(db, id("支払手数料"))).toBeGreaterThan(0);
+    await expect(repo.saveBankRule(db, { ...rule, id: ruleId, splits: [{ ...split, amount: 0 }] })).rejects.toThrow(/金額/);
     await repo.deleteBankRule(db, ruleId);
     expect(await repo.getBankRules(db)).toEqual([]);
+    expect(await db.select("SELECT * FROM bank_rule_splits")).toEqual([]);
   });
 });
 
@@ -1822,5 +1831,20 @@ describe("税抜経理（repo）", () => {
     await expect(repo.createEntry(db, "2026-05-02", [{ ...lines[0], tax_amount: 2000 }, { ...lines[1], tax_amount: null }])).rejects.toThrow(/消費税額が金額より大きく/);
     await repo.saveTaxYear(db, { from_year: 2027, status: "exempt", method: "exclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 });
     expect((await repo.getTaxYears(db)).find((t) => t.from_year === 2027)!.method).toBe("inclusive");
+  });
+});
+
+describe("一覧の CSV 取り込み（repo）", () => {
+  test("科目は CSV のコードが使えればそれ、使えなければ空いているコード。補助科目・取引先も足す。途中で問題があれば1件も足さない", async () => {
+    const { db } = makeDb("standard");
+    await repo.importAccountList(db, [{ code: "650", name: "保守料", kana: "", category: "expense" }, { code: "101", name: "小口現金", kana: "", category: "asset" }]);
+    const accts = await repo.getAccounts(db, 2026);
+    expect(accts.find((a) => a.name === "保守料")!.code).toBe("650");
+    expect(accts.find((a) => a.name === "小口現金")!.code).not.toBe("101");
+    const bank = accts.find((a) => a.code === "103")!;
+    await repo.importSubList(db, [{ accountId: bank.id, name: "ゆうちょ銀行", kana: "" }]);
+    expect((await repo.getSubAccounts(db, 2026)).some((s) => s.name === "ゆうちょ銀行")).toBe(true);
+    await expect(repo.importCounterpartyList(db, [{ name: "株式会社B", kana: "", invoice_no: "", memo: "" }, { name: "", kana: "", invoice_no: "", memo: "" }])).rejects.toThrow(/取引先名/);
+    expect((await repo.getCounterparties(db)).some((c) => c.name === "株式会社B")).toBe(false);
   });
 });

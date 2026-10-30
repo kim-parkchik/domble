@@ -6,8 +6,9 @@
  *  - 「増える側・減る側」で読む：普通預金なら入金が増える側、未払金（カード）ならご利用が増える側。増える側は科目の残高の側（資産は借方）
  *  - 同じ明細を2回読んでも重ならないよう、行ごとに指紋（日付・増減・金額・摘要と、同じ組み合わせの何個目か）を作る
  *  - 相手科目などの推測：ルール（摘要に含む言葉）→ 前に同じ摘要の明細から作った仕訳 → 帳簿で同じ摘要の仕訳 の順
+ *  - 1行の明細を相手科目の何行かに分けられる（分けた行は決まった額、最初の相手科目は残りの額）。ルールにも分け方を持たせられる
  */
-import type { Account, InvoiceKind, TaxCode } from "./types";
+import type { Account, InvoiceKind, JournalLine, TaxCode } from "./types";
 import type { FlatLine } from "./accounting";
 import { parseCsv } from "./csv";
 
@@ -254,6 +255,19 @@ export interface BankRule {
   /** 仕訳の摘要（空なら明細の摘要のまま） */
   memo: string;
   sort_order: number;
+  /** 分け方（決まった額を別の相手科目に。相手科目 account_id には残りの額が入る） */
+  splits: BankRuleSplit[];
+}
+
+/** ルールの分け方の1行（例：借入金の返済のうち利子割引料 6,000円） */
+export interface BankRuleSplit {
+  account_id: number;
+  sub_account_id: number | null;
+  tax_code: TaxCode | null;
+  invoice_kind: InvoiceKind | null;
+  amount: number;
+  /** 仕訳の摘要（空なら相手科目の行と同じ） */
+  memo: string;
 }
 
 export interface Guess {
@@ -266,6 +280,8 @@ export interface Guess {
   /** rule = ルール、history = 前の明細・仕訳、null = 推測なし */
   source: "rule" | "history" | null;
   ruleId?: number;
+  /** ルールの分け方 */
+  splits: BankRuleSplit[];
 }
 
 /** 前に作った仕訳の相手（摘要ごと） */
@@ -321,12 +337,45 @@ export const guessLine = (
   if (rule) {
     return {
       counterId: rule.account_id, counterSubId: rule.sub_account_id, taxCode: rule.tax_code, invoice: rule.invoice_kind,
-      counterpartyId: rule.counterparty_id, memo: rule.memo.trim() || line.description, source: "rule", ruleId: rule.id,
+      counterpartyId: rule.counterparty_id, memo: rule.memo.trim() || line.description, source: "rule", ruleId: rule.id, splits: rule.splits ?? [],
     };
   }
   const h = history.get(`${line.side}|${normDescription(line.description)}`);
-  if (h) return { ...h, memo: h.memo || line.description, source: "history" };
-  return { counterId: null, counterSubId: null, taxCode: null, invoice: null, counterpartyId: null, memo: line.description, source: null };
+  if (h) return { ...h, memo: h.memo || line.description, source: "history", splits: [] };
+  return { counterId: null, counterSubId: null, taxCode: null, invoice: null, counterpartyId: null, memo: line.description, source: null, splits: [] };
+};
+
+/** 仕訳の相手の1行（税区分などはそのまま仕訳の行に入れる） */
+export interface CounterPart {
+  accountId: number | null;
+  subId: number | null;
+  tax: Pick<JournalLine, "tax_code" | "invoice_kind" | "business_class" | "purchase_use">;
+  memo: string;
+}
+
+/**
+ * 明細から仕訳の行を作る：この口座の1行（明細の金額）と相手科目（分けた行は決まった額、最初の相手科目は残りの額）。
+ * 作れなければわけ（文字）を返す。家事按分はこのあとで分ける
+ */
+export const bankEntryLines = (
+  line: Pick<StatementLine, "side" | "amount">, accountId: number, subId: number | null, main: CounterPart, splits: (CounterPart & { amount: number | null })[],
+): JournalLine[] | string => {
+  if (!main.accountId) return "相手科目を選んでください";
+  if (splits.some((s) => !s.accountId)) return "分けた行の相手科目を選んでください";
+  if (splits.some((s) => !s.amount || s.amount <= 0 || !Number.isSafeInteger(s.amount))) return "分けた行の金額を入れてください";
+  const same = (p: CounterPart) => p.accountId === accountId && (p.subId ?? null) === subId;
+  if (same(main) || splits.some(same)) return "相手科目に、この口座と同じ科目・補助科目は使えません";
+  const split = splits.reduce((t, s) => t + (s.amount ?? 0), 0);
+  if (split >= line.amount) return `分けた行の合計（${split.toLocaleString("ja-JP")}円）が明細の金額（${line.amount.toLocaleString("ja-JP")}円）以上です`;
+  const other = line.side === "debit" ? "credit" : "debit";
+  const clean = (t: CounterPart["tax"]) => Object.fromEntries(Object.entries(t).filter(([, v]) => v !== null && v !== undefined));
+  const mainMemo = main.memo.trim();
+  const mine: JournalLine = { row_no: 0, side: line.side, account_id: accountId, sub_account_id: subId, amount: line.amount, memo: mainMemo };
+  const counters: JournalLine[] = [
+    { row_no: 0, side: other, account_id: main.accountId, sub_account_id: main.subId, amount: line.amount - split, memo: mainMemo, ...clean(main.tax) },
+    ...splits.map((s): JournalLine => ({ row_no: 0, side: other, account_id: s.accountId!, sub_account_id: s.subId, amount: s.amount!, memo: s.memo.trim() || mainMemo, ...clean(s.tax) })),
+  ];
+  return (line.side === "debit" ? [mine, ...counters] : [...counters, mine]).map((l, i) => ({ ...l, row_no: i + 1 }));
 };
 
 /** 帳簿に、同じ日・同じ増減・同じ金額の仕訳がすでにあるか（手で入れた分と重なっていないか） */

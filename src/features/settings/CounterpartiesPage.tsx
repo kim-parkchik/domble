@@ -14,6 +14,9 @@ import { useToast } from "../../components/Toast";
 import { normName, validateCounterparty, type CounterpartyInput } from "../../lib/counterparty";
 import type { Counterparty } from "../../lib/types";
 import * as repo from "../../db/repo";
+import { CsvExportButton, CsvImportButton, CsvIssues } from "../../components/CsvButtons";
+import { exportCsvFile } from "../../components/csvExport";
+import { COUNTERPARTY_LIST_HEADER, counterpartyListRows, parseCounterpartyCsv, type CsvIssue } from "../../lib/masterCsv";
 
 export const CounterpartiesPage = () => {
   const { db, counterparties, reloadCounterparties, strict, dataVersion } = useAppContext();
@@ -38,6 +41,22 @@ export const CounterpartiesPage = () => {
     await reloadCounterparties();
   };
 
+  // 一覧の CSV（無い名前の取引先だけ足す）
+  const [csvIssues, setCsvIssues] = useState<CsvIssue[]>([]);
+  const importList = async (text: string) => {
+    const r = parseCounterpartyCsv(text, counterparties);
+    setCsvIssues(r.issues);
+    if (r.rows.length === 0) return toast(`足す取引先はありません（${r.skipped} 件はすでにあります）`);
+    if (!(await ask(`取引先を ${r.rows.length} 件足します${r.skipped ? `（${r.skipped} 件は同じ名前があるので飛ばします）` : ""}。`, { title: "取引先の CSV 取り込み", okLabel: "足す", cancelLabel: "やめる" }))) return;
+    try {
+      const n = await repo.importCounterpartyList(db, r.rows);
+      await reloadCounterparties();
+      toast(`取引先を ${n} 件足しました`);
+    } catch (e) {
+      toast(`取り込めませんでした（1件も足していません）：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
+
   const remove = async (c: Counterparty) => {
     if (!(await ask(`「${c.name}」を削除します。`, { title: "取引先の削除", kind: "warning", okLabel: "削除", cancelLabel: "やめる" }))) return;
     try {
@@ -55,8 +74,11 @@ export const CounterpartiesPage = () => {
         title="取引先"
         note={`使うかどうかは任意です。仕訳（振替伝票・仕訳の訂正）と証憑に付けると、取引先で検索できます。チェックを外した取引先は入力候補に出なくなります。${strict ? "変更はすべて履歴に記録されます。" : ""}`}
       >
+        <CsvExportButton label="CSV 書き出し" onClick={() => exportCsvFile("取引先.csv", COUNTERPARTY_LIST_HEADER, counterpartyListRows(counterparties), toast)} />
+        <CsvImportButton label="CSV 取り込み" onText={(t) => importList(t)} />
         <button className="btn primary" onClick={() => setEditing("new")}><Plus size={16} /> 取引先を追加</button>
       </PageHeader>
+      <CsvIssues issues={csvIssues} onClose={() => setCsvIssues([])} />
 
       <div className="filters">
         <label className="search">

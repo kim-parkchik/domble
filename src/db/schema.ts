@@ -637,6 +637,7 @@ export const SCHEMA: string[] = [
    *  - bank_lines：読み込んだ明細。status は pending（未登録）/ done（仕訳にした。entry_id）/ skipped（取り込まない）。
    *    fingerprint（日付・増減・金額・摘要と何個目か）が同じ明細は2回入れない
    *  - bank_rules：摘要に keyword を含む明細に入れる相手科目など（direction：increase / decrease / any。target_account_id が NULL ならどの口座にも）
+   *  - bank_rule_splits：ルールの分け方（決まった額を別の相手科目に。bank_rules の相手科目には残りの額が入る。ルールを消すときに一緒に消す）
    */
   `CREATE TABLE IF NOT EXISTS bank_formats (
     account_id INTEGER NOT NULL,
@@ -672,6 +673,17 @@ export const SCHEMA: string[] = [
     counterparty_id INTEGER,
     memo TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0
+  );`,
+  `CREATE TABLE IF NOT EXISTS bank_rule_splits (
+    rule_id INTEGER NOT NULL,
+    row_no INTEGER NOT NULL,
+    account_id INTEGER NOT NULL,
+    sub_account_id INTEGER,
+    tax_code TEXT,
+    invoice_kind TEXT,
+    amount INTEGER NOT NULL CHECK (amount > 0),
+    memo TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (rule_id, row_no)
   );`,
 
   /**

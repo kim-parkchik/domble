@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account, Counterparty, SubAccount } from "./types";
-import { importJournalCsv, parseImportDate, type ImportContext } from "./journalImport";
+import { findDuplicates, guessJournalColumns, importJournalCsv, parseImportDate, type ImportContext } from "./journalImport";
 import { toCsv } from "./csv";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
@@ -21,6 +21,53 @@ describe("日付", () => {
     expect(parseImportDate("20260105")).toBe("2026-01-05");
     expect(parseImportDate("1/5")).toBeNull();
     expect(parseImportDate("2026-02-30")).toBeNull();
+  });
+  test("和暦（R・H と令和・平成、元年）", () => {
+    expect(parseImportDate("R8.1.5")).toBe("2026-01-05");
+    expect(parseImportDate("R08/01/05")).toBe("2026-01-05");
+    expect(parseImportDate("令和8年1月5日")).toBe("2026-01-05");
+    expect(parseImportDate("令和元年5月1日")).toBe("2019-05-01");
+    expect(parseImportDate("H31.4.30")).toBe("2019-04-30");
+    expect(parseImportDate("r8-2-30")).toBeNull();
+  });
+});
+
+describe("ほかの会計ソフトの CSV（列の対応）", () => {
+  test("見出しの言い換えから列を推測し、見つからない必須の列は選んでもらう。選んだ対応で読む", () => {
+    const other = toCsv(["取引日付", "仕訳番号", "借方勘定科目", "借方金額", "貸方勘定科目", "貸方金額", "摘要文"], [["R8.3.1", "1", "消耗品費", "1100", "現金", "1100", "文房具"]]);
+    const r = importJournalCsv(other, ctx);
+    expect(r.issues).toEqual([]);
+    expect(r.entries[0]).toMatchObject({ date: "2026-03-01" });
+    expect(r.entries[0].lines[0].memo).toBe("文房具");
+    const odd = toCsv(["day", "dr", "dra", "cr", "cra"], [["2026-03-01", "消耗品費", "1100", "現金", "1100"]]);
+    const first = importJournalCsv(odd, ctx);
+    expect(first.issues[0].message).toMatch(/次の列を選んでください：日付、借方科目、借方金額、貸方科目、貸方金額/);
+    const map = { ...guessJournalColumns(first.header), date: 0, drAcc: 1, drAmt: 2, crAcc: 3, crAmt: 4 };
+    expect(importJournalCsv(odd, ctx, map).entries).toHaveLength(1);
+  });
+});
+
+describe("重複かも", () => {
+  test("帳簿にある仕訳と同じもの・ファイルの中で前と同じものに印。摘要は見ない。按分したあとの形でも合えば同じ", () => {
+    const r = importJournalCsv(csv(
+      [1, "2026-02-01", "消耗品費", "", 1100, "現金", "", 1100, "A", "", "", ""],
+      [2, "2026-02-01", "消耗品費", "", 1100, "現金", "", 1100, "B", "", "", ""],
+      [3, "2026-02-02", "通信費", "", 5000, "普通預金", "みずほ銀行", 5000, "", "", "", ""],
+      [4, "2026-02-03", "地代家賃", "", 80000, "普通預金", "", 80000, "", "", "", ""],
+    ), ctx);
+    const existing = [
+      { entry_id: 9, date: "2026-02-02", description: "", row_no: 1, side: "debit" as const, account_id: id("通信費"), sub_account_id: null, amount: 5000, memo: "別の摘要" },
+      { entry_id: 9, date: "2026-02-02", description: "", row_no: 1, side: "credit" as const, account_id: id("普通預金"), sub_account_id: 1, amount: 5000, memo: "" },
+      { entry_id: 10, date: "2026-02-03", description: "", row_no: 1, side: "debit" as const, account_id: id("地代家賃"), sub_account_id: null, amount: 48000, memo: "" },
+      { entry_id: 10, date: "2026-02-03", description: "", row_no: 2, side: "debit" as const, account_id: id("事業主貸"), sub_account_id: null, amount: 32000, memo: "" },
+      { entry_id: 10, date: "2026-02-03", description: "", row_no: 1, side: "credit" as const, account_id: id("普通預金"), sub_account_id: null, amount: 80000, memo: "" },
+    ];
+    const split = (i: number) => (i === 3 ? existing.filter((l) => l.entry_id === 10) : r.entries[i].lines);
+    const d = findDuplicates(r.entries, existing, split);
+    expect([...d.keys()]).toEqual([1, 2, 3]);
+    expect(d.get(1)).toMatch(/ファイルの中で同じ仕訳が前に/);
+    expect(d.get(2)).toMatch(/伝票 No.9/);
+    expect(d.get(3)).toMatch(/伝票 No.10/);
   });
 });
 

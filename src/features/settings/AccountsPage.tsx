@@ -20,6 +20,11 @@ import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, useLabel } 
 import type { Account, AccountCategory, IncomeKind, PurchaseUse, Side, TaxCode } from "../../lib/types";
 import { isProfitLoss } from "../../lib/incomeKind";
 import * as repo from "../../db/repo";
+import { CsvExportButton, CsvImportButton, CsvIssues } from "../../components/CsvButtons";
+import { exportCsvFile } from "../../components/csvExport";
+import {
+  ACCOUNT_LIST_HEADER, accountListRows, parseAccountListCsv, parseSubListCsv, SUB_LIST_HEADER, subListRows, type CsvIssue,
+} from "../../lib/masterCsv";
 import { autoLine, EXTRA_LINE, layoutSectionOf, lineOptions, manufacturingOn, sectionOf } from "../../lib/statementLines";
 
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as AccountCategory[];
@@ -44,6 +49,23 @@ export const AccountsPage = () => {
   const { db, accounts, subAccounts, reloadAccounts, strict, year, dataVersion } = useAppContext();
   const toast = useToast();
   const mfgOn = manufacturingOn(accounts);
+  // 一覧の CSV（無い名前の科目・補助科目だけ足す）
+  const [csvIssues, setCsvIssues] = useState<CsvIssue[]>([]);
+  const importList = async (kind: "account" | "sub", text: string) => {
+    const r = kind === "account" ? parseAccountListCsv(text, accounts) : parseSubListCsv(text, accounts, subAccounts);
+    setCsvIssues(r.issues);
+    if (r.issues.length) return;
+    const what = kind === "account" ? "科目" : "補助科目";
+    if (r.rows.length === 0) return toast(`足す${what}はありません（${r.skipped} 件はすでにあります）`);
+    if (!(await ask(`${what}を ${r.rows.length} 件足します${r.skipped ? `（${r.skipped} 件は同じ名前があるので飛ばします）` : ""}。`, { title: `${what}の CSV 取り込み`, okLabel: "足す", cancelLabel: "やめる" }))) return;
+    try {
+      const n = kind === "account" ? await repo.importAccountList(db, r.rows as Parameters<typeof repo.importAccountList>[1]) : await repo.importSubList(db, r.rows as Parameters<typeof repo.importSubList>[1]);
+      await reloadAccounts();
+      toast(`${what}を ${n} 件足しました`);
+    } catch (e) {
+      toast(`取り込めませんでした（1件も足していません）：${String(e).replace(/^Error: /, "")}`, "error");
+    }
+  };
   // 厳密モードでは、より新しい年度がある状態で過去の年度の名前は変えられない（年度単位で管理）
   const [latestYear, setLatestYear] = useState(year);
   useEffect(() => {
@@ -126,6 +148,15 @@ export const AccountsPage = () => {
       >
         <button className="btn primary" onClick={() => setEditing("new")}><Plus size={16} /> 科目を追加</button>
       </PageHeader>
+
+      <div className="filters csv-tools">
+        <span className="muted small">一覧の CSV（乗り換えのとき。無い名前のものだけ足します）</span>
+        <CsvExportButton label="科目を書き出し" onClick={() => exportCsvFile("勘定科目.csv", ACCOUNT_LIST_HEADER, accountListRows(accounts), toast)} />
+        <CsvImportButton label="科目を取り込み" onText={(t) => importList("account", t)} />
+        <CsvExportButton label="補助科目を書き出し" onClick={() => exportCsvFile("補助科目.csv", SUB_LIST_HEADER, subListRows(accounts, subAccounts), toast)} />
+        <CsvImportButton label="補助科目を取り込み" onText={(t) => importList("sub", t)} />
+      </div>
+      <CsvIssues issues={csvIssues} onClose={() => setCsvIssues([])} />
 
       {renameLocked && (
         <p className="warn-box">

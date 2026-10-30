@@ -3,6 +3,7 @@
  * 開業した年や、他のソフトから乗り換えた年は、1月1日時点の残高をここで入れます。
  * 補助科目がある科目は、補助科目ごとに入れます（科目の金額は合計で表示）。
  * 2年目以降は「事業者設定」の繰越処理で自動的に作られます。
+ * CSV（科目・補助科目・金額）で書き出し・取り込みができる（取り込んだら確かめて保存する。lib/masterCsv.ts）
  */
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Save, Calculator } from "lucide-react";
@@ -16,6 +17,9 @@ import { yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
 import { subKey, type Account, type OpeningBalances, type SubOpeningBalances } from "../../lib/types";
 import * as repo from "../../db/repo";
+import { CsvExportButton, CsvImportButton, CsvIssues } from "../../components/CsvButtons";
+import { exportCsvFile } from "../../components/csvExport";
+import { OPENING_HEADER, openingCsvRows, parseOpeningCsv, type CsvIssue } from "../../lib/masterCsv";
 
 export const OpeningBalancesPage = () => {
   const { db, year, accounts, subAccounts, bump, isClosed } = useAppContext();
@@ -23,6 +27,15 @@ export const OpeningBalancesPage = () => {
   const toast = useToast();
   const [values, setValues] = useState<SubOpeningBalances>({});
   const [dirty, setDirty] = useState(false);
+  const [issues, setIssues] = useState<CsvIssue[]>([]);
+  const importCsv = (text: string) => {
+    const r = parseOpeningCsv(text, accounts, subAccounts);
+    setIssues(r.issues);
+    if (r.issues.length) return;
+    setValues(r.values);
+    setDirty(true);
+    toast("期首残高を CSV から読み込みました（すべての科目を置き換えています）。確かめて「保存する」を押してください");
+  };
 
   useEffect(() => {
     if (!loading) {
@@ -118,6 +131,8 @@ export const OpeningBalancesPage = () => {
   return (
     <div className="page">
       <PageHeader title="期首残高" note={`${year}年1月1日時点の残高です。資産の合計と、負債・資本の合計を一致させます。`}>
+        <CsvExportButton label="CSV 書き出し" onClick={() => exportCsvFile(`期首残高_${year}.csv`, OPENING_HEADER, openingCsvRows(accounts, subAccounts, values), toast)} />
+        <CsvImportButton label="CSV 取り込み" onText={importCsv} disabled={isClosed} />
         <button className="btn ghost" onClick={fillCapital} disabled={isClosed || diff.difference === 0}>
           <Calculator size={16} /> 差額を元入金にする
         </button>
@@ -125,6 +140,7 @@ export const OpeningBalancesPage = () => {
           <Save size={16} /> 保存する
         </button>
       </PageHeader>
+      <CsvIssues issues={issues} onClose={() => setIssues([])} />
 
       <div className={`balance-banner ${diff.difference === 0 ? "ok" : "ng"}`} role="status">
         {diff.difference === 0
