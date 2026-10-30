@@ -1,7 +1,7 @@
 /**
  * 所得税：確定申告書（第一表・第二表）の数字（計算は lib/incomeTax.ts）
  *  - 入力：帳簿から出せないもの（給与・公的年金等・雑所得、源泉徴収、所得控除、配偶者・扶養親族、住宅借入金等特別控除、予定納税額）。年度ごとに保存
- *  - 第一表・第二表：事業所得は帳簿と決算書から。欄番号は令和7年分の様式と令和8年分の様式（案）で同じ
+ *  - 第一表・第二表：事業所得は帳簿と決算書から。欄番号はその年分の様式（令和7年分と令和8年分の様式（案）は同じ。令和5・6年分は特定親族特別控除の欄が無く、令和6年分は定額減税の欄がある）
  *  - 決まりは年分の表（lib/incomeTax.ts の INCOME_TAX_RULES）。表に無い年分は、いちばん近い年分の決まりで計算して知らせる
  *  - 白色申告の年は、事業所得は収支内訳書の所得金額（事業専従者控除の後。lib/whiteStatement.ts）。事業専従者は配偶者・扶養親族の「専従者」の印で決め、
  *    従事月数・仕事の内容もここで入れる
@@ -431,7 +431,7 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, whi
       )}
     </Section>
 
-    <Section title="扶養親族" note={`生計を一にする親族（16歳未満の子も、障害者控除${rules.lifeUnder23 ? "と生命保険料の特例" : ""}のために入れてください）。合計所得金額が${man(rules.dependentLimit)}以下なら扶養控除、19歳以上23歳未満で${man(rules.dependentLimit)}超123万円以下なら特定親族特別控除です（${reiwaYear(rules.year)}の決まり）。`}>
+    <Section title="扶養親族" note={`生計を一にする親族（16歳未満の子も、障害者控除${rules.lifeUnder23 ? "と生命保険料の特例" : ""}のために入れてください）。合計所得金額が${man(rules.dependentLimit)}以下なら扶養控除${rules.specificRelative ? `、19歳以上23歳未満で${man(rules.dependentLimit)}超123万円以下なら特定親族特別控除` : ""}です（${reiwaYear(rules.year)}の決まり）。${rules.flatCut ? "定額減税（令和6年分特別税額控除）は、本人と、この欄・配偶者の欄の所得要件を満たす人（事業専従者を除く）1人につき3万円です。" : ""}`}>
       <RelativesEditor rows={x.dependents} onChange={(v) => setX((p) => ({ ...p, dependents: v }))} year={year} ownIncome={result.totalIncome} disabled={disabled} />
     </Section>
 
@@ -652,7 +652,7 @@ const FirstTable = ({ result, year }: { result: IncomeTaxResult; year: number })
       </tbody>
     </table>
     <p className="field-note">
-      欄番号は令和7年分の様式と令和8年分の様式（案）で同じです。数字の入っていない欄（農業・不動産・利子・配当・譲渡・一時所得、雑損控除、配当控除などの税額控除、災害減免額、外国税額控除）は domble では扱いません。
+      欄番号は{rulesFor(year).rules.form === "r7" ? "令和7年分の様式と令和8年分の様式（案）で同じ" : `${reiwaYear(rulesFor(year).rules.year)}の様式のもの`}です。数字の入っていない欄（農業・不動産・利子・配当・譲渡・一時所得、雑損控除、配当控除などの税額控除、災害減免額、外国税額控除）は domble では扱いません。
       確定申告書等作成コーナーや e-Tax に書き写すときに使ってください。
     </p>
   </div>
@@ -702,7 +702,7 @@ const FourthTable = ({ result, year }: { result: IncomeTaxResult; year: number }
         </tbody>
       </table>
       <p className="field-note">
-        第四表は第一表・第二表と一緒に出します。第一表の ⑫・㉛ は書かず、㉜ は 0 です（損失申告用の手引き）。
+        第四表は第一表・第二表と一緒に出します。第一表の ⑫ と課税される所得金額は書かず、その税額は 0 です（損失申告用の手引き）。{rulesFor(year).rules.form !== "r7" && "第四表の欄番号は令和7年分の様式のものです（年分の様式で確かめてください）。"}
         翌年は、Ⓒ の額と (82) の額が「前年分までに引ききれなかった損失額」になります（domble で翌年の申告を作れば引き継ぎます）。
       </p>
     </div>

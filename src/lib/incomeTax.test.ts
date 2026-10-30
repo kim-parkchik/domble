@@ -244,8 +244,67 @@ describe("年分の切り替え（令和7年分と令和8年分）", () => {
     const r = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, none, 2027);
     expect(r.notes.join()).toMatch(/令和9年分の決まりはまだ.*令和8年分の決まり/);
     expect(cell(r, "㉕")).toBe(1_040_000);
-    expect(computeIncomeTax(EMPTY_INCOME_TAX_INPUT, none, 2024).notes.join()).toMatch(/令和6年分の決まりはまだ.*令和7年分の決まり/);
+    expect(computeIncomeTax(EMPTY_INCOME_TAX_INPUT, none, 2022).notes.join()).toMatch(/令和4年分の決まりはまだ.*令和5年分の決まり/);
     expect(rulesFor(2026)).toMatchObject({ fallback: false, rules: { year: 2026 } });
+  });
+});
+
+describe("令和5年分・令和6年分（定額減税）", () => {
+  const none: BusinessFigures = { revenue: 0, incomeBeforeBlue: 0, filingType: "blue65", familySalary: 0 };
+  test("給与所得：令和6年分までの表（55万円、1,619,000円からの段、180万円未満は A × 2.4 ＋ 10万円）", () => {
+    // 国税庁「令和6年分の年末調整等のための給与所得控除後の給与等の金額の表」
+    expect([550_999, 551_000, 1_000_000, 1_618_999].map((x) => salaryIncome(x, 2024))).toEqual([0, 1_000, 450_000, 1_068_999]);
+    expect([1_619_000, 1_621_999, 1_622_000, 1_624_000, 1_627_999].map((x) => salaryIncome(x, 2024))).toEqual([1_069_000, 1_070_000, 1_072_000, 1_074_000, 1_074_000]);
+    expect([1_628_000, 1_631_999, 1_799_999, 1_800_000, 2_171_999].map((x) => salaryIncome(x, 2024))).toEqual([1_076_800, 1_076_800, 1_177_600, 1_180_000, 1_437_600]);
+    expect(salaryIncome(1_000_000, 2023)).toBe(450_000);
+  });
+  test("基礎控除 48万円（2,400万円以下）、所得要件 48万円、勤労学生 75万円、特定親族特別控除なし", () => {
+    expect([24_000_000, 24_000_001, 24_500_001, 25_000_001].map((x) => basicDeduction(x, 2024))).toEqual([480_000, 320_000, 160_000, 0]);
+    expect(spouseDeduction({ ...emptyRelative("妻"), income: 480_000 }, 5_000_000, 2024)).toMatchObject({ kind: "spouse", amount: 380_000 });
+    expect(spouseDeduction({ ...emptyRelative("妻"), income: 500_000 }, 5_000_000, 2024)).toMatchObject({ kind: "special", amount: 380_000 });
+    expect(dependentDeduction({ ...emptyRelative("父"), birthday: "1960-05-01", income: 500_000 }, 2024).kind).toBe("none");
+    const student20 = { ...emptyRelative("子"), birthday: "2004-05-01", income: 600_000 };
+    expect(dependentDeduction(student20, 2024).kind).toBe("none");
+    expect(dependentDeduction(student20, 2025).kind).toBe("specificRelative");
+    const work = (income: number) => cell(computeIncomeTax({ ...EMPTY_INCOME_TAX_INPUT, student: true, salaries: [{ item: "", payer: "", payerId: "", income, withheld: 0 }] }, none, 2023), "⑲⑳");
+    expect([work(1_300_000), work(1_301_000)]).toEqual([270_000, 0]);
+  });
+  test("令和6年分：定額減税（本人＋同一生計配偶者・扶養親族 1人3万円。事業専従者を除く）を基準所得税額の前に差し引き、欄番号は令和6年分の様式", () => {
+    const input: IncomeTaxInput = {
+      ...EMPTY_INCOME_TAX_INPUT,
+      spouse: { ...emptyRelative("妻"), income: 0 },
+      dependents: [
+        { ...emptyRelative("長男"), birthday: "2010-05-01" }, { ...emptyRelative("長女"), birthday: "2015-05-01" },
+        { ...emptyRelative("母"), birthday: "1950-05-01", familyEmployee: true },
+      ],
+      salaries: [{ item: "", payer: "", payerId: "", income: 0, withheld: 0 }],
+    };
+    const biz: BusinessFigures = { revenue: 8_000_000, incomeBeforeBlue: 5_650_000, filingType: "blue65", familySalary: 0 };
+    const r = computeIncomeTax(input, biz, 2024);
+    expect(r.rows.some((x) => x.label === "特定親族特別控除")).toBe(false);
+    expect(cell(r, "㉔")).toBe(480_000); // 基礎控除
+    const tax = cell(r, "㉛")!; // ㉚ に対する税額
+    expect(cell(r, "㊸")).toBe(tax); // 再差引所得税額
+    expect(cell(r, "㊹")).toBe(120_000); // 4人 × 3万円
+    expect(cell(r, "㊺")).toBe(Math.max(tax - 120_000, 0)); // 基準所得税額
+    expect(cell(r, "㊻")).toBe(Math.floor((cell(r, "㊺")! * 21) / 1000));
+    expect(r.rows.find((x) => x.key === "refund")?.no).toBe("(54)");
+    expect(r.rows.find((x) => x.label === "本年分で差し引く繰越損失額")?.no).toBe("(63)");
+  });
+  test("定額減税：合計所得金額 1,805万円超は受けられない。所得税額より多ければ引ききれない分を知らせる", () => {
+    const big = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, { ...none, incomeBeforeBlue: 18_700_001 }, 2024);
+    expect(cell(big, "㊹")).toBe(0);
+    expect(big.notes.join()).toMatch(/1,805万円を超えている/);
+    const small = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, { ...none, incomeBeforeBlue: 1_500_000 }, 2024);
+    expect([cell(small, "㊹"), cell(small, "㊺")]).toEqual([30_000, 0]);
+    expect(small.notes.join()).toMatch(/引ききれません/);
+  });
+  test("令和5年分：定額減税なし。基準所得税額は ㊸、源泉徴収税額は ㊽、繰越損失は (61)", () => {
+    const r = computeIncomeTax(EMPTY_INCOME_TAX_INPUT, { ...none, incomeBeforeBlue: 3_000_000 }, 2023);
+    expect(r.rows.find((x) => x.label.startsWith("再差引所得税額（基準所得税額）"))?.no).toBe("㊸");
+    expect(r.rows.find((x) => x.label === "源泉徴収税額")?.no).toBe("㊽");
+    expect(r.rows.find((x) => x.label === "本年分で差し引く繰越損失額")?.no).toBe("(61)");
+    expect(r.rows.some((x) => x.label.includes("特別税額控除"))).toBe(false);
   });
 });
 

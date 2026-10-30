@@ -284,23 +284,63 @@ export interface IncomeTaxRules {
   studentLimit: number;
   /** 23歳未満の扶養親族がいる場合の生命保険料控除の特例（新生命保険料の上限 6万円）があるか */
   lifeUnder23: boolean;
+  /** 特定親族特別控除（令和7年分から）があるか */
+  specificRelative: boolean;
+  /** 定額減税（令和6年分特別税額控除）の1人あたりの額（無い年は 0） */
+  flatCut: number;
+  /** 第一表の欄番号の版（r7：令和7年分から ／ r6：令和6年分（定額減税の欄あり） ／ r5：令和5年分） */
+  form: FormVersion;
 }
 
-/** 国税庁「源泉所得税の改正のあらまし（令和8年4月）」・令和7年分の確定申告の手引き */
+export type FormVersion = "r5" | "r6" | "r7";
+/** 第一表の欄番号（様式の版ごと。⑬〜㉓ は同じ。令和7年分から特定親族特別控除 ㉔ が入り、そのあとが1つずつずれる） */
+const FORM_NOS: Record<FormVersion, Record<string, number>> = {
+  r7: {
+    basic: 25, subtotal: 26, casualty: 27, medical: 28, donation: 29, deductions: 30, taxable: 31, taxOn: 32, housing: 35, diff: 42, disaster: 43, base: 44,
+    recon: 45, total: 46, withheld: 49, declared: 50, prepaid: 51, pay: 52, refund: 53, pensionOther: 56, spouseIncome: 57, familySalary: 58, blue: 59, miscWithheld: 60, carry: 62,
+  },
+  r6: {
+    basic: 24, subtotal: 25, casualty: 26, medical: 27, donation: 28, deductions: 29, taxable: 30, taxOn: 31, housing: 34, diff: 41, disaster: 42, reTax: 43, flatCut: 44,
+    base: 45, recon: 46, total: 47, withheld: 50, declared: 51, prepaid: 52, pay: 53, refund: 54, pensionOther: 57, spouseIncome: 58, familySalary: 59, blue: 60, miscWithheld: 61, carry: 63,
+  },
+  r5: {
+    basic: 24, subtotal: 25, casualty: 26, medical: 27, donation: 28, deductions: 29, taxable: 30, taxOn: 31, housing: 34, diff: 41, disaster: 42, base: 43,
+    recon: 44, total: 45, withheld: 48, declared: 49, prepaid: 50, pay: 51, refund: 52, pensionOther: 55, spouseIncome: 56, familySalary: 57, blue: 58, miscWithheld: 59, carry: 61,
+  },
+};
+
+/**
+ * 国税庁「源泉所得税の改正のあらまし（令和8年4月）」・令和5〜7年分の確定申告の手引き・令和6年分の年末調整等のための給与所得控除後の給与等の金額の表
+ * 令和5・6年分：基礎控除 48万円（2,400万円以下）、給与所得控除の最低 55万円（1,619,000円未満は収入 − 55万円、そこから表の段）、所得要件 48万円、勤労学生 75万円、
+ *   特定親族特別控除なし。令和6年分は定額減税（本人と同一生計配偶者・扶養親族 1人 3万円。合計所得金額 1,805万円以下）
+ */
+const BASIC_R5: [number, number][] = [[24_000_000, 480_000], [24_500_000, 320_000], [25_000_000, 160_000]];
+const SALARY_R5 = {
+  salaryMin: 550_000, salaryFlatUntil: 1_619_000,
+  salarySteps: [[1_620_000, 1_069_000], [1_622_000, 1_070_000], [1_624_000, 1_072_000], [1_628_000, 1_074_000]] as [number, number][],
+};
 export const INCOME_TAX_RULES: IncomeTaxRules[] = [
+  {
+    year: 2023, basic: BASIC_R5, ...SALARY_R5,
+    dependentLimit: 480_000, studentLimit: 750_000, lifeUnder23: false, specificRelative: false, flatCut: 0, form: "r5",
+  },
+  {
+    year: 2024, basic: BASIC_R5, ...SALARY_R5,
+    dependentLimit: 480_000, studentLimit: 750_000, lifeUnder23: false, specificRelative: false, flatCut: 30_000, form: "r6",
+  },
   {
     year: 2025,
     basic: [[1_320_000, 950_000], [3_360_000, 880_000], [4_890_000, 680_000], [6_550_000, 630_000], [23_500_000, 580_000],
       [24_000_000, 480_000], [24_500_000, 320_000], [25_000_000, 160_000]],
     salaryMin: 650_000, salaryFlatUntil: 1_900_000, salarySteps: [],
-    dependentLimit: 580_000, studentLimit: 850_000, lifeUnder23: false,
+    dependentLimit: 580_000, studentLimit: 850_000, lifeUnder23: false, specificRelative: true, flatCut: 0, form: "r7",
   },
   {
     year: 2026,
     basic: [[4_890_000, 1_040_000], [6_550_000, 670_000], [23_500_000, 620_000], [24_000_000, 480_000], [24_500_000, 320_000], [25_000_000, 160_000]],
     // 令和8・9年分の特例：最低保障 74万円、190万円超 220万円以下は国税庁の表の特例の段
     salaryMin: 740_000, salaryFlatUntil: 2_191_000, salarySteps: [[2_193_000, 1_451_000], [2_196_000, 1_453_000], [2_200_000, 1_456_000]],
-    dependentLimit: 620_000, studentLimit: 890_000, lifeUnder23: true,
+    dependentLimit: 620_000, studentLimit: 890_000, lifeUnder23: true, specificRelative: true, flatCut: 0, form: "r7",
   },
 ];
 
@@ -325,6 +365,8 @@ export const salaryIncome = (x: number, year = LATEST): number => {
   if (step) return step[1];
   if (x < 6_600_000) {
     const a = floorTo(x / 4, 1000);
+    // 180万円未満の段は令和6年分までの表だけ（令和7年分からは最低保障の中）
+    if (x < 1_800_000) return (a * 24) / 10 + 100_000;
     return x < 3_600_000 ? (a * 28) / 10 - 80_000 : (a * 32) / 10 - 440_000;
   }
   if (x < 8_500_000) return Math.floor((x * 9) / 10) - 1_100_000;
@@ -443,7 +485,7 @@ export const dependentDeduction = (d: Relative, year: number): { kind: Dependent
   // 事業専従者は扶養親族・特定親族にならない
   if (d.familyEmployee) return { kind: "familyEmployee", amount: 0, age };
   if (d.income > rulesFor(year).rules.dependentLimit) {
-    if (age !== null && age >= 19 && age < 23 && d.income <= SPECIFIC_LIMIT) {
+    if (rulesFor(year).rules.specificRelative && age !== null && age >= 19 && age < 23 && d.income <= SPECIFIC_LIMIT) {
       return { kind: "specificRelative", amount: SPECIFIC_RELATIVE.find(([max]) => d.income <= max)![1], age };
     }
     return { kind: "none", amount: 0, age };
@@ -633,7 +675,13 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const total = loss.forDeductions;
   const expired = loss.carry[0].before - loss.carry[0].used;
   if (expired > 0) notes.push(`${loss.carry[0].year}年分の純損失のうち ${expired.toLocaleString()}円は、繰り越せる3年を過ぎるため差し引けません。`);
-  if (loss.fourth) notes.push("損失申告用の第四表を使います（第四表のタブ）。第一表の ⑫ と ㉛ は書かず、㉜ は 0 です。");
+  if (loss.fourth) {
+    const f = FORM_NOS[rules.form];
+    notes.push(`損失申告用の第四表を使います（第四表のタブ）。第一表の ⑫ と ${fieldNo(f.taxable)} は書かず、${fieldNo(f.taxOn)} は 0 です。`);
+  }
+  if (rules.flatCut) {
+    notes.push("令和6年分は定額減税（令和6年分特別税額控除）があります。対象の同一生計配偶者・扶養親族は、配偶者控除・扶養控除を受けない人も第二表の「配偶者や親族に関する事項」に書きます（「その他」欄の区分。手引きで確かめてください）。");
+  }
   if (loss.blueLoss) {
     notes.push(`純損失 ${loss.blueLoss.toLocaleString()}円を翌年以後3年間に繰り越せます（毎年続けて確定申告書を出すことが要ります）。前年も青色申告なら、前年分の所得税の還付を受ける「繰戻し還付」も選べます（還付請求書は domble では作れません）。`);
   } else if (r12 < 0) {
@@ -681,7 +729,15 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const r32 = incomeTaxOn(r31);
   const r35 = Math.min(input.housingLoan, r32);
   const r42 = r32 - r35;
-  const r44 = r42;
+  const r43 = r42; // 再差引所得税額（災害減免額は扱わない）
+  // 令和6年分の定額減税（令和6年分特別税額控除）：本人と、同一生計配偶者・扶養親族（16歳未満を含む。事業専従者を除く）1人につき 3万円。合計所得金額 1,805万円以下
+  const flatPeople = rules.flatCut && r12 <= 18_050_000
+    ? 1 + [...(input.spouse ? [input.spouse] : []), ...input.dependents].filter((d) => !d.familyEmployee && d.income <= DEPENDENT_LIMIT).length
+    : 0;
+  const flatCut = rules.flatCut * flatPeople;
+  if (rules.flatCut && r12 > 18_050_000) notes.push("合計所得金額が1,805万円を超えているため、定額減税（令和6年分特別税額控除）は受けられません。");
+  const r44 = Math.max(r43 - flatCut, 0); // 基準所得税額
+  if (flatCut > r43) notes.push(`定額減税のうち ${(flatCut - r43).toLocaleString()}円は所得税額から引ききれません（住民税の側で調整されます。市区町村からのお知らせを見てください）。`);
   const r45 = Math.floor((r44 * 21) / 1000);
   const r46 = r44 + r45;
   const withholding = [
@@ -702,6 +758,9 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     notes.push("帳簿に専従者給与があります。事業専従者を配偶者・扶養親族の欄に入れているときは「専従者」に印を付けてください（配偶者控除・扶養控除の対象になりません）。");
   }
   const spouseLabel = spouse.kind === "special" ? "配偶者特別控除" : spouse.elderly ? "配偶者控除（老人控除対象配偶者）" : "配偶者控除";
+  // 第一表の欄番号（様式の版ごと）
+  const nos = FORM_NOS[rules.form];
+  const N = (k: string) => fieldNo(nos[k]);
   const rows: IncomeTaxRow[] = [
     { no: "", label: "収入金額等", value: null, head: true },
     { no: "㋐", label: "事業（営業等）", value: biz.revenue, note: white ? "収支内訳書の収入金額の計（売上・家事消費・その他の収入）" : "決算書の売上（収入）金額（家事消費・雑収入を含む）" },
@@ -718,7 +777,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "⑩", label: "⑦から⑨までの計", value: r10, note: r7 + r8 + r9 < 0 ? "雑所得の損失はほかの所得から差し引けないので 0" : undefined },
     {
       no: "⑫", label: "合計", value: r12Shown, key: "total",
-      note: loss.fourth ? "第四表を使うので書きません（第四表の (81)）" : loss.used ? `本年分で差し引く繰越損失額 ${loss.used.toLocaleString()}円（${fieldNo(62)}）を差し引いた額` : undefined,
+      note: loss.fourth ? "第四表を使うので書きません（第四表の (81)）" : loss.used ? `本年分で差し引く繰越損失額 ${loss.used.toLocaleString()}円（${fieldNo(FORM_NOS[rules.form].carry)}）を差し引いた額` : undefined,
     },
     { no: "", label: "所得から差し引かれる金額", value: null, head: true },
     { no: "⑬", label: "社会保険料控除", value: r13 },
@@ -729,33 +788,44 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "⑲⑳", label: "勤労学生、障害者控除", value: r19 },
     { no: "㉑㉒", label: spouseLabel, value: spouse.amount },
     { no: "㉓", label: "扶養控除", value: r23 },
-    { no: "㉔", label: "特定親族特別控除", value: r24 },
-    { no: "㉕", label: "基礎控除", value: r25, note: `${reiwaYear(rules.year)}（合計所得金額に応じた額）` },
-    { no: "㉖", label: "⑬から㉕までの計", value: r26 },
-    { no: "㉘", label: input.medical.kind === "self" ? "医療費控除（セルフメディケーション税制）" : "医療費控除", value: r28 },
-    { no: "㉙", label: "寄附金控除", value: r29 },
-    { no: "㉚", label: "合計（㉖＋㉗＋㉘＋㉙）", value: r30 },
+    ...(rules.specificRelative ? [{ no: "㉔", label: "特定親族特別控除", value: r24 }] : []),
+    { no: N("basic"), label: "基礎控除", value: r25, note: `${reiwaYear(rules.year)}（合計所得金額に応じた額）` },
+    { no: N("subtotal"), label: `⑬から${N("basic")}までの計`, value: r26 },
+    { no: N("medical"), label: input.medical.kind === "self" ? "医療費控除（セルフメディケーション税制）" : "医療費控除", value: r28 },
+    { no: N("donation"), label: "寄附金控除", value: r29 },
+    { no: N("deductions"), label: `合計（${N("subtotal")}＋${N("casualty")}＋${N("medical")}＋${N("donation")}）`, value: r30 },
     { no: "", label: "税金の計算", value: null, head: true },
-    { no: "㉛", label: "課税される所得金額（⑫－㉚）", value: loss.fourth ? null : r31, note: loss.fourth ? "第四表を使うので書きません" : "千円未満切り捨て" },
-    { no: "㉜", label: "上の㉛に対する税額", value: r32, note: loss.fourth ? "第四表を使うので 0" : undefined },
-    { no: "㉟", label: "住宅借入金等特別控除", value: r35 },
-    { no: "㊷", label: "差引所得税額", value: r42 },
-    { no: "㊹", label: "再差引所得税額（基準所得税額）", value: r44 },
-    { no: "㊺", label: "復興特別所得税額（㊹×2.1%）", value: r45 },
-    { no: "㊻", label: "所得税及び復興特別所得税の額（㊹＋㊺）", value: r46 },
-    { no: "㊾", label: "源泉徴収税額", value: r49, note: "第二表の所得の内訳の合計" },
-    { no: "㊿", label: diff >= 0 ? "申告納税額（㊻－㊾）" : "申告納税額（㊻－㊾。還付）", value: r50, note: diff > 0 ? "百円未満切り捨て" : undefined },
-    { no: fieldNo(51), label: "予定納税額（第1期分・第2期分）", value: r51 },
-    { no: fieldNo(52), label: "第3期分の税額：納める税金", value: r52, key: "pay" },
-    { no: fieldNo(53), label: "第3期分の税額：還付される税金", value: r53, key: "refund" },
-    { no: "", label: "その他", value: null, head: true },
-    { no: fieldNo(56), label: "公的年金等以外の合計所得金額", value: pensionIn ? other : 0 },
-    { no: fieldNo(57), label: "配偶者の合計所得金額", value: input.spouse && spouse.kind ? input.spouse.income : 0 },
-    { no: fieldNo(58), label: "専従者給与（控除）額の合計額", value: biz.familySalary },
-    { no: fieldNo(59), label: "青色申告特別控除額", value: blue },
-    { no: fieldNo(60), label: "雑所得・一時所得等の源泉徴収税額の合計額", value: sum([...input.pensions, ...input.misc].map((r) => r.withheld)) },
     {
-      no: fieldNo(62), label: "本年分で差し引く繰越損失額", value: loss.fourth ? 0 : loss.used,
+      no: N("taxable"), label: `課税される所得金額（⑫－${N("deductions")}）`, value: loss.fourth ? null : r31,
+      note: loss.fourth ? "第四表を使うので書きません" : "千円未満切り捨て",
+    },
+    { no: N("taxOn"), label: `上の${N("taxable")}に対する税額`, value: r32, note: loss.fourth ? "第四表を使うので 0" : undefined },
+    { no: N("housing"), label: "住宅借入金等特別控除", value: r35 },
+    { no: N("diff"), label: "差引所得税額", value: r42 },
+    ...(rules.form === "r6"
+      ? [
+        { no: N("reTax"), label: "再差引所得税額", value: r43 },
+        { no: N("flatCut"), label: "令和6年分特別税額控除（定額減税）", value: flatCut, note: flatPeople ? `${flatPeople}人 × 3万円（本人と同一生計配偶者・扶養親族。事業専従者を除く）` : undefined },
+        { no: N("base"), label: `再々差引所得税額（基準所得税額。${N("reTax")}－${N("flatCut")}）`, value: r44 },
+      ]
+      : [{ no: N("base"), label: "再差引所得税額（基準所得税額）", value: r44 }]),
+    { no: N("recon"), label: `復興特別所得税額（${N("base")}×2.1%）`, value: r45 },
+    { no: N("total"), label: `所得税及び復興特別所得税の額（${N("base")}＋${N("recon")}）`, value: r46 },
+    { no: N("withheld"), label: "源泉徴収税額", value: r49, note: "第二表の所得の内訳の合計" },
+    {
+      no: N("declared"), label: `申告納税額（${N("total")}－${N("withheld")}${diff >= 0 ? "" : "。還付"}）`, value: r50, note: diff > 0 ? "百円未満切り捨て" : undefined,
+    },
+    { no: N("prepaid"), label: "予定納税額（第1期分・第2期分）", value: r51 },
+    { no: N("pay"), label: "第3期分の税額：納める税金", value: r52, key: "pay" },
+    { no: N("refund"), label: "第3期分の税額：還付される税金", value: r53, key: "refund" },
+    { no: "", label: "その他", value: null, head: true },
+    { no: N("pensionOther"), label: "公的年金等以外の合計所得金額", value: pensionIn ? other : 0 },
+    { no: N("spouseIncome"), label: "配偶者の合計所得金額", value: input.spouse && spouse.kind ? input.spouse.income : 0 },
+    { no: N("familySalary"), label: "専従者給与（控除）額の合計額", value: biz.familySalary },
+    { no: N("blue"), label: "青色申告特別控除額", value: blue },
+    { no: N("miscWithheld"), label: "雑所得・一時所得等の源泉徴収税額の合計額", value: sum([...input.pensions, ...input.misc].map((r) => r.withheld)) },
+    {
+      no: N("carry"), label: "本年分で差し引く繰越損失額", value: loss.fourth ? 0 : loss.used,
       note: loss.fourth && loss.used ? `第四表を使うので書きません（第四表で ${loss.used.toLocaleString()}円を差し引きます）` : undefined,
     },
   ];
