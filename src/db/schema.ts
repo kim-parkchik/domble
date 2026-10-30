@@ -99,6 +99,9 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
   ...yearGuards("trg_closed_tax_inventory_adjusts", "tax_inventory_adjusts", "fiscal_year"),
   ...yearGuards("trg_closed_tax_refund_details", "tax_refund_details", "fiscal_year"),
+  ...yearGuards("trg_closed_asset_amortizations", "asset_amortizations", "fiscal_year"),
+  ...yearGuards("trg_closed_year_end_runs", "year_end_runs", "fiscal_year"),
+  ...yearGuards("trg_closed_inventory_counts", "inventory_counts", "fiscal_year"),
   ...yearGuards("trg_closed_tax_prev_amounts", "tax_prev_amounts", "fiscal_year"),
   ...yearGuards("trg_closed_income_tax_inputs", "income_tax_inputs", "fiscal_year"),
   // 固定資産台帳：締めた年に台帳に出る資産の追加・削除、売却・除却の日と事業専用割合のほかの変更、締めた年にかかる売却・除却の日の変更
@@ -368,7 +371,7 @@ export const SCHEMA: string[] = [
     acquired_on TEXT NOT NULL,          -- 取得日
     used_on TEXT NOT NULL,              -- 事業に使い始めた日（償却はこの月から）
     cost INTEGER NOT NULL CHECK (cost > 0),
-    method TEXT NOT NULL CHECK (method IN ('straight','lump3','small')),
+    method TEXT NOT NULL CHECK (method IN ('straight','declining','lump3','small','deferred')),
     useful_life INTEGER NOT NULL DEFAULT 0,
     business_rate INTEGER NOT NULL DEFAULT 100 CHECK (business_rate BETWEEN 0 AND 100),
     opening_year INTEGER,               -- domble を使う前から持っている資産：この年の期首の未償却残高から始める
@@ -394,10 +397,42 @@ export const SCHEMA: string[] = [
     receive_account_id INTEGER REFERENCES accounts(id)
   );`,
 
+  /** 繰延資産（任意償却）の、年ごとに決めた償却する額（決めていない年は60か月の均等償却。lib/depreciation.ts） */
+  `CREATE TABLE IF NOT EXISTS asset_amortizations (
+    asset_id INTEGER NOT NULL REFERENCES fixed_assets(id),
+    fiscal_year INTEGER NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount >= 0),
+    PRIMARY KEY (asset_id, fiscal_year)
+  );`,
+
   /** 年末の減価償却で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
   `CREATE TABLE IF NOT EXISTS depreciation_runs (
     fiscal_year INTEGER PRIMARY KEY,
     entry_id INTEGER NOT NULL REFERENCES journal_entries(id)
+  );`,
+
+  /**
+   * 決算整理の画面から作った仕訳（年度・種類ごとに1本。作り直すときはこの仕訳を訂正する。lib/yearEnd.ts）
+   *  kind：inventory = 棚卸の振替 ／ accrued_tax = 未払消費税等（還付なら未収）
+   */
+  `CREATE TABLE IF NOT EXISTS year_end_runs (
+    fiscal_year INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('inventory','accrued_tax')),
+    entry_id INTEGER NOT NULL REFERENCES journal_entries(id),
+    PRIMARY KEY (fiscal_year, kind)
+  );`,
+
+  /** 棚卸（年度ごと）：棚卸表が無いときの期末の棚卸高と、棚卸表（品名・数量・単価の JSON） */
+  `CREATE TABLE IF NOT EXISTS inventory_counts (
+    fiscal_year INTEGER PRIMARY KEY,
+    amount INTEGER NOT NULL DEFAULT 0 CHECK (amount >= 0),
+    rows TEXT NOT NULL DEFAULT '[]'
+  );`,
+
+  /** 決算整理仕訳から作った、翌年1月1日付の振り戻しの仕訳（元の仕訳ごとに1本） */
+  `CREATE TABLE IF NOT EXISTS entry_reversals (
+    entry_id INTEGER PRIMARY KEY REFERENCES journal_entries(id),
+    reversal_id INTEGER NOT NULL REFERENCES journal_entries(id)
   );`,
 
   /** 年末の貸倒引当金（洗替：前年分の戻入と本年分の繰入）で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */

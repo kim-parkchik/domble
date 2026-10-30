@@ -39,6 +39,7 @@ import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, 
 import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, normalSideOf } from "../constants/accounts";
 import { assetLockError, businessRateIn, DISPOSAL_LABEL, disposalLines, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
+import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
 import type { InventoryAdjust } from "../lib/taxReturn";
 import {
   DEFAULT_BACKUP_GENERATIONS, DEFAULT_INPUT_PERIOD_DAYS, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
@@ -1732,23 +1733,32 @@ export type AssetInput = Omit<FixedAsset, "id">;
 
 const ASSET_COLUMNS = "id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind, disposal_kind, sale_price";
 
-/** 資産に、あとの年から変えた事業専用割合（あれば）をつける */
-const withRates = (assets: FixedAsset[], rates: (AssetRate & { asset_id: number })[]): FixedAsset[] =>
+type Amortization = { asset_id: number; fiscal_year: number; amount: number };
+
+/** 資産に、あとの年から変えた事業専用割合と、繰延資産の年ごとの償却額（あれば）をつける */
+const withRates = (assets: FixedAsset[], rates: (AssetRate & { asset_id: number })[], amortizations: Amortization[] = []): FixedAsset[] =>
   assets.map((a) => {
     const rs = rates.filter((r) => r.asset_id === a.id).map(({ from_year, rate }) => ({ from_year, rate }));
-    return rs.length ? { ...a, rates: rs } : a;
+    const am = amortizations.filter((x) => x.asset_id === a.id);
+    return {
+      ...a,
+      ...(rs.length ? { rates: rs } : {}),
+      ...(am.length ? { amortization: Object.fromEntries(am.map((x) => [x.fiscal_year, x.amount])) } : {}),
+    };
   });
 
 export const getAssets = async (db: Database) =>
   withRates(
     await db.select<FixedAsset[]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets ORDER BY used_on, id`),
     await db.select<(AssetRate & { asset_id: number })[]>("SELECT asset_id, from_year, rate FROM asset_rates ORDER BY asset_id, from_year"),
+    await db.select<Amortization[]>("SELECT asset_id, fiscal_year, amount FROM asset_amortizations ORDER BY asset_id, fiscal_year"),
   );
 
 const getAsset = async (db: Database, id: number) =>
   withRates(
     await db.select<FixedAsset[]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets WHERE id = ?`, [id]),
     await db.select<(AssetRate & { asset_id: number })[]>("SELECT asset_id, from_year, rate FROM asset_rates WHERE asset_id = ? ORDER BY from_year", [id]),
+    await db.select<Amortization[]>("SELECT asset_id, fiscal_year, amount FROM asset_amortizations WHERE asset_id = ? ORDER BY fiscal_year", [id]),
   )[0];
 
 /** 年の締め（12月まで）をした年 */
@@ -1763,13 +1773,16 @@ const assetText = (a: AssetInput) =>
     a.disposed_on ? `${a.disposal_kind ? DISPOSAL_LABEL[a.disposal_kind] : "売却・除却"} ${a.disposed_on}${a.disposal_kind === "sale" ? `（${(a.sale_price ?? 0).toLocaleString()}円）` : ""}` : "",
     a.memo ? `備考 ${a.memo}` : "",
     a.income_kind === "realestate" ? "不動産所得" : "",
+    ...Object.entries(a.amortization ?? {}).map(([y, v]) => `${y}年の償却 ${v.toLocaleString()}円`),
   ].filter(Boolean).join("、");
 
 const normalizeAsset = (a: AssetInput): AssetInput => ({
   ...a,
   name: a.name.trim(),
   memo: a.memo.trim(),
-  useful_life: a.method === "straight" ? a.useful_life : 0,
+  useful_life: a.method === "straight" || a.method === "declining" ? a.useful_life : 0,
+  // 繰延資産の年ごとの償却額は、繰延資産のときだけ
+  amortization: a.method === "deferred" ? a.amortization : undefined,
   disposed_on: a.disposed_on || null,
   // 区分と売却額は、売却・除却した日があるときだけ（除却なら売却額は無し）
   disposal_kind: a.disposed_on && (a.disposal_kind === "sale" || a.disposal_kind === "scrap") ? a.disposal_kind : null,
@@ -1778,10 +1791,10 @@ const normalizeAsset = (a: AssetInput): AssetInput => ({
 });
 
 const assertAsset = async (db: Database, a: AssetInput) => {
-  // 少額減価償却資産の特例は、事業に使い始めた年が青色申告の年だけ
-  const e = validateAsset(a, { blue: isBlue(await filingTypeIn(db, Number((a.used_on || a.acquired_on).slice(0, 4)))) });
+  const acc = await db.select<{ category: string; code: string }[]>("SELECT category, code FROM accounts WHERE id = ?", [a.account_id]);
+  // 少額減価償却資産の特例は、事業に使い始めた年が青色申告の年だけ。定率法は科目（建物など）で使えないものがある
+  const e = validateAsset(a, { blue: isBlue(await filingTypeIn(db, Number((a.used_on || a.acquired_on).slice(0, 4)))), accountCode: acc[0]?.code });
   if (e) throw new Error(e);
-  const acc = await db.select<{ category: string }[]>("SELECT category FROM accounts WHERE id = ?", [a.account_id]);
   if (acc[0]?.category !== "asset") throw new Error("資産の科目を選んでください");
 };
 
@@ -1797,6 +1810,7 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
   const fiscal_year = year ?? (await currentYear(db));
   if (id === null) {
     const added = { ...a, rates: undefined };
+    if (added.amortization && Object.keys(added.amortization).length === 0) added.amortization = undefined;
     const err = assetLockError(null, added, closed);
     if (err) throw new Error(err);
     const r = await db.execute(
@@ -1805,6 +1819,9 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
       [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind, a.disposal_kind ?? null, a.sale_price ?? null],
     );
     const newId = Number(r.lastInsertId);
+    for (const [y, amount] of Object.entries(added.amortization ?? {})) {
+      await db.execute("INSERT INTO asset_amortizations (asset_id, fiscal_year, amount) VALUES (?, ?, ?)", [newId, Number(y), amount]);
+    }
     await logMaster(db, { target_type: "asset", target_id: newId, action: "create", fiscal_year, label: a.name, old_value: "", new_value: assetText(added) });
     return newId;
   }
@@ -1823,7 +1840,14 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
         : [...others, { from_year: year, rate: a.business_rate }].sort((x, y) => x.from_year - y.from_year);
     }
   }
-  const after: FixedAsset = { ...a, id, business_rate: base, ...(rates.length ? { rates } : {}) };
+  // 繰延資産の償却額：year 年の分だけ入れ替える（ほかの年はそのまま。year 年を空にすると、その年は60か月の均等償却）
+  const amortization = { ...(before.amortization ?? {}) };
+  if (a.method === "deferred" && year !== undefined) {
+    if (a.amortization?.[year] !== undefined) amortization[year] = a.amortization[year];
+    else delete amortization[year];
+  }
+  const keepAmortization = a.method === "deferred" && Object.keys(amortization).length > 0;
+  const after: FixedAsset = { ...a, id, business_rate: base, ...(rates.length ? { rates } : {}), amortization: keepAmortization ? amortization : undefined };
   const err = assetLockError(before, after, closed);
   if (err) throw new Error(err);
   await db.execute(
@@ -1842,6 +1866,17 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
       [id, r.from_year, r.rate],
     );
   }
+  const nextAmortization = after.amortization ?? {};
+  for (const y of Object.keys(before.amortization ?? {})) {
+    if (nextAmortization[Number(y)] === undefined) await db.execute("DELETE FROM asset_amortizations WHERE asset_id = ? AND fiscal_year = ?", [id, Number(y)]);
+  }
+  for (const [y, amount] of Object.entries(nextAmortization)) {
+    if (before.amortization?.[Number(y)] === amount) continue;
+    await db.execute(
+      "INSERT INTO asset_amortizations (asset_id, fiscal_year, amount) VALUES (?, ?, ?) ON CONFLICT (asset_id, fiscal_year) DO UPDATE SET amount = excluded.amount",
+      [id, Number(y), amount],
+    );
+  }
   const [oldText, newText] = [assetText(before), assetText(after)];
   if (oldText !== newText || before.name !== a.name || before.account_id !== a.account_id) {
     await logMaster(db, { target_type: "asset", target_id: id, action: "change", fiscal_year, label: a.name, old_value: `${before.name}：${oldText}`, new_value: `${a.name}：${newText}` });
@@ -1856,6 +1891,7 @@ const deleteAsset_ = async (db: Database, id: number) => {
   const err = assetLockError(before, null, await yearClosedYears(db));
   if (err) throw new Error(err);
   await db.execute("DELETE FROM asset_rates WHERE asset_id = ?", [id]);
+  await db.execute("DELETE FROM asset_amortizations WHERE asset_id = ?", [id]);
   await db.execute("DELETE FROM asset_disposals WHERE asset_id = ?", [id]);
   await db.execute("DELETE FROM fixed_assets WHERE id = ?", [id]);
   await logMaster(db, { target_type: "asset", target_id: id, action: "delete", fiscal_year: await currentYear(db), label: before.name, old_value: assetText(before), new_value: "" });
@@ -1882,7 +1918,7 @@ const saveDisposalEntry_ = async (db: Database, assetId: number, receiveAccountI
   // 除却損は、不動産所得の資産なら雑費（不動産）
   const loss = idOf(a.income_kind === "realestate" ? "698" : CODE.DISPOSAL_LOSS);
   const lines = disposalLines(a, { receive: receive?.id ?? 0, ownerLoan: idOf(CODE.OWNER_LOAN), ownerDraw: idOf(CODE.OWNER_DRAW), loss });
-  if (lines === null) throw new Error("売却・除却の仕訳は、定額法の資産だけ作れます（一括償却資産・少額減価償却資産は振替伝票で入れてください）");
+  if (lines === null) throw new Error("売却・除却の仕訳は、定額法・定率法の資産だけ作れます（一括償却資産・少額減価償却資産・繰延資産は振替伝票で入れてください）");
   const before = (await getAssetDisposals(db)).find((x) => x.asset_id === assetId);
   if (lines.length === 0) {
     if (before) await deleteEntry_(db, before.entry_id, "売却・除却の仕訳の作り直し（金額なし）");
@@ -1961,6 +1997,96 @@ const saveAllowanceRun_ = async (db: Database, year: number, lines: JournalLine[
   await db.execute(
     "INSERT INTO allowance_runs (fiscal_year, entry_id) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET entry_id = excluded.entry_id",
     [year, id],
+  );
+  return id;
+};
+
+// ────────────────────────────────────────────
+// 決算整理の画面（棚卸・未払消費税等）と、決算整理仕訳の振り戻し。仕訳の中身は lib/yearEnd.ts
+// ────────────────────────────────────────────
+export type YearEndKind = "inventory" | "accrued_tax";
+const YEAR_END_LABEL: Record<YearEndKind, string> = { inventory: "棚卸の振替", accrued_tax: "未払消費税等" };
+
+/** 決算整理の画面から作った仕訳（削除した仕訳は除く） */
+export const getYearEndRun = async (db: Database, year: number, kind: YearEndKind) => {
+  const r = await db.select<{ entry_id: number }[]>(
+    `SELECT r.entry_id FROM year_end_runs r JOIN journal_entries e ON e.id = r.entry_id WHERE r.fiscal_year = ? AND r.kind = ? AND e.is_deleted = 0`,
+    [year, kind],
+  );
+  return r[0]?.entry_id ?? null;
+};
+
+/** 12月31日付の決算整理仕訳を作る（作り直すときは同じ仕訳を訂正する。明細が無ければ削除する）。仕訳の id を返す */
+const saveYearEndRun_ = async (db: Database, year: number, kind: YearEndKind, lines: JournalLine[]) => {
+  await assertYearOpen(db, year);
+  const runId = await getYearEndRun(db, year, kind);
+  if (lines.length === 0) {
+    if (runId) await deleteEntry_(db, runId, `${YEAR_END_LABEL[kind]}の再計算（金額なし）`);
+    return null;
+  }
+  if (runId) {
+    await updateEntry_(db, runId, yearEnd(year), lines, `${YEAR_END_LABEL[kind]}の再計算`, null, true);
+    return runId;
+  }
+  const id = await createEntry_(db, yearEnd(year), lines, null, "", true);
+  await db.execute(
+    "INSERT INTO year_end_runs (fiscal_year, kind, entry_id) VALUES (?, ?, ?) ON CONFLICT (fiscal_year, kind) DO UPDATE SET entry_id = excluded.entry_id",
+    [year, kind, id],
+  );
+  return id;
+};
+
+/** その年の棚卸（無ければ null） */
+export const getInventoryCount = async (db: Database, year: number): Promise<InventoryCount | null> => {
+  const r = await db.select<{ amount: number; rows: string }[]>("SELECT amount, rows FROM inventory_counts WHERE fiscal_year = ?", [year]);
+  return r[0] ? { amount: r[0].amount, rows: JSON.parse(r[0].rows) } : null;
+};
+
+/** 棚卸（期末の棚卸高と棚卸表）を保存する。締めた年は変えられない。変更は履歴に残す（厳密モード） */
+const saveInventoryCount_ = async (db: Database, year: number, c: InventoryCount) => {
+  const err = inventoryProblem(c);
+  if (err) throw new Error(err);
+  await assertYearOpen(db, year);
+  const before = await getInventoryCount(db, year);
+  const next: InventoryCount = { amount: c.amount, rows: c.rows.map((r) => ({ name: r.name.trim(), quantity: r.quantity, unitPrice: r.unitPrice })) };
+  if (before && JSON.stringify(before) === JSON.stringify(next)) return;
+  await db.execute(
+    "INSERT INTO inventory_counts (fiscal_year, amount, rows) VALUES (?, ?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET amount = excluded.amount, rows = excluded.rows",
+    [year, next.amount, JSON.stringify(next.rows)],
+  );
+  const text = (x: InventoryCount | null) => (x ? `期末の棚卸高 ${closingInventory(x).toLocaleString()}円${x.rows.length ? `（棚卸表 ${x.rows.length}行）` : ""}` : "なし");
+  await logMaster(db, { target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の棚卸`, old_value: text(before), new_value: text(next) });
+};
+
+/** 台帳などから作った決算整理仕訳（振り戻しの対象にしない。作り直しの仕組みで直すため） */
+export const getRunEntryIds = async (db: Database) =>
+  new Set((await db.select<{ id: number }[]>(
+    `SELECT entry_id AS id FROM depreciation_runs UNION SELECT entry_id FROM home_use_runs UNION SELECT entry_id FROM allowance_runs
+     UNION SELECT entry_id FROM year_end_runs`,
+  )).map((r) => r.id));
+
+/** その決算整理仕訳から作った振り戻し（削除したものは除く） */
+export const getReversal = async (db: Database, entryId: number) => {
+  const r = await db.select<{ reversal_id: number }[]>(
+    "SELECT r.reversal_id FROM entry_reversals r JOIN journal_entries e ON e.id = r.reversal_id WHERE r.entry_id = ? AND e.is_deleted = 0",
+    [entryId],
+  );
+  return r[0]?.reversal_id ?? null;
+};
+
+/** 決算整理仕訳（未払費用・前払費用など）を、翌年1月1日付で振り戻す（貸借を入れ替えた仕訳）。振り戻しの仕訳の id を返す */
+const createReversal_ = async (db: Database, entryId: number) => {
+  const e = await getEntry(db, entryId);
+  if (!e || e.is_deleted) throw new Error("仕訳が見つかりません");
+  if (e.is_adjustment !== 1) throw new Error("振り戻せるのは決算整理仕訳だけです");
+  if ((await getRunEntryIds(db)).has(entryId)) throw new Error("減価償却・家事按分・貸倒引当金・棚卸・未払消費税等の仕訳は、作り直しの仕組みで直すので振り戻しません");
+  const already = await getReversal(db, entryId);
+  if (already) throw new Error(`この仕訳の振り戻しは作成済みです（No.${already}）`);
+  const date = `${Number(e.date.slice(0, 4)) + 1}-01-01`;
+  const id = await createEntry_(db, date, reversalLines(e.lines), e.counterparty_id ?? null);
+  await db.execute(
+    "INSERT INTO entry_reversals (entry_id, reversal_id) VALUES (?, ?) ON CONFLICT (entry_id) DO UPDATE SET reversal_id = excluded.reversal_id",
+    [entryId, id],
   );
   return id;
 };
@@ -2401,7 +2527,8 @@ const currentState = async (db: Database, key: string): Promise<string> => {
   if (kind === "asset") {
     const a = await db.select<NonNullable<Parameters<typeof assetState>[0]>[]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets WHERE id = ?`, [id]);
     const rates = await db.select<{ from_year: number; rate: number }[]>("SELECT from_year, rate FROM asset_rates WHERE asset_id = ?", [id]);
-    return assetState(a[0] ?? null, rates);
+    const am = await db.select<{ fiscal_year: number; amount: number }[]>("SELECT fiscal_year, amount FROM asset_amortizations WHERE asset_id = ?", [id]);
+    return assetState(a[0] ?? null, rates, am);
   }
   return "";
 };
@@ -2801,6 +2928,9 @@ export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年�
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
 export const saveInventoryAdjust = inTx(saveInventoryAdjust_, (year) => `${year}年の棚卸資産の調整`, { perm: "settings" });
 export const saveRefundDetail = inTx(saveRefundDetail_, (year) => `${year}年の還付申告に関する明細書`, { perm: "settings" });
+export const saveYearEndRun = inTx(saveYearEndRun_, (year, kind) => `${year}年の${YEAR_END_LABEL[kind as YearEndKind]}`, { perm: "entry" });
+export const saveInventoryCount = inTx(saveInventoryCount_, (year) => `${year}年の棚卸`, { perm: "entry" });
+export const createReversal = inTx(createReversal_, (id) => `伝票 No.${id} の振り戻し`, { perm: "entry" });
 export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登録番号の保存", { perm: "settings" });
 export const saveEtaxInfo = inTx(saveEtaxInfo_, () => "e-Tax の申告者の情報の保存", { perm: "settings" });
 export const fillTaxCodes = inTx(fillTaxCodes_, (year) => `${year}年の仕訳の税区分の一括設定`, { perm: "entry" });

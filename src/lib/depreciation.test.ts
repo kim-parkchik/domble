@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  assetLockError, assetYears, businessRateIn, depreciationFor, depreciationLines, disposalLines, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset,
+  assetLockError, assetYears, businessRateIn, decliningProblem, decliningRates, depreciationFor, depreciationLines, disposalLines, usedAssetLife, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset,
   type FixedAsset,
 } from "./depreciation";
 
@@ -9,6 +9,7 @@ const asset = (p: Partial<FixedAsset>): FixedAsset => ({
   useful_life: 4, business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: null, memo: "", ...p,
 });
 const dep = (a: FixedAsset, y: number) => depreciationFor(a, y)?.depreciation;
+const blueOpts = { blue: true };
 
 describe("定額法", () => {
   test("償却率は 1/耐用年数 を小数第3位で切り上げ（償却率表と同じ）", () => {
@@ -19,7 +20,7 @@ describe("定額法", () => {
     const pc = asset({});
     expect(depreciationFor(pc, 2025)).toBeNull();
     expect(depreciationFor(pc, 2026)).toEqual({
-      rate: 0.25, base: 240_000, equal: false, months: 9, opening: 240_000, depreciation: 45_000, businessRate: 100, business: 45_000, private: 0, closing: 195_000, disposed: false,
+      rate: 0.25, base: 240_000, equal: false, revised: false, months: 9, opening: 240_000, depreciation: 45_000, businessRate: 100, business: 45_000, private: 0, closing: 195_000, disposed: false,
     });
     expect([2027, 2028, 2029, 2030, 2031].map((y) => dep(pc, y))).toEqual([60_000, 60_000, 60_000, 14_999, 0]);
     expect(depreciationFor(pc, 2031)?.closing).toBe(1);
@@ -212,4 +213,45 @@ describe("売却・除却の仕訳", () => {
     expect(disposalLines({ ...car, method: "lump3", cost: 150_000, disposal_kind: "scrap" }, ids)).toBeNull();
     expect(disposalLines(car, ids)).toBeNull();
   });
+});
+
+describe("200%定率法（平成24年4月1日以後の取得）", () => {
+  // 国税庁 No.2106 の例：取得価額100万円・耐用年数10年（償却率 0.200・改定償却率 0.250・保証率 0.06552）
+  const machine = asset({ name: "機械", cost: 1_000_000, useful_life: 10, method: "declining", acquired_on: "2026-01-01", used_on: "2026-01-01" });
+  test("償却保証額に満たなくなった年（7年目）から、改定取得価額 × 改定償却率。最後は 1円を残す", () => {
+    expect(decliningRates(10)).toEqual({ rate: 200, revised: 250, guarantee: 6552 });
+    const years = Array.from({ length: 11 }, (_, i) => 2026 + i);
+    expect(years.map((y) => dep(machine, y))).toEqual([200_000, 160_000, 128_000, 102_400, 81_920, 65_536, 65_536, 65_536, 65_536, 65_535, 0]);
+    const y7 = depreciationFor(machine, 2032)!;
+    expect([y7.revised, y7.rate, y7.base, y7.opening]).toEqual([true, 0.25, 262_144, 262_144]);
+    expect([depreciationFor(machine, 2031)!.revised, depreciationFor(machine, 2031)!.rate]).toEqual([false, 0.2]);
+    // 年の途中から使ったら月割り（1円未満切り上げ）
+    expect(dep({ ...machine, used_on: "2026-10-01", acquired_on: "2026-10-01" }, 2026)).toBe(50_000);
+  });
+  test("使えない資産：平成24年3月31日以前の取得、建物、平成28年4月1日以後の建物附属設備・構築物、ソフトウェア", () => {
+    expect(validateAsset({ ...machine, acquired_on: "2012-03-31", used_on: "2012-03-31" }, blueOpts)).toMatch(/平成24年4月1日以後/);
+    expect(decliningProblem("130", "2026-01-01")).toMatch(/建物/);
+    expect(decliningProblem("131", "2016-04-01")).toMatch(/建物附属設備/);
+    expect(decliningProblem("131", "2016-03-31")).toBeNull();
+    expect(decliningProblem("138", "2026-01-01")).toMatch(/ソフトウェア/);
+    expect(validateAsset(machine, { ...blueOpts, accountCode: "130" })).toMatch(/建物/);
+  });
+});
+
+describe("繰延資産（開業費の任意償却）", () => {
+  const cost = asset({ name: "開業費", account_id: 160, cost: 300_000, method: "deferred", useful_life: 0, acquired_on: "2026-04-01", used_on: "2026-04-01" });
+  test("決めていない年は60か月の均等償却（月割り）。決めた年はその額。0円まで償却する", () => {
+    expect([dep(cost, 2026), dep(cost, 2027)]).toEqual([45_000, 60_000]);
+    const chosen = { ...cost, amortization: { 2026: 0, 2027: 500_000 } };
+    expect([dep(chosen, 2026), dep(chosen, 2027), dep(chosen, 2028)]).toEqual([0, 300_000, 0]);
+    expect(depreciationFor(chosen, 2027)!.closing).toBe(0);
+    expect(validateAsset({ ...cost, amortization: { 2026: -1 } }, blueOpts)).toMatch(/0円以上/);
+  });
+});
+
+test("中古資産の耐用年数（簡便法）：月数で計算し、1年未満切り捨て、2年未満は2年", () => {
+  expect(usedAssetLife(30, 127)).toBe(21); // (360 − 127) + 127 × 20% = 258.4か月
+  expect(usedAssetLife(6, 30)).toBe(4);
+  expect(usedAssetLife(6, 72)).toBe(2); // 全部を経過：72 × 20% = 14.4か月 → 1年 → 2年
+  expect(usedAssetLife(15, 0)).toBe(15);
 });

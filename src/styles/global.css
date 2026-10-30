@@ -918,3 +918,18 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
   .refund-detail select.input { appearance: none; }
   .refund-detail .input::placeholder { color: transparent; }
 }
+
+/* ---------- 決算整理（features/reports/YearEndPage.tsx） ---------- */
+.yearend-steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; }
+.yearend-steps li .field-note { margin: 2px 0 0; }
+.yearend-step-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.yearend-chip { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--rule-strong); color: var(--muted); }
+.yearend-chip.ok { background: #e6f4ea; border-color: #9ccfa9; color: #1e6b34; }
+.yearend-chip.todo { background: var(--warn-bg); border-color: #e6c46d; color: var(--warn-ink); }
+.yearend-chip.warn { background: #fdecec; border-color: #e5a3a3; color: var(--cr); }
+.yearend-count { max-width: 760px; }
+.yearend-actions { align-items: flex-end; gap: 10px; margin-top: 8px; }
+.yearend-transfer { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); font-size: 13px; }
+@media print {
+  .yearend-inventory .input { border: none !important; background: none !important; padding: 0 !important; }
+}

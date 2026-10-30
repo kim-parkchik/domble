@@ -3,6 +3,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { copyFile, exists, mkdir, readDir, remove } from "@tauri-apps/plugin-fs";
 import { basename, documentDir, join } from "@tauri-apps/api/path";
 import { COLUMN_MIGRATIONS, SCHEMA, SEED_ACCOUNT_SQL } from "./schema";
+import { rebuildTables } from "./migrate";
 import type { EncryptionStatus, Unlock } from "./encryption";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import { backupsToRemove } from "../lib/backup";
@@ -97,12 +98,15 @@ export const openDatabase = async (
   // （トリガーが新しい列を参照するので、列追加より先に作るとエラーになる）
   const isTrigger = (sql: string) => sql.trimStart().startsWith("CREATE TRIGGER");
   for (const sql of SCHEMA.filter((x) => !isTrigger(x))) await db.execute(sql);
+  // トリガーは作り直す前に、今あるものを控えておく（消されていたら、黙って元に戻さずに知らせるため）。
+  // テーブルの作り直し（migrate.ts）でそのテーブルのトリガーが消えるので、その前に控える
+  const triggersBefore = (await db.select<{ name: string }[]>("SELECT name FROM sqlite_master WHERE type = 'trigger'")).map((r) => r.name);
   for (const [table, column, def] of COLUMN_MIGRATIONS) {
     const cols = await db.select<{ name: string }[]>(`PRAGMA table_info(${table})`);
     if (!cols.some((c) => c.name === column)) await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
   }
-  // トリガーは作り直す前に、今あるものを控えておく（消されていたら、黙って元に戻さずに知らせるため）
-  const triggersBefore = (await db.select<{ name: string }[]>("SELECT name FROM sqlite_master WHERE type = 'trigger'")).map((r) => r.name);
+  // 列の追加ではできない変更（CHECK 制約を広げるなど）
+  await rebuildTables(db);
   for (const sql of SCHEMA.filter(isTrigger)) await db.execute(sql);
 
   // 設定の初期行

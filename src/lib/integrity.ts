@@ -96,11 +96,13 @@ export interface AssetStateInput {
   disposal_kind?: string | null; sale_price?: number | null;
 }
 /** 固定資産台帳の1件（あとの年から変えた事業専用割合を含む） */
-export const assetState = (a: AssetStateInput | null, rates: { from_year: number; rate: number }[]) =>
+export const assetState = (a: AssetStateInput | null, rates: { from_year: number; rate: number }[], amortizations: { fiscal_year: number; amount: number }[] = []) =>
   JSON.stringify(a
     ? [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year ?? null, a.opening_book_value ?? null,
       a.disposed_on ?? null, a.memo, a.income_kind, rates.map((r) => [r.from_year, r.rate]).sort(cmp),
-      ...(a.disposal_kind ? [["disposal", a.disposal_kind, a.sale_price ?? null]] : [])]
+      ...(a.disposal_kind ? [["disposal", a.disposal_kind, a.sale_price ?? null]] : []),
+      // 繰延資産の年ごとの償却額（あとから足した項目なので、あるときだけ）
+      ...(amortizations.length ? [["amortization", amortizations.map((x) => [x.fiscal_year, x.amount]).sort(cmp)]] : [])]
     : null);
 
 /**

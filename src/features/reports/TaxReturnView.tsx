@@ -22,7 +22,7 @@ import { purchaseFigures, refundDetailFromBooks } from "../../lib/taxRefundDetai
 import { RefundDetailSection, useRefundDetail } from "./RefundDetailSection";
 import {
   buildTaxBase, computeReturn, inventoryAdjustTax, inventoryOf, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn,
-  type InventoryAdjust, type Rate, type ReturnMethod, type TaxForm,
+  type InventoryAdjust, type Rate, type ReturnMethod, type TaxForm, type TaxReturn,
 } from "../../lib/taxReturn";
 import { closingBalances, type FlatLine } from "../../lib/accounting";
 import { taxYearOf } from "../../lib/tax";
@@ -40,6 +40,31 @@ const METHOD_NOTE: Record<ReturnMethod, string> = {
 };
 
 const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
+
+/**
+ * その年の課税区分で計算した申告書（決算整理の未払消費税等に使う。免税事業者の年・読み込み中は null）。
+ * 中間納付税額・棚卸資産の調整・基準期間の課税売上高は、申告書タブで保存したもの
+ */
+export const useYearReturn = (): TaxReturn | null => {
+  const { db, year, taxYears, taxYear, dataVersion } = useAppContext();
+  const { lines, opening } = useYearData();
+  const inv = useInventory(lines, opening);
+  const baseSales = useBaseSales();
+  const [interim, setInterim] = useState<{ national: number; local: number } | null>(null);
+  useEffect(() => {
+    repo.getTaxInterim(db, year).then(setInterim).catch(console.error);
+  }, [db, year, dataVersion]);
+  return useMemo(() => {
+    if (taxYear.status === "exempt" || !interim || !inv) return null;
+    const base = buildTaxBase(lines, taxYears);
+    const options = {
+      businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null,
+      deduction: taxYear.deduction, inventory: inv.adjust ?? null,
+    };
+    const m = taxYear.status as ReturnMethod;
+    return m === "twenty" ? twentyReturn(base, options, "一般用") : m === "thirty" ? thirtyReturn(base, options, "一般用") : computeReturn(m, base, options);
+  }, [lines, taxYears, taxYear, interim, inv, baseSales]);
+};
 
 /** 棚卸資産の調整（保存したもの）と、帳簿の期首・期末の棚卸高（読み込み中は null） */
 export const useInventory = (lines: FlatLine[], opening: OpeningBalances) => {

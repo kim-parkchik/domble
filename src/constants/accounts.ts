@@ -150,6 +150,10 @@ export const CODE = {
   LEGAL_WELFARE: "670",      // 法定福利費
   DISPOSAL_LOSS: "671",      // 固定資産除却損
   WELFARE: "612",            // 福利厚生費
+  STOCK: "113",              // 棚卸資産
+  OPENING_STOCK: "501",      // 期首商品棚卸高
+  CLOSING_STOCK: "503",      // 期末商品棚卸高
+  TAXES: "601",              // 租税公課
   ALLOWANCE: "250",     // 貸倒引当金
   ALLOWANCE_ADD: "750", // 貸倒引当金繰入
   ALLOWANCE_BACK: "751", // 貸倒引当金戻入

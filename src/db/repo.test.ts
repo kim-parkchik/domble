@@ -11,6 +11,7 @@ import * as repo from "./repo";
 import type { JournalLine } from "../lib/types";
 import { subKey } from "../lib/types";
 import { depreciationFor, depreciationLines } from "../lib/depreciation";
+import { inventoryLines } from "../lib/yearEnd";
 import { allowanceCalc, allowanceLines } from "../lib/allowance";
 import { taxYearOf } from "../lib/tax";
 import { emptyRow } from "../lib/accounting";
@@ -291,6 +292,46 @@ describe("固定資産台帳・減価償却（repo）", () => {
     repo.setActor(editor, "editor");
     await expect(repo.saveAsset(db, null, base)).rejects.toThrow(/権限/);
     expect(await repo.saveDepreciationRun(db, 2026, depreciationLines(await repo.getAssets(db), 2026, ids))).toBeGreaterThan(0);
+  });
+});
+
+describe("決算整理（repo）：棚卸・決算整理仕訳の振り戻し", () => {
+  test("棚卸を保存して振替の仕訳を作り、作り直すと同じ仕訳を訂正する。締めた年は変えられない", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    await repo.saveInventoryCount(db, 2026, { amount: 0, rows: [{ name: "商品A", quantity: 10, unitPrice: 25_000 }] });
+    expect(await repo.getInventoryCount(db, 2026)).toEqual({ amount: 0, rows: [{ name: "商品A", quantity: 10, unitPrice: 25_000 }] });
+    const ids = { openingAccount: id("期首商品棚卸高"), closingAccount: id("期末商品棚卸高"), stock: id("棚卸資産") };
+    const e = await repo.saveYearEndRun(db, 2026, "inventory", inventoryLines(200_000, 250_000, ids));
+    const entry = (await repo.getEntry(db, e!))!;
+    expect([entry.date, entry.is_adjustment, entry.lines.map((l) => l.amount)]).toEqual(["2026-12-31", 1, [200_000, 200_000, 250_000, 250_000]]);
+    expect(await repo.saveYearEndRun(db, 2026, "inventory", inventoryLines(200_000, 260_000, ids))).toBe(e);
+    expect(await repo.getYearEndRun(db, 2026, "inventory")).toBe(e);
+    await repo.closeYear(db, 2026);
+    await expect(repo.saveInventoryCount(db, 2026, { amount: 1, rows: [] })).rejects.toThrow(/締め/);
+  });
+
+  test("決算整理仕訳を翌年1月1日付で振り戻す（1回だけ。台帳などから作った仕訳は対象外）", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const accrual = await repo.createEntry(db, "2026-12-31", [
+      { row_no: 1, side: "debit", account_id: id("地代家賃"), sub_account_id: null, amount: 50_000, memo: "12月分の家賃", tax_code: "none" },
+      { row_no: 1, side: "credit", account_id: id("未払金"), sub_account_id: null, amount: 50_000, memo: "12月分の家賃", tax_code: "none" },
+    ], null, "", true);
+    const r = await repo.createReversal(db, accrual);
+    const rev = (await repo.getEntry(db, r))!;
+    expect([rev.date, rev.is_adjustment, rev.lines.map((l) => [l.side, l.account_id])]).toEqual(["2027-01-01", 0, [["debit", id("未払金")], ["credit", id("地代家賃")]]]);
+    expect(await repo.getReversal(db, accrual)).toBe(r);
+    await expect(repo.createReversal(db, accrual)).rejects.toThrow(/作成済み/);
+    const ordinary = await repo.createEntry(db, "2026-05-01", lines);
+    await expect(repo.createReversal(db, ordinary)).rejects.toThrow(/決算整理仕訳だけ/);
+    const inv = await repo.saveYearEndRun(db, 2026, "inventory", [
+      { row_no: 1, side: "debit", account_id: id("棚卸資産"), sub_account_id: null, amount: 1000, memo: "", tax_code: "none" },
+      { row_no: 1, side: "credit", account_id: id("期末商品棚卸高"), sub_account_id: null, amount: 1000, memo: "", tax_code: "none" },
+    ]);
+    await expect(repo.createReversal(db, inv!)).rejects.toThrow(/作り直しの仕組み/);
   });
 });
 

@@ -4,7 +4,7 @@ import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
   House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Users, UserRound, Repeat,
-  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked,
+  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked, ClipboardCheck,
 } from "lucide-react";
 import { Popover } from "./components/Popover";
 import { copyText } from "./lib/clipboard";
@@ -30,6 +30,7 @@ import { GeneralLedgerPage } from "./features/books/GeneralLedgerPage";
 import { HistoryPage } from "./features/books/HistoryPage";
 import { EvidencePage } from "./features/evidence/EvidencePage";
 import { TrialBalancePage } from "./features/reports/TrialBalancePage";
+import { YearEndPage } from "./features/reports/YearEndPage";
 import { StatementsPage } from "./features/reports/StatementsPage";
 import { HomeUsePage } from "./features/reports/HomeUsePage";
 import { FixedAssetsPage } from "./features/reports/FixedAssetsPage";
@@ -50,7 +51,7 @@ import { YearNotice } from "./components/YearNotice";
 import { IntegrityNotice } from "./components/IntegrityNotice";
 
 export type Page =
-  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook" | "manual";
+  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook" | "manual" | "yearend";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
   { group: "", items: [{ id: "home", label: "ホーム", icon: <House size={17} /> }] },
@@ -74,6 +75,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
     group: "集計",
     items: [
       { id: "trial", label: "残高試算表", icon: <Scale size={17} /> },
+      { id: "yearend", label: "決算整理", icon: <ClipboardCheck size={17} /> },
       { id: "homeuse", label: "家事按分", icon: <Percent size={17} /> },
       { id: "assets", label: "固定資産台帳", icon: <Boxes size={17} /> },
       { id: "tax", label: "消費税", icon: <Receipt size={17} /> },
@@ -497,6 +499,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
           {page === "evidence" && <EvidencePage />}
           {page === "history" && <HistoryPage />}
           {page === "trial" && <TrialBalancePage />}
+          {page === "yearend" && <YearEndPage go={setPage} />}
           {page === "homeuse" && <HomeUsePage />}
           {page === "assets" && <FixedAssetsPage />}
           {page === "tax" && <TaxPage go={setPage} />}
