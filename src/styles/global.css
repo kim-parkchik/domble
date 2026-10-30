@@ -865,3 +865,32 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .bank-table { min-width: 1120px; }
 .bank-import { min-width: 0; }
 .bank-rules > .btn { align-self: flex-start; }
+
+/* ---------- 操作説明書（docs/manual の Markdown。features/settings/ManualPage.tsx） ---------- */
+.manual-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 14px; align-items: start; }
+.manual-toc { position: sticky; top: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 0; font-size: 12.5px; }
+.manual-toc .link-btn { text-align: left; font-weight: 500; padding: 3px 6px; }
+.manual-doc { max-width: 56em; padding: 22px 30px 28px; }
+.manual-print-meta { display: none; }
+.md { color: #2f3a48; }
+.md h1 { font-family: var(--font-title); font-size: 21px; font-weight: 600; letter-spacing: .04em; margin-bottom: 12px; color: var(--ink); }
+.md h2 { font-size: 15px; font-weight: 700; margin: 28px 0 10px; padding-bottom: 5px; border-bottom: 1px solid var(--rule); color: var(--ink); scroll-margin-top: 12px; }
+.md h3 { font-size: 13.5px; font-weight: 700; margin: 18px 0 6px; color: var(--ink); }
+.md p, .md li { font-size: 13px; line-height: 1.85; }
+.md p { margin: 0 0 10px; }
+.md ul, .md ol { margin: 0 0 10px; padding-left: 1.5em; }
+.md li > ul, .md li > ol { margin: 2px 0 4px; }
+.md code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: #eef2f6; padding: 0 4px; border-radius: 3px; }
+.md table { border-collapse: collapse; margin: 6px 0 14px; font-size: 12.5px; }
+.md th, .md td { border: 1px solid var(--rule-strong); padding: 5px 10px; text-align: left; vertical-align: top; line-height: 1.6; }
+.md th { background: #eef2f6; font-weight: 700; white-space: nowrap; }
+@media print {
+  .manual-layout { display: block; }
+  .manual-doc { max-width: none; padding: 0; }
+  .manual-print-meta { display: block; text-align: right; font-size: 8.5pt; color: #333; margin-bottom: 4mm; }
+  .md p, .md li { font-size: 9.5pt; line-height: 1.7; }
+  .md table { font-size: 9pt; }
+  .md h2 { break-after: avoid; }
+  .md h3 { break-after: avoid; }
+  .md tr, .md li { break-inside: avoid; }
+}

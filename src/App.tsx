@@ -4,7 +4,7 @@ import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
   House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Users, UserRound, Repeat,
-  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator,
+  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked,
 } from "lucide-react";
 import { Popover } from "./components/Popover";
 import { copyText } from "./lib/clipboard";
@@ -45,11 +45,12 @@ import { UnlockScreen } from "./features/start/UnlockScreen";
 import { NEEDS_KEY, WRONG_KEY, type Unlock } from "./db/encryption";
 import { UsersPage } from "./features/settings/UsersPage";
 import { EBookPage } from "./features/settings/EBookPage";
+import { ManualPage } from "./features/settings/ManualPage";
 import { YearNotice } from "./components/YearNotice";
 import { IntegrityNotice } from "./components/IntegrityNotice";
 
 export type Page =
-  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook";
+  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook" | "manual";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
   { group: "", items: [{ id: "home", label: "ホーム", icon: <House size={17} /> }] },
@@ -89,6 +90,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
       { id: "users", label: "ユーザー", icon: <Users size={17} /> },
       { id: "settings", label: "事業者設定", icon: <SettingsIcon size={17} /> },
       { id: "ebook", label: "電子帳簿保存法", icon: <ShieldCheck size={17} /> },
+      { id: "manual", label: "操作説明書", icon: <BookMarked size={17} /> },
     ],
   },
 ];
@@ -506,6 +508,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
           {page === "users" && <UsersPage />}
           {page === "settings" && <BusinessSettingsPage />}
           {page === "ebook" && <EBookPage go={setPage} />}
+          {page === "manual" && <ManualPage />}
         </main>
       </div>
     </div>

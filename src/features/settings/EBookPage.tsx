@@ -152,6 +152,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
                   <b>{x.label}</b>
                   {done && <span className="hint">{done.replace(/-/g, "/")} にチェック</span>}
                   {x.key === "filed" && <span className="hint">期限：{longDate(deadline)}</span>}
+                  {x.key === "documents" && <button className="link-btn" onClick={() => go("manual")}>操作説明書を開く</button>}
                   <p>{x.note}</p>
                 </div>
               </li>
