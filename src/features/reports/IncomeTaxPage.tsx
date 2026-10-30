@@ -91,13 +91,14 @@ export const IncomeTaxPage = () => {
       const [l, o] = await Promise.all([repo.getLines(db, yearStart(y), yearEnd(y)), repo.getOpening(db, y)]);
       const n = await repo.getStatementNotes(db, y);
       const li = Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0;
-      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, l), filingTypeOf(y), input, y, { scale: reScale, landInterest: li }).biz };
+      const scale = await repo.getRealEstateScale(db, y); // 不動産所得の規模はその年のもの
+      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, l), filingTypeOf(y), input, y, { scale, landInterest: li }).biz };
     };
     carriedFromPast(year, load).then((v) => alive && setPastCarry(v)).catch(console.error);
     return () => {
       alive = false;
     };
-  }, [db, year, dataVersion, accounts, filingTypeOf, reScale]);
+  }, [db, year, dataVersion, accounts, filingTypeOf]);
   const carried = useMemo(() => carriedLosses(x, year, pastCarry), [x, year, pastCarry]);
   const result = useMemo(() => computeIncomeTax(x, biz, year, carried), [x, biz, year, carried]);
   const fourth = result.loss.fourth;

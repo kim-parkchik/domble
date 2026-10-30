@@ -20,6 +20,24 @@ export const monthEnd = (year: number, month: number) => {
 /** 締めた状態の言い方（「締めなし」「9月まで締め」「年の締め（12月まで）」） */
 export const closedLabel = (month: number) => (month === 0 ? "締めなし" : month === 12 ? "年の締め（12月まで）" : `${month}月まで締め`);
 
+/**
+ * 「何年から」で持つ設定（消費税・申告の種類・家事按分・科目名・決算書の欄・不動産所得の規模など）で、
+ * year 年の行を変えると設定が変わってしまう、年の締めをした年（year 年から、次に設定を変えた年の前まで。year 年そのものを含む）
+ *  fromYears：同じ設定（科目ごとのものは、その科目）の行の年
+ * schema.ts の inheritGuards と同じ条件
+ */
+export const inheritingClosedYears = (fromYears: readonly number[], year: number, closedYears: readonly number[]) => {
+  const next = Math.min(Infinity, ...fromYears.filter((y) => y > year));
+  return closedYears.filter((y) => y >= year && y < next).sort((a, b) => a - b);
+};
+
+/** 締めた年の設定が変わるので変えられない、の知らせ */
+export const inheritMessage = (what: string, year: number, closed: readonly number[]) => {
+  if (closed[0] === year) return `${year}年は締め済みのため変更できません。事業者設定で締めを戻してください。`;
+  const ys = closed.map((y) => `${y}年`).join("・");
+  return `${ys}は締め済みで、${year}年の${what}を引き継いでいます。変えると${ys}の${what}も変わるため、変更できません。事業者設定で${ys}の締めを戻してください。`;
+};
+
 /** その日付を含む締め（無ければ undefined） */
 export const closingOf = (closings: FiscalClosing[], date: string) =>
   closings.find((c) => c.period_start <= date && date <= c.period_end);

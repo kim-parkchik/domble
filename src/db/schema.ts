@@ -55,6 +55,23 @@ const assetRateClosed = (r: string) =>
      WHERE c.period_end = (c.fiscal_year || '-12-31') AND c.fiscal_year >= ${r}.from_year AND c.fiscal_year <= ${assetEnd("a")}
        AND NOT EXISTS (SELECT 1 FROM asset_rates x WHERE x.asset_id = ${r}.asset_id AND x.from_year > ${r}.from_year AND x.from_year <= c.fiscal_year))`;
 
+/**
+ * 「何年から」で持つ設定：行を足す・変える・消すと、その年から次に設定を変えた年の前まで設定が変わる。
+ * その間に年の締めをした年があれば止める（lib/closing.ts の inheritingClosedYears と同じ条件）。値の変わらない UPDATE は通す
+ *  keys：同じ設定の行をまとめる列（科目ごとなど）、values：設定の値の列
+ */
+const inheritGuards = (prefix: string, table: string, keys: string[], values: string[]) => {
+  const covers = (r: string) =>
+    `EXISTS (SELECT 1 FROM fiscal_closings c WHERE c.period_end = (c.fiscal_year || '-12-31') AND c.fiscal_year >= ${r}.from_year
+       AND NOT EXISTS (SELECT 1 FROM ${table} x WHERE ${[...keys.map((k) => `x.${k} = ${r}.${k}`), `x.from_year > ${r}.from_year`, "x.from_year <= c.fiscal_year"].join(" AND ")}))`;
+  const changed = [...keys, "from_year", ...values].map((c) => `OLD.${c} IS NOT NEW.${c}`).join(" OR ");
+  return [
+    guard(`${prefix}_i_ins`, "INSERT", table, covers("NEW")),
+    guard(`${prefix}_i_upd`, "UPDATE", table, `(${changed}) AND (${covers("OLD")} OR ${covers("NEW")})`),
+    guard(`${prefix}_i_del`, "DELETE", table, covers("OLD")),
+  ];
+};
+
 const CLOSED_TRIGGERS: string[] = [
   // 仕訳：日付で判定（訂正で日付を締め済みの年度へ動かす／から動かすのも不可）
   guard("trg_closed_entries_ins", "INSERT", "journal_entries", dateClosed("NEW.date")),
@@ -91,6 +108,14 @@ const CLOSED_TRIGGERS: string[] = [
   guard("trg_closed_asset_rates_ins", "INSERT", "asset_rates", assetRateClosed("NEW")),
   guard("trg_closed_asset_rates_upd", "UPDATE", "asset_rates", `${assetRateClosed("OLD")} OR ${assetRateClosed("NEW")}`),
   guard("trg_closed_asset_rates_del", "DELETE", "asset_rates", assetRateClosed("OLD")),
+  // 「何年から」の設定：締めた年が引き継いでいる設定は変えられない
+  // 年の途中から課税事業者になった日（taxable_from）は、その年だけのもので引き継がない
+  ...inheritGuards("trg_closed_tax_years", "tax_years", [], ["status", "method", "business_class", "deduction", "voluntary_interim"]),
+  ...inheritGuards("trg_closed_filing_years", "filing_years", [], ["filing_type"]),
+  ...inheritGuards("trg_closed_homeuse_rates", "home_use_rates", ["account_id"], ["rate", "method", "basis"]),
+  ...inheritGuards("trg_closed_master_names", "master_names", ["target_type", "target_id"], ["name"]),
+  ...inheritGuards("trg_closed_account_lines", "account_lines", ["account_id"], ["line"]),
+  ...inheritGuards("trg_closed_real_estate_years", "real_estate_years", [], ["scale"]),
 ];
 
 /**
@@ -244,6 +269,26 @@ export const SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS filing_years (
     from_year INTEGER PRIMARY KEY,
     filing_type TEXT NOT NULL CHECK (filing_type IN ('blue65','blue55','blue10','white'))
+  );`,
+
+  /**
+   * 青色申告決算書で書く欄（科目ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ）。line = '' は科目名から自動
+   * 行の無い年は accounts.statement_line（年ごとにする前の設定）
+   */
+  `CREATE TABLE IF NOT EXISTS account_lines (
+    account_id INTEGER NOT NULL REFERENCES accounts(id),
+    from_year INTEGER NOT NULL,
+    line TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (account_id, from_year)
+  );`,
+
+  /**
+   * 不動産所得の有無と規模（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ）。none / small（事業的規模でない）/ business（事業的規模）
+   * 行の無い年は settings.real_estate（年ごとにする前の設定）
+   */
+  `CREATE TABLE IF NOT EXISTS real_estate_years (
+    from_year INTEGER PRIMARY KEY,
+    scale TEXT NOT NULL CHECK (scale IN ('none','small','business'))
   );`,
 
   /** 消費税の中間納付税額（年度ごと。申告した税額。消費税＝国税分と地方消費税＝譲渡割額） */

@@ -403,7 +403,7 @@ describe("不動産所得（repo）", () => {
     await repo.saveRealEstate(db, "business");
     expect((await repo.getSettings(db)).real_estate).toBe("business");
     expect((await repo.getAccounts(db, 2026)).filter((a) => a.income_kind === "realestate").every((a) => a.is_active === 1)).toBe(true);
-    expect((await repo.getMasterHistory(db)).find((x) => x.label === "不動産所得")).toMatchObject({ old_value: "なし", new_value: "あり（事業的規模）" });
+    expect((await repo.getMasterHistory(db)).find((x) => x.label === "不動産所得")).toMatchObject({ old_value: "なし", new_value: "あり（事業的規模）（2026年から）" });
     await expect(repo.saveRealEstate(db, "big" as never)).rejects.toThrow(/区分/);
   });
   test("足す科目は損益の科目だけ不動産所得にできる。固定資産は所得の区分を持つ", async () => {
@@ -1480,11 +1480,77 @@ describe("決算書の欄（repo）", () => {
     const id = (n: string) => accts.find((a) => a.name === n)!.id;
     await repo.setAccountStatementLine(db, id("車両費"), "旅費交通費");
     expect((await repo.getAccounts(db, 2026)).find((a) => a.name === "車両費")!.statement_line).toBe("旅費交通費");
-    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "車両費", old_value: "決算書の欄 自動（追加の欄）", new_value: "決算書の欄 旅費交通費" });
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "車両費", old_value: "決算書の欄 自動（追加の欄）", new_value: "決算書の欄 旅費交通費（2026年から）" });
     await repo.setAccountStatementLine(db, id("車両費"), null);
     expect((await repo.getAccounts(db, 2026)).find((a) => a.name === "車両費")!.statement_line).toBeNull();
     await expect(repo.setAccountStatementLine(db, id("売上高"), "雑費")).rejects.toThrow(/売上/);
     await expect(repo.setAccountStatementLine(db, id("車両費"), "現金")).rejects.toThrow(/決算書の欄/);
+  });
+});
+
+describe("「何年から」の設定と年の締め（repo）", () => {
+  const atYear = (raw: Sqlite, y: number) => raw.run("UPDATE settings SET fiscal_year = ?", [y]);
+
+  test("決算書の欄・不動産所得の規模は、表示中の年から。前の年はそのまま。前の年と同じに戻すと、その年の行は消す", async () => {
+    const { db, raw } = strict;
+    const car = (await repo.getAccounts(db, 2026)).find((a) => a.name === "車両費")!.id;
+    const lineIn = async (y: number) => (await repo.getAccounts(db, y)).find((a) => a.id === car)!.statement_line;
+    atYear(raw, 2027);
+    await repo.setAccountStatementLine(db, car, "旅費交通費");
+    expect([await lineIn(2026), await lineIn(2027), await lineIn(2028)]).toEqual([null, "旅費交通費", "旅費交通費"]);
+    atYear(raw, 2028);
+    await repo.setAccountStatementLine(db, car, null);
+    expect([await lineIn(2027), await lineIn(2028)]).toEqual(["旅費交通費", null]);
+    atYear(raw, 2027);
+    await repo.setAccountStatementLine(db, car, null);
+    expect(raw.query("SELECT from_year, line FROM account_lines").all()).toEqual([{ from_year: 2028, line: "" }]);
+
+    await repo.saveRealEstate(db, "small");
+    expect([await repo.getRealEstateScale(db, 2026), await repo.getRealEstateScale(db, 2027)]).toEqual(["none", "small"]);
+    expect((await repo.getSettings(db)).real_estate).toBe("small");
+    atYear(raw, 2026);
+    expect((await repo.getSettings(db)).real_estate).toBe("none");
+  });
+
+  test("締めた年が引き継いでいる設定は変えられない（消費税・申告の種類・家事按分・科目名・決算書の欄・不動産所得の規模）", async () => {
+    const { db, raw } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    await repo.createSub(db, id("普通預金"), "A銀行");
+    const sub = (await repo.getSubAccounts(db, 2026)).find((x) => x.name === "A銀行")!.id;
+    await repo.saveTaxYear(db, { from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 });
+    await repo.saveHomeUseRate(db, 2026, { account_id: id("水道光熱費"), rate: 40, method: "yearend", basis: "" });
+    // 2026年は締めずに、2027年を締める（2027年は 2026年の設定を引き継いでいる）
+    await repo.closeYear(db, 2027);
+    const msg = (what: string) => new RegExp(`2027年は締め済みで、2026年の${what}を引き継いでいます`);
+    await expect(repo.saveTaxYear(db, { from_year: 2026, status: "simplified", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }))
+      .rejects.toThrow(msg("消費税の設定"));
+    await expect(repo.saveFilingYear(db, 2026, "white")).rejects.toThrow(msg("申告の種類"));
+    await expect(repo.saveHomeUseRate(db, 2026, { account_id: id("水道光熱費"), rate: 80, method: "yearend", basis: "" })).rejects.toThrow(msg("家事按分の設定"));
+    await expect(repo.updateAccount(db, id("車両費"), { code: accts.find((a) => a.name === "車両費")!.code, name: "自動車費", kana: "" })).rejects.toThrow(msg("科目名"));
+    await expect(repo.renameSub(db, sub, "B銀行")).rejects.toThrow(msg("補助科目の名前"));
+    await expect(repo.setAccountStatementLine(db, id("車両費"), "旅費交通費")).rejects.toThrow(msg("決算書の欄"));
+    await expect(repo.saveRealEstate(db, "small")).rejects.toThrow(msg("不動産所得の規模"));
+    // 値の変わらない保存は何もしない（その年の行を足すと、締めた年の引き継ぎ元が変わるため）
+    await repo.saveFilingYear(db, 2026, "blue65");
+    await repo.saveHomeUseRate(db, 2026, { account_id: id("水道光熱費"), rate: 40, method: "yearend", basis: "" });
+    expect(raw.query("SELECT COUNT(*) AS n FROM filing_years").get()).toEqual({ n: 0 });
+    // ソフトを通さない書き込みもトリガーで止める（値の変わらない UPDATE は通す）
+    expect(() => raw.run("UPDATE tax_years SET status = 'simplified' WHERE from_year = 2026")).toThrow(/締め済み/);
+    expect(() => raw.run("INSERT INTO filing_years (from_year, filing_type) VALUES (2026, 'white')")).toThrow(/締め済み/);
+    expect(() => raw.run("DELETE FROM home_use_rates WHERE from_year = 2026")).toThrow(/締め済み/);
+    expect(() => raw.run("INSERT INTO account_lines (account_id, from_year, line) VALUES (?, 2025, '雑費')", [id("車両費")])).toThrow(/締め済み/);
+    expect(() => raw.run("INSERT INTO real_estate_years (from_year, scale) VALUES (2026, 'small')")).toThrow(/締め済み/);
+    raw.run("UPDATE tax_years SET status = 'standard' WHERE from_year = 2026");
+    raw.run("UPDATE tax_years SET taxable_from = '2026-04-01' WHERE from_year = 2026"); // その年だけのもの
+    // 2027年に自分の設定があれば、2026年は変えられる
+    await repo.reopenYear(db, 2027, "設定の確認");
+    atYear(raw, 2027);
+    await repo.saveRealEstate(db, "business");
+    await repo.closeYear(db, 2027);
+    atYear(raw, 2026);
+    await repo.saveRealEstate(db, "small");
+    expect([await repo.getRealEstateScale(db, 2026), await repo.getRealEstateScale(db, 2027)]).toEqual(["small", "business"]);
   });
 });
 

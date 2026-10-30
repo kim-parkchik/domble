@@ -107,13 +107,14 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, filing = t
 };
 
 /** 申告の種類（年度ごと。決めた設定は、次に変える年まで引き継ぐ） */
-/** 不動産所得の有無と規模。「あり」にすると不動産所得の科目（非表示で入っている）を表示する */
+/** 不動産所得の有無と規模（年度ごと。決めた設定は、次に変える年まで引き継ぐ）。「あり」にすると不動産所得の科目（非表示で入っている）を表示する */
 const REAL_ESTATE_OPTIONS: [RealEstateScale, string][] = [
   ["none", "なし"], ["small", "あり（事業的規模でない）"], ["business", "あり（事業的規模：おおむね5棟10室以上など）"],
 ];
 const RealEstateSection = () => {
-  const { db, settings, reloadSettings, reloadAccounts, readOnly, can, bump } = useAppContext();
+  const { db, year, settings, reloadSettings, reloadAccounts, readOnly, isClosed, can, bump } = useAppContext();
   const toast = useToast();
+  // 表示中の年の規模
   const current = settings.real_estate ?? "none";
   const [scale, setScale] = useState<RealEstateScale>(current);
   useEffect(() => setScale(current), [current]);
@@ -123,28 +124,29 @@ const RealEstateSection = () => {
       await reloadSettings();
       await reloadAccounts();
       bump();
-      toast(`不動産所得を「${REAL_ESTATE_OPTIONS.find(([k]) => k === scale)![1]}」にしました`);
+      toast(`${year}年からの不動産所得を「${REAL_ESTATE_OPTIONS.find(([k]) => k === scale)![1]}」にしました`);
     } catch (e) {
       toast(`保存できませんでした：${String(e).replace(/^Error: /, "")}`, "error");
     }
   };
   return (
     <>
-      <h2 className="sheet-h">不動産所得</h2>
+      <h2 className="sheet-h">不動産所得（{year}年）</h2>
       <p className="prose">
         家賃・地代などの不動産の貸付けの収入があるときは「あり」にします。不動産所得の科目（賃貸料・礼金・権利金・更新料、租税公課（不動産）など）が使えるようになり、
         決算書の画面に不動産所得用の決算書が出ます。預金や事業主貸・事業主借などは事業所得と共通です。
         事業的規模でない貸付け（事業所得も無いとき）は、青色申告特別控除が10万円までで、専従者給与も必要経費になりません。
+        年ごとに決め、決めた設定は次に変える年まで引き継がれます。
       </p>
       <form className="settings-form" onSubmit={(e) => { e.preventDefault(); save(); }}>
         <label className="field">
           <span>不動産所得</span>
-          <select className="input" value={scale} onChange={(e) => setScale(e.target.value as RealEstateScale)} disabled={readOnly || !can("settings")}>
+          <select className="input" value={scale} onChange={(e) => setScale(e.target.value as RealEstateScale)} disabled={isClosed || readOnly || !can("settings")}>
             {REAL_ESTATE_OPTIONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </label>
         <div>
-          <button type="submit" className="btn primary" disabled={readOnly || !can("settings") || scale === current}>保存する</button>
+          <button type="submit" className="btn primary" disabled={isClosed || readOnly || !can("settings") || scale === current}>保存する</button>
         </div>
       </form>
     </>

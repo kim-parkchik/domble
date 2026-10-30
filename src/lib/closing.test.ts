@@ -3,7 +3,7 @@ import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account, FiscalClosing } from "./types";
 import { subKey } from "./types";
 import type { FlatLine } from "./accounting";
-import { closingOf, expectedNextOpening, openingMismatches, yearsToAutoClose } from "./closing";
+import { closingOf, expectedNextOpening, inheritingClosedYears, inheritMessage, openingMismatches, yearsToAutoClose } from "./closing";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
 const id = (name: string) => accounts.find((a) => a.name === name)!.id;
@@ -71,5 +71,19 @@ describe("記録の連鎖：あとから足した列", () => {
       historyContent(row, ["id", "kind", "detail", "recorded_at"]),
     );
     expect(historyContent({ ...row, user_id: 3 }, ["id", "kind", "detail", "recorded_at", "user_id?"])).toContain('["user_id",3]');
+  });
+});
+
+describe("「何年から」の設定と年の締め", () => {
+  test("その年の行を変えると設定が変わる、締めた年（次に変えた年の前まで）", () => {
+    // 2024年から・2027年から の設定。2025・2026年は 2024年の設定を引き継ぐ
+    expect(inheritingClosedYears([2024, 2027], 2024, [2025])).toEqual([2025]);
+    expect(inheritingClosedYears([2024, 2027], 2024, [2027])).toEqual([]);
+    expect(inheritingClosedYears([2024, 2027], 2026, [2025, 2026])).toEqual([2026]);
+    expect(inheritingClosedYears([], 2024, [2023, 2026, 2025])).toEqual([2025, 2026]);
+  });
+  test("知らせ：その年が締め済みか、締めた年が引き継いでいるか", () => {
+    expect(inheritMessage("消費税の設定", 2025, [2025])).toMatch(/^2025年は締め済み/);
+    expect(inheritMessage("消費税の設定", 2024, [2025, 2026])).toMatch(/2025年・2026年は締め済みで、2024年の消費税の設定を引き継いでいます/);
   });
 });

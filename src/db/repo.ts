@@ -13,7 +13,7 @@ import type {
 } from "../lib/types";
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
-import { closedLabel, closedMonthOf, monthEnd, yearsToAutoClose } from "../lib/closing";
+import { closedLabel, closedMonthOf, inheritingClosedYears, inheritMessage, monthEnd, yearsToAutoClose } from "../lib/closing";
 import { isValidInvoiceNo, normalizeInvoiceNo, type CounterpartyInput } from "../lib/counterparty";
 import {
   builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isInvoiceKind, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
@@ -145,7 +145,8 @@ export const getSettings = async (db: Database): Promise<Settings> => {
             business_kana, occupation, householder_name, householder_relation, jan1_address, office_phone, refund_mode, bank_name, bank_kind,
             branch_name, branch_kind, deposit_kind, account_no, yucho_symbol, yucho_number,
             office_address, union_name, agent_name, agent_address, agent_phone,
-            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at, real_estate
+            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at,
+            COALESCE((SELECT r.scale FROM real_estate_years r WHERE r.from_year <= settings.fiscal_year ORDER BY r.from_year DESC LIMIT 1), real_estate) AS real_estate
        FROM settings WHERE id = 1`,
   );
   return rows[0];
@@ -231,6 +232,16 @@ const closingRow = async (db: Database, year: number) =>
 /** 年度が年の締め（12月まで）をしてあれば止める（期首残高・家事按分など、年度ごとのもの） */
 const assertYearOpen = async (db: Database, year: number) => {
   if (closedMonthOf(await closingRow(db, year)) === 12) throw new Error(closedMessage(year));
+};
+
+/**
+ * 「何年から」で持つ設定の year 年の行を変えるとき、設定が変わってしまう年の締めをした年（lib/closing.ts。トリガーでも拒否）
+ *  changed = false（値は変わらない）なら止めずに、締めた年を返す（そのときは行を足さない：足すと締めた年の引き継ぎ元が変わる）
+ */
+const inheritCheck = async (db: Database, fromYears: number[], year: number, what: string, changed: boolean) => {
+  const closed = inheritingClosedYears(fromYears, year, await yearClosedYears(db));
+  if (closed.length && changed) throw new Error(inheritMessage(what, year, closed));
+  return closed;
 };
 
 /** 日付が締めた月に入っていれば止める（仕訳） */
@@ -337,20 +348,38 @@ const saveSettings_ = async (db: Database, s: Settings) => {
 };
 
 /**
- * 不動産所得の有無と規模（事業者設定）。「あり」にすると、不動産所得の初期科目（非表示で入っている）を表示する。
+ * 不動産所得の有無と規模（事業者設定。年度ごと：表示中の年から次に変えた年の前まで。real_estate_years）。
+ * 「あり」にすると、不動産所得の初期科目（非表示で入っている）を表示する。
  * 規模は青色申告特別控除（事業所得が無く事業的規模でなければ 10万円まで）と専従者給与に使う。変更は履歴に残す（厳密モード）
+ * 締めた年の規模が変わる変更はできない（getSettings の real_estate は、表示中の年の規模）
  */
 const REAL_ESTATE_LABEL: Record<RealEstateScale, string> = { none: "なし", small: "あり（事業的規模でない）", business: "あり（事業的規模）" };
 const saveRealEstate_ = async (db: Database, scale: RealEstateScale) => {
   if (!(scale in REAL_ESTATE_LABEL)) throw new Error("不動産所得の区分が正しくありません");
-  const before = (await getSettings(db)).real_estate ?? "none";
+  const year = await currentYear(db);
+  const before = await getRealEstateScale(db, year);
   if (before === scale) return;
-  await db.execute("UPDATE settings SET real_estate = ? WHERE id = 1", [scale]);
+  const rows = await db.select<{ from_year: number; scale: RealEstateScale }[]>("SELECT from_year, scale FROM real_estate_years ORDER BY from_year");
+  await inheritCheck(db, rows.map((r) => r.from_year), year, "不動産所得の規模", true);
+  // 前の年から引き継ぐ規模と同じなら、この年の行は要らない
+  const base = (await db.select<{ real_estate: RealEstateScale }[]>("SELECT real_estate FROM settings WHERE id = 1"))[0]?.real_estate ?? "none";
+  const inherited = rows.filter((r) => r.from_year < year).pop()?.scale ?? base;
+  if (inherited === scale) await db.execute("DELETE FROM real_estate_years WHERE from_year = ?", [year]);
+  else await db.execute("INSERT INTO real_estate_years (from_year, scale) VALUES (?, ?) ON CONFLICT (from_year) DO UPDATE SET scale = excluded.scale", [year, scale]);
   if (scale !== "none") await db.execute("UPDATE accounts SET is_active = 1 WHERE income_kind = 'realestate' AND is_system = 1");
   await logMaster(db, {
-    target_type: "setting", target_id: 0, action: "change", fiscal_year: await currentYear(db), label: "不動産所得", old_value: REAL_ESTATE_LABEL[before], new_value: REAL_ESTATE_LABEL[scale],
+    target_type: "setting", target_id: 0, action: "change", fiscal_year: year, label: "不動産所得",
+    old_value: REAL_ESTATE_LABEL[before], new_value: `${REAL_ESTATE_LABEL[scale]}（${year}年から）`,
   });
 };
+
+/** その年の不動産所得の有無と規模 */
+export const getRealEstateScale = async (db: Database, year: number): Promise<RealEstateScale> =>
+  (await db.select<{ s: RealEstateScale }[]>(
+    `SELECT COALESCE((SELECT r.scale FROM real_estate_years r WHERE r.from_year <= ? ORDER BY r.from_year DESC LIMIT 1), real_estate) AS s
+       FROM settings WHERE id = 1`,
+    [year],
+  ))[0]?.s ?? "none";
 
 // ────────────────────────────────────────────
 // 申告の種類（年度ごとの設定。考え方は lib/filing.ts）
@@ -369,10 +398,7 @@ const saveFilingYear_ = async (db: Database, year: number, type: FilingType) => 
   const before = filingOf(rows, (await getSettings(db)).filing_type, year);
   // 締めた年がこの設定を引き継ぐなら、その年の申告の種類まで変わってしまう
   const next = rows.find((r) => r.from_year > year)?.from_year ?? Infinity;
-  const closedAfter = (await getClosings(db)).filter((c) => c.fiscal_year > year && c.fiscal_year < next && closedMonthOf(c) === 12).map((c) => c.fiscal_year);
-  if (before.type !== type && closedAfter.length) {
-    throw new Error(`${closedAfter[0]}年は締め済みで、${year}年の申告の種類を引き継いでいます。先に${closedAfter[0]}年の申告の種類を決めてから締めてください`);
-  }
+  if ((await inheritCheck(db, rows.map((r) => r.from_year), year, "申告の種類", before.type !== type)).length) return;
   // 青色だけの少額減価償却資産の特例を使っている資産があれば、白色にはできない（この設定を引き継ぐ年まで見る）
   if (!isBlue(type)) {
     const r = await db.select<{ n: number }[]>(
@@ -427,6 +453,12 @@ const saveTaxYear_ = async (db: Database, t: TaxYear) => {
     if (d) throw new Error(d);
   }
   const before = taxYearOf(years, row.from_year);
+  // 締めた年がこの設定を引き継ぐなら、その年の設定まで変わってしまう（年の途中から課税事業者になった日は、その年だけのもので引き継がない）
+  const inheritedKeys = ["status", "method", "business_class", "deduction", "voluntary_interim"] as const;
+  const closedAfter = await inheritCheck(
+    db, years.map((y) => y.from_year), row.from_year, "消費税の設定", inheritedKeys.some((k) => before[k] !== row[k]),
+  );
+  if (closedAfter.length && before.inherited) return;
   await db.execute(
     `INSERT INTO tax_years (from_year, status, method, business_class, taxable_from, deduction, voluntary_interim) VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (from_year) DO UPDATE SET status = excluded.status, method = excluded.method, business_class = excluded.business_class,
@@ -820,9 +852,12 @@ const setInputPeriodDays_ = async (db: Database, n: number) => {
 export const getAccounts = (db: Database, year: number) =>
   db.select<Account[]>(
     `SELECT a.id, a.code, ${effectiveName("account", "a")} AS name, a.kana, a.category, a.normal_side,
-            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class, a.default_purchase_use, a.statement_line, a.income_kind
+            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class, a.default_purchase_use, a.income_kind,
+            CASE WHEN EXISTS (SELECT 1 FROM account_lines l WHERE l.account_id = a.id AND l.from_year <= ?)
+                 THEN (SELECT NULLIF(l.line, '') FROM account_lines l WHERE l.account_id = a.id AND l.from_year <= ? ORDER BY l.from_year DESC LIMIT 1)
+                 ELSE a.statement_line END AS statement_line
        FROM accounts a ORDER BY a.code`,
-    [year],
+    [year, year, year],
   );
 
 const accountLabel = async (db: Database, id: number) => {
@@ -880,7 +915,10 @@ const setAccountPurchaseUse_ = async (db: Database, id: number, use: PurchaseUse
   await logMaster(db, { target_type: "account", target_id: id, action: "change", fiscal_year: year, label: before.name, old_value: text(before.default_purchase_use), new_value: text(use) });
 };
 
-/** 青色申告決算書で書く欄（null = 科目名から自動）。変更は履歴に残す */
+/**
+ * 青色申告決算書で書く欄（null = 科目名から自動）。表示中の年から次に変えた年の前まで（account_lines）。前の年の欄はそのまま。
+ * 締めた年の欄が変わる変更はできない。変更は履歴に残す
+ */
 const setAccountStatementLine_ = async (db: Database, id: number, line: string | null) => {
   const year = await currentYear(db);
   const before = (await getAccounts(db, year)).find((a) => a.id === id);
@@ -889,9 +927,24 @@ const setAccountStatementLine_ = async (db: Database, id: number, line: string |
   if (!section) throw new Error("売上（収入）金額の科目は、決算書の欄を選べません");
   if (line !== null && !lineOptions(section).some(([v]) => v === line)) throw new Error("決算書の欄が正しくありません");
   if ((before.statement_line ?? null) === line) return;
-  await db.execute("UPDATE accounts SET statement_line = ? WHERE id = ?", [line, id]);
+  const rows = await db.select<{ from_year: number; line: string }[]>("SELECT from_year, line FROM account_lines WHERE account_id = ? ORDER BY from_year", [id]);
+  await inheritCheck(db, rows.map((r) => r.from_year), year, "決算書の欄", true);
+  // 前の年から引き継ぐ欄と同じなら、この年の行は要らない
+  const base = (await db.select<{ l: string | null }[]>("SELECT statement_line AS l FROM accounts WHERE id = ?", [id]))[0]?.l ?? null;
+  const prev = rows.filter((r) => r.from_year < year).pop();
+  const inherited = prev ? prev.line || null : base;
+  if (inherited === line) await db.execute("DELETE FROM account_lines WHERE account_id = ? AND from_year = ?", [id, year]);
+  else {
+    await db.execute(
+      "INSERT INTO account_lines (account_id, from_year, line) VALUES (?, ?, ?) ON CONFLICT (account_id, from_year) DO UPDATE SET line = excluded.line",
+      [id, year, line ?? ""],
+    );
+  }
   const text = (l: string | null) => `決算書の欄 ${l === null ? `自動（${autoLineLabel(before)}）` : l === EXTRA_LINE ? "追加の欄" : l}`;
-  await logMaster(db, { target_type: "account", target_id: id, action: "change", fiscal_year: year, label: before.name, old_value: text(before.statement_line ?? null), new_value: text(line) });
+  await logMaster(db, {
+    target_type: "account", target_id: id, action: "change", fiscal_year: year, label: before.name,
+    old_value: text(before.statement_line ?? null), new_value: `${text(line)}（${year}年から）`,
+  });
 };
 const autoLineLabel = (a: Account) => (autoLine(a) === EXTRA_LINE ? "追加の欄" : autoLine(a));
 
@@ -972,7 +1025,11 @@ const updateAccount_ = async (db: Database, id: number, data: Omit<AccountInputD
   if (before.is_system && data.code !== before.code) throw new Error("初期の科目はコードを変えられません");
   const name = data.name.trim();
   if (await isStrict(db)) {
-    if (name !== before.name) await assertYearOpen(db, year);
+    if (name !== before.name) {
+      await assertYearOpen(db, year);
+      const ys = await db.select<{ y: number }[]>("SELECT from_year AS y FROM master_names WHERE target_type = 'account' AND target_id = ?", [id]);
+      await inheritCheck(db, ys.map((r) => r.y), year, "科目名", true);
+    }
     await db.execute("UPDATE accounts SET code = ?, kana = ?, sort_order = ? WHERE id = ?", [
       data.code, data.kana.trim(), Number(data.code) * 10, id,
     ]);
@@ -1000,6 +1057,7 @@ const deleteAccount_ = async (db: Database, id: number) => {
   // 定型仕訳からこの科目（とその補助科目）の部分を外す
   const templates = await cleanTemplates_(db, { accountId: id });
   await db.execute("DELETE FROM sub_accounts WHERE account_id = ?", [id]);
+  await db.execute("DELETE FROM account_lines WHERE account_id = ?", [id]);
   await db.execute("DELETE FROM accounts WHERE id = ? AND is_system = 0", [id]);
   await logMaster(db, { target_type: "account", target_id: id, action: "delete", fiscal_year: await currentYear(db), label, old_value: label, new_value: "" });
   return templates;
@@ -1053,6 +1111,8 @@ const renameSub_ = async (db: Database, id: number, name: string) => {
   if (!before || before.name === n) return;
   if (await isStrict(db)) {
     await assertYearOpen(db, year);
+    const ys = await db.select<{ y: number }[]>("SELECT from_year AS y FROM master_names WHERE target_type = 'sub' AND target_id = ?", [id]);
+    await inheritCheck(db, ys.map((r) => r.y), year, "補助科目の名前", true);
     await db.execute(
       "INSERT INTO master_names (target_type, target_id, from_year, name) VALUES ('sub', ?, ?, ?) ON CONFLICT (target_type, target_id, from_year) DO UPDATE SET name = excluded.name",
       [id, year, n],
@@ -1602,6 +1662,10 @@ export const getHomeUseRates = (db: Database, year: number) =>
 const saveHomeUseRate_ = async (db: Database, year: number, rate: Omit<HomeUseRate, "from_year">) => {
   await assertYearOpen(db, year);
   const before = (await getHomeUseRates(db, year)).find((r) => r.account_id === rate.account_id);
+  // 締めた年がこの設定を引き継ぐなら、その年の按分まで変わってしまう
+  const years = await db.select<{ y: number }[]>("SELECT from_year AS y FROM home_use_rates WHERE account_id = ?", [rate.account_id]);
+  const same = !!before && before.rate === rate.rate && before.method === rate.method && before.basis === rate.basis.trim();
+  if ((await inheritCheck(db, years.map((r) => r.y), year, "家事按分の設定", !same)).length) return;
   await db.execute(
     `INSERT INTO home_use_rates (account_id, from_year, rate, method, basis) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (account_id, from_year) DO UPDATE SET rate = excluded.rate, method = excluded.method, basis = excluded.basis`,
