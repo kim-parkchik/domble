@@ -186,8 +186,8 @@ export const EvidencePage = () => {
                         if (!st) return null;
                         return (
                           <>
-                            <span className="badge badge-scan" title={`スキャナ保存（${DOC_CLASS_LABEL[e.doc_class as DocClass] ?? ""}）`}>スキャナ</span>
-                            {st.late && <span className="badge badge-delete" title={`入力期限 ${st.deadline} を過ぎて取り込みました。紙の原本も保存してください`}>入力期間外</span>}
+                            <span className="badge badge-scan" title={`スキャナ保存（${DOC_CLASS_LABEL[e.doc_class as DocClass] ?? ""}）。タイムスタンプが無いので、紙の原本も保存してください`}>スキャナ</span>
+                            {st.late && <span className="badge badge-delete" title={`入力期限 ${st.deadline}（参考。PC の時計で判定）を過ぎて取り込みました`}>入力期間外</span>}
                             {st.needsLink && !e.is_void && <span className="badge badge-update" title="重要書類は仕訳とのひも付けが必要です（帳簿との相互関連性）">要ひも付け</span>}
                           </>
                         );

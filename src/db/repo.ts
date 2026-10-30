@@ -2056,7 +2056,7 @@ const deleteCustomHoliday_ = async (db: Database, date: string) => {
 };
 
 /** スキャナ保存を使えないときのメッセージ */
-export const SCAN_STRICT_ONLY = "スキャナ保存は、電子帳簿保存法に対応した保存方式（厳密モード）の帳簿でだけ使えます（訂正・削除の履歴が残ることが、タイムスタンプの代わりになるため）";
+export const SCAN_STRICT_ONLY = "スキャナ保存は、電子帳簿保存法に対応した保存方式（厳密モード）の帳簿でだけ使えます（訂正・削除の履歴を残すことが、スキャナ保存の要件のひとつのため）";
 
 /** スキャナ保存の入力期間の方式 */
 export const getScanInputMethod = async (db: Database): Promise<ScanInputMethod> => {

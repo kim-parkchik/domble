@@ -1,7 +1,8 @@
 /**
  * 証憑の登録・訂正フォーム
  * 取引年月日・取引金額・取引先は検索要件の項目なので必須
- * スキャナ保存（紙を読み取って保存）では、受領日が必須で、書類の区分・入力期限・画質の確認を出す（lib/scan.ts）
+ * スキャナ保存（紙を読み取って保存）では、受領日が必須で、書類の区分・入力期限・画質の確認を出す（lib/scan.ts）。
+ * domble はタイムスタンプを付けないので、紙の原本も保存するよう知らせる（入力期限・画質は参考）
  */
 import { useEffect, useId, useState } from "react";
 import { CheckCircle2, FileUp, Save, TriangleAlert } from "lucide-react";
@@ -11,7 +12,9 @@ import { EVIDENCE_DOC_TYPES, EVIDENCE_MAIN_FORMATS } from "../../constants/evide
 import { MAX_EVIDENCE_BYTES } from "../../constants/appConfig";
 import { formatBytes, sha256Hex, validateEvidenceFile, validateEvidenceMeta } from "../../lib/evidence";
 import type { EvidenceKind, EvidenceMeta } from "../../lib/types";
-import { businessDaysBetween, checkScanQuality, DOC_CLASS_LABEL, docClassOf, scanDeadline, SCAN_METHOD_LABEL, type DocClass, type ScanInputMethod } from "../../lib/scan";
+import {
+  businessDaysBetween, checkScanQuality, DOC_CLASS_LABEL, docClassOf, scanDeadline, SCAN_KEEP_PAPER, SCAN_METHOD_LABEL, type DocClass, type ScanInputMethod,
+} from "../../lib/scan";
 import { todayIso } from "../../lib/format";
 import * as repo from "../../db/repo";
 
@@ -122,12 +125,13 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
               <input type="radio" checked={!scan} onChange={() => setKind("electronic")} /> 電子取引データ（メールなどで受け取ったファイル）
             </label>
             <label className="check" title={strict ? undefined : repo.SCAN_STRICT_ONLY}>
-              <input type="radio" checked={scan} disabled={!strict} onChange={() => setKind("scan")} /> スキャナ保存（紙を読み取ったもの）
+              <input type="radio" checked={scan} disabled={!strict} onChange={() => setKind("scan")} /> スキャナ保存（紙を読み取ったもの。紙の原本も保存）
             </label>
           </div>
           {!strict && <small className="field-note">スキャナ保存は、電子帳簿保存法に対応した保存方式（厳密モード）の帳簿でだけ使えます。</small>}
         </div>
       )}
+      {scan && <p className="notice">{SCAN_KEEP_PAPER}。入力期限と画質の確かめは参考として出します（入力期限は PC の時計で判定します）。</p>}
       {withFile && (
         <label
           className={`field drop-zone${dragging ? " dragging" : ""}`}
@@ -198,7 +202,7 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
         </label>
         {scan && deadline && (
           <div className={`field scan-deadline${late ? " late" : ""}`}>
-            <span>入力期限（{SCAN_METHOD_LABEL[scanMethod].split("（")[0]}）</span>
+            <span>入力期限（参考・{SCAN_METHOD_LABEL[scanMethod].split("（")[0]}）</span>
             <div>
               {deadline.replace(/-/g, "/")}
               {withFile && (late
@@ -210,7 +214,7 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
       </div>
       {scan && late && (
         <p className="notice">
-          入力期限を過ぎています。登録はできますが、スキャナ保存の要件を満たさないため「入力期間外」の印がつきます。紙の原本も保存してください。
+          入力期限を過ぎています。登録はできますが「入力期間外」の印がつきます。
         </p>
       )}
       <label className="field">

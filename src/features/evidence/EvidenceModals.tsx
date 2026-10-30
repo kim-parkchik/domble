@@ -45,7 +45,7 @@ export const EvidenceAddModal = ({ defaults, initialFile, onClose, onAdded }: {
   return (
     <Modal title="証憑を取り込む" onClose={onClose} width={640}>
       <p className="prose">
-        メールなどで受け取った請求書・領収書（電子取引データ）や、紙で受け取って読み取ったもの（スキャナ保存）を取り込みます。取り込んだファイルはあとから差し替えられません。
+        メールなどで受け取った請求書・領収書（電子取引データ）や、紙で受け取って読み取ったもの（スキャナ保存。紙の原本も保存）を取り込みます。取り込んだファイルはあとから差し替えられません。
         取引年月日・取引金額・取引先は、あとで探すための項目です（{year}年以外の日付も入れられます）。
       </p>
       <EvidenceForm
@@ -229,8 +229,9 @@ export const EvidenceModal = ({ evidenceId, onClose, onOpenEntry }: {
                     <dt>書類の区分</dt><dd>{DOC_CLASS_LABEL[ev.doc_class as DocClass] ?? ""}</dd>
                     <dt>入力期限</dt>
                     <dd>
-                      {longDate(st.deadline)}（{st.late ? <b className="late-text">期間外に取り込み：紙の原本も保存してください</b> : "期間内に取り込み"}）
+                      {longDate(st.deadline)}（{st.late ? <b className="late-text">期間外に取り込み</b> : "期間内に取り込み"}。参考：PC の時計で判定）
                     </dd>
+                    <dt>紙の原本</dt><dd className="warn-text">保存してください（タイムスタンプが無いため）</dd>
                     <dt>画質</dt><dd>{qualityLabel(st.quality)}</dd>
                     {st.needsLink && !isVoid && <><dt>帳簿との関連</dt><dd className="warn-text">重要書類は仕訳とのひも付けが必要です</dd></>}
                   </>

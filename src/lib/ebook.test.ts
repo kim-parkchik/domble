@@ -26,5 +26,7 @@ describe("届出", () => {
     expect(m).toContain("テスト商店");
     expect(m).toContain("70日以内");
     expect(m).toContain("2027年1月1日");
+    // タイムスタンプを付けないので、読み取った書類も紙の原本を保存する
+    expect(m).toContain("紙の原本を保存する");
   });
 });
