@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account } from "./types";
 import { buildLedger, toAccountMap, type FlatLine } from "./accounting";
-import { journalSection, ledgerCsvRows, ledgerSection, tableSection, trialSection, type LedgerPrintSource } from "./printBooks";
+import { journalSection, ledgerCsvRows, ledgerSection, multiCsvRows, multiSection, tableSection, trialSection, type LedgerPrintSource } from "./printBooks";
 import type { PrintCell, PrintRow } from "./printLayout";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
@@ -113,4 +113,25 @@ test("履歴の表：同じ記録の2行目からは記録の列を空ける", (
     [["2025-01-02 09:00", "2", "借方", "500"]],
   ]);
   expect(s.columns.map((c) => c.align)).toEqual([undefined, "right", undefined, "right"]);
+});
+
+test("月次推移表・前年比較：区分ごとのまとまり、前年比較は増減率の列。CSV は補助科目に科目の名前", () => {
+  const lines = [
+    { kind: "category" as const, label: "経費", values: [] },
+    { kind: "account" as const, label: "地代家賃", values: [160_000, 80_000, 80_000] },
+    { kind: "sub" as const, label: "事務所", values: [160_000, 80_000, 80_000] },
+    { kind: "subtotal" as const, label: "経費合計", values: [160_000, 80_000, 80_000] },
+    { kind: "total" as const, label: "所得", values: [100, 0, 100] },
+  ];
+  const sec = multiSection("損益計算書", lines, ["2026年", "2025年", "差額"], true);
+  expect(sec.columns.map((c) => c.label)).toEqual(["勘定科目", "2026年", "2025年", "差額", "増減率"]);
+  expect(sec.groups.length).toBe(2);
+  expect(sec.groups[0].rows[1].cells).toEqual(["地代家賃", "160,000", "80,000", "80,000", "100.0%"]);
+  expect(sec.groups[1].rows[0].cells.at(-1)).toBe("");
+  expect(multiCsvRows("損益計算書", lines, true)).toEqual([
+    ["損益計算書・経費", "地代家賃", "", 160_000, 80_000, 80_000, "100.0%"],
+    ["損益計算書・経費", "地代家賃", "事務所", 160_000, 80_000, 80_000, "100.0%"],
+    ["損益計算書・経費", "経費合計", "", 160_000, 80_000, 80_000, "100.0%"],
+    ["損益計算書", "所得", "", 100, 0, 100, ""],
+  ]);
 });

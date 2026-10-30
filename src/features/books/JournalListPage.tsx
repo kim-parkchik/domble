@@ -8,11 +8,12 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
-import { MonthRange } from "../../components/MonthRange";
+import { PeriodTabs } from "../../components/MonthRange";
 import { useToast } from "../../components/Toast";
 import { PrintPreview } from "../../components/PrintPreview";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { JournalImportModal } from "./JournalImportModal";
+import { FullDateInput } from "../../components/Inputs";
 import { ADJUSTMENT_PERIOD, groupByEntry, inPeriods, periodNote, yearEnd, yearStart, type FlatLine } from "../../lib/accounting";
 import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
@@ -52,6 +53,9 @@ export const JournalListPage = () => {
   const { rawLines: activeLines } = useYearData();
   const [showDeleted, setShowDeleted] = useState(false);
   const [allLines, setAllLines] = useState<FlatLine[] | null>(null);
+  // 取引年月日の範囲（日単位。空 = 期間のボタンのとおり）
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [minAmt, setMinAmt] = useState("");
   const [maxAmt, setMaxAmt] = useState("");
   // 入力期間（日）と、遅れて登録した仕訳だけを出すか
@@ -88,6 +92,8 @@ export const JournalListPage = () => {
     const hi = parseAmount(maxAmt);
     const out: DisplayRow[] = [];
     for (const [entryId, ls] of grouped) {
+      if (dateFrom && ls[0].date < dateFrom) continue;
+      if (dateTo && ls[0].date > dateTo) continue;
       if (accountId && !ls.some((l) => l.account_id === accountId)) continue;
       if (cpId && ls[0].counterparty_id !== cpId) continue;
       if (taxFilter && !ls.some((l) =>
@@ -136,7 +142,7 @@ export const JournalListPage = () => {
       );
     }
     return out;
-  }, [lines, year, from, to, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly, taxFilter, isTaxActive]);
+  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly, taxFilter, isTaxActive]);
 
   const total = rows.filter((r) => !r.deleted).reduce((s, r) => s + (r.dr?.amount ?? 0), 0);
   const entryCount = rows.filter((r) => r.first && !r.deleted).length;
@@ -200,6 +206,7 @@ export const JournalListPage = () => {
       entries[entries.length - 1].lines.push({ dr: side(r.dr), cr: side(r.cr), memo: r.memo });
     }
     const conditions = [
+      dateFrom || dateTo ? `日付 ${dateFrom.replace(/-/g, "/")}〜${dateTo.replace(/-/g, "/")}` : "",
       accountId ? `科目 ${accountMap.get(accountId)?.name ?? ""}` : "",
       cpId ? `取引先 ${cpMap.get(cpId)?.name ?? ""}` : "",
       taxFilter ? `税区分 ${taxFilter === "unset" ? "未設定" : taxFilter === "transitional" ? "経過措置の仕入れ" : taxFilter === "nodeduct" ? "控除しない仕入れ" : TAX_CODES.find((t) => t.code === taxFilter)?.label ?? ""}` : "",
@@ -217,7 +224,7 @@ export const JournalListPage = () => {
 
   return (
     <div className="page">
-      <PageHeader title="仕訳日記帳" note="行をクリックすると訂正・削除できます。日付・金額・取引先（補助科目）を組み合わせて検索できます。">
+      <PageHeader title="仕訳日記帳" note="行をクリックすると訂正・削除できます。日付（月のボタンか、日単位の範囲）・金額・取引先（補助科目）を組み合わせて検索できます。">
         <button className="btn ghost" onClick={() => setImporting(true)}>
           <Upload size={16} /> CSV 取り込み
         </button>
@@ -230,8 +237,12 @@ export const JournalListPage = () => {
       </PageHeader>
 
       <div className="filters">
-        <MonthRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+        <PeriodTabs from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
         {periodNote(from, to) && <span className="badge badge-adjust period-note">{periodNote(from, to)}</span>}
+        <span className="filter-label">日付</span>
+        <FullDateInput value={dateFrom} onChange={setDateFrom} year={year} aria-label="取引年月日（から）" />
+        <span>〜</span>
+        <FullDateInput value={dateTo} onChange={setDateTo} year={year} aria-label="取引年月日（まで）" />
         <select value={accountId} onChange={(e) => setAccountId(Number(e.target.value))} aria-label="科目で絞り込み">
           <option value={0}>すべての科目</option>
           {activeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}

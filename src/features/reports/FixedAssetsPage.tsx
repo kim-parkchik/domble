@@ -7,10 +7,10 @@
  *  - 年の締めをした年に使っている資産は、売却・除却の日と、締めていない年からの事業専用割合だけ変えられる（削除もできない）
  *  - 売却・除却した資産は、台帳の区分と売却額から売却・除却の仕訳を作る（lib/depreciation.ts の disposalLines）
  * 資産を買った仕訳（工具器具備品 / 普通預金 など）は、振替伝票でふつうに入れる
- * 台帳（その年に償却する資産）は印刷と CSV の書き出しができる
+ * 台帳（その年に償却する資産）は印刷と CSV の書き出しができる。名称・備考・科目・取得日・取得価額で絞り込める（印刷・CSV も絞り込んだ資産）
  */
 import { useEffect, useMemo, useState } from "react";
-import { Download, Pencil, Plus, Printer, Trash2, Wand2 } from "lucide-react";
+import { Download, Pencil, Plus, Printer, Search, Trash2, Wand2 } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
@@ -21,7 +21,7 @@ import { exportCsvFile } from "../../components/csvExport";
 import { AmountInput, FullDateInput } from "../../components/Inputs";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { closingBalances } from "../../lib/accounting";
-import { todayIso, yen } from "../../lib/format";
+import { parseAmount, todayIso, yen } from "../../lib/format";
 import { ASSET_CSV_HEADER, assetCsvRows, assetSection, type AssetPrintLine } from "../../lib/printBooks";
 import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
@@ -55,6 +55,13 @@ export const FixedAssetsPage = () => {
   const [editing, setEditing] = useState<FixedAsset | "new" | null>(null);
   const [viewing, setViewing] = useState<number | null>(null);
   const [printing, setPrinting] = useState(false);
+  // 台帳の絞り込み（名称・備考の文字、科目、取得日の範囲、取得価額の範囲）
+  const [q, setQ] = useState("");
+  const [filterAccount, setFilterAccount] = useState(0);
+  const [acqFrom, setAcqFrom] = useState("");
+  const [acqTo, setAcqTo] = useState("");
+  const [minCost, setMinCost] = useState("");
+  const [maxCost, setMaxCost] = useState("");
 
   useEffect(() => {
     repo.getAssets(db).then(setAssets).catch(console.error);
@@ -82,10 +89,27 @@ export const FixedAssetsPage = () => {
   const rows = assets.map((a) => ({ a, d: depreciationFor(a, year) }));
   const active = rows.filter((r) => r.d && !(r.d.opening === 0 && r.d.depreciation === 0));
   const others = rows.filter((r) => !active.includes(r));
-  const sum = (k: "opening" | "depreciation" | "business" | "closing") => active.reduce((s, r) => s + (r.d ? r.d[k] : 0), 0);
+  const sumOf = (list: typeof rows, k: "opening" | "depreciation" | "business" | "closing") => list.reduce((s, r) => s + (r.d ? r.d[k] : 0), 0);
+  const sum = (k: "opening" | "depreciation" | "business" | "closing") => sumOf(active, k);
+  // 画面・印刷・CSV に出す資産（絞り込み。償却の仕訳や帳簿との照合は絞り込まない）
+  const lo = parseAmount(minCost);
+  const hi = parseAmount(maxCost);
+  const query = q.trim();
+  const listed = (r: (typeof rows)[number]) =>
+    (!query || `${r.a.name} ${r.a.memo}`.includes(query)) && (!filterAccount || r.a.account_id === filterAccount)
+    && (!acqFrom || r.a.acquired_on >= acqFrom) && (!acqTo || r.a.acquired_on <= acqTo) && (lo == null || r.a.cost >= lo) && (hi == null || r.a.cost <= hi);
+  const shownActive = active.filter(listed);
+  const shownOthers = others.filter(listed);
+  const filtering = !!(query || filterAccount || acqFrom || acqTo || lo != null || hi != null);
+  const conditions = [
+    acqFrom || acqTo ? `取得日 ${ymd(acqFrom)}〜${ymd(acqTo)}` : "",
+    filterAccount ? `科目 ${accountName(filterAccount)}` : "",
+    query ? `「${query}」を含む` : "",
+    lo != null || hi != null ? `取得価額 ${minCost}〜${maxCost}` : "",
+  ].filter(Boolean).join("・");
 
   // 印刷・CSV の行（画面の台帳と同じ資産）
-  const printLines: AssetPrintLine[] = active.map(({ a, d }) => ({
+  const printLines: AssetPrintLine[] = shownActive.map(({ a, d }) => ({
     name: a.name, account: accountName(a.account_id), acquired: a.acquired_on, used: a.used_on, cost: a.cost, method: methodLabel(a),
     life: a.method === "straight" || a.method === "declining" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—", rate: d!.rate !== null ? d!.rate.toFixed(3) : "—",
     months: d!.months, opening: d!.opening, depreciation: d!.depreciation, businessRate: d!.businessRate, business: d!.business, closing: d!.closing,
@@ -94,9 +118,9 @@ export const FixedAssetsPage = () => {
   const printDoc = useMemo((): PrintDoc | null => printing
     ? {
       title: "固定資産台帳", owner: ownerText(settings.business_name, settings.owner_name),
-      period: periodText(`${year}-01-01`, `${year}-12-31`), printedOn: todayIso(), sections: [assetSection(`${year}年の減価償却`, printLines)],
+      period: periodText(`${year}-01-01`, `${year}-12-31`), printedOn: todayIso(), conditions, sections: [assetSection(`${year}年の減価償却`, printLines)],
     }
-    : null, [printing, assets, accounts, year, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+    : null, [printing, assets, accounts, year, settings, conditions]); // eslint-disable-line react-hooks/exhaustive-deps
   const exportCsv = () => exportCsvFile(`固定資産台帳_${settings.business_name || "帳簿"}_${year}.csv`, ASSET_CSV_HEADER, assetCsvRows(printLines), toast);
 
   const planned = useMemo(() => depreciationLines(assets, year, ids), [assets, year, ids.expense, ids.draw, ids.expenseRealEstate]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -179,15 +203,39 @@ export const FixedAssetsPage = () => {
         title="固定資産台帳"
         note={`10万円以上の備品・車・建物などを登録すると、${year}年の減価償却費を計算します。資産を買った仕訳は振替伝票で入れてください。${strict ? "台帳の変更は履歴に記録されます。" : ""}${isExclusiveOn(taxYears, `${year}-12-31`) ? `${year}年は税抜経理なので、その年に取得した資産の取得価額は税抜で入れてください（少額減価償却資産・一括償却資産の判定も税抜の額です）。` : ""}`}
       >
-        <button className="btn ghost" onClick={exportCsv} disabled={active.length === 0}><Download size={16} /> CSV 書き出し</button>
+        <button className="btn ghost" onClick={exportCsv} disabled={shownActive.length === 0}><Download size={16} /> CSV 書き出し</button>
         <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>
         <button className="btn primary" onClick={() => setEditing("new")} disabled={!can("master")}><Plus size={16} /> 資産を追加</button>
       </PageHeader>
+
+      {assets.length > 0 && (
+        <div className="filters">
+          <label className="search">
+            <Search size={15} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="名称・備考で探す" />
+          </label>
+          <select value={filterAccount} onChange={(e) => setFilterAccount(Number(e.target.value))} aria-label="科目で絞り込み">
+            <option value={0}>すべての科目</option>
+            {[...new Set(assets.map((a) => a.account_id))].map((id) => <option key={id} value={id}>{accountName(id)}</option>)}
+          </select>
+          <span className="filter-label">取得日</span>
+          <FullDateInput value={acqFrom} onChange={setAcqFrom} year={year} aria-label="取得日（から）" />
+          <span>〜</span>
+          <FullDateInput value={acqTo} onChange={setAcqTo} year={year} aria-label="取得日（まで）" />
+          <span className="filter-label">取得価額</span>
+          <input className="input amount-filter" value={minCost} onChange={(e) => setMinCost(e.target.value)} placeholder="下限" inputMode="numeric" aria-label="取得価額の下限" />
+          <span>〜</span>
+          <input className="input amount-filter" value={maxCost} onChange={(e) => setMaxCost(e.target.value)} placeholder="上限" inputMode="numeric" aria-label="取得価額の上限" />
+          {filtering && <span className="filter-count">{shownActive.length + shownOthers.length} 件</span>}
+        </div>
+      )}
 
       <section className="sheet">
         <h2 className="sheet-h">{year}年の減価償却</h2>
         {active.length === 0 ? (
           <p className="muted">{year}年に償却する資産はありません。「資産を追加」から登録してください。</p>
+        ) : shownActive.length === 0 ? (
+          <p className="muted">条件に合う資産はありません。</p>
         ) : (
           <div className="table-wrap">
             <table className="ledger asset-table">
@@ -199,7 +247,7 @@ export const FixedAssetsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {active.map(({ a, d }) => (
+                {shownActive.map(({ a, d }) => (
                   <tr key={a.id}>
                     <td>
                       {a.name}
@@ -224,12 +272,12 @@ export const FixedAssetsPage = () => {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={8} className="total-label">合計</td>
-                  <td className="num">{yen(sum("opening"))}</td>
-                  <td className="num">{yen(sum("depreciation"))}</td>
+                  <td colSpan={8} className="total-label">{filtering ? "絞り込んだ資産の合計" : "合計"}</td>
+                  <td className="num">{yen(sumOf(shownActive, "opening"))}</td>
+                  <td className="num">{yen(sumOf(shownActive, "depreciation"))}</td>
                   <td />
-                  <td className="num">{yen(sum("business"))}</td>
-                  <td className="num">{yen(sum("closing"))}</td>
+                  <td className="num">{yen(sumOf(shownActive, "business"))}</td>
+                  <td className="num">{yen(sumOf(shownActive, "closing"))}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -241,12 +289,12 @@ export const FixedAssetsPage = () => {
             {year}年に使い始めた少額減価償却資産の合計が {yen(smallTotal)} 円です。この特例で全額を経費にできるのは、1年で合計 {yen(SMALL_YEAR_LIMIT)} 円までです。
           </p>
         )}
-        {others.length > 0 && (
+        {shownOthers.length > 0 && (
           <details className="asset-others">
-            <summary>ほかの資産（{others.length}件：{year}年より後に使い始める・償却が終わった・売却や除却が済んだもの）</summary>
+            <summary>ほかの資産（{shownOthers.length}件：{year}年より後に使い始める・償却が終わった・売却や除却が済んだもの）</summary>
             <table className="ledger">
               <tbody>
-                {others.map(({ a }) => (
+                {shownOthers.map(({ a }) => (
                   <tr key={a.id}>
                     <td>{a.name}</td>
                     <td>{accountName(a.account_id)}</td>

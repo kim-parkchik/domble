@@ -2,18 +2,20 @@
  * 総勘定元帳
  * 左で科目を選び、右でその科目の動きと残高を確認します。
  * 印刷（この科目・すべての科目、補助科目ごとに分けた補助元帳も）と CSV の書き出し（すべての科目）ができます。
+ * 画面では日付（日単位）・金額・摘要でも絞り込める（印刷・CSV は期間のボタンのとおり）。
  */
 import { useMemo, useState } from "react";
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, Search } from "lucide-react";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
-import { MonthRange } from "../../components/MonthRange";
+import { PeriodTabs } from "../../components/MonthRange";
 import { PrintPreview } from "../../components/PrintPreview";
 import { exportCsvFile } from "../../components/csvExport";
 import { useToast } from "../../components/Toast";
 import { EntryEditModal } from "../entry/EntryEditModal";
+import { FullDateInput } from "../../components/Inputs";
 import { ADJUSTMENT_PERIOD, buildLedger, closingBalances, periodNote, type LedgerRow } from "../../lib/accounting";
-import { shortDate, todayIso, yen } from "../../lib/format";
+import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
 import { displayClass, displayUse, taxLongLabel, taxShortLabel } from "../../lib/tax";
 import { LEDGER_CSV_HEADER, ledgerCsvRows, ledgerSection } from "../../lib/printBooks";
 import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
@@ -37,6 +39,12 @@ export const GeneralLedgerPage = () => {
   const [to, setTo] = useState(ADJUSTMENT_PERIOD);
   const [editing, setEditing] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
+  // 画面だけの絞り込み：日付（日単位）・金額（借方か貸方）・摘要や相手科目の文字
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [minAmt, setMinAmt] = useState("");
+  const [maxAmt, setMaxAmt] = useState("");
+  const [q, setQ] = useState("");
   // 印刷：対象（この科目 / すべての科目）と、補助科目ごとに分けるか（補助元帳）
   const [printing, setPrinting] = useState(false);
   const [printAll, setPrintAll] = useState(false);
@@ -53,15 +61,36 @@ export const GeneralLedgerPage = () => {
       ? opening[account.id] ?? 0
       : subOpening[subKey(account.id, sub)] ?? 0;
 
+  /** 伝票番号 → 取引先の名前 */
+  const cpOfEntry = useMemo(() => {
+    const names = new Map(counterparties.map((c) => [c.id, c.name]));
+    const m = new Map<number, string>();
+    for (const l of lines) if (l.counterparty_id) m.set(l.entry_id, names.get(l.counterparty_id) ?? "");
+    return m;
+  }, [lines, counterparties]);
+  const narrowed = !!(minAmt.trim() || maxAmt.trim() || q.trim());
   const { carried, rows } = useMemo(() => {
     const all = buildLedger(account, base, lines, accountMap, sub);
     const periodOf = (r: LedgerRow) => (r.isAdjustment ? ADJUSTMENT_PERIOD : Number(r.date.slice(5, 7)));
-    const prefix = all.filter((r) => periodOf(r) < from);
+    // 期間より前と、期間のうち「日付（から）」より前は繰越に入れる（元帳は日付順なので先頭のまとまり）
+    const before = (r: LedgerRow) => periodOf(r) < from || (!!dateFrom && r.date < dateFrom);
+    const prefix = all.filter(before);
+    const lo = parseAmount(minAmt);
+    const hi = parseAmount(maxAmt);
+    const query = q.trim();
+    const hit = (r: LedgerRow) => {
+      const amount = r.debit || r.credit;
+      if (lo != null && amount < lo) return false;
+      if (hi != null && amount > hi) return false;
+      if (!query) return true;
+      const counter = r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter;
+      return `${r.memo} ${counter} ${r.subId ? subMap.get(r.subId)?.name ?? "" : ""} ${cpOfEntry.get(r.entry_id) ?? ""}`.includes(query);
+    };
     return {
       carried: prefix.length ? prefix[prefix.length - 1].balance : base,
-      rows: all.filter((r) => periodOf(r) >= from && periodOf(r) <= to),
+      rows: all.filter((r) => !before(r) && periodOf(r) <= to && (!dateTo || r.date <= dateTo) && hit(r)),
     };
-  }, [account, base, lines, accountMap, from, to, sub]);
+  }, [account, base, lines, accountMap, from, to, sub, dateFrom, dateTo, minAmt, maxAmt, q, labelOf, subMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sum = rows.reduce((t, r) => ({ dr: t.dr + r.debit, cr: t.cr + r.credit }), { dr: 0, cr: 0 });
 
@@ -71,13 +100,6 @@ export const GeneralLedgerPage = () => {
   );
 
   // ── 印刷・CSV ──
-  /** 伝票番号 → 取引先の名前 */
-  const cpOfEntry = useMemo(() => {
-    const names = new Map(counterparties.map((c) => [c.id, c.name]));
-    const m = new Map<number, string>();
-    for (const l of lines) if (l.counterparty_id) m.set(l.entry_id, names.get(l.counterparty_id) ?? "");
-    return m;
-  }, [lines, counterparties]);
   const counterOf = (r: LedgerRow) => (r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter);
   const taxOf = (r: LedgerRow) => {
     const lt = { date: r.date, tax_code: r.taxCode, business_class: r.businessClass, purchase_use: r.purchaseUse };
@@ -126,7 +148,7 @@ export const GeneralLedgerPage = () => {
   return (
     <div className="page">
       <PageHeader title="総勘定元帳">
-        <MonthRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+        <PeriodTabs from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
         {periodNote(from, to) && <span className="badge badge-adjust period-note">{periodNote(from, to)}</span>}
         <button className="btn ghost" onClick={exportCsv} title="すべての科目の元帳を、表示中の期間で書き出します"><Download size={16} /> CSV 書き出し</button>
         <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>
@@ -169,6 +191,22 @@ export const GeneralLedgerPage = () => {
               <button role="tab" aria-selected={sub === null} className={sub === null ? "on" : ""} onClick={() => setSub(null)}>補助なし</button>
             </div>
           )}
+          <div className="filters ledger-filters">
+            <span className="filter-label">日付</span>
+            <FullDateInput value={dateFrom} onChange={setDateFrom} year={year} aria-label="取引年月日（から）" />
+            <span>〜</span>
+            <FullDateInput value={dateTo} onChange={setDateTo} year={year} aria-label="取引年月日（まで）" />
+            <div className="amount-range">
+              <input className="input" value={minAmt} onChange={(e) => setMinAmt(e.target.value)} placeholder="金額 下限" inputMode="numeric" aria-label="金額の下限" />
+              <span>〜</span>
+              <input className="input" value={maxAmt} onChange={(e) => setMaxAmt(e.target.value)} placeholder="上限" inputMode="numeric" aria-label="金額の上限" />
+            </div>
+            <label className="search">
+              <Search size={15} />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="摘要・相手科目・取引先で探す" />
+            </label>
+            {(dateFrom || dateTo || narrowed) && <span className="muted small">印刷・CSV は、この絞り込みを使わず期間のボタンのとおりに出します</span>}
+          </div>
           <div className="table-wrap scroll-y">
             <table className="ledger">
               <colgroup>
@@ -194,7 +232,7 @@ export const GeneralLedgerPage = () => {
               <tbody>
                 <tr className="carried">
                   <td colSpan={2} />
-                  <td colSpan={4}>{from === 1 ? "前期より繰越" : "前月より繰越"}</td>
+                  <td colSpan={4}>{dateFrom ? `${shortDate(dateFrom)} の前日までの残高` : from === 1 ? "前期より繰越" : "前月より繰越"}</td>
                   <td className="num">{yen(carried)}</td>
                 </tr>
                 {rows.map((r, i) => {
@@ -220,15 +258,15 @@ export const GeneralLedgerPage = () => {
                   );
                 })}
                 {rows.length === 0 && (
-                  <tr className="empty-row"><td colSpan={7}>この期間の動きはありません。</td></tr>
+                  <tr className="empty-row"><td colSpan={7}>{narrowed || dateFrom || dateTo ? "条件に合う動きはありません。" : "この期間の動きはありません。"}</td></tr>
                 )}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4} className="total-label">期間合計</td>
+                  <td colSpan={4} className="total-label">{narrowed ? "絞り込んだ行の合計" : "期間合計"}</td>
                   <td className="num">{yen(sum.dr)}</td>
                   <td className="num">{yen(sum.cr)}</td>
-                  <td className="num">{yen(rows.length ? rows[rows.length - 1].balance : carried)}</td>
+                  <td className="num">{narrowed ? "" : yen(rows.length ? rows[rows.length - 1].balance : carried)}</td>
                 </tr>
               </tfoot>
             </table>

@@ -268,8 +268,8 @@ select { width: auto; padding-right: 24px; }
 .month-tabs button.m.last { border-radius: 0 4px 4px 0; }
 .month-tabs button.m.first.last { border-radius: 4px; }
 
-.month-range { display: flex; align-items: center; gap: 6px; }
-.month-range select { height: 30px; }
+.period-tabs { display: flex; align-items: center; gap: 8px; }
+.period-tabs .link-btn.on { font-weight: 700; text-decoration: underline; }
 
 /* ---------- 絞り込みバー ---------- */
 .filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -504,7 +504,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
   .scroll-y, .sheet-fill { overflow: visible !important; height: auto !important; max-height: none !important; }
 }
 
-/* ---------- 帳簿の印刷（components/PrintPreview.tsx。A4 縦・ページは自前で分ける） ---------- */
+/* ---------- 帳簿の印刷（components/PrintPreview.tsx。A4 縦（列の多い表は横）・ページは自前で分ける） ---------- */
 .pp-overlay { position: fixed; inset: 0; z-index: 60; background: #59626e; overflow: auto; padding: 72px 0 40px; }
 .pp-toolbar { position: fixed; top: 0; left: 0; right: 0; height: 56px; z-index: 61; display: flex; align-items: center; gap: 12px; padding: 0 20px; background: var(--navy); color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
 .pp-toolbar h2 { font-size: 15px; font-weight: 700; white-space: nowrap; }
@@ -551,6 +551,11 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .pp-table tr.pp-deleted td .pp-tag { text-decoration: none; }
 .pp-measure { position: absolute; left: -10000px; top: 0; visibility: hidden; }
 .pp-measure-table { width: 210mm; padding: 0 12mm; }
+/* A4 横（月次推移表など列の多い表） */
+.pp-page.pp-landscape { width: 297mm; height: 209mm; }
+.pp-measure-table.pp-landscape { width: 297mm; }
+/* 横の表は列が多いので、金額（▲12,345,678 まで）が入るように少し小さく */
+.pp-landscape .pp-table td, .pp-landscape .pp-table th { font-size: 7.5pt; padding-left: .8mm; padding-right: .8mm; }
 @media print {
   body.pp-printing #root { display: none !important; }
   body.pp-printing .pp-overlay { position: static; padding: 0; background: none; overflow: visible; }
@@ -994,3 +999,15 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .bank-rule-splits { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .bank-rule-splits > .btn { align-self: flex-start; }
 .bank-rule-splits .field-row { align-items: flex-end; }
+.ledger-filters { margin: 0 0 8px; }
+/* 月次推移表・前年比較（残高試算表の画面） */
+.multi-table th:first-child { width: 200px; }
+.trend-table { min-width: 1240px; }
+.trend-table th:first-child { width: 170px; }
+.trend-table td.num, .trend-table th.num { font-size: 12px; padding-left: 4px; padding-right: 6px; text-overflow: clip; }
+/* 横に送っても科目名が見えるように（左の列を止める） */
+.trend-table td:first-child { position: sticky; left: 0; background: #fff; }
+.trend-table thead th:first-child { left: 0; z-index: 3; }
+.trend-table tr.cat-row td:first-child { background: var(--accent-tint); }
+.multi-table tr.grand td { font-size: 12.5px; text-overflow: clip; }
+.multi-table tfoot td:first-child { white-space: normal; }

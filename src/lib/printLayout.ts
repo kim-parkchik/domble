@@ -67,6 +67,8 @@ export interface PrintDoc {
   printedOn: string;
   /** 絞り込みの条件（無ければ空）。見出しの下に出す */
   conditions?: string;
+  /** A4 横で出す（列の多い表：月次推移表など。無ければ A4 縦） */
+  landscape?: boolean;
   sections: PrintSection[];
 }
 

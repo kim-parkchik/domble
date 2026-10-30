@@ -1,11 +1,12 @@
 /**
- * 帳簿の印刷の中身（純粋関数）：仕訳日記帳・総勘定元帳（補助元帳・出納帳）・残高試算表・固定資産台帳・訂正削除履歴
+ * 帳簿の印刷の中身（純粋関数）：仕訳日記帳・総勘定元帳（補助元帳・出納帳）・残高試算表（月次推移表・前年比較も）・固定資産台帳・訂正削除履歴
  * ページへの分け方は printLayout.ts、画面は components/PrintPreview.tsx
  */
 import { ADJUSTMENT_PERIOD, type LedgerRow } from "./accounting";
 import { shortDate, yen } from "./format";
 import type { CsvValue } from "./csv";
 import type { PrintCell, PrintColumn, PrintGroup, PrintRow, PrintSection } from "./printLayout";
+import { changeRate, type MultiLine } from "./trend";
 
 /** 期間の番号：1〜12 = 月、13 = 決算整理（12月のあと） */
 export const ADJUSTMENT = ADJUSTMENT_PERIOD;
@@ -219,6 +220,43 @@ export const trialSection = (heading: string, lines: TrialPrintLine[], carriedHe
 };
 
 export const TRIAL_CSV_HEADER = ["区分", "勘定科目", "補助科目", "繰越", "借方", "貸方", "残高"];
+
+/**
+ * 月次推移表・前年比較の区分（lib/trend.ts の行）。heads は金額の列の見出し。
+ * rate = 前年比較（values = [今年, 前年, 差額]）で、最後に増減率の列を足す
+ */
+export const multiSection = (heading: string, lines: MultiLine[], heads: string[], rate = false): PrintSection => {
+  const columns: PrintColumn[] = [
+    { label: "勘定科目", width: rate ? 34 : 14 },
+    ...heads.map((label): PrintColumn => ({ label, width: rate ? 17 : 9, align: "right" })),
+    ...(rate ? [{ label: "増減率", width: 11, align: "right" as const }] : []),
+  ];
+  const groups: PrintGroup[] = [];
+  for (const l of lines) {
+    if (l.kind === "category" || groups.length === 0 || l.kind === "total") groups.push({ rows: [] });
+    const row: PrintRow = l.kind === "category"
+      ? { kind: "category", cells: [{ text: l.label, span: columns.length }] }
+      : { kind: l.kind === "account" ? undefined : l.kind, cells: [l.label, ...l.values.map((v) => yen(v)), ...(rate ? [changeRate(l.values[0], l.values[1])] : [])] };
+    groups[groups.length - 1].rows.push(row);
+  }
+  return { heading, columns, groups };
+};
+
+/** 月次推移表・前年比較の CSV の行（区分・勘定科目・補助科目・金額…・増減率） */
+export const multiCsvRows = (viewLabel: string, lines: MultiLine[], rate = false): CsvValue[][] => {
+  let cat = "";
+  let parent = "";
+  return lines.flatMap((l): CsvValue[][] => {
+    if (l.kind === "category") {
+      cat = l.label;
+      return [];
+    }
+    if (l.kind === "account") parent = l.label;
+    const tail = rate ? [changeRate(l.values[0], l.values[1])] : [];
+    if (l.kind === "total") return [[viewLabel, l.label, "", ...l.values, ...tail]];
+    return [[`${viewLabel}・${cat}`, l.kind === "sub" ? parent : l.label, l.kind === "sub" ? l.label : "", ...l.values, ...tail]];
+  });
+};
 
 // ────────────────────────────────────────────
 // 固定資産台帳

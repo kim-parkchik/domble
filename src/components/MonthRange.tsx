@@ -13,20 +13,13 @@ interface Props {
 }
 
 /**
- * 期間の範囲選択（1月〜12月と、12月のあとの「決算整理」）。
- * 1月〜12月 = 決算整理前、1月〜決算整理 = 決算整理後（通期）、決算整理〜決算整理 = 決算整理仕訳だけ
+ * 集計・帳簿の画面の期間（仕訳日記帳・総勘定元帳・残高試算表）：帳簿入力と同じ月のボタンに「決算整理前」（1月〜12月）を添える。
+ * 1月〜12月 = 決算整理前、1月〜決算整理 = 決算整理後（通期）、決算整理だけ = 決算整理仕訳だけ
  */
-export const MonthRange = ({ from, to, onChange }: Props) => (
-  <div className="month-range">
-    <select value={from} onChange={(e) => onChange(Number(e.target.value), Math.max(Number(e.target.value), to))} aria-label="開始の期間">
-      {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
-    </select>
-    <span>〜</span>
-    <select value={to} onChange={(e) => onChange(Math.min(from, Number(e.target.value)), Number(e.target.value))} aria-label="終わりの期間">
-      {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
-    </select>
-    <button className="link-btn" onClick={() => onChange(1, ADJUSTMENT_PERIOD)} title="1月〜決算整理（決算整理後）">通期</button>
-    <button className="link-btn" onClick={() => onChange(1, 12)} title="1月〜12月（決算整理仕訳を含まない）">決算整理前</button>
+export const PeriodTabs = ({ from, to, onChange }: Props) => (
+  <div className="period-tabs">
+    <MonthTabs from={from} to={to} onChange={onChange} />
+    <button className={`link-btn${from === 1 && to === 12 ? " on" : ""}`} onClick={() => onChange(1, 12)} title="1月〜12月（決算整理仕訳を含まない）">決算整理前</button>
   </div>
 );
 
@@ -49,12 +42,11 @@ export const MonthTabs = ({ from, to, onChange }: Props) => {
   }, []);
   const range = (a: number, b: number) => onChange(Math.min(a, b), Math.max(a, b));
   const all = from === 1 && to === ADJUSTMENT_PERIOD;
-  const periods = [...MONTHS, ADJUSTMENT_PERIOD];
 
   return (
     <div className="month-tabs" role="tablist" aria-label="期間（Shift + クリックかドラッグで複数の期間）">
       <button role="tab" aria-selected={all} className={`all${all ? " on" : ""}`} onClick={() => onChange(1, ADJUSTMENT_PERIOD)}>全期間</button>
-      {periods.map((p) => {
+      {PERIODS.map((p) => {
         const on = p >= from && p <= to;
         // 選んだ範囲を1本の帯に見せるため、両端だけ角を丸める
         const edge = on ? `${p === from ? " first" : ""}${p === to ? " last" : ""}` : "";

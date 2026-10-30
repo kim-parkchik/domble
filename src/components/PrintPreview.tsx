@@ -1,6 +1,6 @@
 /**
  * 帳簿の印刷プレビュー
- * 中身（PrintDoc）を A4 縦のページに分けて並べ、「印刷」で印刷ダイアログを開く（macOS では「PDF として保存」もここから）。
+ * 中身（PrintDoc）を A4 縦（列の多い表は横）のページに分けて並べ、「印刷」で印刷ダイアログを開く（macOS では「PDF として保存」もここから）。
  *  - 各ページに帳簿の名前・屋号と氏名・期間・科目・ページ番号・出力日、表の見出しを繰り返す
  *  - 行の高さは、ページと同じ幅の見えない表に一度並べて測ってから分ける（摘要の折り返しで高さが変わるため）。分け方は lib/printLayout.ts
  * 印刷するときは、画面（#root）を隠してこのページだけを出す（styles/global.css の「帳簿の印刷」）
@@ -67,26 +67,28 @@ export const PrintPreview = ({ doc, onClose, children }: Props) => {
   }, [doc]);
 
   const pages = laid?.pages ?? [];
+  const landscape = !!doc?.landscape;
+  const pageClass = `pp-page${landscape ? " pp-landscape" : ""}`;
   return createPortal(
     <div className="pp-overlay" role="dialog" aria-modal="true" aria-label={`印刷プレビュー：${doc?.title ?? ""}`}>
-      <style>{"@page { size: A4 portrait; margin: 0; }"}</style>
+      <style>{`@page { size: A4 ${landscape ? "landscape" : "portrait"}; margin: 0; }`}</style>
       <div className="pp-toolbar">
         <h2>印刷プレビュー{doc ? `：${doc.title}` : ""}</h2>
         {children}
         <div className="spacer" />
-        <span className="pp-count">{laid && laid.doc === doc ? `${pages.length} ページ（A4 縦）` : "ページに分けています…"}</span>
+        <span className="pp-count">{laid && laid.doc === doc ? `${pages.length} ページ（A4 ${landscape ? "横" : "縦"}）` : "ページに分けています…"}</span>
         <button className="btn ghost pp-close" onClick={onClose}><X size={16} /> 閉じる</button>
         <button className="btn primary" onClick={() => window.print()} disabled={!laid || laid.doc !== doc}><Printer size={16} /> 印刷</button>
       </div>
 
       {doc && (
         <div className="pp-measure" ref={measureRef} aria-hidden="true">
-          <div className="pp-page">
+          <div className={pageClass}>
             <PageHead doc={doc} heading="見出し" page={1} total={1} />
             <div className="pp-body" />
           </div>
           {doc.sections.map((sec, i) => (
-            <div className="pp-measure-table" key={i}>
+            <div className={`pp-measure-table${landscape ? " pp-landscape" : ""}`} key={i}>
               <SectionTable section={sec} rows={sec.groups.flatMap((g) => g.rows)} carry={sec.groups.find((g) => g.carry)?.carry} index={i} />
             </div>
           ))}
@@ -102,7 +104,7 @@ export const PrintPreview = ({ doc, onClose, children }: Props) => {
             const carry = p.carryOf !== null ? sec.groups[p.carryOf].carry : undefined;
             const rows = [...(carry ? [carry] : []), ...p.parts.flatMap((x) => sec.groups[x.group].rows.slice(x.from, x.to))];
             return (
-              <div className="pp-page" key={n}>
+              <div className={pageClass} key={n}>
                 <PageHead doc={laid.doc} heading={sec.heading} page={n + 1} total={laid.pages.length} />
                 <div className="pp-body">
                   <SectionTable section={sec} rows={rows} />
