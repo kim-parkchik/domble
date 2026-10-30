@@ -89,6 +89,17 @@ export const openingState = (rows: { account_id: number; sub_account_id: number;
 export const closingState = (c: { period_start: string; period_end: string } | null) =>
   JSON.stringify(c ? [c.period_start, c.period_end] : null);
 
+export interface AssetStateInput {
+  name: string; account_id: number; acquired_on: string; used_on: string; cost: number; method: string; useful_life: number; business_rate: number;
+  opening_year: number | null; opening_book_value: number | null; disposed_on: string | null; memo: string; income_kind: string;
+}
+/** 固定資産台帳の1件（あとの年から変えた事業専用割合を含む） */
+export const assetState = (a: AssetStateInput | null, rates: { from_year: number; rate: number }[]) =>
+  JSON.stringify(a
+    ? [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year ?? null, a.opening_book_value ?? null,
+      a.disposed_on ?? null, a.memo, a.income_kind, rates.map((r) => [r.from_year, r.rate]).sort(cmp)]
+    : null);
+
 /**
  * 履歴の1行の正規形（列の順を固定）
  * 「?」つきの列はあとから足した列：値があるときだけ入れる（足す前に記録した行のハッシュが変わらないように）
@@ -170,7 +181,7 @@ export const sourceLabel = (s: string) =>
 /** 状態のキーの表示名 */
 export const stateLabel = (key: string) => {
   const [kind, id] = key.split(":");
-  return ({ entry: `仕訳（伝票 No.${id}）`, evidence: `証憑 No.${id}`, opening: `${id}年の期首残高`, closing: `${id}年の締め` })[kind] ?? key;
+  return ({ entry: `仕訳（伝票 No.${id}）`, evidence: `証憑 No.${id}`, opening: `${id}年の期首残高`, closing: `${id}年の締め`, asset: `固定資産 No.${id}` })[kind] ?? key;
 };
 
 /** 連鎖の先頭から確認コードを作る（4文字ずつ区切る） */

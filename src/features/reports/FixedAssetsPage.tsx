@@ -3,6 +3,8 @@
  *  - 資産ごとに取得価額・償却方法・耐用年数・事業専用割合を持ち、年度ごとの償却費を計算する（lib/depreciation.ts）
  *  - 年末に「減価償却費（事業分）＋事業主貸（家事分） / 資産の科目」の決算整理仕訳を1本作る。作り直すと同じ仕訳を訂正する
  *  - 帳簿の資産の科目の残高と、台帳の未償却残高を並べて、ずれていないか確かめられる
+ *  - 事業専用割合は「表示中の年から」の割合として変える（前の年はそのまま）
+ *  - 年の締めをした年に使っている資産は、売却・除却の日と、締めていない年からの事業専用割合だけ変えられる（削除もできない）
  * 資産を買った仕訳（工具器具備品 / 普通預金 など）は、振替伝票でふつうに入れる
  * 台帳（その年に償却する資産）は印刷と CSV の書き出しができる
  */
@@ -23,20 +25,23 @@ import { ASSET_CSV_HEADER, assetCsvRows, assetSection, type AssetPrintLine } fro
 import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
 import {
-  depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear,
+  businessRateIn, closedYearsOf, depreciationFor, depreciationLines, EXPENSE_LIMIT, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear,
   validateAsset,
   type DepreciationMethod, type FixedAsset,
 } from "../../lib/depreciation";
 import type { IncomeKind } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { isBlue } from "../../lib/filing";
+import { closedMonthOf } from "../../lib/closing";
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 const ymd = (iso: string) => iso.replace(/-/g, "/");
 
 export const FixedAssetsPage = () => {
-  const { db, year, accounts, settings, bump, dataVersion, isClosed, can, strict } = useAppContext();
+  const { db, year, accounts, settings, bump, dataVersion, isClosed, can, strict, closings } = useAppContext();
   const { lines, opening } = useYearData();
+  // 年の締めをした年（その年に使っている資産は守る）
+  const closedYears = closings.filter((c) => closedMonthOf(c) === 12).map((c) => c.fiscal_year);
   const toast = useToast();
   const [assets, setAssets] = useState<FixedAsset[]>([]);
   const [runId, setRunId] = useState<number | null>(null);
@@ -74,7 +79,7 @@ export const FixedAssetsPage = () => {
   const printLines: AssetPrintLine[] = active.map(({ a, d }) => ({
     name: a.name, account: accountName(a.account_id), acquired: a.acquired_on, used: a.used_on, cost: a.cost, method: methodLabel(a),
     life: a.method === "straight" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—", rate: d!.rate !== null ? d!.rate.toFixed(3) : "—",
-    months: d!.months, opening: d!.opening, depreciation: d!.depreciation, businessRate: a.business_rate, business: d!.business, closing: d!.closing,
+    months: d!.months, opening: d!.opening, depreciation: d!.depreciation, businessRate: d!.businessRate, business: d!.business, closing: d!.closing,
     memo: [d!.disposed ? `${ymd(a.disposed_on!)} 売却・除却` : "", a.memo].filter(Boolean).join("　"),
   }));
   const printDoc = useMemo((): PrintDoc | null => printing
@@ -124,12 +129,20 @@ export const FixedAssetsPage = () => {
     }
   };
 
-  const editButtons = (a: FixedAsset) => (
-    <span className="row-actions">
-      <button className="link-btn" onClick={() => setEditing(a)} aria-label={`${a.name}を編集`}><Pencil size={13} /> 編集</button>
-      <button className="link-btn danger" onClick={() => remove(a)} disabled={!can("master")} aria-label={`${a.name}を削除`}><Trash2 size={13} /></button>
-    </span>
-  );
+  const editButtons = (a: FixedAsset) => {
+    const locked = closedYearsOf(a, closedYears);
+    return (
+      <span className="row-actions">
+        <button className="link-btn" onClick={() => setEditing(a)} aria-label={`${a.name}を編集`}><Pencil size={13} /> 編集</button>
+        <button
+          className="link-btn danger" onClick={() => remove(a)} disabled={!can("master") || locked.length > 0} aria-label={`${a.name}を削除`}
+          title={locked.length ? `締め済みの年（${locked.map((y) => `${y}年`).join("・")}）に使っている資産は削除できません` : undefined}
+        >
+          <Trash2 size={13} />
+        </button>
+      </span>
+    );
+  };
 
   return (
     <div className="page">
@@ -173,7 +186,7 @@ export const FixedAssetsPage = () => {
                     <td className="num">{d!.months}</td>
                     <td className="num">{yen(d!.opening)}</td>
                     <td className="num">{yen(d!.depreciation)}</td>
-                    <td className="num">{a.business_rate}%</td>
+                    <td className="num">{d!.businessRate}%</td>
                     <td className="num">{yen(d!.business)}</td>
                     <td className="num">{yen(d!.closing)}</td>
                     <td>{editButtons(a)}</td>
@@ -270,7 +283,11 @@ export const FixedAssetsPage = () => {
         </section>
       )}
 
-      {editing && <AssetModal asset={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); bump(); }} />}
+      {editing && (
+        <AssetModal
+          asset={editing === "new" ? null : editing} closedYears={closedYears} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); bump(); }}
+        />
+      )}
       {viewing && <EntryEditModal entryId={viewing} onClose={() => setViewing(null)} />}
       {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
     </div>
@@ -284,7 +301,7 @@ const lineKey = (ls: { side: string; account_id: number; amount: number; memo: s
 /** 耐用年数の目安（よく使うもの） */
 const LIFE_EXAMPLES = "例：パソコン 4年、サーバー 5年、普通自動車 6年、軽自動車 4年、事務机・椅子（金属製）15年、ソフトウェア 5年";
 
-const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onClose: () => void; onSaved: () => void }) => {
+const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsset | null; closedYears: number[]; onClose: () => void; onSaved: () => void }) => {
   const { db, year, accounts, can, filingTypeOf, settings } = useAppContext();
   const toast = useToast();
   const choices = accounts.filter((a) => a.category === "asset" && (FIXED_ASSET_CODES.includes(a.code) || !a.is_system));
@@ -296,7 +313,12 @@ const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onC
   const [cost, setCost] = useState<number | null>(asset?.cost ?? null);
   const [method, setMethod] = useState<DepreciationMethod>(asset?.method ?? "straight");
   const [life, setLife] = useState(asset && asset.method === "straight" ? String(asset.useful_life) : "");
-  const [rate, setRate] = useState(String(asset?.business_rate ?? 100));
+  // 事業専用割合は表示中の年の割合（使い始めた年より後なら、変えると表示中の年からの割合になる）
+  const [rate, setRate] = useState(String(asset ? businessRateIn(asset, year) : 100));
+  const fromYear = asset !== null && year > Number(asset.used_on.slice(0, 4));
+  // 年の締めをした年に使っている資産：売却・除却の日と、締めていない年からの割合だけ変えられる
+  const locked = asset ? closedYearsOf(asset, closedYears) : [];
+  const rateLocked = locked.length > 0 && (!fromYear || closedYears.includes(year));
   const [hasOpening, setHasOpening] = useState(asset?.opening_year != null);
   const [openingYear, setOpeningYear] = useState(String(asset?.opening_year ?? year));
   const [openingValue, setOpeningValue] = useState<number | null>(asset?.opening_book_value ?? null);
@@ -338,7 +360,7 @@ const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onC
     const e = validateAsset(a, { blue });
     if (e) return setError(e);
     try {
-      await repo.saveAsset(db, asset?.id ?? null, a);
+      await repo.saveAsset(db, asset?.id ?? null, a, year);
       toast(asset ? "固定資産を更新しました" : "固定資産を追加しました");
       onSaved();
     } catch (err) {
@@ -349,95 +371,115 @@ const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onC
   return (
     <Modal title={asset ? "固定資産の編集" : "固定資産の追加"} onClose={onClose} width={620}>
       <form className="settings-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <label className="field">
-          <span>名称</span>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} autoFocus placeholder="例：ノートパソコン、営業車" />
-        </label>
-        <div className="field-row">
-          <label className="field">
-            <span>償却方法</span>
-            <select className="input" value={method} onChange={(e) => changeMethod(e.target.value as DepreciationMethod)}>
-              <option value="straight">{METHOD_LABEL.straight}</option>
-              <option value="lump3">{METHOD_LABEL.lump3}（{yen(EXPENSE_LIMIT)}〜{yen(LUMP3_LIMIT)}円未満）</option>
-              <option value="small" disabled={!blue}>{METHOD_LABEL.small}（{smallLimitFor(acquired) ? `${yen(smallLimitFor(acquired)!)}円未満` : "令和11年3月までの取得"}・青色申告）</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>科目</span>
-            <select className="input" value={accountId ?? ""} onChange={(e) => setAccountId(Number(e.target.value) || null)}>
-              {choices.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </label>
-        </div>
-        <div className="field-row">
-          <label className="field">
-            <span>取得日</span>
-            <FullDateInput value={acquired} onChange={setAcquired} year={year} aria-label="取得日" onValidity={markDate("acquired")} />
-          </label>
-          <label className="field">
-            <span>事業に使い始めた日（空なら取得日）</span>
-            <FullDateInput value={used} onChange={setUsed} year={year} aria-label="事業に使い始めた日" onValidity={markDate("used")} />
-          </label>
-        </div>
-        <div className="field-row">
-          <label className="field">
-            <span>取得価額（円）</span>
-            <AmountInput value={cost} onChange={setCost} aria-label="取得価額" />
-          </label>
-          {method === "straight" && (
-            <label className="field">
-              <span>耐用年数（年）</span>
-              <input className="input" inputMode="numeric" value={life} onChange={(e) => setLife(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="耐用年数" />
-            </label>
-          )}
-          <label className="field">
-            <span>{kind === "realestate" ? "貸付割合（%）" : "事業専用割合（%）"}</span>
-            <input className="input" inputMode="numeric" value={rate} onChange={(e) => setRate(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="事業専用割合" />
-          </label>
-        </div>
-        {showKind && (
-          <div className="field-row wrap">
-            <label className="check"><input type="radio" name="asset-kind" checked={kind === "business"} onChange={() => setKind("business")} /> 事業所得の資産</label>
-            <label className="check"><input type="radio" name="asset-kind" checked={kind === "realestate"} onChange={() => setKind("realestate")} /> 不動産所得の資産（貸家・アパートなど。減価償却費（不動産）にし、不動産所得用の決算書に出します）</label>
-          </div>
-        )}
-        {method === "straight" && <p className="field-note">{LIFE_EXAMPLES}。耐用年数は国税庁の耐用年数表で確かめてください。</p>}
-        {method === "straight" && acquired && acquired <= OLD_STRAIGHT_UNTIL && (
-          <p className="field-note">
-            平成19年3月31日以前に取得した資産なので、旧定額法で計算します（取得価額 × 90% × 旧定額法の償却率。償却費の累計が取得価額の95%に達したら、その翌年から5年間で1円まで均等に償却します）。
+        {locked.length > 0 && (
+          <p className="notice">
+            {locked.map((y) => `${y}年`).join("・")}は締め済みのため、この資産は売却・除却した日{rateLocked ? "" : `と、${year}年からの事業専用割合`}だけ変えられます。
+            ほかを直すときは、事業者設定で締めを戻してください。
           </p>
         )}
-        {method === "lump3" && <p className="field-note">取得価額の 1/3 ずつを3年で経費にします（月割りしません）。</p>}
-        {method === "small" && <p className="field-note">使い始めた年に全額を経費にします（1年の合計 {yen(SMALL_YEAR_LIMIT)} 円まで）。</p>}
-        {cost !== null && cost > 0 && cost < EXPENSE_LIMIT && <p className="field-note">{yen(EXPENSE_LIMIT)} 円未満のものは、台帳に入れずに消耗品費などで経費にできます。</p>}
-        <p className="field-note">家事でも使うものは、事業で使っている割合を入れてください。償却費のうち残りは事業主貸になります（家事按分の画面ではなく、ここで資産ごとに決めます）。</p>
-
-        <label className="check">
-          <input type="checkbox" checked={hasOpening} onChange={(e) => setHasOpening(e.target.checked)} />
-          domble を使う前から持っている資産（期首の未償却残高から計算する）
-        </label>
-        {hasOpening && (
+        <fieldset className="plain-fieldset" disabled={locked.length > 0}>
+          <label className="field">
+            <span>名称</span>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} autoFocus placeholder="例：ノートパソコン、営業車" />
+          </label>
           <div className="field-row">
             <label className="field">
-              <span>年</span>
-              <input className="input" inputMode="numeric" value={openingYear} onChange={(e) => setOpeningYear(e.target.value.replace(/\D/g, "").slice(0, 4))} aria-label="期首の未償却残高の年" />
+              <span>償却方法</span>
+              <select className="input" value={method} onChange={(e) => changeMethod(e.target.value as DepreciationMethod)}>
+                <option value="straight">{METHOD_LABEL.straight}</option>
+                <option value="lump3">{METHOD_LABEL.lump3}（{yen(EXPENSE_LIMIT)}〜{yen(LUMP3_LIMIT)}円未満）</option>
+                <option value="small" disabled={!blue}>{METHOD_LABEL.small}（{smallLimitFor(acquired) ? `${yen(smallLimitFor(acquired)!)}円未満` : "令和11年3月までの取得"}・青色申告）</option>
+              </select>
             </label>
             <label className="field">
-              <span>その年の1月1日の未償却残高（円）</span>
-              <AmountInput value={openingValue} onChange={setOpeningValue} aria-label="期首の未償却残高" />
+              <span>科目</span>
+              <select className="input" value={accountId ?? ""} onChange={(e) => setAccountId(Number(e.target.value) || null)}>
+                {choices.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
             </label>
           </div>
-        )}
-        <div className="field-row">
-          <label className="field">
-            <span>売却・除却した日（あれば）</span>
-            <FullDateInput value={disposed} onChange={setDisposed} year={year} aria-label="売却・除却した日" onValidity={markDate("disposed")} />
+          <div className="field-row">
+            <label className="field">
+              <span>取得日</span>
+              <FullDateInput value={acquired} onChange={setAcquired} year={year} aria-label="取得日" onValidity={markDate("acquired")} />
+            </label>
+            <label className="field">
+              <span>事業に使い始めた日（空なら取得日）</span>
+              <FullDateInput value={used} onChange={setUsed} year={year} aria-label="事業に使い始めた日" onValidity={markDate("used")} />
+            </label>
+          </div>
+          <div className="field-row">
+            <label className="field">
+              <span>取得価額（円）</span>
+              <AmountInput value={cost} onChange={setCost} aria-label="取得価額" />
+            </label>
+            {method === "straight" ? (
+              <label className="field">
+                <span>耐用年数（年）</span>
+                <input className="input" inputMode="numeric" value={life} onChange={(e) => setLife(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="耐用年数" />
+              </label>
+            ) : <div className="field" />}
+          </div>
+          {showKind && (
+            <div className="field-row wrap">
+              <label className="check"><input type="radio" name="asset-kind" checked={kind === "business"} onChange={() => setKind("business")} /> 事業所得の資産</label>
+              <label className="check"><input type="radio" name="asset-kind" checked={kind === "realestate"} onChange={() => setKind("realestate")} /> 不動産所得の資産（貸家・アパートなど。減価償却費（不動産）にし、不動産所得用の決算書に出します）</label>
+            </div>
+          )}
+          {method === "straight" && <p className="field-note">{LIFE_EXAMPLES}。耐用年数は国税庁の耐用年数表で確かめてください。</p>}
+          {method === "straight" && acquired && acquired <= OLD_STRAIGHT_UNTIL && (
+            <p className="field-note">
+              平成19年3月31日以前に取得した資産なので、旧定額法で計算します（取得価額 × 90% × 旧定額法の償却率。償却費の累計が取得価額の95%に達したら、その翌年から5年間で1円まで均等に償却します）。
+            </p>
+          )}
+          {method === "lump3" && <p className="field-note">取得価額の 1/3 ずつを3年で経費にします（月割りしません）。</p>}
+          {method === "small" && <p className="field-note">使い始めた年に全額を経費にします（1年の合計 {yen(SMALL_YEAR_LIMIT)} 円まで）。</p>}
+          {cost !== null && cost > 0 && cost < EXPENSE_LIMIT && <p className="field-note">{yen(EXPENSE_LIMIT)} 円未満のものは、台帳に入れずに消耗品費などで経費にできます。</p>}
+
+          <label className="check">
+            <input type="checkbox" checked={hasOpening} onChange={(e) => setHasOpening(e.target.checked)} />
+            domble を使う前から持っている資産（期首の未償却残高から計算する）
           </label>
+          {hasOpening && (
+            <div className="field-row">
+              <label className="field">
+                <span>年</span>
+                <input className="input" inputMode="numeric" value={openingYear} onChange={(e) => setOpeningYear(e.target.value.replace(/\D/g, "").slice(0, 4))} aria-label="期首の未償却残高の年" />
+              </label>
+              <label className="field">
+                <span>その年の1月1日の未償却残高（円）</span>
+                <AmountInput value={openingValue} onChange={setOpeningValue} aria-label="期首の未償却残高" />
+              </label>
+            </div>
+          )}
           <label className="field">
             <span>備考（任意）</span>
             <input className="input" value={memo} onChange={(e) => setMemo(e.target.value)} maxLength={100} placeholder="例：型番、購入先" />
           </label>
+        </fieldset>
+
+        <div className="field-row">
+          <label className="field">
+            <span>{kind === "realestate" ? "貸付割合" : "事業専用割合"}（{fromYear ? `${year}年から・` : ""}%）</span>
+            <input
+              className="input" inputMode="numeric" value={rate} onChange={(e) => setRate(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="事業専用割合"
+              disabled={rateLocked}
+            />
+          </label>
+          <label className="field">
+            <span>売却・除却した日（あれば）</span>
+            <FullDateInput value={disposed} onChange={setDisposed} year={year} aria-label="売却・除却した日" onValidity={markDate("disposed")} />
+          </label>
         </div>
+        <p className="field-note">
+          家事でも使うものは、事業で使っている割合を入れてください。償却費のうち残りは事業主貸になります（家事按分の画面ではなく、ここで資産ごとに決めます）。
+          {fromYear && `割合を変えると ${year}年からの割合になり、前の年の割合はそのまま残ります。`}
+        </p>
+        {asset?.rates && (
+          <p className="field-note">
+            割合の変わり方：{[`${asset.used_on.slice(0, 4)}年から ${asset.business_rate}%`, ...asset.rates.map((r) => `${r.from_year}年から ${r.rate}%`)].join("、")}
+          </p>
+        )}
         {disposed && <p className="field-note">売却・除却した月まで償却します。帳簿から外す仕訳（売却・除却損など）は振替伝票で入れてください。</p>}
         {error && <p className="notice" role="alert">{error}</p>}
         <div className="voucher-actions">

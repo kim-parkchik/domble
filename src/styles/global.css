@@ -894,3 +894,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
   .md h3 { break-after: avoid; }
   .md tr, .md li { break-inside: avoid; }
 }
+
+/* 中の入力をまとめて止めるための枠（見た目は無し。固定資産台帳の締めた年の資産など） */
+.plain-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.plain-fieldset:disabled { opacity: .6; }

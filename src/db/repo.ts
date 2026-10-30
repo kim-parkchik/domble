@@ -32,12 +32,12 @@ import { BUILTIN_HOLIDAYS } from "../constants/holidays";
 import { hashPassword, validatePassword, verifyPassword } from "../lib/password";
 import { can, isRole, permissionMessage, ROLE_LABEL, type Perm, type Role } from "../lib/permissions";
 import {
-  anchorCode, chainHash, closingState, entryState, evidenceState, GENESIS, hashText, HISTORY_COLUMNS, historyContent, normalizeAnchor,
+  anchorCode, assetState, chainHash, closingState, entryState, evidenceState, GENESIS, hashText, HISTORY_COLUMNS, historyContent, normalizeAnchor,
   openingState, sourceLabel, stateLabel, verifyChain, type ChainRow, type ChainSource, type IntegrityIssue,
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
 import { CATEGORY_CODE_RANGE, isBalanceSheet, LOCKED_CODES, normalSideOf } from "../constants/accounts";
-import { methodLabel, validateAsset, type FixedAsset } from "../lib/depreciation";
+import { assetLockError, businessRateIn, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
 import type { InventoryAdjust } from "../lib/taxReturn";
 import {
   DEFAULT_BACKUP_GENERATIONS, DEFAULT_INPUT_PERIOD_DAYS, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
@@ -202,7 +202,9 @@ const logMaster = async (db: Database, rec: MasterLog) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [rec.target_type, rec.target_id, rec.action, rec.fiscal_year, rec.label, rec.old_value, rec.new_value, currentActor],
   );
-  const key = rec.target_type === "opening" ? `opening:${rec.fiscal_year}` : rec.target_type === "closing" ? `closing:${rec.target_id}` : "";
+  const key = rec.target_type === "opening" ? `opening:${rec.fiscal_year}`
+    : rec.target_type === "closing" ? `closing:${rec.target_id}`
+    : rec.target_type === "asset" ? `asset:${rec.target_id}` : "";
   await appendChain(db, "master_history", Number(res.lastInsertId), key);
 };
 
@@ -1635,16 +1637,35 @@ const setHomeUseRun_ = (db: Database, year: number, entryId: number) =>
 // ────────────────────────────────────────────
 export type AssetInput = Omit<FixedAsset, "id">;
 
-export const getAssets = (db: Database) =>
-  db.select<FixedAsset[]>(
-    `SELECT id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind
-       FROM fixed_assets ORDER BY used_on, id`,
+const ASSET_COLUMNS = "id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind";
+
+/** 資産に、あとの年から変えた事業専用割合（あれば）をつける */
+const withRates = (assets: FixedAsset[], rates: (AssetRate & { asset_id: number })[]): FixedAsset[] =>
+  assets.map((a) => {
+    const rs = rates.filter((r) => r.asset_id === a.id).map(({ from_year, rate }) => ({ from_year, rate }));
+    return rs.length ? { ...a, rates: rs } : a;
+  });
+
+export const getAssets = async (db: Database) =>
+  withRates(
+    await db.select<FixedAsset[]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets ORDER BY used_on, id`),
+    await db.select<(AssetRate & { asset_id: number })[]>("SELECT asset_id, from_year, rate FROM asset_rates ORDER BY asset_id, from_year"),
   );
+
+const getAsset = async (db: Database, id: number) =>
+  withRates(
+    await db.select<FixedAsset[]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets WHERE id = ?`, [id]),
+    await db.select<(AssetRate & { asset_id: number })[]>("SELECT asset_id, from_year, rate FROM asset_rates WHERE asset_id = ? ORDER BY from_year", [id]),
+  )[0];
+
+/** 年の締め（12月まで）をした年 */
+const yearClosedYears = async (db: Database) => (await getClosings(db)).filter((c) => closedMonthOf(c) === 12).map((c) => c.fiscal_year);
 
 const assetText = (a: AssetInput) =>
   [
     `取得 ${a.acquired_on}`, `使用開始 ${a.used_on}`, `取得価額 ${a.cost.toLocaleString()}円`,
-    methodLabel(a) + (a.method === "straight" ? ` ${a.useful_life}年` : ""), `事業 ${a.business_rate}%`,
+    methodLabel(a) + (a.method === "straight" ? ` ${a.useful_life}年` : ""),
+    `事業 ${a.business_rate}%` + (a.rates ?? []).map((r) => `・${r.from_year}年から ${r.rate}%`).join(""),
     a.opening_year !== null ? `${a.opening_year}年期首の未償却残高 ${a.opening_book_value?.toLocaleString()}円` : "",
     a.disposed_on ? `売却・除却 ${a.disposed_on}` : "",
     a.memo ? `備考 ${a.memo}` : "",
@@ -1668,32 +1689,63 @@ const assertAsset = async (db: Database, a: AssetInput) => {
   if (acc[0]?.category !== "asset") throw new Error("資産の科目を選んでください");
 };
 
-/** 追加（id = null）・変更。id を返す */
-const saveAsset_ = async (db: Database, id: number | null, input: AssetInput) => {
+/**
+ * 追加（id = null）・変更。id を返す
+ * year を渡すと、business_rate は「year 年からの事業専用割合」として扱う（使い始めた年より後なら、前の年の割合はそのまま残す）。
+ * 年の締めをした年に台帳に出る資産は、売却・除却の日と、締めていない年からの事業専用割合だけ変えられる（assetLockError。トリガーでも拒否）
+ */
+const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, year?: number) => {
   const a = normalizeAsset(input);
   await assertAsset(db, a);
-  const values = [
-    a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind,
-  ];
-  const fiscal_year = await currentYear(db);
+  const closed = await yearClosedYears(db);
+  const fiscal_year = year ?? (await currentYear(db));
   if (id === null) {
+    const added = { ...a, rates: undefined };
+    const err = assetLockError(null, added, closed);
+    if (err) throw new Error(err);
     const r = await db.execute(
       `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      values,
+      [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind],
     );
     const newId = Number(r.lastInsertId);
-    await logMaster(db, { target_type: "asset", target_id: newId, action: "create", fiscal_year, label: a.name, old_value: "", new_value: assetText(a) });
+    await logMaster(db, { target_type: "asset", target_id: newId, action: "create", fiscal_year, label: a.name, old_value: "", new_value: assetText(added) });
     return newId;
   }
-  const before = (await getAssets(db)).find((x) => x.id === id);
+  const before = await getAsset(db, id);
   if (!before) throw new Error("固定資産が見つかりません");
+  // 事業専用割合：使い始めた年より後の year 年に変えたら、year 年からの割合にする（前の年からの割合と同じなら、year 年の行は要らない）
+  let base = a.business_rate;
+  let rates = before.rates ?? [];
+  const useYear = Number(a.used_on.slice(0, 4));
+  if (year !== undefined && year > useYear) {
+    base = before.business_rate;
+    if (a.business_rate !== businessRateIn(before, year)) {
+      const others = rates.filter((r) => r.from_year !== year);
+      rates = businessRateIn({ business_rate: base, rates: others }, year - 1) === a.business_rate
+        ? others
+        : [...others, { from_year: year, rate: a.business_rate }].sort((x, y) => x.from_year - y.from_year);
+    }
+  }
+  const after: FixedAsset = { ...a, id, business_rate: base, ...(rates.length ? { rates } : {}) };
+  const err = assetLockError(before, after, closed);
+  if (err) throw new Error(err);
   await db.execute(
     `UPDATE fixed_assets SET name = ?, account_id = ?, acquired_on = ?, used_on = ?, cost = ?, method = ?, useful_life = ?, business_rate = ?,
        opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, income_kind = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
-    [...values, id],
+    [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, base, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind, id],
   );
-  const [oldText, newText] = [assetText(before), assetText(a)];
+  for (const r of before.rates ?? []) {
+    if (!rates.some((x) => x.from_year === r.from_year)) await db.execute("DELETE FROM asset_rates WHERE asset_id = ? AND from_year = ?", [id, r.from_year]);
+  }
+  for (const r of rates) {
+    if ((before.rates ?? []).some((x) => x.from_year === r.from_year && x.rate === r.rate)) continue;
+    await db.execute(
+      "INSERT INTO asset_rates (asset_id, from_year, rate) VALUES (?, ?, ?) ON CONFLICT (asset_id, from_year) DO UPDATE SET rate = excluded.rate",
+      [id, r.from_year, r.rate],
+    );
+  }
+  const [oldText, newText] = [assetText(before), assetText(after)];
   if (oldText !== newText || before.name !== a.name || before.account_id !== a.account_id) {
     await logMaster(db, { target_type: "asset", target_id: id, action: "change", fiscal_year, label: a.name, old_value: `${before.name}：${oldText}`, new_value: `${a.name}：${newText}` });
   }
@@ -1702,8 +1754,11 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput) =>
 
 /** 削除（間違えて登録したとき。売ったり捨てたりしたときは「売却・除却した日」を入れる） */
 const deleteAsset_ = async (db: Database, id: number) => {
-  const before = (await getAssets(db)).find((x) => x.id === id);
+  const before = await getAsset(db, id);
   if (!before) return;
+  const err = assetLockError(before, null, await yearClosedYears(db));
+  if (err) throw new Error(err);
+  await db.execute("DELETE FROM asset_rates WHERE asset_id = ?", [id]);
   await db.execute("DELETE FROM fixed_assets WHERE id = ?", [id]);
   await logMaster(db, { target_type: "asset", target_id: id, action: "delete", fiscal_year: await currentYear(db), label: before.name, old_value: assetText(before), new_value: "" });
 };
@@ -2165,6 +2220,11 @@ const currentState = async (db: Database, key: string): Promise<string> => {
     );
     return closingState(c[0] ?? null);
   }
+  if (kind === "asset") {
+    const a = await db.select<Parameters<typeof assetState>[0][]>(`SELECT ${ASSET_COLUMNS} FROM fixed_assets WHERE id = ?`, [id]);
+    const rates = await db.select<{ from_year: number; rate: number }[]>("SELECT from_year, rate FROM asset_rates WHERE asset_id = ?", [id]);
+    return assetState(a[0] ?? null, rates);
+  }
   return "";
 };
 
@@ -2206,7 +2266,7 @@ const appendChain = async (db: Database, source: ChainSource | typeof BASELINE, 
   );
 };
 
-/** 状態を持つもの（仕訳・証憑・期首残高・締め）のキーの一覧 */
+/** 状態を持つもの（仕訳・証憑・期首残高・締め・固定資産）のキーの一覧 */
 const allStateKeys = async (db: Database) => {
   const ids = async (sql: string) => (await db.select<{ k: number }[]>(sql)).map((r) => r.k);
   return [
@@ -2214,8 +2274,11 @@ const allStateKeys = async (db: Database) => {
     ...(await ids("SELECT id AS k FROM evidences ORDER BY id")).map((k) => `evidence:${k}`),
     ...(await ids("SELECT DISTINCT fiscal_year AS k FROM opening_balances ORDER BY k")).map((k) => `opening:${k}`),
     ...(await ids("SELECT fiscal_year AS k FROM fiscal_closings ORDER BY k")).map((k) => `closing:${k}`),
+    ...(await assetStateKeys(db)),
   ];
 };
+const assetStateKeys = async (db: Database) =>
+  (await db.select<{ k: number }[]>("SELECT id AS k FROM fixed_assets ORDER BY id")).map((r) => `asset:${r.k}`);
 
 /**
  * 記録の連鎖を始める（厳密モードの帳簿で一度だけ）。
@@ -2223,10 +2286,18 @@ const allStateKeys = async (db: Database) => {
  * これより前に直接書き換えられていたものは見つけられない（README の課題に記載）
  */
 const initChain_ = async (db: Database) => {
-  const r = await db.select<{ e_book_mode: string | null; chain_initialized: number }[]>(
-    "SELECT e_book_mode, chain_initialized FROM settings WHERE id = 1",
+  const r = await db.select<{ e_book_mode: string | null; chain_initialized: number; chain_assets: number }[]>(
+    "SELECT e_book_mode, chain_initialized, chain_assets FROM settings WHERE id = 1",
   );
-  if (!r[0] || r[0].e_book_mode !== "strict" || r[0].chain_initialized) return;
+  if (!r[0] || r[0].e_book_mode !== "strict") return;
+  if (r[0].chain_initialized) {
+    // 固定資産台帳を連鎖に入れる前に始めた連鎖：今の台帳を基準点として足す（それより前の台帳の書き換えは見つけられない）
+    if (r[0].chain_assets) return;
+    let n = (await db.select<{ n: number | null }[]>("SELECT MAX(source_id) AS n FROM audit_chain WHERE source = ?", [BASELINE]))[0]?.n ?? 0;
+    for (const key of await assetStateKeys(db)) await appendChain(db, BASELINE, ++n, key, true);
+    await db.execute("UPDATE settings SET chain_assets = 1 WHERE id = 1");
+    return;
+  }
   const sources = Object.keys(HISTORY_COLUMNS) as ChainSource[];
   const rows: { source: ChainSource; id: number; at: string }[] = [];
   for (const src of sources) {
@@ -2237,7 +2308,7 @@ const initChain_ = async (db: Database) => {
   for (const x of rows) await appendChain(db, x.source, x.id, "", true);
   let n = 0;
   for (const key of await allStateKeys(db)) await appendChain(db, BASELINE, ++n, key, true);
-  await db.execute("UPDATE settings SET chain_initialized = 1 WHERE id = 1");
+  await db.execute("UPDATE settings SET chain_initialized = 1, chain_assets = 1 WHERE id = 1");
 };
 
 /** 検知した出来事を記録する（厳密モード） */

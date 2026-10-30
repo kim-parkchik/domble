@@ -426,7 +426,7 @@ export const DepreciationSection = ({ assets, notes, onSaved, rateLabel = "事�
                   <td className="num">{yen(d!.depreciation)}</td>
                   <td className="num">—</td>
                   <td className="num">{yen(d!.depreciation)}</td>
-                  <td className="num">{a.business_rate}%</td>
+                  <td className="num">{d!.businessRate}%</td>
                   <td className="num">{yen(d!.business)}</td>
                   <td className="num">{yen(d!.closing)}</td>
                   <td>

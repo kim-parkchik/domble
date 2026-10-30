@@ -10,7 +10,7 @@ import { ACCOUNT_SEEDS } from "../constants/accounts";
 import * as repo from "./repo";
 import type { JournalLine } from "../lib/types";
 import { subKey } from "../lib/types";
-import { depreciationLines } from "../lib/depreciation";
+import { depreciationFor, depreciationLines } from "../lib/depreciation";
 import { allowanceCalc, allowanceLines } from "../lib/allowance";
 import { taxYearOf } from "../lib/tax";
 import { emptyRow } from "../lib/accounting";
@@ -272,6 +272,83 @@ describe("固定資産台帳・減価償却（repo）", () => {
     repo.setActor(editor, "editor");
     await expect(repo.saveAsset(db, null, base)).rejects.toThrow(/権限/);
     expect(await repo.saveDepreciationRun(db, 2026, depreciationLines(await repo.getAssets(db), 2026, ids))).toBeGreaterThan(0);
+  });
+});
+
+describe("固定資産台帳と年の締め・年ごとの事業専用割合（repo）", () => {
+  const setup = async () => {
+    const { db, raw } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const car: repo.AssetInput = {
+      name: "営業車", account_id: id("車両運搬具"), acquired_on: "2025-04-01", used_on: "2025-04-01", cost: 1_800_000, method: "straight",
+      useful_life: 6, business_rate: 60, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
+    };
+    const a = await repo.saveAsset(db, null, car);
+    return { db, raw, car, a };
+  };
+
+  test("事業専用割合は、表示中の年からの割合として残す（前の年はそのまま。前の年と同じに戻せば行を消す）", async () => {
+    const { db, car, a } = await setup();
+    await repo.saveAsset(db, a, { ...car, business_rate: 80 }, 2026);
+    let [x] = await repo.getAssets(db);
+    expect([x.business_rate, x.rates]).toEqual([60, [{ from_year: 2026, rate: 80 }]]);
+    expect([depreciationFor(x, 2025)!.business, depreciationFor(x, 2026)!.business]).toEqual([135_270, 240_480]);
+    // 使い始めた年に変えると、使い始めた年からの割合
+    await repo.saveAsset(db, a, { ...car, business_rate: 50 }, 2025);
+    [x] = await repo.getAssets(db);
+    expect([x.business_rate, x.rates]).toEqual([50, [{ from_year: 2026, rate: 80 }]]);
+    await repo.saveAsset(db, a, { ...car, business_rate: 50 }, 2026);
+    [x] = await repo.getAssets(db);
+    expect([x.business_rate, x.rates]).toEqual([50, undefined]);
+    const h = (await repo.getMasterHistory(db)).filter((r) => r.target_type === "asset");
+    expect(h[2].new_value).toContain("事業 60%・2026年から 80%");
+  });
+
+  test("年の締めをした年に使っている資産は、売却・除却の日と、締めていない年からの割合だけ変えられる（repo とトリガー）", async () => {
+    const { db, raw, car, a } = await setup();
+    await repo.closeYear(db, 2025);
+    await expect(repo.saveAsset(db, a, { ...car, cost: 2_000_000 }, 2026)).rejects.toThrow(/2025年）に使っている資産のため、取得価額は変えられません/);
+    await expect(repo.saveAsset(db, a, { ...car, name: "社用車" }, 2026)).rejects.toThrow(/名称は変えられません/);
+    await expect(repo.saveAsset(db, a, { ...car, business_rate: 80 }, 2025)).rejects.toThrow(/2025年は締め済み/);
+    await expect(repo.deleteAsset(db, a)).rejects.toThrow(/削除できません/);
+    await expect(repo.saveAsset(db, null, { ...car, name: "2台目" })).rejects.toThrow(/追加できません/);
+    await expect(repo.saveAsset(db, a, { ...car, disposed_on: "2025-12-31" }, 2026)).rejects.toThrow(/売却・除却の日/);
+    // 締めていない年からの割合・売却の日はよい
+    await repo.saveAsset(db, a, { ...car, business_rate: 80, disposed_on: "2026-09-30" }, 2026);
+    const [x] = await repo.getAssets(db);
+    expect([x.business_rate, x.rates, x.disposed_on]).toEqual([60, [{ from_year: 2026, rate: 80 }], "2026-09-30"]);
+    // ソフトを通さない書き込みもトリガーで止める
+    expect(() => raw.run("UPDATE fixed_assets SET cost = 1 WHERE id = ?", [a])).toThrow(/締め済み/);
+    expect(() => raw.run("UPDATE fixed_assets SET business_rate = 100 WHERE id = ?", [a])).toThrow(/締め済み/);
+    expect(() => raw.run("UPDATE fixed_assets SET disposed_on = '2025-10-31' WHERE id = ?", [a])).toThrow(/締め済み/);
+    expect(() => raw.run("DELETE FROM fixed_assets WHERE id = ?", [a])).toThrow(/締め済み/);
+    expect(() => raw.run("INSERT INTO asset_rates (asset_id, from_year, rate) VALUES (?, 2025, 10)", [a])).toThrow(/締め済み/);
+    raw.run("UPDATE fixed_assets SET disposed_on = '2026-10-31' WHERE id = ?", [a]);
+    raw.run("UPDATE asset_rates SET rate = 70 WHERE asset_id = ? AND from_year = 2026", [a]);
+    // 締めを戻せば直せる
+    await repo.reopenYear(db, 2025, "取得価額の誤り");
+    await repo.saveAsset(db, a, { ...car, cost: 2_000_000 }, 2026);
+  });
+
+  test("台帳は改ざんの照合に入る。連鎖を始めたあとの帳簿は、開いたときの台帳を基準点にする", async () => {
+    const { db, raw, car } = await setup();
+    await repo.initChain(db);
+    // 台帳を連鎖に入れる前に始めた帳簿のまね：資産は連鎖に記録がない
+    raw.run("UPDATE settings SET chain_assets = 0");
+    raw.run(`INSERT INTO fixed_assets (id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, memo)
+             VALUES (50, '古い資産', ?, '2026-01-10', '2026-01-10', 300000, 'straight', 4, 100, '')`, [car.account_id]);
+    const errors = async () => (await repo.verifyIntegrity(db)).issues.filter((i) => i.level === "error").map((i) => i.message);
+    expect((await errors()).join()).toMatch(/固定資産 No.50 に記録がありません/);
+    await repo.initChain(db);
+    expect(await errors()).toEqual([]);
+    await repo.saveAsset(db, 50, { ...car, name: "古い資産", acquired_on: "2026-01-10", used_on: "2026-01-10", cost: 300_000, useful_life: 4, business_rate: 90 }, 2027);
+    expect(await errors()).toEqual([]);
+    raw.run("UPDATE fixed_assets SET cost = 1 WHERE id = 50");
+    expect(await errors()).toEqual([expect.stringMatching(/固定資産 No.50 が、最後に記録した内容と一致しません/)]);
+    raw.run("UPDATE fixed_assets SET cost = 300000 WHERE id = 50");
+    raw.run("UPDATE asset_rates SET rate = 10 WHERE asset_id = 50");
+    expect(await errors()).toEqual([expect.stringMatching(/固定資産 No.50/)]);
   });
 });
 

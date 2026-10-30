@@ -14,7 +14,11 @@ import type { IncomeKind, JournalLine } from "./types";
  * 償却率は「1 / 耐用年数」を小数第3位で切り上げたもの（定額法の償却率表と同じ値になる）
  *
  * 事業専用割合：償却費のうち、必要経費に入れるのは事業で使っている割合だけ（1円未満は切り捨て。経費を多く見積もらない側）。
- * 残りは事業主貸にする。未償却残高は、割合にかかわらず償却費の全額だけ減る
+ * 残りは事業主貸にする。未償却残高は、割合にかかわらず償却費の全額だけ減る。
+ * 割合は年ごとに見直せる（家事按分と同じく「何年から何%」。前の年の割合はそのまま）
+ *
+ * 年の締め：締めた年に台帳・決算書に出る資産は、売却・除却の日（締めていない年の分）と、締めていない年からの事業専用割合だけ変えられる
+ * （assetLockError。DB のトリガー（schema.ts）でも同じ条件で拒否する）
  */
 
 export type DepreciationMethod = "straight" | "lump3" | "small";
@@ -57,8 +61,10 @@ export interface FixedAsset {
   method: DepreciationMethod;
   /** 耐用年数（定額法のとき） */
   useful_life: number;
-  /** 事業専用割合（%） */
+  /** 事業専用割合（%）。使い始めた年からの割合（あとの年に変えたものは rates） */
   business_rate: number;
+  /** あとの年から変えた事業専用割合（from_year の年から。古い順） */
+  rates?: AssetRate[];
   /** domble を使う前から持っている資産：この年の期首の未償却残高から計算を始める */
   opening_year: number | null;
   opening_book_value: number | null;
@@ -67,6 +73,12 @@ export interface FixedAsset {
   memo: string;
   /** 所得の区分（不動産所得の資産は減価償却費（不動産）にし、不動産所得用の決算書に出す。無ければ事業所得） */
   income_kind?: IncomeKind;
+}
+
+/** 事業専用割合を変えた年と割合 */
+export interface AssetRate {
+  from_year: number;
+  rate: number;
 }
 
 /** ある年度の償却 */
@@ -83,6 +95,8 @@ export interface YearDepreciation {
   opening: number;
   /** 本年分の償却費（合計） */
   depreciation: number;
+  /** その年の事業専用割合（%） */
+  businessRate: number;
   /** 必要経費に入れる額（事業分） */
   business: number;
   /** 事業主貸にする額（家事分） */
@@ -121,6 +135,67 @@ const monthsIn = (a: FixedAsset, year: number) => {
   const from = yearOf(a.used_on) === year ? monthOf(a.used_on) : 1;
   const to = a.disposed_on && yearOf(a.disposed_on) === year ? monthOf(a.disposed_on) : 12;
   return Math.max(0, to - from + 1);
+};
+
+/** その年の事業専用割合（from_year がその年以前で最も新しいもの。無ければ使い始めた年からの割合） */
+export const businessRateIn = (a: Pick<FixedAsset, "business_rate" | "rates">, year: number) => {
+  let rate = a.business_rate;
+  let from = -Infinity;
+  for (const r of a.rates ?? []) if (r.from_year <= year && r.from_year > from) [rate, from] = [r.rate, r.from_year];
+  return rate;
+};
+
+/**
+ * 資産が台帳・決算書に出る年の範囲：使い始めた年から、売却・除却した年まで（一括償却資産は除却しても3年目まで）。売っていなければ終わりなし
+ * schema.ts の assetEnd と同じ
+ */
+export const assetYears = (a: Pick<FixedAsset, "used_on" | "disposed_on" | "method">) => {
+  const from = yearOf(a.used_on);
+  if (!a.disposed_on) return { from, to: Infinity };
+  return { from, to: Math.max(yearOf(a.disposed_on), a.method === "lump3" ? from + 2 : 0) };
+};
+
+/** 年の締めをした年のうち、資産が台帳に出る年 */
+export const closedYearsOf = (a: Pick<FixedAsset, "used_on" | "disposed_on" | "method">, closedYears: readonly number[]) => {
+  const { from, to } = assetYears(a);
+  return closedYears.filter((y) => y >= from && y <= to).sort((x, y) => x - y);
+};
+
+/** 締めた年にかかる資産で、変えられない項目（売却・除却の日と、あとの年からの事業専用割合のほか全部） */
+const LOCKED_FIELDS: [keyof Omit<FixedAsset, "id">, string][] = [
+  ["name", "名称"], ["account_id", "科目"], ["acquired_on", "取得日"], ["used_on", "使い始めた日"], ["cost", "取得価額"], ["method", "償却方法"],
+  ["useful_life", "耐用年数"], ["opening_year", "期首の未償却残高の年"], ["opening_book_value", "期首の未償却残高"], ["memo", "備考"], ["income_kind", "所得の区分"],
+];
+const LOCK_HINT = "直すときは、事業者設定で締めを戻してください。";
+const yearsText = (ys: number[]) => ys.map((y) => `${y}年`).join("・");
+
+/**
+ * 年の締めをした年に関わる、資産の追加・変更・削除を確かめる（before = null は追加、after = null は削除）。問題があれば文言を返す
+ *  締めた年に台帳に出る資産は、売却・除却の日（締めた年にかからないもの）と、締めていない年からの事業専用割合だけ変えられる。
+ *  締めた年に台帳に出るように変える（使い始めた日を前にずらすなど）こともできない
+ */
+export const assetLockError = (
+  before: Omit<FixedAsset, "id"> | null, after: Omit<FixedAsset, "id"> | null, closedYears: readonly number[],
+): string | null => {
+  const was = before ? closedYearsOf(before, closedYears) : [];
+  const will = after ? closedYearsOf(after, closedYears) : [];
+  if (!before) return will.length ? `${yearsText(will)}は締め済みのため、その年に使っている資産は追加できません。${LOCK_HINT}` : null;
+  if (!after) return was.length ? `締め済みの年（${yearsText(was)}）に使っている資産は削除できません。${LOCK_HINT}` : null;
+  if (was.length === 0) return will.length ? `締め済みの年（${yearsText(will)}）に使っていることになる変更はできません。${LOCK_HINT}` : null;
+  const norm = (v: unknown) => v ?? null;
+  const changed = LOCKED_FIELDS.filter(([k]) => norm(before[k]) !== norm(after[k])).map(([, label]) => label);
+  if (changed.length) {
+    return `締め済みの年（${yearsText(was)}）に使っている資産のため、${changed.join("・")}は変えられません（売却・除却の日と、締めていない年からの事業専用割合は変えられます）。${LOCK_HINT}`;
+  }
+  const years = [...new Set([...was, ...will])].sort((x, y) => x - y);
+  if (norm(before.disposed_on) !== norm(after.disposed_on)) {
+    const from = Math.min(before.disposed_on ? yearOf(before.disposed_on) : Infinity, after.disposed_on ? yearOf(after.disposed_on) : Infinity);
+    const hit = years.filter((y) => y >= from);
+    if (hit.length) return `売却・除却の日の変更は、締め済みの年（${yearsText(hit)}）の台帳が変わるためできません。${LOCK_HINT}`;
+  }
+  const rateHit = years.filter((y) => businessRateIn(before, y) !== businessRateIn(after, y));
+  if (rateHit.length) return `${yearsText(rateHit)}は締め済みのため、その年の事業専用割合は変えられません。${LOCK_HINT}`;
+  return null;
 };
 
 /** 償却費のうち事業分（切り捨て）と家事分 */
@@ -166,7 +241,8 @@ export const depreciationFor = (a: FixedAsset, year: number): YearDepreciation |
   }
   if (a.opening_year !== null && a.opening_book_value !== null && year === a.opening_year) book = a.opening_book_value;
   const depreciation = depreciationOfYear(a, year, book);
-  const { business, private: priv } = splitBusiness(depreciation, a.business_rate);
+  const businessRate = businessRateIn(a, year);
+  const { business, private: priv } = splitBusiness(depreciation, businessRate);
   const old = isOldStraight(a);
   const equal = old && book <= oldFloor(a.cost);
   return {
@@ -176,6 +252,7 @@ export const depreciationFor = (a: FixedAsset, year: number): YearDepreciation |
     months: a.method === "straight" ? monthsIn(a, year) : 12,
     opening: book,
     depreciation,
+    businessRate,
     business,
     private: priv,
     closing: book - depreciation,
@@ -225,7 +302,7 @@ export const depreciationLines = (assets: FixedAsset[], year: number, ids: { exp
     const d = depreciationFor(a, year);
     if (!d || d.depreciation === 0) continue;
     const memo = `減価償却 ${a.name}`;
-    const privateMemo = `${memo}（家事分 ${100 - a.business_rate}%）`;
+    const privateMemo = `${memo}（家事分 ${100 - d.businessRate}%）`;
     row++;
     const expense = a.income_kind === "realestate" && ids.expenseRealEstate ? ids.expenseRealEstate : ids.expense;
     if (d.business > 0) {

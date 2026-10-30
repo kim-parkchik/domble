@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { depreciationFor, depreciationLines, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset, type FixedAsset } from "./depreciation";
+import {
+  assetLockError, assetYears, businessRateIn, depreciationFor, depreciationLines, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset,
+  type FixedAsset,
+} from "./depreciation";
 
 const asset = (p: Partial<FixedAsset>): FixedAsset => ({
   id: 1, name: "パソコン", account_id: 134, acquired_on: "2026-04-10", used_on: "2026-04-10", cost: 240_000, method: "straight",
@@ -16,7 +19,7 @@ describe("定額法", () => {
     const pc = asset({});
     expect(depreciationFor(pc, 2025)).toBeNull();
     expect(depreciationFor(pc, 2026)).toEqual({
-      rate: 0.25, base: 240_000, equal: false, months: 9, opening: 240_000, depreciation: 45_000, business: 45_000, private: 0, closing: 195_000, disposed: false,
+      rate: 0.25, base: 240_000, equal: false, months: 9, opening: 240_000, depreciation: 45_000, businessRate: 100, business: 45_000, private: 0, closing: 195_000, disposed: false,
     });
     expect([2027, 2028, 2029, 2030, 2031].map((y) => dep(pc, y))).toEqual([60_000, 60_000, 60_000, 14_999, 0]);
     expect(depreciationFor(pc, 2031)?.closing).toBe(1);
@@ -127,5 +130,56 @@ describe("年末の減価償却の仕訳", () => {
       [3, "debit", 190, 22_500, "減価償却 私用（家事分 100%）"],
       [3, "credit", 133, 22_500, "減価償却 私用"],
     ]);
+  });
+});
+
+describe("年ごとの事業専用割合", () => {
+  test("その年以前で最も新しい割合。前の年はそのまま。家事分の摘要もその年の割合", () => {
+    const car = asset({ business_rate: 60, rates: [{ from_year: 2028, rate: 50 }, { from_year: 2027, rate: 80 }] });
+    expect([2026, 2027, 2028, 2029].map((y) => businessRateIn(car, y))).toEqual([60, 80, 50, 50]);
+    const d = depreciationFor(car, 2027)!;
+    expect([d.depreciation, d.businessRate, d.business, d.private]).toEqual([60_000, 80, 48_000, 12_000]);
+    expect(depreciationFor(car, 2026)!.business).toBe(27_000);
+    const lines = depreciationLines([car], 2027, { expense: 611, draw: 190 });
+    expect(lines.at(-1)?.memo).toBe("減価償却 パソコン（家事分 20%）");
+  });
+});
+
+describe("年の締めをした年の固定資産", () => {
+  const pc = asset({});
+  test("台帳に出る年：使い始めた年から売却・除却の年まで。一括償却資産は3年目まで。売っていなければ終わりなし", () => {
+    expect(assetYears(pc)).toEqual({ from: 2026, to: Infinity });
+    expect(assetYears(asset({ disposed_on: "2028-03-31" }))).toEqual({ from: 2026, to: 2028 });
+    expect(assetYears(asset({ method: "lump3", cost: 150_000, disposed_on: "2026-12-01" }))).toEqual({ from: 2026, to: 2028 });
+  });
+
+  test("締めた年に台帳に出る資産は、追加・削除・項目の変更ができない（名称・備考も）", () => {
+    expect(assetLockError(null, pc, [2026])).toMatch(/2026年は締め済み.*追加できません/);
+    expect(assetLockError(null, asset({ used_on: "2027-01-05", acquired_on: "2026-12-20" }), [2026])).toBeNull();
+    expect(assetLockError(pc, null, [2026])).toMatch(/削除できません/);
+    expect(assetLockError(pc, null, [2025])).toBeNull();
+    expect(assetLockError(pc, { ...pc, cost: 300_000 }, [2026])).toMatch(/取得価額は変えられません/);
+    expect(assetLockError(pc, { ...pc, name: "ノートパソコン", memo: "型番" }, [2026])).toMatch(/名称・備考は変えられません/);
+    expect(assetLockError(pc, { ...pc, cost: 300_000 }, [2025])).toBeNull();
+    // 締めた年にかかるようにずらすのも不可
+    const later = asset({ used_on: "2027-02-01" });
+    expect(assetLockError(later, { ...later, used_on: "2026-12-01" }, [2026])).toMatch(/使っていることになる変更/);
+  });
+
+  test("売却・除却の日は、締めた年にかからなければ入れられる", () => {
+    expect(assetLockError(pc, { ...pc, disposed_on: "2027-06-30" }, [2026])).toBeNull();
+    expect(assetLockError(pc, { ...pc, disposed_on: "2026-11-30" }, [2026])).toMatch(/売却・除却の日/);
+    // 売却を取り消すと、締めた 2028年の台帳に出るようになる
+    const sold = asset({ disposed_on: "2027-06-30" });
+    expect(assetLockError(sold, { ...sold, disposed_on: null }, [2026, 2028])).toMatch(/2028年/);
+  });
+
+  test("事業専用割合は、締めていない年からなら変えられる。締めた年の割合が変わる変更はできない", () => {
+    expect(assetLockError(pc, { ...pc, rates: [{ from_year: 2027, rate: 80 }] }, [2026])).toBeNull();
+    expect(assetLockError(pc, { ...pc, business_rate: 80 }, [2026])).toMatch(/2026年は締め済み.*事業専用割合/);
+    // 2027年を締めたあとに 2026年（締めていない）から変えると、2027年の割合も変わる
+    expect(assetLockError(pc, { ...pc, rates: [{ from_year: 2026, rate: 80 }] }, [2027])).toMatch(/2027年は締め済み/);
+    const changed = asset({ rates: [{ from_year: 2028, rate: 50 }] });
+    expect(assetLockError(changed, { ...changed, business_rate: 70 }, [2028])).toBeNull();
   });
 });

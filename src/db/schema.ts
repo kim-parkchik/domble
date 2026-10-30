@@ -38,6 +38,23 @@ const yearGuards = (prefix: string, table: string, col: string) => [
   guard(`${prefix}_y_del`, "DELETE", table, yearClosed(`OLD.${col}`)),
 ];
 
+// 固定資産：台帳に出る年（使い始めた年〜売却・除却した年。一括償却資産は3年目まで。売っていなければ 9999）に年の締めをした年があるか
+// （lib/depreciation.ts の assetYears・assetLockError と同じ条件）
+const yearOfCol = (col: string) => `CAST(substr(${col}, 1, 4) AS INTEGER)`;
+const assetEnd = (t: string) =>
+  `CASE WHEN ${t}.disposed_on IS NULL THEN 9999 ELSE MAX(${yearOfCol(`${t}.disposed_on`)}, CASE WHEN ${t}.method = 'lump3' THEN ${yearOfCol(`${t}.used_on`)} + 2 ELSE 0 END) END`;
+const assetClosed = (t: string, extra = "") =>
+  `EXISTS (SELECT 1 FROM fiscal_closings c WHERE c.period_end = (c.fiscal_year || '-12-31')
+     AND c.fiscal_year BETWEEN ${yearOfCol(`${t}.used_on`)} AND ${assetEnd(t)}${extra})`;
+/** 締めた年にかかる資産で変えられない列（売却・除却の日と事業専用割合は別に見る） */
+const ASSET_LOCKED_COLUMNS = ["name", "account_id", "acquired_on", "used_on", "cost", "method", "useful_life", "opening_year", "opening_book_value", "memo", "income_kind"];
+const disposedFrom = `MIN(COALESCE(${yearOfCol("OLD.disposed_on")}, 9999), COALESCE(${yearOfCol("NEW.disposed_on")}, 9999))`;
+/** 事業専用割合を変えた年の行 R が、締めた年の割合を変えるか（R の年から、次に変えた年の前までに締めた年がある） */
+const assetRateClosed = (r: string) =>
+  `EXISTS (SELECT 1 FROM fiscal_closings c JOIN fixed_assets a ON a.id = ${r}.asset_id
+     WHERE c.period_end = (c.fiscal_year || '-12-31') AND c.fiscal_year >= ${r}.from_year AND c.fiscal_year <= ${assetEnd("a")}
+       AND NOT EXISTS (SELECT 1 FROM asset_rates x WHERE x.asset_id = ${r}.asset_id AND x.from_year > ${r}.from_year AND x.from_year <= c.fiscal_year))`;
+
 const CLOSED_TRIGGERS: string[] = [
   // 仕訳：日付で判定（訂正で日付を締め済みの年度へ動かす／から動かすのも不可）
   guard("trg_closed_entries_ins", "INSERT", "journal_entries", dateClosed("NEW.date")),
@@ -62,6 +79,18 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_tax_inventory_adjusts", "tax_inventory_adjusts", "fiscal_year"),
   ...yearGuards("trg_closed_tax_prev_amounts", "tax_prev_amounts", "fiscal_year"),
   ...yearGuards("trg_closed_income_tax_inputs", "income_tax_inputs", "fiscal_year"),
+  // 固定資産台帳：締めた年に台帳に出る資産の追加・削除、売却・除却の日と事業専用割合のほかの変更、締めた年にかかる売却・除却の日の変更
+  guard("trg_closed_assets_ins", "INSERT", "fixed_assets", assetClosed("NEW")),
+  guard("trg_closed_assets_del", "DELETE", "fixed_assets", assetClosed("OLD")),
+  guard("trg_closed_assets_upd", "UPDATE", "fixed_assets",
+    `(${assetClosed("OLD")} AND (${ASSET_LOCKED_COLUMNS.map((c) => `OLD.${c} IS NOT NEW.${c}`).join(" OR ")}
+       OR (OLD.disposed_on IS NOT NEW.disposed_on AND (${assetClosed("OLD", ` AND c.fiscal_year >= ${disposedFrom}`)} OR ${assetClosed("NEW", ` AND c.fiscal_year >= ${disposedFrom}`)}))
+       OR (OLD.business_rate IS NOT NEW.business_rate
+           AND ${assetClosed("OLD", " AND NOT EXISTS (SELECT 1 FROM asset_rates x WHERE x.asset_id = OLD.id AND x.from_year <= c.fiscal_year)")})))
+     OR (${assetClosed("NEW")} AND NOT ${assetClosed("OLD")})`),
+  guard("trg_closed_asset_rates_ins", "INSERT", "asset_rates", assetRateClosed("NEW")),
+  guard("trg_closed_asset_rates_upd", "UPDATE", "asset_rates", `${assetRateClosed("OLD")} OR ${assetRateClosed("NEW")}`),
+  guard("trg_closed_asset_rates_del", "DELETE", "asset_rates", assetRateClosed("OLD")),
 ];
 
 /**
@@ -287,6 +316,14 @@ export const SCHEMA: string[] = [
     memo TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
     updated_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
+  );`,
+
+  /** 事業専用割合を、あとの年から変えたもの（その年から。前の年の割合はそのまま。使い始めた年からの割合は fixed_assets.business_rate） */
+  `CREATE TABLE IF NOT EXISTS asset_rates (
+    asset_id INTEGER NOT NULL REFERENCES fixed_assets(id),
+    from_year INTEGER NOT NULL,
+    rate INTEGER NOT NULL CHECK (rate BETWEEN 0 AND 100),
+    PRIMARY KEY (asset_id, from_year)
   );`,
 
   /** 年末の減価償却で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
@@ -631,6 +668,8 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "cashbook_accounts", "TEXT NOT NULL DEFAULT ''"],
   // 改ざんの検知：記録の連鎖を始めたか（既存の履歴を一度だけ連鎖に取り込む）、前回開いたときにあったトリガー
   ["settings", "chain_initialized", "INTEGER NOT NULL DEFAULT 0"],
+  // 固定資産台帳を記録の連鎖に入れたか（入れる前に始めた連鎖には、開いたときの台帳を基準点として足す）
+  ["settings", "chain_assets", "INTEGER NOT NULL DEFAULT 0"],
   ["settings", "known_triggers", "TEXT NOT NULL DEFAULT ''"],
   // 締めたときの連鎖の先頭（確認コードのもと）
   ["fiscal_closings", "chain_head", "TEXT NOT NULL DEFAULT ''"],

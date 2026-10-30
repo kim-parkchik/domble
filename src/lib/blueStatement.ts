@@ -195,7 +195,7 @@ export const depreciationLinesOf = (assets: FixedAsset[], year: number, notes: R
       name: a.name, quantity: notes[`dep:${a.id}:qty`] ?? "", acquired: a.acquired_on.slice(0, 7), cost: a.cost, base: d!.base,
       method: isOldStraight(a) ? "旧定額法" : METHOD_LABEL[a.method],
       life: a.method === "straight" ? a.useful_life : a.method === "lump3" ? 3 : null, rate: d!.rate, months: d!.months,
-      depreciation: d!.depreciation, businessRate: a.business_rate, business: d!.business, closing: d!.closing,
+      depreciation: d!.depreciation, businessRate: d!.businessRate, business: d!.business, closing: d!.closing,
       memo: [a.method === "small" ? "措法28の2" : "", d!.equal ? "均等償却" : "", d!.disposed ? `${Number(a.disposed_on!.slice(5, 7))}月売却・除却` : "", a.memo].filter(Boolean).join(" "),
     }));
 
