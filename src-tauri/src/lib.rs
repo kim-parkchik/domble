@@ -1,5 +1,6 @@
 mod crypt;
 mod db;
+mod files;
 
 use db::{Databases, Encrypted, EncryptionStatus, ExecResult, Unlock};
 use serde_json::{Map, Value as Json};
@@ -57,6 +58,55 @@ fn db_decrypt(dbs: State<'_, Databases>, path: String, current: String) -> Resul
 #[tauri::command(async)]
 fn db_set_remember(dbs: State<'_, Databases>, path: String, remember: bool) -> Result<EncryptionStatus, String> {
     dbs.set_remember(&path, remember)
+}
+
+// ── バックアップ・戻す・使用中の目印。中身は files.rs（開いている帳簿の書き出しは db.rs） ──
+/// 開いている帳簿を dest へ書き出す（暗号化した帳簿は暗号化したまま）
+#[tauri::command(async)]
+fn db_backup(dbs: State<'_, Databases>, path: String, dest: String) -> Result<(), String> {
+    dbs.backup_to(&path, &dest)
+}
+
+/// 閉じている（開く前の）ファイルを写す（開くときのバックアップ）
+#[tauri::command(async)]
+fn file_copy(src: String, dest: String) -> Result<(), String> {
+    files::copy_file(&src, &dest)
+}
+
+#[tauri::command(async)]
+fn backup_list(dir: String, prefix: String, ext: String) -> Result<Vec<files::BackupFile>, String> {
+    files::list_backups(&dir, &prefix, &ext)
+}
+
+#[tauri::command(async)]
+fn files_remove(paths: Vec<String>) -> Vec<String> {
+    files::remove_files(&paths)
+}
+
+/// バックアップを帳簿に戻す（帳簿を閉じてから呼ぶ）
+#[tauri::command(async)]
+fn file_restore(backup: String, book: String) -> Result<(), String> {
+    files::restore_file(&backup, &book)
+}
+
+#[tauri::command(async)]
+fn lock_read(path: String) -> Option<String> {
+    files::read_lock(&path)
+}
+
+#[tauri::command(async)]
+fn lock_write(path: String, content: String) -> Result<(), String> {
+    files::write_lock(&path, &content)
+}
+
+#[tauri::command(async)]
+fn lock_remove(path: String) {
+    files::remove_lock(&path)
+}
+
+#[tauri::command(async)]
+fn host_name() -> String {
+    files::host_name()
 }
 
 /// macOS のメニュー。既定の「終了」（⌘Q）はウィンドウに知らせずにすぐ終わってしまい、画面側でログアウトを
@@ -121,7 +171,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
-            db_open, db_close, db_execute, db_select, db_encryption_status, db_encrypt, db_change_password, db_decrypt, db_set_remember, fetch_holidays_csv
+            db_open, db_close, db_execute, db_select, db_encryption_status, db_encrypt, db_change_password, db_decrypt, db_set_remember, fetch_holidays_csv,
+            db_backup, file_copy, backup_list, files_remove, file_restore, lock_read, lock_write, lock_remove, host_name
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

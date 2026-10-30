@@ -76,8 +76,9 @@ export const tx = <T>(db: Database, label: string, fn: () => Promise<T>, opts: T
   }
   const run = queue.then(async () => {
     const mark = await db.execute("INSERT INTO pending_ops (label, user_id) VALUES (?, ?)", [label, currentActor]);
-    await db.execute("BEGIN IMMEDIATE");
     try {
+      // BEGIN に失敗したとき（ほかで開いていてロックされているなど）も、目印は消す（次に開いたとき「止まった」と誤って知らせないため）
+      await db.execute("BEGIN IMMEDIATE");
       const r = await fn();
       await db.execute("COMMIT");
       return r;
@@ -2616,6 +2617,9 @@ const initChain_ = async (db: Database) => {
   await db.execute("UPDATE settings SET chain_initialized = 1, chain_assets = 1 WHERE id = 1");
 };
 
+/** バックアップから戻したことを記録する（厳密モード。戻したあとに開いた帳簿に） */
+const noteRestored_ = (db: Database, detail: string) => recordEvent(db, "restore", detail);
+
 /** 検知した出来事を記録する（厳密モード） */
 const recordEvent = async (db: Database, kind: string, detail: string) => {
   if (!(await isStrict(db))) return;
@@ -2980,6 +2984,7 @@ export const deleteEvidence = inTx(deleteEvidence_, (id) => `証憑 No.${id} の
 export const linkEvidence = inTx(linkEvidence_, (e, entry) => `証憑 No.${e} と伝票 No.${entry} のひも付け`, { perm: "entry" });
 export const unlinkEvidence = inTx(unlinkEvidence_, (e, entry) => `証憑 No.${e} と伝票 No.${entry} のひも付け解除`, { perm: "entry" });
 export const initChain = inTx(initChain_, () => "記録の連鎖の開始");
+export const noteRestored = inTx(noteRestored_, () => "バックアップから戻したことの記録");
 export const checkTriggers = inTx(checkTriggers_, () => "トリガーの確認");
 export const createUser = inTx(createUser_, (name) => `ユーザー「${name}」の追加`, { perm: "users" });
 export const renameUser = inTx(renameUser_, (id) => `ユーザー #${id} の名前変更`, { perm: "users" });

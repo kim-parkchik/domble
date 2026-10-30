@@ -16,8 +16,12 @@ export const EXT_BACKUP = "dmbk";
 export const isBackupFile = (path: string) => path.toLowerCase().endsWith(`.${EXT_BACKUP}`);
 export const FILE_FILTER_NAME = "domble 帳簿ファイル";
 
-/** DBスキーマのバージョン（マイグレーション用） */
-export const SCHEMA_VERSION = 2;
+/**
+ * 帳簿ファイルの形式の版。帳簿の形式（db/schema.ts のテーブル・列・トリガー、db/migrate.ts の作り直し）を変えたら上げる
+ * （上げ忘れは src/db/migrate.test.ts で気づく）。帳簿のほうが新しければ、読み取り専用で開く（古い版で書き込むと新しい項目が消えるため）
+ *  3 = 2026-10-30（形式の版を比べるようにした時点）
+ */
+export const SCHEMA_VERSION = 3;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

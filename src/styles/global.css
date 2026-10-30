@@ -694,6 +694,19 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .login-form .input { flex: 1; }
 .unlock-form { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 10px; }
 .unlock-form .btn { align-self: flex-end; }
+/* 帳簿が使用中のとき（開き方を選ぶ） */
+.lock-note { text-align: left; margin: 4px 0 0; }
+.backup-second { align-items: center; }
+.backup-second .path-text { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow-wrap: anywhere; flex: 1 1 240px; }
+.backup-list { margin-top: 6px; table-layout: auto; }
+.backup-list td { white-space: nowrap; }
+.backup-list td:last-child { text-align: right; }
+.backup-gen { margin-top: 14px; }
+.backup-gen .field { flex: 0 0 200px; }
+.backup-list .badge { margin-left: 6px; }
+.plain-backups { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.plain-backups span { flex: 1; }
+.lock-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; margin-top: 14px; }
 .recovery-input, .recovery-key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
 .start-title svg { vertical-align: -2px; }
 .recovery-key { display: block; padding: 12px 14px; border: 1px dashed var(--rule-strong); border-radius: 6px; background: var(--paper); font-size: 14px; overflow-wrap: anywhere; user-select: all; }

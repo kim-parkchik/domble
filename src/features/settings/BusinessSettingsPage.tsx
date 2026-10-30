@@ -16,13 +16,14 @@ import { normalizePostalCode, validateBusinessInfo } from "../../lib/business";
 import { SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
 import { HolidaySection } from "./HolidaySection";
 import { EncryptionSection } from "./EncryptionSection";
+import { BackupSection } from "./BackupSection";
 import { CODE } from "../../constants/accounts";
 import type { FilingType, RealEstateScale, Settings } from "../../lib/types";
 import { FILING_LABEL } from "../../lib/filing";
 import * as repo from "../../db/repo";
 import { closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
-import { APP_DIR_NAME, BACKUP_DIR_NAME, DEFAULT_INPUT_PERIOD_DAYS, EXT_BACKUP, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS } from "../../constants/appConfig";
+import { DEFAULT_INPUT_PERIOD_DAYS, MAX_INPUT_PERIOD_DAYS } from "../../constants/appConfig";
 import { TaxSection } from "./TaxSection";
 import { EtaxSection } from "./EtaxSection";
 
@@ -585,52 +586,6 @@ const ScanSection = () => {
           </label>
         ))}
       </div>
-    </section>
-  );
-};
-
-/** バックアップの世代数（帳簿を開くたびにバックアップを作り、古いものから消す） */
-const BackupSection = () => {
-  const { db } = useAppContext();
-  const toast = useToast();
-  const [value, setValue] = useState("");
-  const [saved, setSaved] = useState<number | null>(null);
-
-  useEffect(() => {
-    repo.getBackupGenerations(db).then((n) => {
-      setSaved(n);
-      setValue(String(n));
-    }).catch(console.error);
-  }, [db]);
-
-  const save = async () => {
-    try {
-      await repo.setBackupGenerations(db, Number(value));
-      setSaved(Number(value));
-      toast("バックアップの世代数を保存しました。次に帳簿を開いたときから適用されます");
-    } catch (e) {
-      toast(String(e).replace(/^Error: /, ""), "error");
-    }
-  };
-
-  return (
-    <section className="sheet">
-      <h2 className="sheet-h">バックアップ</h2>
-      <p className="prose">
-        帳簿を開くたびに、書類フォルダの「{APP_DIR_NAME}/{BACKUP_DIR_NAME}」へ丸ごと複製（.{EXT_BACKUP}）を作ります。
-        決めた世代数を超えたら、古いものから消します。
-      </p>
-      <form className="field-row" onSubmit={(e) => { e.preventDefault(); save(); }}>
-        <label className="field">
-          <span>残す世代数（1〜{MAX_BACKUP_GENERATIONS}）</span>
-          <input className="input" type="number" min={1} max={MAX_BACKUP_GENERATIONS} value={value} onChange={(e) => setValue(e.target.value)} />
-        </label>
-        <div style={{ alignSelf: "flex-end" }}>
-          <button className="btn primary" type="submit" disabled={saved === null || String(saved) === value}>
-            <Save size={16} /> 保存する
-          </button>
-        </div>
-      </form>
     </section>
   );
 };

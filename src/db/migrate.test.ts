@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { Database as Sqlite } from "bun:sqlite";
 import type Database from "./connection";
-import { COLUMN_MIGRATIONS, SCHEMA } from "./schema";
-import { rebuildTables } from "./migrate";
+import { COLUMN_MIGRATIONS, RETIRED_TRIGGERS, SCHEMA } from "./schema";
+import { rebuildTables, TABLE_REBUILDS } from "./migrate";
+import { SCHEMA_VERSION } from "../constants/appConfig";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const wrap = (raw: Sqlite) => ({
@@ -49,4 +51,16 @@ describe("テーブルの作り直し（列の追加ではできない変更）"
     await rebuildTables(wrap(raw));
     expect(raw.query("SELECT sql FROM sqlite_master WHERE name = 'fixed_assets'").get()).toEqual(before);
   });
+});
+
+/**
+ * 帳簿の形式（テーブル・列・トリガー・作り直し）の指紋と、そのときの形式の版。
+ * 形式を変えてこのテストが落ちたら、constants/appConfig.ts の SCHEMA_VERSION を1つ上げ、ここの version と hash を新しい値にする
+ * （古い版の domble で新しい帳簿を開いたときに、読み取り専用で開くようにするため）
+ */
+const SCHEMA_FINGERPRINT = { version: 3, hash: "36c68baa67328393" };
+
+test("帳簿の形式を変えたら、形式の版（SCHEMA_VERSION）を上げる", () => {
+  const hash = createHash("sha256").update(JSON.stringify([SCHEMA, COLUMN_MIGRATIONS, RETIRED_TRIGGERS, TABLE_REBUILDS.map((t) => t.table)])).digest("hex").slice(0, 16);
+  expect({ version: SCHEMA_VERSION, hash }).toEqual(SCHEMA_FINGERPRINT);
 });

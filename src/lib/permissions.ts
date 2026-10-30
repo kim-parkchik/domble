@@ -11,7 +11,7 @@ export type Role = "admin" | "editor" | "viewer";
 export type Perm =
   | "entry"    // 仕訳・証憑・取引先・定型仕訳・CSV 取り込み・帳簿入力のタブ
   | "master"   // 勘定科目・補助科目・期首残高・家事按分の設定
-  | "settings" // 事業者設定・年度の締め・繰越・入力期間・バックアップの世代数
+  | "settings" // 事業者設定・年度の締め・繰越・入力期間・バックアップ（世代数・2か所目・戻す）
   | "users";   // ユーザーの追加・名前・権限・非表示
 
 export const ROLES: Role[] = ["admin", "editor", "viewer"];

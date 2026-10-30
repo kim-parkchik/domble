@@ -332,6 +332,21 @@ impl Databases {
     }
 
     /// 帳簿ファイルを、暗号化した（外した）写しに置き換えて開き直す。decide が新しい鍵（None なら暗号化しない）を決める
+    /// 開いている帳簿を、そのまま（暗号化した帳簿は同じ鍵で暗号化したまま）dest へ書き出す（今すぐバックアップ・閉じるときのバックアップ）。
+    /// 保存の途中なら断る。書き出しは一時ファイルに書いてから名前を変えるので、途中で止まっても壊れた dest は残らない
+    pub fn backup_to(&self, path: &str, dest: &str) -> Result<(), String> {
+        let map = self.0.lock().map_err(err)?;
+        let book = map.get(path).ok_or("帳簿ファイルが開かれていません")?;
+        if !book.conn.is_autocommit() {
+            return Err("保存の途中です。少し待ってからもう一度お試しください".into());
+        }
+        let tmp = export_to(&book.conn, dest, book.key.as_ref().map(|(k, s)| (k, s)))?;
+        std::fs::rename(&tmp, dest).map_err(|e| {
+            let _ = std::fs::remove_file(&tmp);
+            format!("バックアップを書き出せませんでした：{e}")
+        })
+    }
+
     fn replace_file(&self, path: &str, decide: impl FnOnce(&Book) -> Result<Option<(Key, Salt)>, String>) -> Result<(), String> {
         let mut map = self.0.lock().map_err(err)?;
         let book = map.get(path).ok_or("帳簿ファイルが開かれていません")?;
@@ -569,6 +584,30 @@ mod tests {
         dbs.close(&path).unwrap();
         assert!(!std::path::Path::new(&format!("{path}.domble-tmp")).exists());
         cleanup(&path);
+    }
+
+    #[test]
+    fn backup_to_keeps_contents_and_encryption() {
+        let path = tmp_path("backup-src");
+        let dest = tmp_path("backup-dest");
+        let dbs = plain_book(&path);
+        dbs.backup_to(&path, &dest).unwrap();
+        assert!(crypt::encrypted_salt(&dest).is_none());
+        let copy = Databases::default();
+        copy.open(&dest, true, Unlock::default()).unwrap();
+        assert_eq!(count(&copy, &dest), count(&dbs, &path));
+        copy.close(&dest).unwrap();
+        // 暗号化した帳簿のバックアップは、同じパスワードで開ける暗号化したファイル
+        dbs.encrypt(&path, "correct horse", false).unwrap();
+        dbs.backup_to(&path, &dest).unwrap();
+        assert!(crypt::encrypted_salt(&dest).is_some());
+        assert_eq!(copy.open(&dest, true, Unlock::default()).unwrap_err(), NEEDS_KEY);
+        copy.open(&dest, true, unlock("correct horse")).unwrap();
+        assert_eq!(count(&copy, &dest), count(&dbs, &path));
+        copy.close(&dest).unwrap();
+        dbs.close(&path).unwrap();
+        cleanup(&path);
+        cleanup(&dest);
     }
 
     #[test]

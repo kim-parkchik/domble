@@ -4,9 +4,11 @@
  *  - 回復キー：パスワードを忘れても、これがあれば開ける。パスワードを変えると新しくなる
  *  - この PC に記憶する：次からこの PC ではパスワードを聞かずに開く（鍵は OS の鍵の保管庫に預ける）
  * かける・外す・パスワードを変えたことは履歴に残す（repo.changeEncryption）
+ * 暗号化したあとも、それまでのバックアップは暗号化されていないまま残るので、数を見せて消せるようにする
  */
 import { useEffect, useState } from "react";
-import { Copy, FileDown, KeyRound, LockKeyhole, LockOpen, MonitorCheck, MonitorX } from "lucide-react";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { Copy, FileDown, KeyRound, LockKeyhole, LockOpen, MonitorCheck, MonitorX, Trash2 } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { useToast } from "../../components/Toast";
 import { Modal } from "../../components/Modal";
@@ -14,19 +16,28 @@ import { copyText } from "../../lib/clipboard";
 import { saveAnchorFile } from "../books/IntegrityModal";
 import * as enc from "../../db/encryption";
 import * as repo from "../../db/repo";
+import { backupNow, listBackups, removeBackups, type BackupEntry } from "../../db/database";
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 
 export const EncryptionSection = () => {
-  const { db, filePath, readOnly, can } = useAppContext();
+  const { db, filePath, readOnly, can, bump } = useAppContext();
   const toast = useToast();
   const [status, setStatus] = useState<enc.EncryptionStatus | null>(null);
   const [dialog, setDialog] = useState<"on" | "password" | "off" | null>(null);
   const [recovery, setRecovery] = useState<{ result: enc.Encrypted; changed: boolean } | null>(null);
+  /** 暗号化していないバックアップ（暗号化した帳簿のとき） */
+  const [plain, setPlain] = useState<BackupEntry[]>([]);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     enc.encryptionStatus(filePath).then(setStatus).catch(console.error);
   }, [filePath]);
+
+  useEffect(() => {
+    if (!status?.encrypted || readOnly) return setPlain([]);
+    listBackups(filePath).then((l) => setPlain(l.filter((b) => !b.encrypted))).catch(console.error);
+  }, [filePath, status?.encrypted, readOnly]);
 
   if (!status) return null;
   const admin = can("settings") && !readOnly;
@@ -38,6 +49,31 @@ export const EncryptionSection = () => {
       toast(status.remembered ? "この PC の記憶を消しました。次からはパスワードを聞きます" : "この PC に記憶しました。次からはパスワードなしで開けます");
     } catch (e) {
       toast(errText(e), "error");
+    }
+  };
+
+  /** 暗号化したバックアップを今作ってから、暗号化していないバックアップを消す */
+  const removePlain = async () => {
+    const ok = await ask(
+      `暗号化していないバックアップ ${plain.length}件を消します（2か所目にあるものも）。消す前に、今の中身で暗号化したバックアップを作ります。\n\n` +
+        "消したバックアップには戻せなくなります。よろしいですか？",
+      { title: "暗号化していないバックアップを消す", kind: "warning", okLabel: "消す", cancelLabel: "やめる" },
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const { written, failed } = await repo.queuedRead(() => backupNow(filePath));
+      if (written.length === 0) throw new Error(`暗号化したバックアップを作れなかったため、消すのをやめました（${failed.join("、")}）`);
+      const left = await removeBackups(plain.map((b) => b.path));
+      const now = (await listBackups(filePath)).filter((b) => !b.encrypted);
+      setPlain(now);
+      bump();
+      if (left.length) toast(`消せなかったものがあります：${left.join("、")}`, "error");
+      else toast("暗号化していないバックアップを消しました");
+    } catch (e) {
+      toast(errText(e), "error");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -58,7 +94,16 @@ export const EncryptionSection = () => {
           </>
         )}
       </dl>
-      {readOnly && <p className="field-note">バックアップを読み取り専用で開いているため、変更できません。</p>}
+      {readOnly && <p className="field-note">読み取り専用で開いているため、変更できません。</p>}
+      {plain.length > 0 && (
+        <div className="notice plain-backups">
+          <span>
+            暗号化する前に作った、<b>暗号化していないバックアップが {plain.length}件</b> 残っています。持ち出されると中身を読まれるので、要らなければ消してください
+            （書類フォルダ{plain.some((b) => b.second) ? "・2か所目" : ""}）。
+          </span>
+          <button className="btn danger-ghost" onClick={removePlain} disabled={!admin || busy}><Trash2 size={16} /> 消す</button>
+        </div>
+      )}
       <div className="field-row wrap">
         {!status.encrypted ? (
           <button className="btn primary" onClick={() => setDialog("on")} disabled={!admin}><LockKeyhole size={16} /> 暗号化する</button>
@@ -82,6 +127,7 @@ export const EncryptionSection = () => {
             setDialog(null);
             setStatus(await enc.encryptionStatus(filePath));
             if (r) setRecovery({ result: r, changed });
+            if (dialog === "on" || dialog === "password") repo.queuedRead(() => backupNow(filePath)).catch(console.warn);
             else toast("暗号化をやめました");
           }}
           run={(current, password, remember) =>
@@ -202,7 +248,10 @@ const RecoveryKeyModal = ({ recovery, changed, fileName, onClose }: { recovery: 
     <Modal title="回復キー" onClose={() => (kept ? onClose() : undefined)} width={560}>
       <div className="settings-form">
         <p className="prose">
-          {changed ? "パスワードを変えました。前の回復キーはこの帳簿には使えなくなったので、新しい回復キーを控えてください。" : "暗号化しました。"}
+          {changed
+            ? "パスワードを変えました。前の回復キーはこの帳簿には使えなくなったので、新しい回復キーを控えてください。" +
+              "これまでのバックアップは前のパスワード（前の回復キー）で開くので、前の回復キーも捨てずに残してください。"
+            : "暗号化しました。"}
           パスワードを忘れたときは、この<b>回復キー</b>で開けます。回復キーがあれば誰でも開けるので、帳簿ファイルとは別の安全な場所に保管してください。
         </p>
         <code className="recovery-key">{recovery.recovery_key}</code>

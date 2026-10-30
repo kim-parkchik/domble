@@ -9,7 +9,12 @@ import {
 import { Popover } from "./components/Popover";
 import { copyText } from "./lib/clipboard";
 import { AppProvider, useAppContext } from "./context/AppContext";
-import { openDatabase, pruneBackups, pickExistingFile, pickNewFile, pushRecentFile, removeRecentFile } from "./db/database";
+import {
+  backupNow, deviceId, NEWER_SCHEMA, openDatabase, pruneBackups, pickExistingFile, pickNewFile, pushRecentFile, readLock, removeLock, removeRecentFile,
+  restoreBackupFile, writeLock,
+} from "./db/database";
+import { BEFORE_RESTORE, isSyncedPath, lockState, type LockInfo } from "./lib/backup";
+import { LockScreen } from "./features/start/LockScreen";
 import { EXT_BACKUP, EXT_MAIN, isBackupFile, isBookFile } from "./constants/appConfig";
 import { ROLE_LABEL, type Perm } from "./lib/permissions";
 import { isBeforeStrict, isYearCompliant } from "./lib/ebook";
@@ -107,23 +112,42 @@ interface Session {
   user: User | null;
   /** 前回、保存の途中で止まって取り消された操作 */
   interrupted: string[];
-  /** 読み取り専用（バックアップ .dmbk を開いたとき）。何も書き込まない */
+  /** 読み取り専用（バックアップ .dmbk を開いたとき・ほかで開かれている帳簿・新しい版の帳簿）。何も書き込まない */
   readOnly: boolean;
+  /** 帳簿（.dmbl）を読み取り専用で開いたわけ（画面上部に出す） */
+  readOnlyReason?: string;
 }
 
-/** 帳簿を閉じる：ログアウトを記録して（読み取り専用でなければ）、接続を閉じる */
-const endSession = async (s: Session) => {
+/** 開き方（読み取り専用で開く・使用中の目印を気にせず開く） */
+interface LoadOptions {
+  readOnly?: boolean;
+  reason?: string;
+  ignoreLock?: boolean;
+}
+
+/** 戻したあとに開いた帳簿へ記録するための控え（戻す → 開き直す の間だけ） */
+const RESTORED_KEY = "domble.restored";
+
+/**
+ * 帳簿を閉じる：ログアウトを記録し、今の中身でバックアップを作って（backup。読み取り専用でなければ）、接続を閉じ、使用中の目印を消す
+ */
+const endSession = async (s: Session, backup = true) => {
   try {
     if (s.user && !s.readOnly) await repo.logAccess(s.db, s.user.id, "logout");
     repo.setActor(null);
+    if (backup && !s.readOnly) {
+      const r = await repo.queuedRead(() => backupNow(s.path)).catch((e) => ({ written: [], failed: [String(e)] }));
+      if (r.failed.length) console.warn("閉じるときのバックアップに失敗しました", r.failed);
+    }
     await s.db.close();
   } catch {
     /* すでに閉じていれば無視 */
   }
+  if (!s.readOnly) await removeLock(s.path);
 };
 
-/** ウィンドウを閉じるとき、ログアウトの記録を待つ上限（記録できなくても閉じられるように） */
-const CLOSE_WAIT_MS = 3000;
+/** ウィンドウを閉じるとき、ログアウトの記録とバックアップを待つ上限（できなくても閉じられるように） */
+const CLOSE_WAIT_MS = 10000;
 
 /** 読み取り専用で開いたときの利用者（ユーザーが1人もいない古いバックアップなど） */
 const VIEWER: User = { id: 0, name: "閲覧のみ", has_password: 0, is_active: 1, role: "viewer", memo: "", created_at: "" };
@@ -133,7 +157,9 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [busy, setBusy] = useState(false);
   /** 暗号化した帳簿で、パスワードを聞いているところ */
-  const [locked, setLocked] = useState<{ path: string; error: string } | null>(null);
+  const [locked, setLocked] = useState<{ path: string; error: string; opts: LoadOptions } | null>(null);
+  /** 使用中の目印がある帳簿で、開き方を聞いているところ */
+  const [inUse, setInUse] = useState<{ path: string; lock: LockInfo; state: "self" | "other"; unlock: Unlock } | null>(null);
 
   // 画面の操作で失敗したまま受け止められなかったもの（権限・読み取り専用・締め済みなど）は、
   // 何も起きないように見えないよう、まとめて知らせる
@@ -174,7 +200,7 @@ export default function App() {
     };
   }, []);
 
-  const load = async (path: string, isNew = false, unlock: Unlock = {}) => {
+  const load = async (path: string, isNew = false, unlock: Unlock = {}, opts: LoadOptions = {}): Promise<void> => {
     // domble のファイル（帳簿・バックアップ）だけを開く
     if (!isBookFile(path) && !isBackupFile(path)) {
       removeRecentFile(path);
@@ -189,7 +215,17 @@ export default function App() {
         return;
       }
       // バックアップは読み取り専用：ファイルのメモリ上の写しを開き、開いたときの記録・整理（書き込み）は何もしない
-      const readOnly = isBackupFile(path);
+      const readOnly = isBackupFile(path) || !!opts.readOnly;
+      // 使用中の目印があれば、開き方を聞く（同じ帳簿を2か所で開かないように）
+      if (!readOnly && !isNew && !opts.ignoreLock) {
+        const lock = await readLock(path).catch(() => null);
+        const state = lockState(lock, deviceId());
+        if (lock && state !== "none") {
+          setInUse({ path, lock, state, unlock });
+          return;
+        }
+      }
+      setInUse(null);
       repo.setReadOnly(readOnly);
       const { db, triggersBefore, backupError } = await openDatabase(path, readOnly, unlock);
       // 開いたときの自動バックアップに失敗したら知らせる（ディスクの空き・書類フォルダの権限など）
@@ -198,8 +234,16 @@ export default function App() {
       repo.setActor(null);
       let interrupted: string[] = [];
       if (!readOnly) {
+        await writeLock(path).catch((e) => toast(`使用中の目印を書けませんでした：${String(e)}（帳簿はそのまま使えます）`, "error"));
+        if (isSyncedPath(path)) toast("同期フォルダ（iCloud Drive・Dropbox など）の中の帳簿です。2台の PC で同時に開かないでください（入力が消えたり、帳簿が食い違ったりします）");
         await repo.checkTriggers(db, triggersBefore);
         await repo.initChain(db);
+        // バックアップから戻したあとに開いたときは、戻したことを記録する（厳密モード）
+        const restored = JSON.parse(sessionStorage.getItem(RESTORED_KEY) ?? "null") as { path: string; from: string; before: string } | null;
+        if (restored?.path === path) {
+          sessionStorage.removeItem(RESTORED_KEY);
+          await repo.noteRestored(db, `バックアップ（${restored.from}）から戻しました。戻す前の帳簿は ${restored.before} にあります`);
+        }
         interrupted = await repo.checkInterrupted(db);
         await repo.initClosings(db);
         try {
@@ -214,11 +258,20 @@ export default function App() {
         repo.getSubAccounts(db, settings.fiscal_year),
       ]);
       pushRecentFile(path);
-      setSession({ db, path, settings, accounts, subs, user: null, interrupted, readOnly });
+      setSession({ db, path, settings, accounts, subs, user: null, interrupted, readOnly, readOnlyReason: isBackupFile(path) ? undefined : opts.reason });
     } catch (e) {
+      // 新しい版の domble で使った帳簿：読み取り専用で開き直す
+      if (String(e).includes(NEWER_SCHEMA)) {
+        repo.setReadOnly(false);
+        return load(path, false, unlock, {
+          readOnly: true, ignoreLock: true,
+          reason: "新しい版の domble で使った帳簿のため、読み取り専用で開いています。domble を最新の版に更新してから開いてください（この版で書き込むと、新しい版で入れた項目が消えるため）",
+        });
+      }
       // 暗号化した帳簿：パスワードを聞く（違っていたら、聞き直す）
-      if (String(e).includes(NEEDS_KEY)) return setLocked({ path, error: "" });
-      if (String(e).includes(WRONG_KEY)) return setLocked({ path, error: "パスワード（または回復キー）が違います" });
+      // （使用中の目印を気にせず開く・読み取り専用で開く、の選択はパスワードのあとも引き継ぐ）
+      if (String(e).includes(NEEDS_KEY)) return setLocked({ path, error: "", opts });
+      if (String(e).includes(WRONG_KEY)) return setLocked({ path, error: "パスワード（または回復キー）が違います", opts });
       console.error(e);
       setLocked(null);
       toast(`帳簿を開けませんでした：${String(e)}`, "error");
@@ -227,6 +280,23 @@ export default function App() {
     }
   };
 
+  if (!session && inUse) {
+    return (
+      <LockScreen
+        key={inUse.path}
+        path={inUse.path}
+        lock={inUse.lock}
+        state={inUse.state}
+        busy={busy}
+        onReadOnly={() => load(inUse.path, false, inUse.unlock, {
+          readOnly: true, ignoreLock: true, reason: "ほかで開かれている帳簿を、読み取り専用で開いています。変更するときは、ほかで閉じてから開き直してください",
+        })}
+        onOpenAnyway={() => load(inUse.path, false, inUse.unlock, { ignoreLock: true })}
+        onBack={() => setInUse(null)}
+      />
+    );
+  }
+
   if (!session && locked) {
     return (
       <UnlockScreen
@@ -234,7 +304,7 @@ export default function App() {
         path={locked.path}
         busy={busy}
         error={locked.error}
-        onUnlock={(secret, remember) => load(locked.path, false, { secret, remember })}
+        onUnlock={(secret, remember) => load(locked.path, false, { secret, remember }, locked.opts)}
         onBack={() => setLocked(null)}
       />
     );
@@ -298,9 +368,33 @@ export default function App() {
     setSession({ ...session, user: null, interrupted: [] });
   };
 
+  /**
+   * バックアップから戻す：今の帳簿を「戻す前」の印つきでバックアップしてから閉じ、バックアップで置き換えて開き直す
+   * （暗号化したバックアップは、そのときのパスワードを聞かれる）。置き換えに失敗したら、今の帳簿のまま開き直す
+   */
+  const restoreBackup = async (backupPath: string, label: string) => {
+    const s = session;
+    const { written, failed } = await repo.queuedRead(() => backupNow(s.path, BEFORE_RESTORE));
+    if (written.length === 0) throw new Error(`今の帳簿のバックアップを作れなかったため、戻すのをやめました（${failed.join("、")}）`);
+    await endSession(s, false);
+    repo.setReadOnly(false);
+    setSession(null);
+    try {
+      await restoreBackupFile(backupPath, s.path);
+      sessionStorage.setItem(RESTORED_KEY, JSON.stringify({ path: s.path, from: label, before: written[0] }));
+      toast(`バックアップ（${label}）に戻しました。戻す前の帳簿もバックアップしてあります`);
+    } catch (e) {
+      toast(`戻せませんでした：${String(e).replace(/^Error: /, "")}（今の帳簿のまま開き直します）`, "error");
+    }
+    await load(s.path, false, {}, { ignoreLock: true });
+  };
+
   return (
-    <AppProvider key={session.path} db={session.db} filePath={session.path} initialSettings={session.settings} initialAccounts={session.accounts} initialSubs={session.subs} user={session.user} readOnly={session.readOnly}>
-      <Shell onClose={close} onSwitchUser={switchUser} interrupted={session.interrupted} />
+    <AppProvider
+      key={session.path} db={session.db} filePath={session.path} initialSettings={session.settings} initialAccounts={session.accounts} initialSubs={session.subs}
+      user={session.user} readOnly={session.readOnly} restoreBackup={restoreBackup}
+    >
+      <Shell onClose={close} onSwitchUser={switchUser} interrupted={session.interrupted} readOnlyReason={session.readOnlyReason} />
     </AppProvider>
   );
 }
@@ -360,7 +454,7 @@ const UserGate = ({ db, settings, readOnly, onLogin, onBack }: {
   return <LoginScreen db={db} users={users} businessName={settings.business_name} onLogin={onLogin} onBack={onBack} />;
 };
 
-const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; onSwitchUser: () => void; interrupted: string[] }) => {
+const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose: () => void; onSwitchUser: () => void; interrupted: string[]; readOnlyReason?: string }) => {
   const { db, settings, year, filePath, reloadSettings, dataVersion, strict, currentUser, users, readOnly, can } = useAppContext();
   const [showInterrupted, setShowInterrupted] = useState(interrupted.length > 0);
   const [page, setPage] = useState<Page>("home");
@@ -459,7 +553,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted }: { onClose: () => void; on
           <div className="year-notice">
             <div className="year-notice-row readonly">
               <Eye size={15} />
-              <span>バックアップを<b>読み取り専用</b>で開いています。見ることはできますが、変更はできません（元のファイルには一切書き込みません）。</span>
+              <span>{readOnlyReason ?? <>バックアップを<b>読み取り専用</b>で開いています。見ることはできますが、変更はできません（元のファイルには一切書き込みません）。</>}</span>
             </div>
           </div>
         )}
