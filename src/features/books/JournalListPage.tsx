@@ -13,12 +13,12 @@ import { useToast } from "../../components/Toast";
 import { PrintPreview } from "../../components/PrintPreview";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { JournalImportModal } from "./JournalImportModal";
-import { groupByEntry, monthEnd, monthStart, yearEnd, yearStart, type FlatLine } from "../../lib/accounting";
+import { ADJUSTMENT_PERIOD, groupByEntry, inPeriods, periodNote, yearEnd, yearStart, type FlatLine } from "../../lib/accounting";
 import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
 import { journalSection, type JournalPrintEntry, type JournalSide } from "../../lib/printBooks";
-import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
+import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
 import { classLabel, displayClass, displayUse, invoiceCsvLabel, isPurchaseCode, taxLongLabel, taxShortLabel, useLabel } from "../../lib/tax";
 import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
@@ -72,7 +72,7 @@ export const JournalListPage = () => {
   }, [db, dataVersion]);
   const toast = useToast();
   const [from, setFrom] = useState(1);
-  const [to, setTo] = useState(12);
+  const [to, setTo] = useState(ADJUSTMENT_PERIOD);
   const [accountId, setAccountId] = useState(0);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
@@ -80,9 +80,7 @@ export const JournalListPage = () => {
   const [printing, setPrinting] = useState(false);
 
   const rows = useMemo(() => {
-    const start = monthStart(year, from);
-    const end = monthEnd(year, to);
-    const grouped = groupByEntry(lines.filter((l) => l.date >= start && l.date <= end));
+    const grouped = groupByEntry(lines.filter((l) => inPeriods(l, from, to)));
     const query = q.trim();
     const lo = parseAmount(minAmt);
     const hi = parseAmount(maxAmt);
@@ -206,7 +204,7 @@ export const JournalListPage = () => {
     ].filter(Boolean).join("・");
     return {
       title: "仕訳日記帳", owner: ownerText(settings.business_name, settings.owner_name),
-      period: periodText(monthStart(year, from), monthEnd(year, to)), printedOn: todayIso(), conditions,
+      period: periodsText(year, from, to), printedOn: todayIso(), conditions,
       sections: [journalSection(entries)],
     };
   }, [printing, rows]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -227,6 +225,7 @@ export const JournalListPage = () => {
 
       <div className="filters">
         <MonthRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+        {periodNote(from, to) && <span className="badge badge-adjust period-note">{periodNote(from, to)}</span>}
         <select value={accountId} onChange={(e) => setAccountId(Number(e.target.value))} aria-label="科目で絞り込み">
           <option value={0}>すべての科目</option>
           {activeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}

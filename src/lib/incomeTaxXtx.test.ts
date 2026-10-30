@@ -455,3 +455,25 @@ describe("不動産所得（青色申告決算書・収支内訳書の不動産�
     expect(forms(xml)).toEqual(["KOA020", "KOA130"]);
   });
 });
+
+describe("製造原価の計算（青色申告決算書の4ページ）", () => {
+  test("製造原価の科目に金額があれば AMH を書く。㉖ 製品製造原価は1ページの ③（AMF00130）と同じ。XSD に合う", () => {
+    const st = statement({
+      pl: { revenue: 5_000_000, cogs: 1_740_000, grossProfit: 3_260_000, expenses: 1_000_000, beforeSpecial: 2_260_000, special: 0, income: 2_260_000 },
+    });
+    st.layout.sections.cogs = [row("期首商品（製品）棚卸高", 0), row("仕入金額（製品製造原価）", 1_740_000), row("期末商品（製品）棚卸高", 0)];
+    st.layout.sections.mfg = [
+      row("期首原材料棚卸高", 200_000), row("原材料仕入高", 1_000_000), row("期末原材料棚卸高", 250_000), row("労務費", 600_000), row("外注工賃", 0), row("電力費", 80_000),
+      row("水道光熱費", 0), row("修繕費", 0), row("減価償却費", 70_000), row("雑費", 0), row("期首半製品・仕掛品棚卸高", 50_000), row("期末半製品・仕掛品棚卸高", 30_000),
+      row("包装材料費", 20_000, true),
+    ];
+    const xml = buildIncomeTaxXtx(source({}, { statement: st }));
+    expect(validate(xml)).toBe("");
+    expect([val(xml, "AMH00070"), val(xml, "AMH00080"), val(xml, "AMH00170"), val(xml, "AMH00180"), val(xml, "AMH00220")]).toEqual(["950000", "600000", "170000", "1720000", "1740000"]);
+    expect(val(xml, "AMF00130")).toBe("1740000");
+    expect([count(xml, "AMH00145"), val(xml, "AMH00010")]).toEqual([1, "包装材料費"]);
+  });
+  test("製造原価の科目が無ければ書かない", () => {
+    expect(count(buildIncomeTaxXtx(source()), "AMH00000")).toBe(0);
+  });
+});

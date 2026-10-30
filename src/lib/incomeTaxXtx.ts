@@ -19,6 +19,7 @@ import {
   dependentDeduction, fieldNo, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type Relative,
 } from "./incomeTax";
 import type { Settings } from "./types";
+import { circled, manufacturingForm } from "./statementForm";
 
 const NAMESPACE = "http://xml.e-tax.nta.go.jp/XSD/shotoku";
 const PROCEDURE = { procedure: "RKO0010", name: "所得税及び復興特別所得税申告" };
@@ -541,6 +542,20 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
   v.AMG00750 = st.totalIncome;
   v.AMG00610 = sumOf(sec.liability, (r) => r.opening);
   v.AMG00760 = sumOf(sec.liability, (r) => r.amount) + st.totalIncome;
+
+  // 4ページ：製造原価の計算（製造原価の科目に金額があるときだけ。㉖ は1ページの ③ に入っている）
+  const mfgRows = sec.mfg ?? [];
+  if (mfgRows.some((r) => r.amount !== 0)) {
+    const rows = manufacturingForm(layout).rows;
+    const no = (n: number) => rows.find((r) => r.no === circled(n))?.amount ?? 0;
+    const MFG_TAGS: [number, string][] = [
+      [1, "AMH00030"], [2, "AMH00040"], [3, "AMH00050"], [4, "AMH00060"], [5, "AMH00070"], [6, "AMH00080"], [7, "AMH00100"], [8, "AMH00110"], [9, "AMH00120"],
+      [10, "AMH00130"], [11, "AMH00140"], [20, "AMH00160"], [21, "AMH00170"], [22, "AMH00180"], [23, "AMH00190"], [24, "AMH00200"], [25, "AMH00210"], [26, "AMH00220"],
+    ];
+    for (const [n, tag] of MFG_TAGS) v[tag] = amount(no(n));
+    const ex = mfgRows.filter((r) => r.extra && r.amount !== 0);
+    v.AMH00145 = ex.length ? { rows: ex.map((r) => clean({ AMH00010: text(r.label, 10), AMH00150: r.amount })) } : undefined;
+  }
   return clean(v);
 };
 

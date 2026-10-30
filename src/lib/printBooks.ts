@@ -2,13 +2,13 @@
  * 帳簿の印刷の中身（純粋関数）：仕訳日記帳・総勘定元帳（補助元帳・出納帳）・残高試算表・固定資産台帳・訂正削除履歴
  * ページへの分け方は printLayout.ts、画面は components/PrintPreview.tsx
  */
-import type { LedgerRow } from "./accounting";
+import { ADJUSTMENT_PERIOD, type LedgerRow } from "./accounting";
 import { shortDate, yen } from "./format";
 import type { CsvValue } from "./csv";
 import type { PrintCell, PrintColumn, PrintGroup, PrintRow, PrintSection } from "./printLayout";
 
 /** 期間の番号：1〜12 = 月、13 = 決算整理（12月のあと） */
-export const ADJUSTMENT = 13;
+export const ADJUSTMENT = ADJUSTMENT_PERIOD;
 const periodOf = (r: LedgerRow) => (r.isAdjustment ? ADJUSTMENT : Number(r.date.slice(5, 7)));
 const periodName = (p: number) => (p === ADJUSTMENT ? "決算整理" : `${p}月`);
 

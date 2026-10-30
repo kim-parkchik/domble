@@ -12,11 +12,11 @@ import { PrintPreview } from "../../components/PrintPreview";
 import { exportCsvFile } from "../../components/csvExport";
 import { useToast } from "../../components/Toast";
 import { EntryEditModal } from "../entry/EntryEditModal";
-import { buildLedger, closingBalances, monthEnd, monthStart, type LedgerRow } from "../../lib/accounting";
+import { ADJUSTMENT_PERIOD, buildLedger, closingBalances, periodNote, type LedgerRow } from "../../lib/accounting";
 import { shortDate, todayIso, yen } from "../../lib/format";
 import { displayClass, displayUse, taxLongLabel, taxShortLabel } from "../../lib/tax";
-import { ADJUSTMENT, LEDGER_CSV_HEADER, ledgerCsvRows, ledgerSection } from "../../lib/printBooks";
-import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
+import { LEDGER_CSV_HEADER, ledgerCsvRows, ledgerSection } from "../../lib/printBooks";
+import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
 import type { CsvValue } from "../../lib/csv";
 import { CATEGORY_LABEL, isBalanceSheet } from "../../constants/accounts";
 import { subKey, type Account, type AccountCategory } from "../../lib/types";
@@ -34,7 +34,7 @@ export const GeneralLedgerPage = () => {
     setSub(undefined);
   };
   const [from, setFrom] = useState(1);
-  const [to, setTo] = useState(12);
+  const [to, setTo] = useState(ADJUSTMENT_PERIOD);
   const [editing, setEditing] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
   // 印刷：対象（この科目 / すべての科目）と、補助科目ごとに分けるか（補助元帳）
@@ -55,14 +55,13 @@ export const GeneralLedgerPage = () => {
 
   const { carried, rows } = useMemo(() => {
     const all = buildLedger(account, base, lines, accountMap, sub);
-    const start = monthStart(year, from);
-    const end = monthEnd(year, to);
-    const prefix = all.filter((r) => r.date < start);
+    const periodOf = (r: LedgerRow) => (r.isAdjustment ? ADJUSTMENT_PERIOD : Number(r.date.slice(5, 7)));
+    const prefix = all.filter((r) => periodOf(r) < from);
     return {
       carried: prefix.length ? prefix[prefix.length - 1].balance : base,
-      rows: all.filter((r) => r.date >= start && r.date <= end),
+      rows: all.filter((r) => periodOf(r) >= from && periodOf(r) <= to),
     };
-  }, [account, base, lines, accountMap, year, from, to, sub]);
+  }, [account, base, lines, accountMap, from, to, sub]);
 
   const sum = rows.reduce((t, r) => ({ dr: t.dr + r.debit, cr: t.cr + r.credit }), { dr: 0, cr: 0 });
 
@@ -85,8 +84,8 @@ export const GeneralLedgerPage = () => {
     return r.taxCode && r.taxCode !== "none" ? taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, lt), displayUse(taxYears, lt)) : "";
   };
   const subName = (id: number | null) => (id ? subMap.get(id)?.name ?? "" : "");
-  /** 期間（画面の 1〜12月。12月までなら決算整理も入れる） */
-  const period = { from, to: to === 12 ? ADJUSTMENT : to };
+  /** 期間（1〜13。13 = 決算整理） */
+  const period = { from, to };
   /** 印刷・CSV の対象の科目（すべて = 残高か動きがある科目） */
   const targets = (all: boolean) => (all ? ORDER.flatMap((c) => accounts.filter((a) => a.category === c && (used.has(a.id) || (balances.get(a.id) ?? 0) !== 0))) : [account]);
   const baseOf = (a: Account, s?: number | null) =>
@@ -113,7 +112,7 @@ export const GeneralLedgerPage = () => {
     });
     return {
       title: "総勘定元帳", owner: ownerText(settings.business_name, settings.owner_name),
-      period: periodText(monthStart(year, from), monthEnd(year, to)), printedOn: todayIso(), sections,
+      period: periodsText(year, from, to), printedOn: todayIso(), sections,
     };
   }, [printing, printAll, splitSubs, account, sub, lines, opening, subOpening, from, to, year, settings, cpOfEntry, accounts, subAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -128,6 +127,7 @@ export const GeneralLedgerPage = () => {
     <div className="page">
       <PageHeader title="総勘定元帳">
         <MonthRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+        {periodNote(from, to) && <span className="badge badge-adjust period-note">{periodNote(from, to)}</span>}
         <button className="btn ghost" onClick={exportCsv} title="すべての科目の元帳を、表示中の期間で書き出します"><Download size={16} /> CSV 書き出し</button>
         <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>
       </PageHeader>

@@ -23,6 +23,7 @@ import { FILING_LABEL } from "../../lib/filing";
 import * as repo from "../../db/repo";
 import { closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
+import { manufacturingOn } from "../../lib/statementLines";
 import { DEFAULT_INPUT_PERIOD_DAYS, MAX_INPUT_PERIOD_DAYS } from "../../constants/appConfig";
 import { TaxSection } from "./TaxSection";
 import { EtaxSection } from "./EtaxSection";
@@ -154,6 +155,47 @@ const RealEstateSection = () => {
   );
 };
 
+/**
+ * 製造原価を使う・使わない（製造業・工事の請負など）。製造原価の初期科目をまとめて表示・非表示にする。
+ * 使わないに戻せるのは、締めていない年にそれらの科目の仕訳が無いとき（repo.setManufacturing）
+ */
+const ManufacturingSection = () => {
+  const { db, accounts, reloadAccounts, readOnly, can, bump } = useAppContext();
+  const toast = useToast();
+  const on = manufacturingOn(accounts);
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await repo.setManufacturing(db, !on);
+      await reloadAccounts();
+      bump();
+      toast(on ? "製造原価を使わないにしました（製造原価の科目を非表示にしました）" : "製造原価を使うにしました（勘定科目に製造原価の科目を表示しました）");
+    } catch (e) {
+      toast(String(e).replace(/^Error: /, ""), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <h2 className="sheet-h" style={{ marginTop: 24 }}>製造原価</h2>
+      <p className="prose">
+        製造業（自分で作って売る）や工事の請負などで、原材料費・労務費・製造経費から製品の原価を計算するときは「使う」にします。
+        売上原価の区分に製造原価の科目（原材料仕入高・労務費・電力費・期首と期末の原材料や仕掛品の棚卸高など）が出て、
+        決算書の4ページに「製造原価の計算」が出ます（製品製造原価は1ページの ③ に入ります）。
+        あとで「使わない」に戻せます（締めていない年に製造原価の科目の仕訳があるときは戻せません）。
+      </p>
+      <div className="field-row wrap" style={{ alignItems: "center" }}>
+        <span className="mode-current">{on ? "使う" : "使わない"}</span>
+        <button className="btn ghost" onClick={toggle} disabled={busy || readOnly || !can("master")}>
+          {on ? "使わないにする" : "使うにする"}
+        </button>
+      </div>
+    </>
+  );
+};
+
 const FilingSection = () => {
   const { db, year, filing, filingYears, settings, reloadFilingYears, isClosed, readOnly, can, bump } = useAppContext();
   const toast = useToast();
@@ -281,6 +323,7 @@ export const BusinessSettingsPage = () => {
           />
           <FilingSection />
           <RealEstateSection />
+          <ManufacturingSection />
         </section>
 
         <section className="sheet">

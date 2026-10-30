@@ -10,7 +10,7 @@
  */
 import { closingBalances, summarizeIncome, type FlatLine, type IncomeSummary } from "./accounting";
 import { monthlySales, partnerTotals, payeeBreakdown, type MonthlySales, type PayeeRow } from "./statements";
-import { lineOf, sectionOf, statementLayout, type StatementLayout } from "./statementLines";
+import { purchaseAccountIds, statementLayout, type StatementLayout } from "./statementLines";
 import { depreciationFor, isOldStraight, type FixedAsset } from "./depreciation";
 import { allowanceAccounts, allowanceCalc, type AllowanceCalc } from "./allowance";
 import { accountsOfKind } from "./incomeKind";
@@ -110,9 +110,7 @@ export const PARTNER_ROWS = 4;
 /** 売上先の明細に数える科目（収益のうち、相手の無い家事消費等・雑収入を除く） */
 export const salesAccountIds = (accounts: Account[]) =>
   accounts.filter((a) => a.category === "revenue" && a.code !== CODE.HOUSEHOLD_USE && a.code !== CODE.MISC_INCOME).map((a) => a.id);
-/** 仕入先の明細に数える科目（決算書の「仕入金額（製品製造原価）」の欄に書く科目） */
-export const purchaseAccountIds = (accounts: Account[]) =>
-  accounts.filter((a) => sectionOf(a) === "cogs" && lineOf(a) === "仕入金額（製品製造原価）").map((a) => a.id);
+export { purchaseAccountIds };
 
 /** 売上先・仕入先ごとの行（多い順。所在地は書き込み sales:<相手>:address ／ purchase:<相手>:address） */
 export const partnerLines = (
@@ -230,7 +228,9 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   // 売上先・仕入先の明細（計は 1ページの売上（収入）金額・仕入金額。家事消費等・雑収入は上記以外に入る）
   const salesPartners = partnerLines("sales", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf);
   const purchasePartners = partnerLines("purchase", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf);
-  const purchaseTotal = layout.sections.cogs.find((r) => r.label === "仕入金額（製品製造原価）")?.amount ?? 0;
+  // 仕入金額の明細の計は、2ページの月別の仕入金額の計（仕入高と原材料仕入高。製造原価の計算が無ければ 1ページの ③ と同じ）
+  const monthly = monthlySales(accounts, s.lines);
+  const purchaseTotal = monthly.purchases.reduce((t, x) => t + x, 0);
 
   return {
     pl,
@@ -239,7 +239,7 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
     realEstateIncome,
     realEstateDeduction,
     totalIncome: summarizeIncome(s.accounts, end).income,
-    monthly: monthlySales(accounts, s.lines),
+    monthly,
     salaries: pay(breakdown(CODE.SALARIES, false), "salary"),
     family: pay(breakdown(CODE.FAMILY_SALARY, false), "family"),
     interest: payees(interestRows, "interest", "loan"),

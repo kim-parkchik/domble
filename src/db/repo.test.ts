@@ -1773,3 +1773,30 @@ describe("本則課税の用途区分・控除の方式（repo）", () => {
     await repo.saveTaxYear(db, { from_year: 2027, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" });
   });
 });
+
+describe("製造原価を使う・使わない（repo）", () => {
+  test("使うで製造原価の科目をまとめて表示。締めていない年に仕訳があれば戻せず、その年を締めれば戻せる（科目の表示の履歴も残る）", async () => {
+    const { db } = makeDb("strict");
+    const mfg = async () => (await repo.getAccounts(db, 2026)).filter((a) => a.code >= "520" && a.code <= "531");
+    expect((await mfg()).map((a) => a.is_active)).toEqual(Array(12).fill(0));
+    await repo.setManufacturing(db, true);
+    expect((await mfg()).every((a) => a.is_active === 1)).toBe(true);
+    // 仕訳が無ければ戻せる
+    await repo.setManufacturing(db, false);
+    expect((await mfg()).every((a) => a.is_active === 0)).toBe(true);
+    await repo.setManufacturing(db, true);
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    await repo.createEntry(db, "2025-11-01", [
+      { row_no: 1, side: "debit", account_id: id("原材料仕入高"), sub_account_id: null, amount: 30_000, memo: "材料" },
+      { row_no: 1, side: "credit", account_id: id("現金"), sub_account_id: null, amount: 30_000, memo: "材料" },
+    ]);
+    await expect(repo.setManufacturing(db, false)).rejects.toThrow(/締めていない年（2025年）の仕訳があるため/);
+    expect((await mfg()).every((a) => a.is_active === 1)).toBe(true);
+    await repo.closeYear(db, 2025);
+    await repo.setManufacturing(db, false);
+    expect((await mfg()).every((a) => a.is_active === 0)).toBe(true);
+    const actions = (await repo.getMasterHistory(db)).filter((h) => h.label === "原材料仕入高").map((h) => h.action);
+    expect(actions).toEqual(["hide", "show", "hide", "show"]);
+  });
+});

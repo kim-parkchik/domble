@@ -5,8 +5,7 @@ import { describe, expect, test } from "bun:test";
 import {
   ageAt, basicDeduction, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, fieldNo, incomeTaxOn, lifeInsuranceDeduction,
   medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, rulesFor, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
-  type PastIncomeTax,
-} from "./incomeTax";
+  type PastIncomeTax, businessPeriod } from "./incomeTax";
 
 const cell = (r: IncomeTaxResult, no: string) => r.rows.find((x) => x.no === no)!.value;
 
@@ -393,5 +392,15 @@ describe("損失申告（第四表）と純損失の繰越控除", () => {
     expect(await carriedFromPast(2026, load)).toEqual([{ year: 2023, amount: 500_000 }, { year: 2025, amount: 350_000 }]);
     expect(await carriedFromPast(2025, load)).toEqual([{ year: 2023, amount: 500_000 }]);
     expect(await carriedFromPast(2027, load)).toBeNull();
+  });
+});
+
+describe("決算書の事業期間", () => {
+  test("その年の中途の開業は開業の日から、廃業は廃業の日まで。ほかの年の日付は通年", () => {
+    const b = (change: "" | "open" | "close", changeDate: string) => ({ otherPrefecture: false, change, changeDate });
+    expect(businessPeriod(b("", ""), 2026)).toEqual({ from: "1月1日", to: "12月31日" });
+    expect(businessPeriod(b("open", "2026-04-15"), 2026)).toEqual({ from: "4月15日", to: "12月31日" });
+    expect(businessPeriod(b("close", "2026-09-30"), 2026)).toEqual({ from: "1月1日", to: "9月30日" });
+    expect(businessPeriod(b("open", "2025-04-15"), 2026)).toEqual({ from: "1月1日", to: "12月31日" });
   });
 });

@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react";
+import { ADJUSTMENT_PERIOD } from "../lib/accounting";
+
+export { ADJUSTMENT_PERIOD };
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+const PERIODS = [...MONTHS, ADJUSTMENT_PERIOD];
 
 interface Props {
   from: number;
@@ -8,22 +12,23 @@ interface Props {
   onChange: (from: number, to: number) => void;
 }
 
-/** 月の範囲選択（1月〜12月） */
+/**
+ * 期間の範囲選択（1月〜12月と、12月のあとの「決算整理」）。
+ * 1月〜12月 = 決算整理前、1月〜決算整理 = 決算整理後（通期）、決算整理〜決算整理 = 決算整理仕訳だけ
+ */
 export const MonthRange = ({ from, to, onChange }: Props) => (
   <div className="month-range">
-    <select value={from} onChange={(e) => onChange(Number(e.target.value), Math.max(Number(e.target.value), to))} aria-label="開始月">
-      {MONTHS.map((m) => <option key={m} value={m}>{m}月</option>)}
+    <select value={from} onChange={(e) => onChange(Number(e.target.value), Math.max(Number(e.target.value), to))} aria-label="開始の期間">
+      {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
     </select>
     <span>〜</span>
-    <select value={to} onChange={(e) => onChange(Math.min(from, Number(e.target.value)), Number(e.target.value))} aria-label="終了月">
-      {MONTHS.map((m) => <option key={m} value={m}>{m}月</option>)}
+    <select value={to} onChange={(e) => onChange(Math.min(from, Number(e.target.value)), Number(e.target.value))} aria-label="終わりの期間">
+      {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
     </select>
-    <button className="link-btn" onClick={() => onChange(1, 12)}>通期</button>
+    <button className="link-btn" onClick={() => onChange(1, ADJUSTMENT_PERIOD)} title="1月〜決算整理（決算整理後）">通期</button>
+    <button className="link-btn" onClick={() => onChange(1, 12)} title="1月〜12月（決算整理仕訳を含まない）">決算整理前</button>
   </div>
 );
-
-/** 帳簿の期間で「決算整理」を表す番号（12月のあと） */
-export const ADJUSTMENT_PERIOD = 13;
 
 /** 期間の表示名（1〜12 = 月、13 = 決算整理） */
 export const periodLabel = (p: number) => (p === ADJUSTMENT_PERIOD ? "決算整理" : `${p}月`);

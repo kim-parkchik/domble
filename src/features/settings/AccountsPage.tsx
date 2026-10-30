@@ -20,7 +20,7 @@ import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, useLabel } 
 import type { Account, AccountCategory, IncomeKind, PurchaseUse, Side, TaxCode } from "../../lib/types";
 import { isProfitLoss } from "../../lib/incomeKind";
 import * as repo from "../../db/repo";
-import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../../lib/statementLines";
+import { autoLine, EXTRA_LINE, layoutSectionOf, lineOptions, manufacturingOn, sectionOf } from "../../lib/statementLines";
 
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as AccountCategory[];
 
@@ -43,6 +43,7 @@ const deletedMessage = (what: string, r: { changed: string[]; deleted: string[] 
 export const AccountsPage = () => {
   const { db, accounts, subAccounts, reloadAccounts, strict, year, dataVersion } = useAppContext();
   const toast = useToast();
+  const mfgOn = manufacturingOn(accounts);
   // 厳密モードでは、より新しい年度がある状態で過去の年度の名前は変えられない（年度単位で管理）
   const [latestYear, setLatestYear] = useState(year);
   useEffect(() => {
@@ -226,8 +227,9 @@ export const AccountsPage = () => {
                                 className={`input tax-select${a.statement_line ? "" : " is-default"}`} value={a.statement_line ?? ""}
                                 onChange={(e) => setLine(a, e.target.value || null)} aria-label={`${a.name}の決算書の欄`}
                               >
-                                <option value="">自動（{auto === EXTRA_LINE ? "追加の欄" : auto}）</option>
-                                {lineOptions(section).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                <option value="">自動（{auto === EXTRA_LINE ? "追加の欄" : layoutSectionOf({ ...a, statement_line: null }) === "mfg" ? `製造原価：${auto}` : auto}）</option>
+                                {/* 製造原価の欄は、製造原価を使っているか、この科目が製造原価の欄のときだけ出す */}
+                                {lineOptions(section, mfgOn || layoutSectionOf(a) === "mfg").map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                               </select>
                             );
                           })()}

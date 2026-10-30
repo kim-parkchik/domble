@@ -4,7 +4,7 @@ import type { Account, JournalLine } from "./types";
 import { subKey } from "./types";
 import {
   buildLedger, carryForwardWithSubs, subClosingBalances, subTrialRow, buildMonthly, buildTrialBalance, carryForward, checkVoucher, closingBalances,
-  emptyRow, linesToRows, openingDifference, rowsToLines, summarizeBalanceSheet, summarizeIncome, toAccountMap, type FlatLine,
+  copyDate, emptyRow, linesToRows, periodEnd, periodNote, periodStart, openingDifference, rowsToLines, summarizeBalanceSheet, summarizeIncome, toAccountMap, type FlatLine,
 } from "./accounting";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
@@ -61,13 +61,26 @@ describe("所得と貸借", () => {
 
 describe("試算表・元帳", () => {
   test("3月の試算表で前月繰越が正しい", () => {
-    const tb = buildTrialBalance(accounts, opening, lines, "2026-01-01", "2026-03-01", "2026-03-31");
+    const tb = buildTrialBalance(accounts, opening, lines, 3, 3);
     const bank = tb.find((r) => r.account.name === "普通預金")!;
     expect(bank.carried).toBe(750_000);
     expect(bank.credit).toBe(100_000);
     expect(bank.balance).toBe(650_000);
     const sales = tb.find((r) => r.account.name === "売上高")!;
     expect(sales.carried).toBe(300_000);
+  });
+  test("決算整理（期間 13）：12月まで＝決算整理前、決算整理だけ、通期＝決算整理後", () => {
+    const adj = [...lines, { entry_id: 99, row_no: 1, date: "2026-12-31", side: "debit" as const, account_id: id("事業主貸"), sub_account_id: null, amount: 30_000, memo: "", is_adjustment: 1 },
+      { entry_id: 99, row_no: 1, date: "2026-12-31", side: "credit" as const, account_id: id("地代家賃"), sub_account_id: null, amount: 30_000, memo: "", is_adjustment: 1 }];
+    const rent = (from: number, to: number) => buildTrialBalance(accounts, opening, adj, from, to).find((r) => r.account.name === "地代家賃")!;
+    expect(rent(1, 12).credit).toBe(0);
+    expect(rent(13, 13)).toMatchObject({ carried: rent(1, 12).balance, credit: 30_000 });
+    expect(rent(1, 13).balance).toBe(rent(1, 12).balance - 30_000);
+    expect(periodNote(1, 12)).toBe("決算整理前");
+    expect(periodNote(13, 13)).toBe("決算整理仕訳のみ");
+    expect(periodNote(1, 13)).toBe("");
+    expect(periodStart(2026, 13)).toBe("2026-12-31");
+    expect(periodEnd(2026, 2)).toBe("2026-02-28");
   });
   test("元帳の相手科目と諸口", () => {
     const map = toAccountMap(accounts);
@@ -130,7 +143,7 @@ describe("補助科目", () => {
     const map = toAccountMap(accounts);
     const rows = buildLedger(map.get(bank)!, 200_000, subLines, map, 2);
     expect(rows.map((r) => r.balance)).toEqual([250_000, 240_000]);
-    const tr = subTrialRow(map.get(bank)!, 1, subOpen, subLines, "2026-01-01", "2026-01-01", "2026-12-31");
+    const tr = subTrialRow(map.get(bank)!, 1, subOpen, subLines, 1, 13);
     expect(tr.balance).toBe(350_000);
   });
   test("補助つきで繰り越しても科目合計は一致", () => {
@@ -177,5 +190,14 @@ describe("同じ科目の補助科目どうしの振替", () => {
     expect(fromA[0]).toMatchObject({ credit: 5000, balance: 5000, counter: "普通預金", counterAccountId: bank.id, counterSubId: 2 });
     const all = buildLedger(bank, 10000, ls, map);
     expect(all.map((r) => [r.counterSubId, r.balance])).toEqual([[1, 15000], [2, 10000]]);
+  });
+});
+
+describe("仕訳のコピーの日付", () => {
+  test("今日（表示中の年度なら）。決算整理仕訳は年度末。今日が年度の外なら元の日付", () => {
+    expect(copyDate("2026-03-31", "2026-10-30", 2026, false)).toBe("2026-10-30");
+    expect(copyDate("2026-03-31", "2026-10-30", 2026, true)).toBe("2026-12-31");
+    expect(copyDate("2025-03-31", "2026-10-30", 2025, false)).toBe("2025-03-31");
+    expect(copyDate("2025-12-31", "2026-10-30", 2025, true)).toBe("2025-12-31");
   });
 });

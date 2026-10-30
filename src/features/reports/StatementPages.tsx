@@ -16,8 +16,10 @@ import { monthlySales, payeeBreakdown, type PayeeRow } from "../../lib/statement
 import { partnerLines, partnerTable, type PartnerTable } from "../../lib/blueStatement";
 import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
 import { summarizeBalanceSheet, type FlatLine } from "../../lib/accounting";
+import { statementLayout } from "../../lib/statementLines";
+import { balanceSheetForm, type BalanceRow } from "../../lib/statementForm";
 import { ALLOWANCE_NOTE, allowanceAccounts, allowanceCalc, allowanceLines } from "../../lib/allowance";
-import type { Account, IncomeKind, OpeningBalances } from "../../lib/types";
+import type { IncomeKind, OpeningBalances } from "../../lib/types";
 import * as repo from "../../db/repo";
 
 export type Notes = Record<string, string>;
@@ -557,67 +559,46 @@ export const StatementPage3 = ({ lines, salesTotal, purchaseTotal }: { lines: Fl
   );
 };
 
-/** 貸借対照表（帳簿全体。「青色申告特別控除前の所得金額」は事業所得と不動産所得を合わせた額）。不動産所得用の決算書でも使う */
+/**
+ * 貸借対照表（資産負債調。帳簿全体。「青色申告特別控除前の所得金額」は事業所得と不動産所得を合わせた額）。不動産所得用の決算書でも使う。
+ * 様式の欄（勘定科目の「決算書の欄」）で書く。欄に入れた科目は、欄の名前と違うものだけ画面に小さく添える
+ */
 export const BalanceSheetView = ({ end, opening }: { end: Map<number, number>; opening: Record<number, number> }) => {
-  const { accounts } = useAppContext();
+  const { accounts, accountMap } = useAppContext();
   const bs = summarizeBalanceSheet(accounts, end);
-  const val = (a: Account) => end.get(a.id) ?? 0;
-  const open = (a: Account) => opening[a.id] ?? 0;
-  const by = (cat: Account["category"]) => accounts.filter((a) => a.category === cat);
-  const showRow = (a: Account) => a.is_active || val(a) !== 0 || open(a) !== 0;
-  const assets = by("asset").filter(showRow);
-  const liabilities = by("liability").filter(showRow);
-  const equity = by("equity");
-  const openAssetsTotal = assets.reduce((s, a) => s + open(a), 0);
-  const openRightTotal = [...liabilities, ...equity].reduce((s, a) => s + open(a), 0);
+  const layout = statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0);
+  const form = balanceSheetForm(layout, bs.income);
+  const names = (r: BalanceRow) => (r.accountIds ?? []).map((id) => accountMap.get(id)?.name ?? "").filter((n) => n && n !== r.label);
+  const table = (title: string, rows: BalanceRow[]) => (
+    <table className="ledger st-table bs-table">
+      <thead>
+        <tr><th>{title}</th><th className="num">1月1日（期首）</th><th className="num">12月31日（期末）</th></tr>
+      </thead>
+      <tbody>
+        {rows.filter((r) => r.kind === "line").map((r) => (
+          <tr key={r.label}>
+            <td>{r.label}{names(r).length > 0 && <span className="st-accounts screen-only">{names(r).join("・")}</span>}</td>
+            <td className="num">{r.opening == null ? "" : yen(r.opening, { blankZero: true })}</td>
+            <td className={`num${r.closing != null && r.closing < 0 ? " negative" : ""}`}>{r.closing == null ? "" : yen(r.closing, { blankZero: true })}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        {rows.filter((r) => r.kind === "total").map((r) => (
+          <tr key={r.label}><td>{r.label}</td><td className="num">{yen(r.opening ?? 0)}</td><td className="num">{yen(r.closing ?? 0)}</td></tr>
+        ))}
+      </tfoot>
+    </table>
+  );
   return (
     <>
       <div className="bs-grid">
-        <table className="ledger st-table bs-table">
-          <thead>
-            <tr><th>資産の部</th><th className="num">1月1日（期首）</th><th className="num">12月31日（期末）</th></tr>
-          </thead>
-          <tbody>
-            {assets.map((a) => (
-              <tr key={a.id}>
-                <td>{a.name}</td>
-                <td className="num">{yen(open(a), { blankZero: true })}</td>
-                <td className={`num${val(a) < 0 ? " negative" : ""}`}>{yen(val(a), { blankZero: true })}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr><td>合計</td><td className="num">{yen(openAssetsTotal)}</td><td className="num">{yen(bs.assets)}</td></tr>
-          </tfoot>
-        </table>
-
-        <table className="ledger st-table bs-table">
-          <thead>
-            <tr><th>負債・資本の部</th><th className="num">1月1日（期首）</th><th className="num">12月31日（期末）</th></tr>
-          </thead>
-          <tbody>
-            {[...liabilities, ...equity].map((a) => (
-              <tr key={a.id}>
-                <td>{a.name}</td>
-                <td className="num">{yen(open(a), { blankZero: true })}</td>
-                <td className={`num${val(a) < 0 ? " negative" : ""}`}>{yen(val(a), { blankZero: true })}</td>
-              </tr>
-            ))}
-            <tr>
-              <td>青色申告特別控除前の所得金額</td>
-              <td className="num" />
-              <td className={`num${bs.income < 0 ? " negative" : ""}`}>{yen(bs.income)}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td>合計</td>
-              <td className="num">{yen(openRightTotal)}</td>
-              <td className="num">{yen(bs.liabilities + bs.equity + bs.income)}</td>
-            </tr>
-          </tfoot>
-        </table>
+        {table("資産の部", form.assets)}
+        {table("負債・資本の部", form.liabilities)}
       </div>
+      {layout.warnings.some((w) => w.startsWith("資産") || w.startsWith("負債")) && (
+        <p className="notice print-skip">{layout.warnings.filter((w) => w.startsWith("資産") || w.startsWith("負債")).join("。")}</p>
+      )}
       {bs.difference !== 0 && (
         <p className="warn-box" role="alert">
           資産と負債・資本の合計が {yen(Math.abs(bs.difference))} 円ずれています。「期首残高」の貸借が一致しているか確認してください。

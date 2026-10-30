@@ -3,16 +3,19 @@
  *  青色申告の年：青色申告決算書に近い形（1ページ：損益計算書 ／ 2〜3ページ：StatementPages.tsx ／ 4ページ：貸借対照表）
  *  白色申告の年：収支内訳書（WhiteStatementPages.tsx）
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Printer } from "lucide-react";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { closingBalances, summarizeIncome } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import * as repo from "../../db/repo";
-import type { Account, IncomeKind } from "../../lib/types";
+import type { IncomeKind } from "../../lib/types";
 import { BLUE_DEDUCTION_LIMIT } from "../../lib/incomeTax";
-import { statementLayout } from "../../lib/statementLines";
+import { statementLayout, type StatementLayout } from "../../lib/statementLines";
+import { incomeStatementForm, manufacturingForm, type FormRow } from "../../lib/statementForm";
+import { monthlySales } from "../../lib/statements";
+import { businessPeriod } from "../../lib/incomeTax";
 import { BalanceSheetView, StatementPage2, StatementPage3 } from "./StatementPages";
 import { WhiteStatements } from "./WhiteStatementPages";
 import { RealEstateStatements } from "./RealEstateStatementPages";
@@ -24,14 +27,8 @@ import { realEstateStatement } from "../../lib/realEstateStatement";
 type Tab = "pl" | "p2" | "p3" | "bs";
 
 const TAB_LABEL: Record<Tab, string> = { pl: "損益計算書", p2: "月別売上・給料など", p3: "減価償却・地代家賃など", bs: "貸借対照表" };
-const TAB_TITLE: Record<Tab, string> = { pl: "損益計算書", p2: "月別売上（収入）金額及び仕入金額 ほか", p3: "減価償却費の計算 ほか", bs: "貸借対照表" };
-
-const Line = ({ label, value, strong, indent }: { label: string; value: number | null; strong?: boolean; indent?: boolean }) => (
-  <tr className={strong ? "st-strong" : ""}>
-    <td className={indent ? "indent" : ""}>{label}</td>
-    <td className={`num${value != null && value < 0 ? " negative" : ""}`}>{value == null ? "" : yen(value)}</td>
-  </tr>
-);
+const TAB_TITLE: Record<Tab, string> = { pl: "損益計算書", p2: "月別売上（収入）金額及び仕入金額 ほか", p3: "減価償却費の計算 ほか", bs: "貸借対照表（資産負債調）" };
+const TABS = Object.keys(TAB_LABEL) as Tab[];
 
 export const StatementsPage = () => {
   const { filing, settings } = useAppContext();
@@ -54,23 +51,26 @@ export const StatementsPage = () => {
 };
 
 const BlueStatements = () => {
-  const { year, accounts, settings, closings, strict, filing } = useAppContext();
+  const { db, year, accounts, settings, closings, strict, filing } = useAppContext();
   // 締めたときの確認コード（厳密モード）。印刷した決算書が、帳簿ファイルの外の控えになる
   const closedHead = strict ? closings.find((c) => c.fiscal_year === year && c.period_end === `${year}-12-31`)?.chain_head : undefined;
   const { lines, opening } = useYearData();
   const [tab, setTab] = useState<Tab>("pl");
+  // 事業期間（年の中途の開業・廃業。所得税の入力の「事業税に関する事項」から）
+  const [period, setPeriod] = useState<{ from: string; to: string }>({ from: "1月1日", to: "12月31日" });
+  useEffect(() => {
+    repo.getIncomeTaxInput(db, year).then((x) => setPeriod(businessPeriod(x.businessTax, year))).catch(console.error);
+  }, [db, year]);
 
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
   // 一般用の決算書は事業所得の科目だけ（不動産所得は不動産所得用の決算書）。貸借対照表は帳簿全体
   const bizAccounts = useMemo(() => accountsOfKind(accounts, "business"), [accounts]);
   const pl = summarizeIncome(bizAccounts, end);
-  const by = (cat: Account["category"]) => bizAccounts.filter((a) => a.category === cat);
-  const val = (a: Account) => end.get(a.id) ?? 0;
 
-  // e-Tax 用のデータの決算書では、追加の欄に上限がある（勘定科目の画面の「決算書の欄」で選べる）
+  // 決算書の欄（勘定科目の画面の「決算書の欄」で選べる。e-Tax 用のデータと同じ）
   const layout = useMemo(() => statementLayout(bizAccounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0), [bizAccounts, end, opening]);
   const layoutWarnings = layout.warnings;
-  const purchaseTotal = layout.sections.cogs.find((r) => r.label === "仕入金額（製品製造原価）")?.amount ?? 0;
+  const monthlyPurchases = useMemo(() => monthlySales(bizAccounts, lines).purchases.reduce((s, x) => s + x, 0), [bizAccounts, lines]);
 
   const limit = BLUE_DEDUCTION_LIMIT[filing.type];
   // 青色申告特別控除は不動産所得から先に差し引く
@@ -78,93 +78,137 @@ const BlueStatements = () => {
   const scale = settings.real_estate ?? "none";
   const realEstateIncome = Math.max(0, realEstateStatement(accounts, (a) => end.get(a.id) ?? 0, "blue", { familyAllowed: scale === "business", deductionLimit: 0 }).beforeDeduction);
   const deduction = Math.min(limit - Math.min(limit, realEstateIncome), Math.max(0, pl.income));
+  const form = incomeStatementForm(layout, pl.revenue, deduction);
 
-  const cogs = by("cogs");
-  const cogsDebit = cogs.filter((a) => a.normal_side === "debit");
-  const cogsCredit = cogs.filter((a) => a.normal_side === "credit");
-  const cogsSubtotal = cogsDebit.reduce((s, a) => s + val(a), 0);
+  /** 4ページまとめて印刷（画面は表示中のページのまま） */
+  const printAll = () => {
+    document.body.classList.add("st-print-all");
+    const done = () => {
+      document.body.classList.remove("st-print-all");
+      window.removeEventListener("afterprint", done);
+    };
+    window.addEventListener("afterprint", done);
+    window.print();
+  };
 
-  // 各種引当金・準備金等：繰戻額等（貸方の科目。所得に足す）と繰入額等（借方の科目。所得から差し引く）
-  const specialBack = by("special").filter((a) => a.normal_side === "credit" && (a.is_active || val(a) !== 0));
-  const specialAdd = by("special").filter((a) => a.normal_side === "debit" && (a.is_active || val(a) !== 0));
+  const head = (t: Tab) => (
+    <header className="statement-head">
+      <h2 className={t === "p2" || t === "p3" ? "st-title-small" : ""}>{TAB_TITLE[t]}</h2>
+      <p>
+        {t !== "pl" && <>{settings.business_name || "（屋号未設定）"}　{settings.owner_name}<br /></>}
+        {t === "bs" ? `${year}年12月31日 現在` : `自 ${year}年${period.from}　至 ${year}年${period.to}`}
+        {closedHead && <><br /><span className="statement-anchor">確認コード {repo.anchorCode(closedHead)}</span></>}
+        {!isYearCompliant(settings, year) && <><br /><span className="statement-off">電子帳簿保存法の対応外（通常の保存）</span></>}
+      </p>
+    </header>
+  );
 
   return (
     <div className="page">
       <PageHeader title="決算書" note={`${year}年1月1日〜${year}年12月31日`}>
         <div className="seg" role="tablist">
-          {(Object.keys(TAB_LABEL) as Tab[]).map((t, i) => (
+          {TABS.map((t, i) => (
             <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
               {i + 1}. {TAB_LABEL[t]}
             </button>
           ))}
         </div>
-        <button className="btn ghost" onClick={() => window.print()}>
+        <button className="btn ghost" onClick={() => window.print()} title="表示中のページを印刷します">
           <Printer size={16} /> 印刷
+        </button>
+        <button className="btn ghost" onClick={printAll} title="1〜4ページをまとめて印刷します">
+          <Printer size={16} /> まとめて印刷
         </button>
       </PageHeader>
 
       {layoutWarnings.length > 0 && (
         <p className="notice print-skip">
-          {layoutWarnings.join("。")}（e-Tax 用のデータの決算書）。勘定科目の画面の「決算書の欄」で、書く欄を選び直せます。
+          {layoutWarnings.join("。")}（決算書と e-Tax 用のデータ）。勘定科目の画面の「決算書の欄」で、書く欄を選び直せます。
         </p>
       )}
-      <section className="sheet statement print-area">
-        <header className="statement-head">
-          <h2 className={tab === "p2" || tab === "p3" ? "st-title-small" : ""}>{TAB_TITLE[tab]}</h2>
-          <p>
-            {settings.business_name || "（屋号未設定）"}　{settings.owner_name}
-            <br />
-            {tab === "bs" ? `${year}年12月31日 現在` : `自 ${year}年1月1日　至 ${year}年12月31日`}
-            {closedHead && <><br /><span className="statement-anchor">確認コード {repo.anchorCode(closedHead)}</span></>}
-            {!isYearCompliant(settings, year) && <><br /><span className="statement-off">電子帳簿保存法の対応外（通常の保存）</span></>}
-          </p>
-        </header>
-
-        {tab === "p2" ? (
-          <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} realEstateIncome={realEstateIncome} end={end} opening={opening} />
-        ) : tab === "p3" ? (
-          <StatementPage3 lines={lines} salesTotal={pl.revenue} purchaseTotal={purchaseTotal} />
-        ) : tab === "pl" ? (
-          <div className="pl-grid">
-            <table className="ledger st-table">
-              <tbody>
-                <tr className="cat-row"><td colSpan={2}>売上（収入）金額</td></tr>
-                {by("revenue").map((a) => <Line key={a.id} label={a.name} value={val(a)} indent />)}
-                <Line label="売上（収入）金額 計" value={pl.revenue} strong />
-
-                <tr className="cat-row"><td colSpan={2}>売上原価</td></tr>
-                {cogsDebit.map((a) => <Line key={a.id} label={a.name} value={val(a)} indent />)}
-                <Line label="小計" value={cogsSubtotal} indent />
-                {cogsCredit.map((a) => <Line key={a.id} label={a.name} value={val(a)} indent />)}
-                <Line label="差引原価" value={pl.cogs} strong />
-                <Line label="差引金額（売上総利益）" value={pl.grossProfit} strong />
-              </tbody>
-            </table>
-
-            <table className="ledger st-table">
-              <tbody>
-                <tr className="cat-row"><td colSpan={2}>経費</td></tr>
-                {by("expense").filter((a) => a.is_active || val(a) !== 0).map((a) => (
-                  <Line key={a.id} label={a.name} value={val(a)} indent />
-                ))}
-                <Line label="経費 計" value={pl.expenses} strong />
-                <Line label="差引金額" value={pl.beforeSpecial} strong />
-                <tr className="cat-row"><td colSpan={2}>各種引当金・準備金等</td></tr>
-                {specialBack.map((a) => <Line key={a.id} label={`繰戻額等　${a.name}`} value={val(a)} indent />)}
-                <Line label="繰戻額等 計" value={specialBack.reduce((s, a) => s + val(a), 0)} indent />
-                {specialAdd.map((a) => <Line key={a.id} label={`繰入額等　${a.name}`} value={val(a)} indent />)}
-                <Line label="繰入額等 計" value={specialAdd.reduce((s, a) => s + val(a), 0)} indent />
-                <Line label="青色申告特別控除前の所得金額" value={pl.income} strong />
-                <Line label="青色申告特別控除額（目安）" value={deduction} indent />
-                <Line label="所得金額" value={pl.income - deduction} strong />
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <BalanceSheetView end={end} opening={opening} />
-        )}
-      </section>
+      {TABS.map((t) => (
+        <section key={t} className={`sheet statement print-area st-page${tab === t ? "" : " st-off"}`}>
+          {head(t)}
+          {t === "pl" ? (
+            <>
+              <BusinessHead period={period} year={year} />
+              <div className="pl-grid">
+                <FormTable rows={form.left} />
+                <FormTable rows={form.right} />
+              </div>
+              {form.beforeDeduction !== pl.income && (
+                <p className="warn-box" role="alert">㊸ が帳簿の所得（{yen(pl.income)}円）と合いません。勘定科目の「決算書の欄」を確かめてください。</p>
+              )}
+              <p className="field-note screen-only">
+                欄に入れた科目は、欄の名前と違うものだけ小さく添えています（印刷には出ません）。㊹ 青色申告特別控除額は目安です（2ページの「青色申告特別控除額の計算」）。
+              </p>
+            </>
+          ) : t === "p2" ? (
+            <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} realEstateIncome={realEstateIncome} end={end} opening={opening} />
+          ) : t === "p3" ? (
+            <StatementPage3 lines={lines} salesTotal={pl.revenue} purchaseTotal={monthlyPurchases} />
+          ) : (
+            <>
+              <BalanceSheetView end={end} opening={opening} />
+              {layout.hasManufacturing && <ManufacturingView layout={layout} />}
+            </>
+          )}
+        </section>
+      ))}
     </div>
   );
 };
 
+/** 1ページの見出し：住所・事業所所在地・電話番号・業種名・屋号・氏名・加入団体名・依頼税理士等・事業期間（事業者設定・e-Tax の申告者の情報から） */
+const BusinessHead = ({ period, year }: { period: { from: string; to: string }; year: number }) => {
+  const { settings: s } = useAppContext();
+  const items: [string, string][] = [
+    ["住所", s.address], ["事業所所在地", s.office_address], ["電話番号", [s.phone && `自宅 ${s.phone}`, s.office_phone && `事業所 ${s.office_phone}`].filter(Boolean).join("　")],
+    ["業種名", s.industry], ["屋号", s.business_name], ["氏名", s.owner_name], ["加入団体名", s.union_name],
+    ["依頼税理士等", [s.agent_name, s.agent_address, s.agent_phone].filter(Boolean).join("　")], ["事業期間", `${year}年 ${period.from}〜${period.to}`],
+  ];
+  return (
+    <dl className="st-business">
+      {items.map(([k, v]) => (
+        <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
+      ))}
+    </dl>
+  );
+};
+
+/** 様式の行の表（番号・欄・金額）。欄に入れた科目は、欄の名前と違うものだけ画面に小さく添える */
+const FormTable = ({ rows }: { rows: FormRow[] }) => {
+  const { accountMap } = useAppContext();
+  const names = (r: FormRow) => (r.accountIds ?? []).map((id) => accountMap.get(id)?.name ?? "").filter((n) => n && n !== r.label);
+  return (
+    <table className="ledger st-table st-form">
+      <colgroup><col className="st-no-col" /><col /><col className="st-amount-col" /></colgroup>
+      <tbody>
+        {rows.map((r, i) => r.kind === "head" ? (
+          <tr key={i} className="cat-row"><td colSpan={3}>{r.label}</td></tr>
+        ) : (
+          <tr key={i} className={r.kind === "total" ? "st-strong" : ""}>
+            <td className="st-no">{r.no}</td>
+            <td>
+              {r.label}
+              {names(r).length > 0 && <span className="st-accounts screen-only">{names(r).join("・")}</span>}
+            </td>
+            <td className={`num${r.amount != null && r.amount < 0 ? " negative" : ""}`}>{r.amount == null ? "" : yen(r.amount)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
+/** 4ページの製造原価の計算（①〜㉖。㉖ は1ページの ③ へ） */
+const ManufacturingView = ({ layout }: { layout: StatementLayout }) => {
+  const m = manufacturingForm(layout);
+  return (
+    <div className="st-mfg">
+      <h3 className="st-h">製造原価の計算</h3>
+      <FormTable rows={m.rows} />
+      <p className="field-note screen-only">勘定科目の「決算書の欄」で製造原価の欄を選んだ売上原価の科目から作ります。㉖ 製品製造原価は1ページの ③ に入れています。</p>
+    </div>
+  );
+};

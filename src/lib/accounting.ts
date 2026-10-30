@@ -79,22 +79,30 @@ export interface TrialBalanceRow {
   balance: number; // 期末（当月末）残高
 }
 
+/** 帳簿の期間の番号：1〜12 = 月、13 = 決算整理（12月のあと。年度末の決算整理仕訳） */
+export const ADJUSTMENT_PERIOD = 13;
+/** 明細の期間（決算整理仕訳は 13） */
+export const periodOfLine = (l: { date: string; is_adjustment?: number }) => (l.is_adjustment ? ADJUSTMENT_PERIOD : Number(l.date.slice(5, 7)));
+/** 期間（from〜to）の明細か */
+export const inPeriods = (l: { date: string; is_adjustment?: number }, from: number, to: number) => {
+  const p = periodOfLine(l);
+  return p >= from && p <= to;
+};
+
 /**
- * 残高試算表
- * @param periodFrom 集計期間の開始日（この日より前は「繰越」に入る）
- * @param periodTo   集計期間の終了日
- * @param yearStart  会計期間の開始日（貸借科目はここに期首残高が乗る）
+ * 残高試算表（表示中の年度の明細から）
+ * @param from 集計する期間の初め（1〜13。これより前の期間は「繰越」に入る）
+ * @param to 集計する期間の終わり（1〜13。12 までなら決算整理仕訳を含まない＝決算整理前）
  */
 export const buildTrialBalance = (
   accounts: Account[],
   opening: OpeningBalances,
   lines: FlatLine[],
-  yearStart: string,
-  periodFrom: string,
-  periodTo: string,
+  from: number,
+  to: number,
 ): TrialBalanceRow[] => {
-  const before = sumMovements(lines, yearStart, prevDay(periodFrom));
-  const during = sumMovements(lines, periodFrom, periodTo);
+  const before = sumMovements(lines.filter((l) => periodOfLine(l) < from));
+  const during = sumMovements(lines.filter((l) => inPeriods(l, from, to)));
   return accounts.map((account) => {
     const base = isBS(account.category) ? opening[account.id] ?? 0 : 0;
     const carried = base + netOf(account, before.get(account.id));
@@ -507,13 +515,12 @@ export const subTrialRow = (
   subId: number | null,
   subOpening: SubOpeningBalances,
   lines: FlatLine[],
-  yearStartIso: string,
-  periodFrom: string,
-  periodTo: string,
+  from: number,
+  to: number,
 ): TrialBalanceRow => {
   const filtered = lines.filter((l) => l.account_id === account.id && matchSub(l, subId));
   const base = isBS(account.category) ? subOpening[subKey(account.id, subId)] ?? 0 : 0;
-  return buildTrialBalance([account], { [account.id]: base }, filtered, yearStartIso, periodFrom, periodTo)[0];
+  return buildTrialBalance([account], { [account.id]: base }, filtered, from, to)[0];
 };
 
 // ────────────────────────────────────────────
@@ -525,6 +532,19 @@ export const monthStart = (y: number, m: number) => `${y}-${pad(m)}-01`;
 export const monthEnd = (y: number, m: number) => `${y}-${pad(m)}-${pad(new Date(y, m, 0).getDate())}`;
 export const yearStart = (y: number) => `${y}-01-01`;
 export const yearEnd = (y: number) => `${y}-12-31`;
+/** 期間（1〜13）の初めの日・終わりの日（決算整理は12月31日） */
+export const periodStart = (y: number, p: number) => (p === ADJUSTMENT_PERIOD ? yearEnd(y) : monthStart(y, p));
+export const periodEnd = (y: number, p: number) => (p === ADJUSTMENT_PERIOD ? yearEnd(y) : monthEnd(y, p));
+/** 期間の決算整理の扱い（印刷の見出し・画面に添える）。12月までなら決算整理前、決算整理だけならその旨 */
+export const periodNote = (from: number, to: number) =>
+  from === ADJUSTMENT_PERIOD ? "決算整理仕訳のみ" : to === 12 ? (from === 1 ? "決算整理前" : "決算整理仕訳を除く") : "";
+
+/**
+ * 仕訳をコピーした新しい仕訳の日付：今日（表示中の年度の日付なら）。決算整理仕訳は表示中の年度の12月31日。
+ * 今日が表示中の年度でなければ、元の日付（表示中の年度の外の日付は登録できないため）
+ */
+export const copyDate = (original: string, today: string, year: number, adjustment: boolean) =>
+  adjustment ? yearEnd(year) : today.startsWith(`${year}-`) ? today : original;
 
 export const prevDay = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);

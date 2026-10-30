@@ -8,6 +8,7 @@ import type { FlatLine } from "./accounting";
 import type { Account } from "./types";
 import { splitByRate } from "./homeUse";
 import { CODE } from "../constants/accounts";
+import { purchaseAccountIds } from "./statementLines";
 
 export interface MonthlySales {
   /** 1〜12月（添字 0 = 1月） */
@@ -20,9 +21,13 @@ export interface MonthlySales {
 
 const net = (l: FlatLine, normal: "debit" | "credit") => (l.side === normal ? l.amount : -l.amount);
 
-/** 月別の売上（収入）金額と仕入金額。売上は家事消費等・雑収入を除く収益の科目、仕入は仕入高 */
+/**
+ * 月別の売上（収入）金額と仕入金額。売上は家事消費等・雑収入を除く収益の科目、
+ * 仕入は決算書の「仕入金額（製品製造原価）」の欄に書く売上原価の科目（仕入高・外注加工費など。1ページの③と合う）
+ */
 export const monthlySales = (accounts: Account[], lines: FlatLine[]): MonthlySales => {
   const byId = new Map(accounts.map((a) => [a.id, a]));
+  const purchase = new Set(purchaseAccountIds(accounts));
   const r: MonthlySales = { sales: Array(12).fill(0), purchases: Array(12).fill(0), householdUse: 0, miscIncome: 0 };
   for (const l of lines) {
     const a = byId.get(l.account_id);
@@ -31,7 +36,7 @@ export const monthlySales = (accounts: Account[], lines: FlatLine[]): MonthlySal
     if (a.code === CODE.HOUSEHOLD_USE) r.householdUse += net(l, "credit");
     else if (a.code === CODE.MISC_INCOME) r.miscIncome += net(l, "credit");
     else if (a.category === "revenue") r.sales[m] += net(l, "credit");
-    else if (a.code === CODE.PURCHASES) r.purchases[m] += net(l, "debit");
+    else if (purchase.has(a.id)) r.purchases[m] += net(l, "debit");
   }
   return r;
 };

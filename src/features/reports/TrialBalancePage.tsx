@@ -6,16 +6,16 @@ import { useMemo, useState } from "react";
 import { Download, Printer } from "lucide-react";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
-import { MonthRange } from "../../components/MonthRange";
+import { MonthRange, periodLabel } from "../../components/MonthRange";
 import { PrintPreview } from "../../components/PrintPreview";
 import { exportCsvFile } from "../../components/csvExport";
 import { useToast } from "../../components/Toast";
 import {
-  buildTrialBalance, monthEnd, monthStart, subTrialRow, summarizeIncome, yearStart, type TrialBalanceRow,
+  ADJUSTMENT_PERIOD, buildTrialBalance, periodNote, subTrialRow, summarizeIncome, type TrialBalanceRow,
 } from "../../lib/accounting";
 import { todayIso, yen } from "../../lib/format";
 import { TRIAL_CSV_HEADER, trialSection, type TrialPrintLine } from "../../lib/printBooks";
-import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
+import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
 import { BS_CATEGORIES, CATEGORY_LABEL, PL_CATEGORIES } from "../../constants/accounts";
 import type { AccountCategory } from "../../lib/types";
 
@@ -30,13 +30,10 @@ export const TrialBalancePage = () => {
   const [showSubs, setShowSubs] = useState(true);
   const [view, setView] = useState<View>("bs");
   const [from, setFrom] = useState(1);
-  const [to, setTo] = useState(12);
+  const [to, setTo] = useState(ADJUSTMENT_PERIOD);
   const [hideZero, setHideZero] = useState(true);
 
-  const rows = useMemo(
-    () => buildTrialBalance(accounts, opening, lines, yearStart(year), monthStart(year, from), monthEnd(year, to)),
-    [accounts, opening, lines, year, from, to],
-  );
+  const rows = useMemo(() => buildTrialBalance(accounts, opening, lines, from, to), [accounts, opening, lines, from, to]);
 
   const toBalances = (pick: (r: TrialBalanceRow) => number) => new Map(rows.map((r) => [r.account.id, pick(r)]));
   const incomeCarried = summarizeIncome(accounts, toBalances((r) => r.carried)).income;
@@ -72,7 +69,7 @@ export const TrialBalancePage = () => {
         out.push({ kind: "account", label: r.account.name, ...amounts(r) });
         const subs = showSubs ? subAccounts.filter((x) => x.account_id === r.account.id) : [];
         if (subs.length === 0) continue;
-        const sub = (id: number | null) => subTrialRow(r.account, id, subOpening, lines, yearStart(year), monthStart(year, from), monthEnd(year, to));
+        const sub = (id: number | null) => subTrialRow(r.account, id, subOpening, lines, from, to);
         for (const [label, row] of [...subs.map((x) => [x.name, sub(x.id)] as const), ["補助なし", sub(null)] as const])
           if (!(hideZero && isEmpty(row))) out.push({ kind: "sub", label, ...amounts(row) });
       }
@@ -85,14 +82,14 @@ export const TrialBalancePage = () => {
     return out;
   };
   const shown = linesOf(view);
-  const carriedHead = from === 1 ? "前期繰越" : "前月繰越";
-  const balanceHead = `${to}月末残高`;
+  const carriedHead = from === 1 ? "前期繰越" : from === ADJUSTMENT_PERIOD ? "12月末残高" : "前月繰越";
+  const balanceHead = to === ADJUSTMENT_PERIOD ? (from === 1 ? "期末残高" : "決算整理後残高") : `${to}月末残高`;
 
   const printDoc = useMemo((): PrintDoc | null => {
     if (!printing) return null;
     return {
       title: "残高試算表", owner: ownerText(settings.business_name, settings.owner_name),
-      period: periodText(monthStart(year, from), monthEnd(year, to)), printedOn: todayIso(),
+      period: periodsText(year, from, to), printedOn: todayIso(),
       sections: (["bs", "pl"] as View[]).map((v) => trialSection(VIEW_LABEL[v], linesOf(v), carriedHead, balanceHead)),
     };
   }, [printing, rows, hideZero, showSubs, settings]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -110,13 +107,14 @@ export const TrialBalancePage = () => {
         return [[`${VIEW_LABEL[v]}・${cat}`, l.kind === "sub" ? parent : l.label, l.kind === "sub" ? l.label : "", l.carried, l.debit, l.credit, l.balance]];
       });
     });
-    exportCsvFile(`残高試算表_${settings.business_name || "帳簿"}_${year}_${from}-${to}月.csv`, TRIAL_CSV_HEADER, body, toast);
+    exportCsvFile(`残高試算表_${settings.business_name || "帳簿"}_${year}_${periodLabel(from)}-${periodLabel(to)}.csv`, TRIAL_CSV_HEADER, body, toast);
   };
 
   return (
     <div className="page">
       <PageHeader title="残高試算表">
         <MonthRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+        {periodNote(from, to) && <span className="badge badge-adjust period-note">{periodNote(from, to)}</span>}
         <button className="btn ghost" onClick={exportCsv} title="貸借対照表と損益計算書を、表示中の期間・条件で書き出します"><Download size={16} /> CSV 書き出し</button>
         <button className="btn ghost" onClick={() => setPrinting(true)} title="貸借対照表と損益計算書を、表示中の期間・条件で印刷します"><Printer size={16} /> 印刷</button>
       </PageHeader>

@@ -81,6 +81,9 @@ export const ACCOUNT_TAX_DEFAULTS: Record<string, TaxCode> = {
   "401": "sales10", "402": "sales10", "403": "sales10",
   // 売上原価
   "501": "none", "502": "purchase10", "503": "none",
+  // 製造原価：棚卸高・労務費（賃金・法定福利費）・減価償却費は対象外
+  "520": "none", "521": "purchase10", "522": "none", "523": "none", "524": "purchase10", "525": "purchase10", "526": "purchase10",
+  "527": "purchase10", "528": "none", "529": "purchase10", "530": "none", "531": "none",
   // 経費
   "601": "none", "602": "purchase10", "603": "purchase10", "604": "purchase10", "605": "purchase10",
   "606": "purchase10", "607": "purchase10", "608": "purchase_nontax", "609": "purchase10", "610": "purchase10",

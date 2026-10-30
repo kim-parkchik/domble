@@ -36,7 +36,7 @@ import {
   openingState, sourceLabel, stateLabel, verifyChain, type ChainRow, type ChainSource, type IntegrityIssue,
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
-import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, normalSideOf } from "../constants/accounts";
+import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, MANUFACTURING_CODES, normalSideOf } from "../constants/accounts";
 import { assetLockError, businessRateIn, DISPOSAL_LABEL, disposalLines, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
@@ -894,6 +894,33 @@ export const getAccounts = (db: Database, year: number) =>
 const accountLabel = async (db: Database, id: number) => {
   const year = await currentYear(db);
   return (await getAccounts(db, year)).find((a) => a.id === id)?.name ?? `#${id}`;
+};
+
+/**
+ * 製造原価を使う・使わない（製造原価の初期科目をまとめて表示・非表示。戻せる）。
+ * 使わないにできるのは、締めていない年にそれらの科目の仕訳が無いときだけ（記帳中の科目が隠れて入力できなくなるのを防ぐ）。
+ * 決算書の「製造原価の計算」はその年の金額で出すので、締めた年の決算書は変わらない
+ */
+const setManufacturing_ = async (db: Database, on: boolean) => {
+  const marks = MANUFACTURING_CODES.map(() => "?").join(",");
+  const rows = await db.select<{ id: number; is_active: number }[]>(`SELECT id, is_active FROM accounts WHERE is_system = 1 AND code IN (${marks})`, MANUFACTURING_CODES);
+  if (!on && rows.length) {
+    const used = await db.select<{ y: string }[]>(
+      `SELECT DISTINCT substr(e.date, 1, 4) AS y FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
+        WHERE e.is_deleted = 0 AND l.account_id IN (${rows.map(() => "?").join(",")}) ORDER BY y`,
+      rows.map((r) => r.id),
+    );
+    const closed = await yearClosedYears(db);
+    const open = used.map((r) => Number(r.y)).filter((y) => !closed.includes(y));
+    if (open.length) {
+      throw new Error(`製造原価の科目に、締めていない年（${open.map((y) => `${y}年`).join("・")}）の仕訳があるため、使わないにできません。仕訳を直すか、その年を締めてから切り替えてください`);
+    }
+  }
+  const year = await currentYear(db);
+  for (const r of rows.filter((x) => !!x.is_active !== on)) {
+    await db.execute("UPDATE accounts SET is_active = ? WHERE id = ?", [on ? 1 : 0, r.id]);
+    await logMaster(db, { target_type: "account", target_id: r.id, action: on ? "show" : "hide", fiscal_year: year, label: await accountLabel(db, r.id), old_value: "", new_value: "" });
+  }
 };
 
 const setAccountActive_ = async (db: Database, id: number, active: boolean) => {
@@ -2947,6 +2974,7 @@ export const addCustomHoliday = inTx(addCustomHoliday_, (date) => `休業日（$
 export const deleteCustomHoliday = inTx(deleteCustomHoliday_, (date) => `休業日（${date}）の削除`, { perm: "settings" });
 export const setCashbookAccounts = inTx(setCashbookAccounts_, () => "帳簿入力のタブの保存", { perm: "entry" });
 export const setAccountActive = inTx(setAccountActive_, (id) => `勘定科目 #${id} の表示切り替え`, { perm: "master" });
+export const setManufacturing = inTx(setManufacturing_, (on) => `製造原価を${on ? "使う" : "使わない"}`, { perm: "master" });
 export const createAccount = inTx(createAccount_, (d) => `勘定科目「${d.name}」の追加`, { perm: "master" });
 export const updateAccount = inTx(updateAccount_, (id) => `勘定科目 #${id} の変更`, { perm: "master" });
 export const deleteAccount = inTx(deleteAccount_, (id) => `勘定科目 #${id} の削除`, { perm: "master" });

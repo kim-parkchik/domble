@@ -170,6 +170,13 @@ export const EMPTY_INCOME_TAX_INPUT: IncomeTaxInput = {
 const MAX_AMOUNT = 100_000_000_000;
 const isIsoDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
 
+/** 決算書の事業期間（「1月1日」〜「12月31日」。その年の中途に開業したら開業の日から、廃業したら廃業の日まで） */
+export const businessPeriod = (b: IncomeTaxInput["businessTax"], year: number) => {
+  const md = (iso: string) => `${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日`;
+  const inYear = isIsoDate(b.changeDate) && Number(b.changeDate.slice(0, 4)) === year;
+  return { from: inYear && b.change === "open" ? md(b.changeDate) : "1月1日", to: inYear && b.change === "close" ? md(b.changeDate) : "12月31日" };
+};
+
 /** 保存する前に形を整え、おかしければ理由を返す（文字列の前後の空白は落とす。金額は 0 以上の整数） */
 export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string => {
   const x = (raw ?? {}) as Partial<IncomeTaxInput>;

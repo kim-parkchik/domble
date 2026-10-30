@@ -9,6 +9,8 @@
  * 行の高さは画面で測ってから渡す（摘要の折り返しで高さが変わるため。components/PrintPreview.tsx）
  */
 
+import { periodEnd, periodNote, periodStart } from "./accounting";
+
 export type PrintAlign = "left" | "right" | "center";
 
 export interface PrintColumn {
@@ -136,6 +138,11 @@ export const paginate = (metrics: SectionMetrics[], capacity: number): PageSlice
 
 /** 期間の表示（2025年1月1日〜2025年12月31日） */
 export const periodText = (from: string, to: string) => `${dateText(from)}〜${dateText(to)}`;
+/** 帳簿の期間（1〜13。13 = 決算整理）の見出し。決算整理前・決算整理仕訳のみなどを添える */
+export const periodsText = (year: number, from: number, to: number) => {
+  const note = periodNote(from, to);
+  return `${periodText(periodStart(year, from), periodEnd(year, to))}${note ? `（${note}）` : ""}`;
+};
 
 const dateText = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);

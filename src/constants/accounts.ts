@@ -13,12 +13,15 @@ export interface AccountSeed {
   normal_side: Side;
   /** 所得の区分（無ければ事業所得） */
   income_kind?: IncomeKind;
-  /** 初めは非表示（不動産所得の科目。事業者設定で不動産所得を「あり」にすると表示する） */
+  /** 初めは非表示（不動産所得の科目は事業者設定で不動産所得を「あり」にすると表示する。製造原価の科目は勘定科目の画面で表示にする） */
   hidden?: boolean;
 }
 
 const a = (code: string, name: string, kana: string, category: AccountCategory, normal_side: Side): AccountSeed =>
   ({ code, name, kana, category, normal_side });
+/** 製造原価の科目（売上原価の区分。決算書4ページの「製造原価の計算」に書く。製造業・工事の請負などで使うので、初めは非表示） */
+const mf = (code: string, name: string, kana: string, normal_side: Side): AccountSeed =>
+  ({ code, name, kana, category: "cogs", normal_side, hidden: true });
 /** 不動産所得の科目（初めは非表示） */
 const re = (code: string, name: string, kana: string, category: AccountCategory, normal_side: Side): AccountSeed =>
   ({ code, name, kana, category, normal_side, income_kind: "realestate", hidden: true });
@@ -77,6 +80,19 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("501", "期首商品棚卸高", "きしゅしょうひんたなおろしだか", "cogs", "debit"),
   a("502", "仕入高", "しいれだか", "cogs", "debit"),
   a("503", "期末商品棚卸高", "きまつしょうひんたなおろしだか", "cogs", "credit"),
+  // 製造原価（初めは非表示）
+  mf("520", "期首原材料棚卸高", "きしゅげんざいりょうたなおろしだか", "debit"),
+  mf("521", "原材料仕入高", "げんざいりょうしいれだか", "debit"),
+  mf("522", "期末原材料棚卸高", "きまつげんざいりょうたなおろしだか", "credit"),
+  mf("523", "労務費", "ろうむひ", "debit"),
+  mf("524", "外注工賃（製造）", "がいちゅうこうちん", "debit"),
+  mf("525", "電力費", "でんりょくひ", "debit"),
+  mf("526", "水道光熱費（製造）", "すいどうこうねつひ", "debit"),
+  mf("527", "修繕費（製造）", "しゅうぜんひ", "debit"),
+  mf("528", "減価償却費（製造）", "げんかしょうきゃくひ", "debit"),
+  mf("529", "雑費（製造）", "ざっぴ", "debit"),
+  mf("530", "期首半製品・仕掛品棚卸高", "きしゅはんせいひんしかかりひんたなおろしだか", "debit"),
+  mf("531", "期末半製品・仕掛品棚卸高", "きまつはんせいひんしかかりひんたなおろしだか", "credit"),
 
   // ── 経費 ──
   a("601", "租税公課", "そぜいこうか", "expense", "debit"),
@@ -168,6 +184,9 @@ export const CODE = {
   LOAN: "115",          // 貸付金
   ACCRUED: "116",       // 未収入金
 } as const;
+
+/** 製造原価の初期科目（事業者設定の「製造原価を使う」でまとめて表示・非表示にする） */
+export const MANUFACTURING_CODES = ["520", "521", "522", "523", "524", "525", "526", "527", "528", "529", "530", "531"];
 
 /** 固定資産台帳で選ぶ資産の科目（減価償却するもの。土地は償却しないので入れない） */
 export const FIXED_ASSET_CODES = ["130", "131", "132", "133", "134", "136", "137", "138"];

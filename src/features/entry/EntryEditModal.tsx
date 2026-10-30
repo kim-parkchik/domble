@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { Undo2 } from "lucide-react";
+import { Copy, Undo2 } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useToast } from "../../components/Toast";
 import { Modal } from "../../components/Modal";
 import { VoucherForm } from "./VoucherForm";
 import { EntryHistoryList } from "../books/HistoryView";
 import { useAppContext } from "../../context/AppContext";
-import { linesToRows } from "../../lib/accounting";
+import { copyDate, linesToRows } from "../../lib/accounting";
+import { todayIso } from "../../lib/format";
 import type { HistoryRecord, JournalEntry } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { EntryEvidenceSection } from "../evidence/EntryEvidenceSection";
@@ -14,15 +15,17 @@ import { EntryEvidenceSection } from "../evidence/EntryEvidenceSection";
 /**
  * 既存の仕訳を振替伝票の形で開いて訂正・削除する。下に履歴を表示
  * 決算整理仕訳（台帳などから作ったものを除く）は、翌年1月1日付で振り戻せる（未払費用・前払費用など）
+ * コピー：明細・摘要・取引先・税区分を写した新しい仕訳を、直してから登録する（日付は今日。証憑のひも付けは写さない）
  */
 export const EntryEditModal = ({ entryId, onClose }: { entryId: number; onClose: () => void }) => {
-  const { db, strict, bump, can } = useAppContext();
+  const { db, strict, bump, can, year, readOnly } = useAppContext();
   const toast = useToast();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   // 振り戻し：できるか（決算整理仕訳で、台帳などから作ったものでない）と、作成済みの振り戻し
   const [reversal, setReversal] = useState<{ allowed: boolean; id: number | null }>({ allowed: false, id: null });
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     repo.getEntry(db, entryId).then(setEntry).catch(console.error);
@@ -47,6 +50,23 @@ export const EntryEditModal = ({ entryId, onClose }: { entryId: number; onClose:
     }
   };
 
+  if (entry && copying) {
+    return (
+      <Modal title={`仕訳のコピー（No.${entryId} から）`} onClose={onClose} width={1080}>
+        <p className="field-note">No.{entryId} の明細・摘要・取引先・税区分を写しました。日付や金額を直して登録してください（証憑のひも付けは写しません）。</p>
+        <VoucherForm
+          key="copy"
+          initialDate={copyDate(entry.date, todayIso(), year, entry.is_adjustment === 1)}
+          initialRows={linesToRows(entry.lines)}
+          initialCounterpartyId={entry.counterparty_id}
+          initialAdjustment={entry.is_adjustment === 1}
+          onSaved={onClose}
+          onCancel={() => setCopying(false)}
+        />
+      </Modal>
+    );
+  }
+
   return (
     <Modal title={deleted ? `削除済みの仕訳（No.${entryId}）` : strict ? `仕訳の訂正（No.${entryId}）` : `仕訳の修正（No.${entryId}）`} onClose={onClose} width={1080}>
       {!entry ? (
@@ -66,10 +86,13 @@ export const EntryEditModal = ({ entryId, onClose }: { entryId: number; onClose:
         />
       )}
 
-      {entry && (entry.created_by_name || entry.updated_by_name) && (
+      {entry && (
         <p className="field-note entry-by">
-          登録：{entry.created_by_name ?? "（記録なし）"}（{entry.created_at}）
-          {entry.updated_at !== entry.created_at && <>　最終更新：{entry.updated_by_name ?? "（記録なし）"}（{entry.updated_at}）</>}
+          {(entry.created_by_name || entry.updated_by_name) && <>
+            登録：{entry.created_by_name ?? "（記録なし）"}（{entry.created_at}）
+            {entry.updated_at !== entry.created_at && <>　最終更新：{entry.updated_by_name ?? "（記録なし）"}（{entry.updated_at}）</>}
+          </>}
+          <button className="btn ghost sm entry-copy" onClick={() => setCopying(true)} disabled={!can("entry") || readOnly}><Copy size={14} /> コピーして新しい仕訳</button>
         </p>
       )}
       {entry && !deleted && entry.is_adjustment === 1 && reversal.allowed && (
