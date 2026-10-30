@@ -47,23 +47,25 @@ const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
  */
 export const useYearReturn = (): TaxReturn | null => {
   const { db, year, taxYears, taxYear, dataVersion } = useAppContext();
-  const { lines, opening } = useYearData();
+  const { rawLines: lines, opening } = useYearData(); // 消費税は入れたとおりの明細（税込）から
   const inv = useInventory(lines, opening);
   const baseSales = useBaseSales();
   const [interim, setInterim] = useState<{ national: number; local: number } | null>(null);
+  const [extra, setExtra] = useState({ nontaxExport: 0 });
   useEffect(() => {
     repo.getTaxInterim(db, year).then(setInterim).catch(console.error);
+    repo.getTaxReturnInput(db, year).then(setExtra).catch(console.error);
   }, [db, year, dataVersion]);
   return useMemo(() => {
     if (taxYear.status === "exempt" || !interim || !inv) return null;
     const base = buildTaxBase(lines, taxYears);
     const options = {
       businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null,
-      deduction: taxYear.deduction, inventory: inv.adjust ?? null,
+      deduction: taxYear.deduction, inventory: inv.adjust ?? null, nontaxExport: extra.nontaxExport,
     };
     const m = taxYear.status as ReturnMethod;
     return m === "twenty" ? twentyReturn(base, options, "一般用") : m === "thirty" ? thirtyReturn(base, options, "一般用") : computeReturn(m, base, options);
-  }, [lines, taxYears, taxYear, interim, inv, baseSales]);
+  }, [lines, taxYears, taxYear, interim, inv, baseSales, extra]);
 };
 
 /** 棚卸資産の調整（保存したもの）と、帳簿の期首・期末の棚卸高（読み込み中は null） */
@@ -168,7 +170,7 @@ const InventorySection = ({ inv, disabled }: { inv: NonNullable<ReturnType<typeo
 
 export const TaxReturnView = () => {
   const { db, year, settings, taxYears, taxYear, isClosed, can, dataVersion, bump, accounts, counterparties } = useAppContext();
-  const { lines, opening } = useYearData();
+  const { rawLines: lines, opening } = useYearData(); // 消費税は入れたとおりの明細（税込）から
   const inv = useInventory(lines, opening);
   // 還付申告に関する明細書（帳簿から作る候補と、仕入金額等の明細）
   const books = useMemo(
@@ -197,6 +199,24 @@ export const TaxReturnView = () => {
       setDraft({ national: String(x.national), local: String(x.local) });
     }).catch(console.error);
   }, [db, year, dataVersion]);
+  // 非課税資産の輸出等の金額（本則課税の付表2-3 ③）
+  const [nontaxExport, setNontaxExport] = useState(0);
+  const [exportDraft, setExportDraft] = useState("");
+  useEffect(() => {
+    repo.getTaxReturnInput(db, year).then((x) => {
+      setNontaxExport(x.nontaxExport);
+      setExportDraft(String(x.nontaxExport));
+    }).catch(console.error);
+  }, [db, year, dataVersion]);
+  const saveExport = async () => {
+    try {
+      await repo.saveNontaxExport(db, year, Number(exportDraft || 0));
+      bump();
+      toast("非課税資産の輸出等の金額を保存しました");
+    } catch (e) {
+      toast(String(e).replace(/^Error: /, ""), "error");
+    }
+  };
   const saveInterim = async () => {
     try {
       await repo.saveTaxInterim(db, year, Number(draft.national || 0), Number(draft.local || 0));
@@ -212,12 +232,12 @@ export const TaxReturnView = () => {
   const baseSales = useBaseSales();
   const options = {
     businessClass: taxYear.business_class, interimNational: interim.national, interimLocal: interim.local, baseSales: baseSales?.base ?? null, deduction: taxYear.deduction,
-    inventory: inv?.adjust ?? null,
+    inventory: inv?.adjust ?? null, nontaxExport,
   };
   const results = useMemo(
     () => available.map((m) => ({ m, r: computeReturn(m, base, options), problem: baseSales ? methodProblem(m, baseSales) : null })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [base, interim, taxYear.business_class, taxYear.deduction, year, baseSales, inv?.adjust],
+    [base, interim, taxYear.business_class, taxYear.deduction, year, baseSales, inv?.adjust, nontaxExport],
   );
   // 2割・3割特例の第一表は、簡易課税の届出があれば簡易課税用、無ければ一般用
   const shown = method === "twenty" ? twentyReturn(base, options, firstKind)
@@ -324,6 +344,18 @@ export const TaxReturnView = () => {
             {interimInfo && interimInfo.plan.periods.length > 0 && `前年の実績で計算した額は、消費税 ${yen(interimInfo.plan.national)}円・地方消費税 ${yen(interimInfo.plan.local)}円です（「中間申告」で回数と期限を見られます）。`}
           </p>
         </form>
+        {method === "standard" && (
+          <form className="field-row tax-interim" onSubmit={(e) => { e.preventDefault(); saveExport(); }}>
+            <label className="field">
+              <span>③ 非課税資産の輸出等の金額（あれば）</span>
+              <input className="input num" inputMode="numeric" value={exportDraft} onChange={(e) => setExportDraft(e.target.value.replace(/[^\d]/g, ""))} disabled={!admin || isClosed} />
+            </label>
+            <div style={{ alignSelf: "flex-end" }}>
+              <button className="btn ghost" type="submit" disabled={!admin || isClosed || String(nontaxExport) === exportDraft}><Save size={15} /> 保存する</button>
+            </div>
+            <p className="field-note">国外の相手への貸付金の利子など、非課税の資産を輸出した額と、海外支店などへ移した資産の額です（付表2-3 ③。課税売上割合の計算に入ります）。</p>
+          </form>
+        )}
         {method === "standard" && inv && <InventorySection inv={inv} disabled={!admin || isClosed} />}
       </div>
 

@@ -11,7 +11,7 @@
 import type { Account, Counterparty, InvoiceKind, PurchaseUse, TaxCode, TaxStatus, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
-import { deductionProblem, isPurchaseCode, isSalesCode, statusProblem, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
+import { deductionProblem, isImportCode, isPurchaseCode, isSalesCode, statusProblem, takesPurchaseUse, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
 import { INTERIM_KIND_LABEL, type InterimPlan } from "./taxInterim";
 import type { InventoryAdjust } from "./taxReturn";
@@ -38,6 +38,10 @@ export const taxKindOf = (code: TaxCode, side: "debit" | "credit"): TaxKind => {
   if (taxCodeDef(code).group === "sales") return side === "credit" ? "sales" : "salesReturn";
   return side === "debit" ? "purchase" : "purchaseReturn";
 };
+
+/** 集計表の消費税等の欄：輸入は金額が国税の額そのもの、特定課税仕入れは税抜の額 × 10%、ほかは税込の額に含まれる額 */
+const rowTax = (code: TaxCode, amount: number) =>
+  isImportCode(code) ? amount : code === "reverse10" ? Math.floor(amount / 10) : includedTax(amount, taxCodeDef(code).rate);
 
 /** 税込の金額に含まれる消費税等（参考。1 円未満切り捨て） */
 export const includedTax = (amount: number, rate: number) => (rate > 0 ? Math.floor((amount * rate) / (100 + rate)) : 0);
@@ -87,7 +91,7 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
     const transitional = invoice === "transitional" ? transitionalRate(l.date) : null;
     const ty = taxYearOf(taxYears, Number(l.date.slice(0, 4)));
     const businessClass = ty.status === "simplified" && isSalesCode(l.tax_code) ? l.business_class ?? 0 : null;
-    const purchaseUse = ty.status === "standard" && isPurchaseCode(l.tax_code) ? l.purchase_use ?? "unknown" : null;
+    const purchaseUse = ty.status === "standard" && takesPurchaseUse(l.tax_code) ? l.purchase_use ?? "unknown" : null;
     const key = rowKeyOf({ code: l.tax_code, kind, invoice, transitional, businessClass, purchaseUse });
     const r = rows.get(key) ?? { code: l.tax_code, kind, invoice, transitional, businessClass, purchaseUse, amount: 0, tax: 0, lines: 0, accounts: [] };
     r.amount += l.amount;
@@ -117,7 +121,7 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
   // 用途区分は個別対応方式でだけ使うので、課税売上割合が 95% 未満のときだけ分けて出す
   if (value === null || value >= 0.95) list = mergeUses(list);
   return {
-    rows: list.map((r) => ({ ...r, tax: includedTax(r.amount, taxCodeDef(r.code).rate), accounts: r.accounts.sort((x, y) => y.amount - x.amount) })),
+    rows: list.map((r) => ({ ...r, tax: rowTax(r.code, r.amount), accounts: r.accounts.sort((x, y) => y.amount - x.amount) })),
     ratio: { taxable, exportSales, nontax, value },
   };
 };
@@ -343,6 +347,81 @@ const inventoryIssues = (year: number, taxYears: TaxYear[], inv: NonNullable<Tax
   return out;
 };
 
+/** 高額特定資産（税抜 1,000万円以上の固定資産。消法12の4） */
+export const HIGH_VALUE_ASSET = 10_000_000;
+
+/**
+ * 高額特定資産：本則課税の年に取得した、税抜 1,000万円以上の固定資産（土地・繰延資産を除く）。取得した年を返す
+ * （税込経理の年の取得価額は税込なので 100/110 にする）
+ */
+export const highValueAssetYears = (assets: FixedAsset[], taxYears: TaxYear[], landAccountIds: number[]): { asset: FixedAsset; year: number }[] =>
+  assets
+    .filter((a) => a.method !== "deferred" && !landAccountIds.includes(a.account_id) && a.opening_year === null)
+    .map((a) => ({ asset: a, year: Number(a.acquired_on.slice(0, 4)) }))
+    .filter(({ asset, year }) => {
+      const ty = taxYearOf(taxYears, year);
+      const excl = ty.method === "exclusive" ? asset.cost : Math.floor((asset.cost * 100) / 110);
+      return ty.status === "standard" && excl >= HIGH_VALUE_ASSET;
+    });
+
+/**
+ * 方式を選ぶ前提（C-06）
+ *  - 2割特例・3割特例は、適格請求書発行事業者（その年の12月31日までに登録）だけ
+ *  - 登録日が年の途中で、前の年が免税事業者なのに「課税事業者になった日」が空なら、念のため（登録日から課税）
+ *  - 簡易課税は2年続けて使う（消法37⑥）。始める年・やめる年は前の年の12月31日までに届出が要る
+ *  - 本則課税の年に高額特定資産を取得したら、その年から3年間は免税事業者・簡易課税・2割特例・3割特例にならない（消法12の4・37③）
+ */
+export const regimeIssues = (year: number, taxYears: TaxYear[], reg: { invoiceNo: string; registeredOn: string }, assets: FixedAsset[] | null | undefined, landAccountIds: number[]): TaxIssue[] => {
+  const out: TaxIssue[] = [];
+  const st = (y: number) => taxYearOf(taxYears, y).status;
+  // その年の課税区分が帳簿にあるか（domble を使い始める前の年は分からないので、届出・2年継続は確かめない）
+  const known = (y: number) => taxYears.some((r) => r.from_year <= y);
+  const ty = taxYearOf(taxYears, year);
+  const label = (s: TaxStatus) => TAX_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
+  if ((ty.status === "twenty" || ty.status === "thirty") && (!reg.invoiceNo || !reg.registeredOn || reg.registeredOn > `${year}-12-31`)) {
+    out.push({
+      level: "error", title: `${ty.status === "twenty" ? "2割特例" : "3割特例"}は登録した事業者だけが使えます`, fix: "settings", entryIds: [],
+      detail: `適格請求書発行事業者の登録番号と登録日（${year}年12月31日以前）が入っていません。登録していれば事業者設定の「消費税」で入れ、登録していなければ課税区分を選び直してください。`,
+    });
+  }
+  if (ty.status !== "exempt" && !ty.taxable_from && st(year - 1) === "exempt" && reg.registeredOn > `${year}-01-01` && reg.registeredOn <= `${year}-12-31`) {
+    out.push({
+      level: "info", title: "年の途中に登録した年の「課税事業者になった日」", fix: "settings", entryIds: [],
+      detail: `登録日（${reg.registeredOn}）より前は免税事業者なら、事業者設定の「消費税」で「課税事業者になった日」に登録日を入れてください（空のままだと1月1日からの売上に課税されます）。`,
+    });
+  }
+  // 簡易課税の2年継続と届出
+  if (ty.status === "standard" && st(year - 1) === "simplified" && known(year - 2) && st(year - 2) !== "simplified") {
+    out.push({
+      level: "warn", title: "簡易課税は2年続けて使う決まりです", fix: "settings", entryIds: [],
+      detail: `${year - 1}年から簡易課税にしているので、${year}年は本則課税に戻せません（簡易課税制度選択不適用届出書は、簡易課税を始めた年の翌年以後に出し、その翌年から本則課税に戻ります）。`,
+    });
+  }
+  if (ty.status === "simplified" && known(year - 1) && st(year - 1) !== "simplified" && !ty.inherited) {
+    out.push({
+      level: "info", title: `${year}年から簡易課税にするには届出が要ります`, fix: "settings", entryIds: [],
+      detail: `簡易課税制度選択届出書を ${year - 1}年12月31日までに出しているか確かめてください（出していなければ本則課税か2割特例です）。`,
+    });
+  }
+  if (ty.status === "standard" && st(year - 1) === "simplified") {
+    out.push({
+      level: "info", title: `${year}年から本則課税に戻すには届出が要ります`, fix: "settings", entryIds: [],
+      detail: `簡易課税制度選択不適用届出書を ${year - 1}年12月31日までに出しているか確かめてください（出していなければ簡易課税のままです。2割特例は届出が無くても選べます）。`,
+    });
+  }
+  // 高額特定資産の3年
+  const high = (assets ? highValueAssetYears(assets, taxYears, landAccountIds) : []).filter((h) => year > h.year && year <= h.year + 2);
+  if (high.length && ty.status !== "standard") {
+    const h = high[0];
+    out.push({
+      level: "error", title: `${year}年は本則課税です（高額特定資産を取得したため）`, fix: "settings", entryIds: [],
+      detail: `${h.year}年（本則課税）に「${h.asset.name}」（税抜 1,000万円以上）を取得したので、${h.year}年から${h.year + 2}年までは免税事業者・簡易課税・2割特例・3割特例になれません。` +
+        `「${label(ty.status)}」から本則課税に選び直してください。`,
+    });
+  }
+  return out;
+};
+
 export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
   const issues: TaxIssue[] = [];
   const ty = taxYearOf(x.taxYears, x.year);
@@ -369,6 +448,9 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       detail: `${mandatory}。免税事業者にはなれないので、事業者設定の「消費税」で課税区分を選んでください。`,
     });
   }
+  // 方式を選ぶ前提（登録・簡易課税の届出と2年継続・高額特定資産）
+  const landIds = x.accounts.filter((a) => a.code === CODE.LAND).map((a) => a.id);
+  issues.push(...regimeIssues(x.year, x.taxYears, { invoiceNo: x.invoiceNo, registeredOn: x.registeredOn }, x.assets, landIds));
   if (ty.status === "exempt") return byLevel(issues);
   if (x.inventory) issues.push(...inventoryIssues(x.year, x.taxYears, x.inventory));
   if (x.baseSales && (ty.status === "twenty" || ty.status === "thirty" || ty.status === "simplified")) {
@@ -450,6 +532,18 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       level: "info", title: "登録番号が入っていない取引先からの「適格」の仕入れ", fix: "counterparties", entryIds: entryIdsOf(noNumber),
       detail: `${names.slice(0, 5).join("、")}${names.length > 5 ? ` ほか${names.length - 5}件` : ""}。受け取ったインボイスの登録番号を取引先に入れるか、登録していない相手なら取引先を「適格請求書発行事業者ではない」にしてください。`,
     });
+  }
+
+  // 本則課税：帳簿に課税仕入の相手方の氏名又は名称を書く（消法30⑦⑧）。取引先も補助科目も無い課税仕入は、摘要に書いてあるか念のため
+  if (ty.status === "standard") {
+    const unknownParty = purchases.filter((l) => (l.invoice_kind ?? "qualified") !== "none" && !l.counterparty_id && !l.sub_account_id);
+    if (unknownParty.length) {
+      issues.push({
+        level: "info", title: "相手方の分からない課税仕入", fix: "entries", entryIds: entryIdsOf(unknownParty),
+        detail: "本則課税で仕入税額を控除するには、帳簿に相手方の氏名又は名称を書きます。取引先も補助科目も入っていない課税仕入です。"
+          + "摘要に相手方を書いていれば、そのままでかまいません（帳簿のみ保存の特例の仕入れは、インボイス区分で特例を選んでください）。",
+      });
+    }
   }
 
   // 課税売上割合（本則課税のときだけ仕入税額の計算に効く）

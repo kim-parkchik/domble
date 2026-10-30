@@ -96,6 +96,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
   ...yearGuards("trg_closed_filing_years", "filing_years", "from_year"),
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
+  ...yearGuards("trg_closed_tax_return_inputs", "tax_return_inputs", "fiscal_year"),
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
   ...yearGuards("trg_closed_tax_inventory_adjusts", "tax_inventory_adjusts", "fiscal_year"),
   ...yearGuards("trg_closed_tax_refund_details", "tax_refund_details", "fiscal_year"),
@@ -302,6 +303,12 @@ export const SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS real_estate_years (
     from_year INTEGER PRIMARY KEY,
     scale TEXT NOT NULL CHECK (scale IN ('none','small','business'))
+  );`,
+
+  /** 消費税の申告書で書き込む額（年度ごと）。nontax_export = 非課税資産の輸出等の金額（本則課税の付表2-3 ③） */
+  `CREATE TABLE IF NOT EXISTS tax_return_inputs (
+    fiscal_year INTEGER PRIMARY KEY,
+    nontax_export INTEGER NOT NULL DEFAULT 0 CHECK (nontax_export >= 0)
   );`,
 
   /** 消費税の中間納付税額（年度ごと。申告した税額。消費税＝国税分と地方消費税＝譲渡割額） */
@@ -864,6 +871,8 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   // 本則課税の個別対応方式：課税仕入の明細の用途区分（taxable 課税対応 / nontaxable 非課税対応 / common 共通対応）と科目の初期値、
   // 年度ごとの控除の方式（individual 個別対応方式 / lump 一括比例配分方式）
   ["journal_lines", "purchase_use", "TEXT CHECK (purchase_use IN ('taxable','nontaxable','common'))"],
+  // 税抜経理の年の明細の消費税額（手で直した額だけ。NULL = 自動：税込の金額から割戻し・1円未満切り捨て。lib/taxExclusive.ts）
+  ["journal_lines", "tax_amount", "INTEGER"],
   ["accounts", "default_purchase_use", "TEXT CHECK (default_purchase_use IN ('taxable','nontaxable','common'))"],
   ["tax_years", "deduction", "TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump'))"],
   // 青色申告決算書で書く欄（NULL = 科目名から自動。lib/statementLines.ts）

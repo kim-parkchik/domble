@@ -33,6 +33,7 @@ import {
 } from "../../lib/depreciation";
 import type { IncomeKind } from "../../lib/types";
 import * as repo from "../../db/repo";
+import { isExclusiveOn } from "../../lib/taxExclusive";
 import { isBlue } from "../../lib/filing";
 import { closedMonthOf } from "../../lib/closing";
 
@@ -40,7 +41,7 @@ const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 const ymd = (iso: string) => iso.replace(/-/g, "/");
 
 export const FixedAssetsPage = () => {
-  const { db, year, accounts, settings, bump, dataVersion, isClosed, can, strict, closings } = useAppContext();
+  const { db, year, accounts, settings, bump, dataVersion, isClosed, can, strict, closings, taxYears } = useAppContext();
   const { lines, opening } = useYearData();
   // 年の締めをした年（その年に使っている資産は守る）
   const closedYears = closings.filter((c) => closedMonthOf(c) === 12).map((c) => c.fiscal_year);
@@ -176,7 +177,7 @@ export const FixedAssetsPage = () => {
     <div className="page">
       <PageHeader
         title="固定資産台帳"
-        note={`10万円以上の備品・車・建物などを登録すると、${year}年の減価償却費を計算します。資産を買った仕訳は振替伝票で入れてください。${strict ? "台帳の変更は履歴に記録されます。" : ""}`}
+        note={`10万円以上の備品・車・建物などを登録すると、${year}年の減価償却費を計算します。資産を買った仕訳は振替伝票で入れてください。${strict ? "台帳の変更は履歴に記録されます。" : ""}${isExclusiveOn(taxYears, `${year}-12-31`) ? `${year}年は税抜経理なので、その年に取得した資産の取得価額は税抜で入れてください（少額減価償却資産・一括償却資産の判定も税抜の額です）。` : ""}`}
       >
         <button className="btn ghost" onClick={exportCsv} disabled={active.length === 0}><Download size={16} /> CSV 書き出し</button>
         <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>
@@ -305,7 +306,7 @@ export const FixedAssetsPage = () => {
             <tbody>
               {disposedThisYear.map((a) => {
                 const made = disposals.find((d) => d.asset_id === a.id);
-                const planned = disposalLines(a, disposalIds(a.disposal_kind === "sale" ? receiveId ?? made?.receive_account_id ?? bankId : null));
+                const planned = disposalLines(a, disposalIds(a.disposal_kind === "sale" ? receiveId ?? made?.receive_account_id ?? bankId : null), !!a.disposed_on && isExclusiveOn(taxYears, a.disposed_on));
                 const book = depreciationFor(a, year)?.closing ?? 0;
                 const state = a.method !== "straight" && a.method !== "declining" ? "定額法・定率法の資産だけ作れます（振替伝票で入れてください）"
                   : !a.disposal_kind ? "台帳の「編集」で、売却か除却かを選んでください"

@@ -6,6 +6,7 @@ import { closedMonthOf, closingOf, expectedNextOpening, openingMismatches, type 
 import * as repo from "../db/repo";
 import { can as canRole, type Perm } from "../lib/permissions";
 import { taxActiveOn, taxYearOf } from "../lib/tax";
+import { bookLines, exclusiveAccountsOf } from "../lib/taxExclusive";
 import { filingOf, type FilingOfYear } from "../lib/filing";
 import { baseSalesInfo, type BaseSalesInfo } from "../lib/baseSales";
 import { interimPlan, prevTaxInfo, type InterimPlan, type PrevTaxInfo } from "../lib/taxInterim";
@@ -229,9 +230,13 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
 };
 
 /** 表示中の年度の仕訳明細と期首残高を読み込む */
+/**
+ * 表示中の年度の仕訳明細と期首残高。
+ * lines は帳簿・決算書に使う明細（税抜経理の年は本体と仮受・仮払消費税等に分ける）、rawLines は入れたとおりの明細（消費税の申告書・集計表に使う）
+ */
 export const useYearData = () => {
-  const { db, year, dataVersion } = useAppContext();
-  const [lines, setLines] = useState<FlatLine[]>([]);
+  const { db, year, dataVersion, accounts, taxYears } = useAppContext();
+  const [rawLines, setLines] = useState<FlatLine[]>([]);
   const [opening, setOpening] = useState<OpeningBalances>({});
   const [subOpening, setSubOpening] = useState<SubOpeningBalances>({});
   const [loading, setLoading] = useState(true);
@@ -252,8 +257,9 @@ export const useYearData = () => {
       alive = false;
     };
   }, [db, year, dataVersion]);
+  const lines = useMemo(() => bookLines(rawLines, taxYears, exclusiveAccountsOf(accounts)), [rawLines, taxYears, accounts]);
 
-  return { lines, opening, subOpening, loading };
+  return { lines, rawLines, opening, subOpening, loading };
 };
 
 /**
@@ -330,7 +336,7 @@ export interface CarryForwardCheck {
  * 繰越元にデータが無い年度（最初の年度の期首を手入力した場合など）は調べない
  */
 export const useCarryForwardCheck = () => {
-  const { db, year, accounts, dataVersion } = useAppContext();
+  const { db, year, accounts, taxYears, dataVersion } = useAppContext();
   const [checks, setChecks] = useState<CarryForwardCheck[]>([]);
 
   useEffect(() => {
@@ -346,7 +352,7 @@ export const useCarryForwardCheck = () => {
           repo.getOpening(db, to),
         ]);
         if (lines.length === 0 && Object.keys(op.bySub).length === 0) continue;
-        const mismatches = openingMismatches(expectedNextOpening(accounts, op.byAccount, op.bySub, lines), next.bySub);
+        const mismatches = openingMismatches(expectedNextOpening(accounts, op.byAccount, op.bySub, bookLines(lines, taxYears, exclusiveAccountsOf(accounts))), next.bySub);
         if (mismatches.length > 0) out.push({ from, to, mismatches });
       }
       if (alive) setChecks(out);
@@ -354,7 +360,7 @@ export const useCarryForwardCheck = () => {
     return () => {
       alive = false;
     };
-  }, [db, year, accounts, dataVersion]);
+  }, [db, year, accounts, taxYears, dataVersion]);
 
   return checks;
 };

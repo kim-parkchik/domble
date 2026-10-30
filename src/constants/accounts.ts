@@ -40,6 +40,8 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("115", "貸付金", "かしつけきん", "asset", "debit"),
   a("116", "未収入金", "みしゅうにゅうきん", "asset", "debit"),
   a("117", "仮払金", "かりばらいきん", "asset", "debit"),
+  // 税抜経理の年に使う（初めは非表示。事業者設定の「消費税」で税抜経理にすると表示する）
+  { ...a("118", "仮払消費税等", "かりばらいしょうひぜいとう", "asset", "debit"), hidden: true },
   a("130", "建物", "たてもの", "asset", "debit"),
   a("131", "建物附属設備", "たてものふぞくせつび", "asset", "debit"),
   a("132", "機械装置", "きかいそうち", "asset", "debit"),
@@ -66,6 +68,7 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("250", "貸倒引当金", "かしだおれひきあてきん", "liability", "credit"),
   // 年末に計上する、納める消費税（税込経理。次の年に納めたら取り崩す）
   a("260", "未払消費税等", "みばらいしょうひぜいとう", "liability", "credit"),
+  { ...a("261", "仮受消費税等", "かりうけしょうひぜいとう", "liability", "credit"), hidden: true },
 
   // ── 資本 ──
   a("301", "事業主借", "じぎょうぬしかり", "equity", "credit"),
@@ -183,6 +186,10 @@ export const CODE = {
   RECEIVABLE: "111",    // 売掛金
   LOAN: "115",          // 貸付金
   ACCRUED: "116",       // 未収入金
+  LAND: "135",          // 土地
+  TAX_PAID: "118",      // 仮払消費税等（税抜経理）
+  TAX_RECEIVED: "261",  // 仮受消費税等（税抜経理）
+  MISC_EXPENSE: "699",  // 雑費
 } as const;
 
 /** 製造原価の初期科目（事業者設定の「製造原価を使う」でまとめて表示・非表示にする） */

@@ -445,6 +445,8 @@ export const depreciationLines = (assets: FixedAsset[], year: number, ids: { exp
  */
 export const disposalLines = (
   a: FixedAsset, ids: { receive: number; ownerLoan: number; ownerDraw: number; loss: number },
+  /** 売却した日が税抜経理の期間か（売却額の消費税は仮受消費税等に分かれるので、差額は税抜の売却額で出す） */
+  exclusive = false,
 ): JournalLine[] | null => {
   if (!a.disposed_on || !a.disposal_kind || (a.method !== "straight" && a.method !== "declining")) return null;
   const year = yearOf(a.disposed_on);
@@ -464,12 +466,14 @@ export const disposalLines = (
     push("debit", ids.receive, price);
     push("credit", a.account_id, taxable, { tax_code: "sales10", business_class: 4 }, true);
     push("credit", a.account_id, price - taxable, {}, true);
-    if (price > book) {
-      push("debit", a.account_id, price - book);
-      push("credit", ids.ownerLoan, price - book, {}, true);
-    } else if (price < book) {
-      push("debit", ids.ownerDraw, book - price);
-      push("credit", a.account_id, book - price, {}, true);
+    // 税抜経理：資産の科目から減るのは税抜の売却額（課税売上の分の消費税は仮受消費税等へ）
+    const net = exclusive ? price - Math.floor((taxable * 10) / 110) : price;
+    if (net > book) {
+      push("debit", a.account_id, net - book);
+      push("credit", ids.ownerLoan, net - book, {}, true);
+    } else if (net < book) {
+      push("debit", ids.ownerDraw, book - net);
+      push("credit", a.account_id, book - net, {}, true);
     }
   } else {
     const business = rate >= 100 ? book : Math.floor((book * rate) / 100);

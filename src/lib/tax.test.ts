@@ -37,9 +37,9 @@ describe("年度ごとの設定", () => {
     expect(statusProblem("thirty", 2029)).toMatch(/3割特例/);
   });
 
-  test("設定の確認：税抜経理はまだ選べない。課税事業者になった日はその年の日付だけ", () => {
+  test("設定の確認：税抜経理も選べる。課税事業者になった日はその年の日付だけ", () => {
     expect(validateTaxYear(ty(2026, "standard"))).toBeNull();
-    expect(validateTaxYear({ ...ty(2026, "standard"), method: "exclusive" })).toMatch(/経理方式/);
+    expect(validateTaxYear({ ...ty(2026, "standard"), method: "exclusive" })).toBeNull();
     expect(validateTaxYear(ty(2026, "standard", "2025-10-01"))).toMatch(/2026年の日付/);
     expect(validateTaxYear(ty(2026, "exempt", "2026-10-01"))).toMatch(/免税事業者/);
     expect(validateTaxYear({ ...ty(2026, "simplified"), business_class: 7 })).toMatch(/事業区分/);

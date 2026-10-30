@@ -20,10 +20,22 @@ import { yearStart } from "./accounting";
 const CODE_SET = new Set<string>(TAX_CODES.map((t) => t.code));
 export const isTaxCode = (v: unknown): v is TaxCode => typeof v === "string" && CODE_SET.has(v);
 export const isInvoiceKind = (v: unknown): v is InvoiceKind => INVOICE_KINDS.some((k) => k.value === v);
+/** 帳簿のみ保存の特例（控除は適格と同じ） */
+export const isBookOnly = (v: InvoiceKind | null | undefined) => !!v && v.startsWith("book_");
+/** 控除が適格と同じインボイス区分（適格・帳簿のみ保存の特例） */
+export const isFullyDeductible = (v: InvoiceKind | null | undefined) => !v || v === "qualified" || isBookOnly(v);
+const invoiceDef = (v: InvoiceKind) => INVOICE_KINDS.find((k) => k.value === v)!;
 
 export const taxCodeDef = (code: TaxCode) => TAX_CODES.find((t) => t.code === code)!;
 /** 課税仕入（インボイス区分を持つ明細） */
 export const isPurchaseCode = (code: TaxCode | null | undefined) => code === "purchase10" || code === "purchase8";
+/** 輸入の消費税（国税の額そのもの） */
+export const isImportCode = (code: TaxCode | null | undefined) => code === "import10" || code === "import8";
+/** 税抜経理で消費税額を分ける税区分（課税売上・課税仕入・貸倒れ・輸入の消費税） */
+export const splitsTax = (code: TaxCode | null | undefined) =>
+  code === "sales10" || code === "sales8" || code === "baddebt10" || code === "baddebt8" || isPurchaseCode(code) || isImportCode(code);
+/** 本則課税で用途区分を持つ明細（課税仕入・輸入の消費税・特定課税仕入れ） */
+export const takesPurchaseUse = (code: TaxCode | null | undefined) => isPurchaseCode(code) || isImportCode(code) || code === "reverse10";
 /** 課税売上（簡易課税の事業区分を持つ明細） */
 export const isSalesCode = (code: TaxCode | null | undefined) => code === "sales10" || code === "sales8";
 export const isBusinessClass = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 6;
@@ -155,6 +167,7 @@ export const defaultInvoiceKind = (cp: Pick<Counterparty, "not_registered"> | nu
  *  - 課税仕入でない明細のインボイス区分は外す
  *  - 課税売上の事業区分は、入っていなければ科目の初期値（資産の科目は第4種）、無ければ mainClass（簡易課税の年の「主な事業区分」）。課税売上でなければ外す
  *  - 課税仕入の用途区分は、入っていなければ科目の初期値、無ければ mainUse（本則課税の年の共通対応）。課税仕入でなければ外す
+ *  - 手で直した消費税額は、税抜経理の年（exclusive）の消費税額を分ける明細だけ残す（ほかは null = 自動）
  */
 export const resolveLineTax = <L extends JournalLine>(
   lines: L[], active: boolean, accountOf: (id: number) => Account | undefined, cp: Counterparty | null | undefined,
@@ -162,15 +175,18 @@ export const resolveLineTax = <L extends JournalLine>(
   mainClass: number | null = null,
   /** 本則課税の年の用途区分の最後の初期値（共通対応。null なら記録しない＝分からないまま） */
   mainUse: PurchaseUse | null = null,
+  /** 税抜経理の年か */
+  exclusive = false,
 ): L[] =>
   lines.map((l) => {
-    if (!active) return { ...l, tax_code: null, invoice_kind: null, business_class: null, purchase_use: null };
+    if (!active) return { ...l, tax_code: null, invoice_kind: null, business_class: null, purchase_use: null, tax_amount: null };
     const acc = accountOf(l.account_id);
     const code: TaxCode = l.tax_code && isTaxCode(l.tax_code) ? l.tax_code : acc ? defaultTaxCode(acc, l.side) : "none";
     const invoice = isPurchaseCode(code) ? (l.invoice_kind && isInvoiceKind(l.invoice_kind) ? l.invoice_kind : defaultInvoiceKind(cp)) : null;
     const cls = isSalesCode(code) ? (isBusinessClass(l.business_class) ? l.business_class : (acc ? defaultBusinessClass(acc) : null) ?? mainClass) : null;
-    const use = isPurchaseCode(code) ? (isPurchaseUse(l.purchase_use) ? l.purchase_use : acc?.default_purchase_use ?? mainUse) : null;
-    return { ...l, tax_code: code, invoice_kind: invoice, business_class: cls, purchase_use: use };
+    const use = takesPurchaseUse(code) ? (isPurchaseUse(l.purchase_use) ? l.purchase_use : acc?.default_purchase_use ?? mainUse) : null;
+    const taxAmount = exclusive && splitsTax(code) && Number.isInteger(l.tax_amount) ? l.tax_amount : null;
+    return { ...l, tax_code: code, invoice_kind: invoice, business_class: cls, purchase_use: use, tax_amount: taxAmount };
   });
 
 // ────────────────────────────────────────────
@@ -211,7 +227,7 @@ export const useLabel = (u: PurchaseUse) => PURCHASE_USES.find((x) => x.value ==
  * 表示する用途区分：本則課税の年の課税仕入だけ（記録した区分。無ければ null）。それ以外の年は出さない
  */
 export const displayUse = (taxYears: TaxYear[], l: { date: string; tax_code?: TaxCode | null; purchase_use?: PurchaseUse | null }) =>
-  isPurchaseCode(l.tax_code) && taxYearOf(taxYears, Number(l.date.slice(0, 4))).status === "standard" ? l.purchase_use ?? null : null;
+  takesPurchaseUse(l.tax_code) && taxYearOf(taxYears, Number(l.date.slice(0, 4))).status === "standard" ? l.purchase_use ?? null : null;
 
 /**
  * 表示用の短い名前（例：課仕10% 経過80%、課売10% 5種、課仕10% 課対）。cls = 0 は事業区分が分からない売上
@@ -224,8 +240,9 @@ export const taxShortLabel = (
   if (isSalesCode(code) && cls === 0) return `${taxCodeDef(code).short} 区分不明`;
   if (isSalesCode(code) && cls) return `${taxCodeDef(code).short} ${classShort(cls)}`;
   const base = taxCodeDef(code).short;
-  if (!isPurchaseCode(code)) return base;
-  const inv = !invoice || invoice === "qualified" ? "" : invoice === "transitional" ? ` 経過${transitionalRate(date)}%` : " 控除なし";
+  if (!takesPurchaseUse(code)) return base;
+  if (!isPurchaseCode(code)) return use && (use !== "common" || showCommon) ? `${base} ${useShort(use)}` : base;
+  const inv = !invoice || invoice === "qualified" ? "" : invoice === "transitional" ? ` 経過${transitionalRate(date)}%` : isBookOnly(invoice) ? ` ${invoiceDef(invoice).short}` : " 控除なし";
   const u = use && (use !== "common" || showCommon) ? ` ${useShort(use)}` : "";
   return `${base}${inv}${u}`;
 };
@@ -238,9 +255,10 @@ export const taxLongLabel = (
   if (isSalesCode(code) && cls === 0) return `${taxCodeDef(code).label}（事業区分不明）`;
   if (isSalesCode(code) && cls) return `${taxCodeDef(code).label}（${classLabel(cls)}）`;
   const base = taxCodeDef(code).label;
-  if (!isPurchaseCode(code)) return base;
+  if (!takesPurchaseUse(code)) return base;
+  if (!isPurchaseCode(code)) return use ? `${base}（${useLabel(use)}）` : base;
   const notes = [
-    ...(!invoice || invoice === "qualified" ? [] : [invoice === "transitional" ? `${transitionalRate(date)}%控除対象` : "控除しない"]),
+    ...(!invoice || invoice === "qualified" ? [] : [invoice === "transitional" ? `${transitionalRate(date)}%控除対象` : isBookOnly(invoice) ? invoiceDef(invoice).label : "控除しない"]),
     ...(use ? [useLabel(use)] : []),
   ];
   return notes.length ? `${base}（${notes.join("・")}）` : base;

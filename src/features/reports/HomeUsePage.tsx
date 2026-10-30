@@ -33,7 +33,8 @@ const COMMON = ["地代家賃", "水道光熱費", "通信費", "車両費", "�
 
 export const HomeUsePage = () => {
   const { db, year, accounts, homeUseRates, reloadHomeUse, bump, strict, dataVersion, isClosed } = useAppContext();
-  const { lines: yearLines } = useYearData();
+  // 年末一括の家事分は税込の額で分け、税区分つきで振り替える（税抜経理の年も、振替の明細から仮払消費税等が分かれる）
+  const { rawLines: yearLines } = useYearData();
   const toast = useToast();
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [runId, setRunId] = useState<number | null>(null);

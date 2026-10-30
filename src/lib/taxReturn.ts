@@ -13,11 +13,14 @@
  * 棚卸資産の調整（付表2-3 ⑯。消法36条・No.6491）：免税事業者から課税事業者になる年は、前日に持っていた棚卸資産のうち免税の期間に仕入れたものの税額を加算、
  *   課税事業者から免税事業者になる前の年は、その年に仕入れて年末に残っている棚卸資産の税額を減算する。取得価額（税込）× 7.8/110・6.24/108（経過措置の仕入れは控除できる割合を掛ける）。
  *   棚卸資産は課税売上げにのみ要するもの（個別対応方式の ⑲）として扱う。本則課税だけ（簡易課税・2割特例は調整しない）
- * 課税売上割合に準ずる割合・特定課税仕入れ・課税貨物・調整対象固定資産の調整・旧税率には対応していない
+ * 課税貨物（輸入の消費税。付表2-3 ⑮）：明細の金額が国税の額そのもの（税区分 import10・import8）
+ * 特定課税仕入れ（付表2-3 ⑬⑭・付表1-3 ①-2・第二表 ⑨⑩）：課税売上割合が 95% 未満のときだけ、支払対価の額を課税標準額に足し、その 7.8% を仕入税額に入れる
+ * 非課税資産の輸出等（付表2-3 ③）：申告書で書き込んだ額
+ * 課税売上割合に準ずる割合・調整対象固定資産の調整・有価証券等の譲渡の 5%・旧税率には対応していない
  */
 import type { Account, DeductionMethod, PurchaseUse, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
-import { isPurchaseCode, taxActiveOn, taxCodeDef, transitionalRate } from "./tax";
+import { isFullyDeductible, isImportCode, isPurchaseCode, taxActiveOn, taxCodeDef, transitionalRate } from "./tax";
 import { BUSINESS_CLASSES } from "../constants/tax";
 
 export type Rate = 8 | 10;
@@ -43,6 +46,10 @@ export interface TaxBase {
   byUse?: Record<PurchaseUse, PurchaseGroup>;
   /** 用途区分の無い課税仕入とその返還の額（税込。共通対応として計算したもの） */
   useUnknown?: number;
+  /** 輸入の消費税（国税の額。返金を差し引いた額） */
+  importTax?: Record<Rate, number>;
+  /** 特定課税仕入れの支払対価の額（税抜。返還を差し引いた額） */
+  reverse?: number;
 }
 
 /** 課税仕入とその返還（インボイスのあるもの・経過措置の控除できる割合ごと） */
@@ -50,6 +57,9 @@ export interface PurchaseGroup {
   purchase: Record<Rate, number>;
   ret: Record<Rate, number>;
   transitional: { pct: number; purchase: Record<Rate, number>; ret: Record<Rate, number> }[];
+  /** 輸入の消費税（国税の額）・特定課税仕入れの支払対価の額（用途区分ごと） */
+  importTax?: Record<Rate, number>;
+  reverse?: number;
 }
 
 const zero = (): Record<Rate, number> => ({ 8: 0, 10: 0 });
@@ -58,11 +68,11 @@ const zero = (): Record<Rate, number> => ({ 8: 0, 10: 0 });
  * @param classOf 課税売上の明細の事業区分（ふつうは明細に記録した区分。null = 分からない）
  */
 export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l: FlatLine) => number | null = (l) => l.business_class ?? null): TaxBase => {
-  const group = (): PurchaseGroup => ({ purchase: zero(), ret: zero(), transitional: [] });
+  const group = (): PurchaseGroup => ({ purchase: zero(), ret: zero(), transitional: [], importTax: zero(), reverse: 0 });
   const byUse: Record<PurchaseUse, PurchaseGroup> = { taxable: group(), common: group(), nontaxable: group() };
   const b: TaxBase = {
     sales: zero(), salesReturn: zero(), badDebt: zero(), badDebtRecovered: zero(), exportSales: 0, nontaxSales: 0,
-    purchase: zero(), purchaseReturn: zero(), transitional: [], byClass: {}, byUse, useUnknown: 0,
+    purchase: zero(), purchaseReturn: zero(), transitional: [], byClass: {}, byUse, useUnknown: 0, importTax: zero(), reverse: 0,
   };
   const addTransitional = (list: PurchaseGroup["transitional"], pct: number, rate: Rate, dr: boolean, amount: number) => {
     let t = list.find((x) => x.pct === pct);
@@ -83,12 +93,23 @@ export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l
       const x = (b.byClass[k] ??= { sales: zero(), ret: zero() });
       (dr ? x.ret : x.sales)[rate] += l.amount;
     }
+    else if (isImportCode(l.tax_code) || l.tax_code === "reverse10") {
+      const u = byUse[l.purchase_use ?? "common"];
+      const v = dr ? l.amount : -l.amount;
+      if (l.tax_code === "reverse10") {
+        b.reverse! += v;
+        u.reverse! += v;
+      } else {
+        b.importTax![rate] += v;
+        u.importTax![rate] += v;
+      }
+    }
     else if (isPurchaseCode(l.tax_code)) {
       const inv = l.invoice_kind ?? "qualified";
       if (inv === "none") continue;
       const u = byUse[l.purchase_use ?? "common"];
       if (!l.purchase_use) b.useUnknown! += l.amount;
-      if (inv === "qualified") {
+      if (isFullyDeductible(inv)) {
         (dr ? b.purchase : b.purchaseReturn)[rate] += l.amount;
         (dr ? u.purchase : u.ret)[rate] += l.amount;
       } else {
@@ -203,6 +224,8 @@ export interface ReturnOptions {
   deduction?: DeductionMethod;
   /** 棚卸資産の調整（本則課税の付表2-3 ⑯） */
   inventory?: InventoryAdjust | null;
+  /** 非課税資産の輸出等の金額（本則課税の付表2-3 ③。申告書で書き込む） */
+  nontaxExport?: number;
 }
 
 type AB = Record<Rate, number>;
@@ -210,15 +233,18 @@ const sumAB = (x: AB) => x[8] + x[10];
 const abRow = (no: string, label: string, x: AB, note?: string): FormRow => ({ no, label, a: x[8], b: x[10], c: sumAB(x), note });
 const map = (f: (r: Rate) => number): AB => ({ 8: f(8), 10: f(10) });
 
-/** 売上側（付表1-3・4-3・6 に共通）：課税資産の譲渡等の対価の額、課税標準額、消費税額、返還・貸倒れ・貸倒回収の税額 */
-const salesSide = (b: TaxBase) => {
+/**
+ * 売上側（付表1-3・4-3・6 に共通）：課税資産の譲渡等の対価の額、課税標準額、消費税額、返還・貸倒れ・貸倒回収の税額
+ * reverse：課税標準額に足す特定課税仕入れの支払対価の額（7.8%。本則課税で課税売上割合が 95% 未満のときだけ）
+ */
+const salesSide = (b: TaxBase, reverse = 0) => {
   const price = map((r) => exclusive(b.sales[r], r));
-  const base = map((r) => floor1000(price[r]));
+  const base = map((r) => floor1000(price[r] + (r === 10 ? reverse : 0)));
   const tax = map((r) => nationalTaxOn(base[r], r));
   const ret = map((r) => nationalTaxIn(b.salesReturn[r], r));
   const bad = map((r) => nationalTaxIn(b.badDebt[r], r));
   const recovered = map((r) => nationalTaxIn(b.badDebtRecovered[r], r));
-  return { price, base, tax, ret, bad, recovered };
+  return { price, base, tax, ret, bad, recovered, reverse };
 };
 
 /** 経過措置の仕入れの税額（控除できる割合ごとに計算して合計。付表2-3 の ⑫） */
@@ -252,6 +278,12 @@ const secondTable = (s: ReturnType<typeof salesSide>, retTotal: number, localBas
     { no: "⑤", label: "課税資産の譲渡等の対価の額（6.24% 適用分）", c: s.price[8] },
     { no: "⑥", label: "課税資産の譲渡等の対価の額（7.8% 適用分）", c: s.price[10] },
     { no: "⑦", label: "課税資産の譲渡等の対価の額の合計額", c: sumAB(s.price) },
+    ...(s.reverse
+      ? [
+        { no: "⑨", label: "特定課税仕入れに係る支払対価の額（7.8% 適用分）", c: s.reverse },
+        { no: "⑩", label: "特定課税仕入れに係る支払対価の額の合計額", c: s.reverse },
+      ]
+      : []),
     { no: "⑪", label: "消費税額", c: sumAB(s.tax), note: "第一表の②へ" },
     { no: "⑮", label: "⑪の内訳（6.24% 適用分）", c: s.tax[8] },
     { no: "⑯", label: "⑪の内訳（7.8% 適用分）", c: s.tax[10] },
@@ -300,27 +332,37 @@ const firstTable = (
 // 本則課税（付表1-3・2-3）
 // ────────────────────────────────────────────
 export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
-  const s = salesSide(b);
   const notes: string[] = [];
   // 付表2-3
   const taxableNet = map((r) => exclusive(b.sales[r], r) - exclusive(b.salesReturn[r], r)); // ①
   const r1 = sumAB(taxableNet);
-  const r4 = r1 + b.exportSales; // ④（③ 非課税資産の輸出等は 0）
+  const r3 = o.nontaxExport ?? 0; // ③ 非課税資産の輸出等（書き込み）
+  const r4 = r1 + b.exportSales + r3; // ④
   const r7 = r4 + b.nontaxSales; // ⑦
   const ratio = r7 > 0 ? r4 / r7 : 1; // ⑧
+  // 特定課税仕入れは、課税売上割合が 95% 未満の年だけ（95% 以上なら無かったもの）
+  const reverseOn = ratio < 0.95 && (b.reverse ?? 0) !== 0;
+  if ((b.reverse ?? 0) !== 0 && !reverseOn) notes.push("課税売上割合が 95% 以上のため、特定課税仕入れは無かったものとして計算しています（課税標準額にも仕入税額にも入れません）");
+  const reverse = reverseOn ? b.reverse! : 0;
+  const s = salesSide(b, reverse);
+  const tax14 = map((r) => (r === 10 ? Math.floor((reverse * 78) / 1000) : 0)); // ⑭ 特定課税仕入れに係る消費税額（× 7.8%）
+  const imp15 = map((r) => b.importTax?.[r] ?? 0); // ⑮ 課税貨物に係る消費税額
   const pay9 = map((r) => b.purchase[r] - b.purchaseReturn[r]);
   const tax10 = map((r) => nationalTaxIn(b.purchase[r], r) - nationalTaxIn(b.purchaseReturn[r], r));
   const pay11 = map((r) => b.transitional.reduce((t, x) => t + x.purchase[r] - x.ret[r], 0));
   const tax12 = map((r) => transitionalTax(b.transitional, r));
   const adj16 = inventoryAdjustTax(o.inventory);
-  const total17 = map((r) => tax10[r] + tax12[r] + adj16[r]);
+  const total17 = map((r) => tax10[r] + tax12[r] + tax14[r] + imp15[r] + adj16[r]);
   const full = r1 + b.exportSales <= 500_000_000 && ratio >= 0.95;
   // 個別対応方式：⑲ 課税対応の税額、⑳ 共通対応の税額、㉑ ⑲ ＋ ⑳ × ④／⑦（非課税対応は控除しない）
   const useTax = (g: PurchaseGroup | undefined) =>
-    map((r) => (g ? nationalTaxIn(g.purchase[r], r) - nationalTaxIn(g.ret[r], r) + transitionalTax(g.transitional, r) : 0));
+    map((r) => (g
+      ? nationalTaxIn(g.purchase[r], r) - nationalTaxIn(g.ret[r], r) + transitionalTax(g.transitional, r) + (g.importTax?.[r] ?? 0)
+        + (r === 10 && reverseOn ? Math.floor(((g.reverse ?? 0) * 78) / 1000) : 0)
+      : 0));
   // 棚卸資産の調整は課税対応（⑲）に入れる
   const r19 = map((r) => useTax(b.byUse?.taxable)[r] + adj16[r]);
-  const r20 = useTax(b.byUse?.common ?? { purchase: map((r) => b.purchase[r]), ret: map((r) => b.purchaseReturn[r]), transitional: b.transitional });
+  const r20 = useTax(b.byUse?.common ?? { purchase: map((r) => b.purchase[r]), ret: map((r) => b.purchaseReturn[r]), transitional: b.transitional, importTax: b.importTax, reverse: b.reverse });
   const r21 = map((r) => r19[r] + (r7 > 0 ? mulDiv(r20[r], r4, r7) : r20[r]));
   const r22 = map((r) => (r7 > 0 ? mulDiv(total17[r], r4, r7) : total17[r])); // 一括比例配分方式：⑰ × ④／⑦
   const method: DeductionMethod = o.deduction ?? "individual";
@@ -346,7 +388,7 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
     rows: [
       abRow("①", "課税売上額（税抜き）", taxableNet, "売上の返還を差し引いた額"),
       { no: "②", label: "免税売上額", c: b.exportSales },
-      { no: "③", label: "非課税資産の輸出等の金額、海外支店等へ移送した資産の価額", c: 0 },
+      { no: "③", label: "非課税資産の輸出等の金額、海外支店等へ移送した資産の価額", c: r3, note: "申告書で書き込んだ額" },
       { no: "④", label: "課税資産の譲渡等の対価の額（①＋②＋③）", c: r4, note: "第一表の⑮へ" },
       { no: "⑥", label: "非課税売上額", c: b.nontaxSales },
       { no: "⑦", label: "資産の譲渡等の対価の額（⑤＋⑥）", c: r7, note: "第一表の⑯へ" },
@@ -355,6 +397,13 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
       abRow("⑩", "課税仕入れに係る消費税額", tax10),
       abRow("⑪", "適格請求書発行事業者以外の者から行った課税仕入れに係る経過措置の適用を受ける課税仕入れに係る支払対価の額（税込み）", pay11),
       abRow("⑫", "適格請求書発行事業者以外の者から行った課税仕入れに係る経過措置により課税仕入れに係る消費税額とみなされる額", tax12),
+      ...(reverse
+        ? [
+          { no: "⑬", label: "特定課税仕入れに係る支払対価の額", b: reverse, c: reverse, note: "課税売上割合が 95% 未満の年だけ" },
+          { no: "⑭", label: "特定課税仕入れに係る消費税額（⑬ × 7.8%）", b: tax14[10], c: tax14[10] },
+        ]
+        : []),
+      ...(imp15[8] || imp15[10] ? [abRow("⑮", "課税貨物に係る消費税額", imp15, "輸入の消費税（国税）")] : []),
       ...(sumAB(adj16) || adj16[8] || adj16[10]
         ? [abRow("⑯", "納税義務の免除を受けない（受ける）こととなった場合における消費税額の調整（加算又は減算）額", adj16, o.inventory?.direction === "sub" ? "減算（課税事業者から免税事業者になる前の年）" : "加算（免税事業者から課税事業者になった年）")]
         : []),
@@ -377,6 +426,7 @@ export const standardReturn = (b: TaxBase, o: ReturnOptions): TaxReturn => {
     id: "1-3", title: "付表1-3 税率別消費税額計算表 兼 地方消費税の課税標準となる消費税額計算表", abc: true,
     rows: [
       abRow("①-1", "課税資産の譲渡等の対価の額", s.price, "第二表の⑤⑥⑦へ"),
+      ...(reverse ? [{ no: "①-2", label: "特定課税仕入れに係る支払対価等の額", b: reverse, c: reverse, note: "第二表の⑨⑩へ" }] : []),
       abRow("①", "課税標準額（千円未満切り捨て）", s.base, "第二表の①へ"),
       abRow("②", "消費税額", s.tax, "第二表の⑪⑮⑯へ"),
       abRow("③", "控除過大調整税額", plus3, "第一表の③へ"),

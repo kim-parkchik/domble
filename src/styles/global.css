@@ -970,3 +970,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 /* 仕訳の修正：登録者の記録とコピー */
 .entry-by { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
 .entry-copy { margin-left: auto; }
+/* 税抜経理の消費税額（振替伝票。空なら自動の額を薄く出す） */
+.tax-amount-field { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.tax-amount-input { height: 24px; font-size: 12px; padding: 0 6px; }
+.tax-amount-input.is-default::placeholder { color: #9aa5b1; }

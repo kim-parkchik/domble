@@ -288,3 +288,46 @@ describe("簡易課税・事業区分の分からない売上", () => {
     expect(r.notes.join()).toMatch(/第三種事業（主な事業区分）/);
   });
 });
+
+describe("輸入の消費税・特定課税仕入れ・非課税資産の輸出等（本則課税）", () => {
+  const years: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }];
+  const fl = (n: number, code: FlatLine["tax_code"], amount: number, side: FlatLine["side"] = "debit"): FlatLine => ({
+    entry_id: n, date: "2026-05-01", description: "", row_no: 1, side, account_id: 1, sub_account_id: null, amount, memo: "", tax_code: code,
+    invoice_kind: code === "purchase10" ? "qualified" : null, purchase_use: null,
+  });
+  const lines = [
+    fl(1, "sales10", 11_000_000, "credit"), fl(2, "sales_nontax", 2_000_000, "credit"), fl(3, "purchase10", 5_500_000),
+    fl(4, "import10", 50_000), fl(5, "import8", 6_240), fl(6, "import10", 10_000, "credit"), fl(7, "reverse10", 1_000_000),
+  ];
+  test("輸入の消費税は ⑮（返金は差し引く）。課税売上割合が 95% 未満なら、特定課税仕入れを課税標準額と ⑬⑭ に入れる", () => {
+    const b = buildTaxBase(lines, years);
+    expect([b.importTax, b.reverse]).toEqual([{ 8: 6_240, 10: 40_000 }, 1_000_000]);
+    const r = standardReturn(b, opts);
+    expect(cell(r, "1-3", "①-2")).toEqual({ a: undefined, b: 1_000_000, c: 1_000_000 });
+    expect(cell(r, "1-3", "①").c).toBe(11_000_000); // 10,000,000 ＋ 1,000,000
+    expect(cell(r, "2-3", "⑬").c).toBe(1_000_000);
+    expect(cell(r, "2-3", "⑭").c).toBe(78_000);
+    expect(cell(r, "2-3", "⑮")).toEqual({ a: 6_240, b: 40_000, c: 46_240 });
+    expect(cell(r, "2-3", "⑰").c).toBe(390_000 + 78_000 + 46_240);
+    expect(cell(r, "second", "⑨").c).toBe(1_000_000);
+  });
+  test("課税売上割合が 95% 以上なら、特定課税仕入れは無かったもの。③ は書き込んだ額で課税売上割合に入る", () => {
+    const b = buildTaxBase(lines.filter((l) => l.tax_code !== "sales_nontax"), years);
+    const r = standardReturn(b, opts);
+    expect(r.forms.find((f) => f.id === "2-3")!.rows.some((x) => x.no === "⑬")).toBe(false);
+    expect(cell(r, "1-3", "①").c).toBe(10_000_000);
+    expect(r.notes.some((n) => n.includes("特定課税仕入れは無かったもの"))).toBe(true);
+    const withExport = standardReturn(buildTaxBase(lines, years), { ...opts, nontaxExport: 3_000_000 });
+    expect([cell(withExport, "2-3", "③").c, cell(withExport, "2-3", "④").c]).toEqual([3_000_000, 13_000_000]);
+  });
+});
+
+describe("帳簿のみ保存の特例（本則課税）", () => {
+  test("控除は適格と同じ（⑨⑩に入る）", () => {
+    const years: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }];
+    const l = (invoice_kind: FlatLine["invoice_kind"]): FlatLine => ({
+      entry_id: 1, date: "2026-05-01", description: "", row_no: 1, side: "debit", account_id: 1, sub_account_id: null, amount: 11_000, memo: "", tax_code: "purchase10", invoice_kind, purchase_use: null,
+    });
+    expect(buildTaxBase([l("book_transport"), l("book_vending")], years).purchase[10]).toBe(22_000);
+  });
+});

@@ -17,7 +17,7 @@ import { closingBalances } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
 import {
-  accruedTaxLines, closingInventory, inventoryIssues, inventoryLines, rowAmount, type InventoryCount, type InventoryRow,
+  accruedTaxLines, closingInventory, exclusiveSettlementLines, inventoryIssues, inventoryLines, rowAmount, type InventoryCount, type InventoryRow,
 } from "../../lib/yearEnd";
 import type { JournalLine } from "../../lib/types";
 import * as repo from "../../db/repo";
@@ -74,7 +74,19 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
   // 未払消費税等
   const taxReturn = useYearReturn();
   const accruedIds = { taxes: idOf(CODE.TAXES), accrued: idOf(CODE.ACCRUED_CONSUMPTION_TAX), receivable: idOf(CODE.ACCRUED), misc: idOf(CODE.MISC_INCOME) };
-  const plannedAccrued = taxReturn ? accruedTaxLines(taxReturn.total, accruedIds) : [];
+  // 税抜経理の年は、仮受・仮払消費税等の年末の残高（作ってある精算の仕訳を除く）と精算する
+  const exclusive = taxYear.status !== "exempt" && taxYear.method === "exclusive";
+  const clearing = useMemo(() => {
+    if (!exclusive) return null;
+    const bal = closingBalances(accounts, opening, lines.filter((l) => l.entry_id !== runs?.accrued));
+    return { received: bal.get(idOf(CODE.TAX_RECEIVED)) ?? 0, paid: bal.get(idOf(CODE.TAX_PAID)) ?? 0 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exclusive, accounts, opening, lines, runs?.accrued]);
+  const plannedAccrued = !taxReturn ? [] : clearing
+    ? exclusiveSettlementLines(clearing.received, clearing.paid, taxReturn.total, {
+      received: idOf(CODE.TAX_RECEIVED), paid: idOf(CODE.TAX_PAID), accrued: accruedIds.accrued, receivable: accruedIds.receivable, misc: accruedIds.misc, miscExpense: idOf(CODE.MISC_EXPENSE),
+    })
+    : accruedTaxLines(taxReturn.total, accruedIds);
 
   const runStatus = (id: number | null | undefined, planned?: JournalLine[]): Status =>
     id ? (planned && runs?.keys[id] !== undefined && runs.keys[id] !== lineKey(planned) ? { text: `作成済み（No.${id}）：計算と違う`, tone: "warn" } : { text: `作成済み（No.${id}）`, tone: "ok" })
@@ -111,9 +123,9 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
       note: "売掛金などの年末残高から繰入額を計算し、洗替の仕訳を作ります（決算書の2ページ）", page: "statements", pageLabel: "決算書",
     },
     {
-      title: "未払消費税等（課税事業者・任意）",
+      title: exclusive ? "消費税の精算（税抜経理）" : "未払消費税等（課税事業者・任意）",
       status: taxYear.status === "exempt" ? { text: "免税事業者", tone: "none" } : runs?.accrued ? runStatus(runs.accrued, plannedAccrued) : { text: "未作成（任意）", tone: "none" },
-      note: "納める消費税を、その年の必要経費にするときに作ります（この画面の下）",
+      note: exclusive ? "仮受・仮払消費税等を、納める消費税（未払消費税等）と精算します（この画面の下）" : "納める消費税を、その年の必要経費にするときに作ります（この画面の下）",
     },
     {
       title: "未払費用・前払費用など（あれば）", status: { text: "手で入れる", tone: "none" },
@@ -149,7 +161,7 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
       />
 
       <section className="sheet print-skip">
-        <h2 className="sheet-h">未払消費税等（{year}年）</h2>
+        <h2 className="sheet-h">{exclusive ? "消費税の精算（税抜経理）" : "未払消費税等"}（{year}年）</h2>
         {taxYear.status === "exempt" ? (
           <p className="muted">{year}年は免税事業者なので、消費税の仕訳は要りません。</p>
         ) : !taxReturn ? (
@@ -162,17 +174,25 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
                 : taxReturn.total < 0
                   ? <>申告書（{year}年の課税区分で計算）は <b>{yen(-taxReturn.total)}円の還付</b>です。</>
                   : <>申告書（{year}年の課税区分で計算）の納付税額は 0円です。</>}
-              {" "}税込経理では、納める消費税は申告書を出した年（翌年）の必要経費にするのが原則ですが、年末に未払金に計上すれば、その年の必要経費にできます。
+              {" "}{clearing
+                ? <>税抜経理では、年末に仮受消費税等（{yen(clearing.received)}円）と仮払消費税等（{yen(clearing.paid)}円）を、納める消費税（未払消費税等）と精算し、差額を雑収入（または雑費）にします。</>
+                : "税込経理では、納める消費税は申告書を出した年（翌年）の必要経費にするのが原則ですが、年末に未払金に計上すれば、その年の必要経費にできます。"}
             </p>
             <div className="field-row wrap" style={{ alignItems: "center", gap: 10 }}>
-              <span>{taxReturn.total > 0 ? "租税公課 ／ 未払消費税等" : taxReturn.total < 0 ? "未収入金 ／ 雑収入（対象外）" : "仕訳にする額はありません"}</span>
+              <span>
+                {clearing
+                  ? plannedAccrued.map((l) => `${l.side === "debit" ? "借" : "貸"} ${accounts.find((a) => a.id === l.account_id)?.name ?? ""} ${yen(l.amount)}`).join("　")
+                  : taxReturn.total > 0 ? "租税公課 ／ 未払消費税等" : taxReturn.total < 0 ? "未収入金 ／ 雑収入（対象外）" : "仕訳にする額はありません"}
+              </span>
               {runs?.accrued && <button className="link-btn" onClick={() => setViewing(runs.accrued!)}>{runStatus(runs.accrued, plannedAccrued).text}</button>}
               <button className="btn primary sm" onClick={() => make("accrued_tax", plannedAccrued, "未払消費税等")} disabled={disabled || (plannedAccrued.length === 0 && !runs?.accrued)}>
                 <Wand2 size={14} /> {runs?.accrued ? "作り直す" : "仕訳を作る"}
               </button>
             </div>
             <p className="field-note">
-              中間申告で納めた消費税は、納めたときに「租税公課 ／ 普通預金」（対象外）で入れておきます（申告書の数字は中間納付を差し引いた後です）。
+              {clearing
+                ? "税抜経理では、中間申告で納めた消費税は、納めたときに「仮払消費税等 ／ 普通預金」（対象外）で入れておきます（申告書の数字は中間納付を差し引いた後です）。"
+                : "中間申告で納めた消費税は、納めたときに「租税公課 ／ 普通預金」（対象外）で入れておきます（申告書の数字は中間納付を差し引いた後です）。"}
               翌年に確定申告の消費税を納めたら「未払消費税等 ／ 普通預金」、還付を受けたら「普通預金 ／ 未収入金」（どちらも対象外）を入れます。
               申告書の数字（中間納付税額など）を直したら、作り直してください。
             </p>

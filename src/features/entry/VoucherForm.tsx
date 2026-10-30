@@ -6,7 +6,7 @@ import { useState, type KeyboardEvent } from "react";
 import { Plus, Trash2, Save, X, Lock, FileStack, BookmarkPlus } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppContext } from "../../context/AppContext";
-import { CounterpartyField, AccountWithSub, AmountInput, DateInput, MemoInput, TaxSelect } from "../../components/Inputs";
+import { CounterpartyField, AccountWithSub, AmountInput, DateInput, MemoInput, TaxAmountField, TaxSelect } from "../../components/Inputs";
 import { checkVoucher, emptyRow, rowsToLines, yearEnd } from "../../lib/accounting";
 import { enterToNext, isComposing } from "../../lib/keyboard";
 import { yen } from "../../lib/format";
@@ -86,10 +86,17 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
       const next = rs.map((r, j) => (j === i ? { ...r, ...patch } : r));
       // 科目を変えたら補助科目は選び直し、税区分はその科目の初期値に戻す
       if ("debitAccountId" in patch && patch.debitAccountId !== rs[i].debitAccountId) {
-        next[i] = { ...next[i], debitSubId: null, debitTax: null, debitInvoice: null, debitClass: null, debitUse: null };
+        next[i] = { ...next[i], debitSubId: null, debitTax: null, debitInvoice: null, debitClass: null, debitUse: null, debitTaxAmount: null };
       }
       if ("creditAccountId" in patch && patch.creditAccountId !== rs[i].creditAccountId) {
-        next[i] = { ...next[i], creditSubId: null, creditTax: null, creditInvoice: null, creditClass: null, creditUse: null };
+        next[i] = { ...next[i], creditSubId: null, creditTax: null, creditInvoice: null, creditClass: null, creditUse: null, creditTaxAmount: null };
+      }
+      // 金額・税区分を変えたら、手で直した消費税額は自動に戻す
+      if (("debitAmount" in patch && patch.debitAmount !== rs[i].debitAmount) || ("debitTax" in patch && patch.debitTax !== rs[i].debitTax) || ("debitInvoice" in patch && patch.debitInvoice !== rs[i].debitInvoice)) {
+        if (!("debitTaxAmount" in patch)) next[i] = { ...next[i], debitTaxAmount: null };
+      }
+      if (("creditAmount" in patch && patch.creditAmount !== rs[i].creditAmount) || ("creditTax" in patch && patch.creditTax !== rs[i].creditTax) || ("creditInvoice" in patch && patch.creditInvoice !== rs[i].creditInvoice)) {
+        if (!("creditTaxAmount" in patch)) next[i] = { ...next[i], creditTaxAmount: null };
       }
       // 1行だけの仕訳のときは、借方金額を貸方にも写す（貸方が空 or 同額だった場合）
       if ("debitAmount" in patch) {
@@ -222,6 +229,10 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
                     label={`${i + 1}行目 借方税区分`} value={r.debitTax} invoice={r.debitInvoice} businessClass={r.debitClass} purchaseUse={r.debitUse} accountId={r.debitAccountId} side="debit"
                     date={date} counterpartyId={counterpartyId} onChange={(c, inv, k, u) => update(i, { debitTax: c, debitInvoice: inv, debitClass: k, debitUse: u })}
                   />
+                  <TaxAmountField
+                    label={`${i + 1}行目 借方消費税額`} amount={r.debitAmount} code={r.debitTax} invoice={r.debitInvoice} accountId={r.debitAccountId} side="debit"
+                    date={date} counterpartyId={counterpartyId} value={r.debitTaxAmount} onChange={(v) => update(i, { debitTaxAmount: v })}
+                  />
                 </td>
                 <td><AccountWithSub accountId={r.creditAccountId} subId={r.creditSubId} onAccount={(v) => update(i, { creditAccountId: v })} onSub={(v) => update(i, { creditSubId: v })} onKeyDown={nav} label={`${i + 1}行目 貸方科目`} /></td>
                 <td><AmountInput value={r.creditAmount} onChange={(v) => update(i, { creditAmount: v })} onKeyDown={nav} aria-label={`${i + 1}行目 貸方金額`} /></td>
@@ -229,6 +240,10 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
                   <TaxSelect
                     label={`${i + 1}行目 貸方税区分`} value={r.creditTax} invoice={r.creditInvoice} businessClass={r.creditClass} purchaseUse={r.creditUse} accountId={r.creditAccountId} side="credit"
                     date={date} counterpartyId={counterpartyId} onChange={(c, inv, k, u) => update(i, { creditTax: c, creditInvoice: inv, creditClass: k, creditUse: u })}
+                  />
+                  <TaxAmountField
+                    label={`${i + 1}行目 貸方消費税額`} amount={r.creditAmount} code={r.creditTax} invoice={r.creditInvoice} accountId={r.creditAccountId} side="credit"
+                    date={date} counterpartyId={counterpartyId} value={r.creditTaxAmount} onChange={(v) => update(i, { creditTaxAmount: v })}
                   />
                 </td>
                 <td><MemoInput value={r.memo} onChange={(v) => update(i, { memo: v })} onKeyDown={nav} aria-label={`${i + 1}行目 摘要`} /></td>

@@ -129,6 +129,13 @@ export const TaxSection = () => {
             </select>
           </label>
         </div>
+        {t.status !== "exempt" && t.method === "exclusive" && (
+          <p className="field-note">
+            税抜経理：仕訳は今までどおり税込の金額で入れます。明細ごとに消費税額を自動で計算し（税込の金額から割戻し・1円未満切り捨て。振替伝票で直せます）、
+            帳簿・決算書では本体（税抜）と仮受消費税等・仮払消費税等に分けて出します。年末に決算整理の画面で、仮受・仮払消費税等を納める消費税と精算します。
+            消費税の申告書は今までどおり税込の金額から計算します。この年に取得した固定資産の取得価額は税抜で台帳に入れてください。
+          </p>
+        )}
         {t.status !== "exempt" && (
           <div className="field-row">
             {t.status === "standard" && (
@@ -192,7 +199,7 @@ export const TaxSection = () => {
           </p>
         )}
         {t.status === "thirty" && <p className="field-note">3割特例は、登録によって課税事業者になった個人事業者で、基準期間（2年前）の課税売上高が1,000万円以下のときに使えます。</p>}
-        {t.method === "inclusive" && t.status !== "exempt" && <p className="field-note">税込経理：帳簿の金額は税込のままです。税抜経理には今後対応します。</p>}
+        {t.method === "inclusive" && t.status !== "exempt" && <p className="field-note">税込経理：帳簿・決算書の金額は税込のままです（納める消費税は租税公課）。税抜で出したいときは経理方式を税抜経理にします。</p>}
         {error && <p className="form-error-inline" role="alert">{error}</p>}
         {isClosed && <p className="field-note">{year}年は締め済みのため変更できません。</p>}
         <div>

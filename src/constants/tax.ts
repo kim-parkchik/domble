@@ -17,7 +17,7 @@ export const TAX_STATUS_OPTIONS: { value: TaxStatus; label: string; years?: [num
 
 export const TAX_METHOD_OPTIONS: { value: TaxMethod; label: string; enabled: boolean }[] = [
   { value: "inclusive", label: "税込経理", enabled: true },
-  { value: "exclusive", label: "税抜経理", enabled: false },
+  { value: "exclusive", label: "税抜経理", enabled: true },
 ];
 
 /** 簡易課税の事業区分とみなし仕入率（%） */
@@ -60,6 +60,12 @@ export const TAX_CODES: { code: TaxCode; label: string; short: string; group: "s
   { code: "purchase_nontax", label: "非課税仕入", short: "非課仕", group: "purchase", rate: 0 },
   { code: "baddebt10", label: "貸倒れ 10%", short: "貸倒10%", group: "sales", rate: 10 },
   { code: "baddebt8", label: "貸倒れ 8%（軽減）", short: "貸倒8%軽", group: "sales", rate: 8 },
+  // 輸入：税関に払った消費税のうち国税の額そのもの（輸入許可通知書の「消費税額」）を金額に入れる。地方消費税は対象外で入れる（付表2-3 ⑮）
+  { code: "import10", label: "輸入の消費税（国税 7.8%）", short: "輸入7.8%", group: "purchase", rate: 10 },
+  { code: "import8", label: "輸入の消費税（国税 6.24%・軽減）", short: "輸入6.24%", group: "purchase", rate: 8 },
+  // 特定課税仕入れ（国外事業者からの事業者向け電気通信利用役務の提供など）：支払った額（税抜）を入れる。
+  // 課税売上割合が 95% 未満の本則課税の年だけ、課税標準額と仕入税額の両方に入れる（95% 以上・簡易課税・2割特例では無かったもの）
+  { code: "reverse10", label: "特定課税仕入れ（リバースチャージ）", short: "特定課仕", group: "purchase", rate: 10 },
 ];
 
 /** インボイス区分（課税仕入の明細だけ） */
@@ -67,6 +73,13 @@ export const INVOICE_KINDS: { value: InvoiceKind; label: string; short: string }
   { value: "qualified", label: "適格（インボイスあり）", short: "適格" },
   { value: "transitional", label: "経過措置（インボイスなし）", short: "経過措置" },
   { value: "none", label: "控除しない", short: "控除なし" },
+  // 帳簿のみ保存の特例（消費税法施行令49①・規則15の4）：請求書等が無くても、帳簿に特例の旨を書けば控除できる（控除は適格と同じ）
+  { value: "book_transport", label: "帳簿のみ保存の特例（3万円未満の公共交通機関の運賃）", short: "帳簿のみ交通" },
+  { value: "book_vending", label: "帳簿のみ保存の特例（3万円未満の自動販売機・自動サービス機）", short: "帳簿のみ自販機" },
+  { value: "book_postage", label: "帳簿のみ保存の特例（郵便切手で払う郵便・貨物サービス）", short: "帳簿のみ切手" },
+  { value: "book_travel", label: "帳簿のみ保存の特例（従業員等の出張旅費・宿泊費・日当・通勤手当）", short: "帳簿のみ旅費等" },
+  { value: "book_ticket", label: "帳簿のみ保存の特例（使うときに回収される入場券等）", short: "帳簿のみ入場券" },
+  { value: "book_used", label: "帳簿のみ保存の特例（登録していない者からの古物・質物・建物・再生資源）", short: "帳簿のみ古物等" },
 ];
 
 /**

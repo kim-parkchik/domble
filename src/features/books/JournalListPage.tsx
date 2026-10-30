@@ -20,6 +20,7 @@ import { toCsv } from "../../lib/csv";
 import { journalSection, type JournalPrintEntry, type JournalSide } from "../../lib/printBooks";
 import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
 import { classLabel, displayClass, displayUse, invoiceCsvLabel, isPurchaseCode, taxLongLabel, taxShortLabel, useLabel } from "../../lib/tax";
+import { lineTaxAmount } from "../../lib/taxExclusive";
 import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
 
@@ -47,7 +48,8 @@ export const JournalListPage = () => {
   const [taxFilter, setTaxFilter] = useState("");
   const cpMap = useMemo(() => new Map(counterparties.map((c) => [c.id, c])), [counterparties]);
   const [cpId, setCpId] = useState(0);
-  const { lines: activeLines } = useYearData();
+  // 仕訳日記帳は入れたとおり（税込）に出す。税抜経理の年は、税区分に消費税額を添える
+  const { rawLines: activeLines } = useYearData();
   const [showDeleted, setShowDeleted] = useState(false);
   const [allLines, setAllLines] = useState<FlatLine[] | null>(null);
   const [minAmt, setMinAmt] = useState("");
@@ -139,10 +141,14 @@ export const JournalListPage = () => {
   const total = rows.filter((r) => !r.deleted).reduce((s, r) => s + (r.dr?.amount ?? 0), 0);
   const entryCount = rows.filter((r) => r.first && !r.deleted).length;
   const name = (l?: FlatLine) => (l ? labelOf(l.account_id, l.sub_account_id) : "");
-  // 税区分（対象外のものは出さない）
+  // 税区分（対象外のものは出さない）。税抜経理の年は消費税額も（手で直した額は「直」）
+  const taxAmountText = (l: FlatLine) => {
+    const t = lineTaxAmount(l, taxYears);
+    return t || l.tax_amount != null ? ` 税${yen(t)}${l.tax_amount != null ? "（直）" : ""}` : "";
+  };
   const tax = (l?: FlatLine) =>
     l?.tax_code && l.tax_code !== "none"
-      ? <span className={`tax-tag${displayClass(taxYears, l) === 0 ? " tax-missing" : ""}`} title={taxLongLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}>{taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}</span>
+      ? <span className={`tax-tag${displayClass(taxYears, l) === 0 ? " tax-missing" : ""}`} title={taxLongLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}>{taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}{taxAmountText(l)}</span>
       : null;
 
   const exportCsv = async () => {
@@ -179,7 +185,7 @@ export const JournalListPage = () => {
     const side = (l?: FlatLine): JournalSide | undefined =>
       l && {
         account: accountMap.get(l.account_id)?.name ?? "", sub: l.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "",
-        tax: l.tax_code && l.tax_code !== "none" ? taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l)) : "",
+        tax: l.tax_code && l.tax_code !== "none" ? `${taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}${taxAmountText(l)}` : "",
         amount: l.amount,
       };
     const entries: JournalPrintEntry[] = [];

@@ -20,8 +20,9 @@ export const FILE_FILTER_NAME = "domble 帳簿ファイル";
  * 帳簿ファイルの形式の版。帳簿の形式（db/schema.ts のテーブル・列・トリガー、db/migrate.ts の作り直し）を変えたら上げる
  * （上げ忘れは src/db/migrate.test.ts で気づく）。帳簿のほうが新しければ、読み取り専用で開く（古い版で書き込むと新しい項目が消えるため）
  *  3 = 2026-10-30（形式の版を比べるようにした時点）
+ *  4 = 2026-10-31（消費税の申告書で書き込む額、税抜経理の明細の消費税額）
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

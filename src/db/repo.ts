@@ -24,6 +24,7 @@ import { FILING_LABEL, filingOf, isBlue, isFilingType } from "../lib/filing";
 import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
+import { isExclusiveOn, taxAmountProblem } from "../lib/taxExclusive";
 import { columnMapProblem, parseColumnMap, type BankRule, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import { checkScanQuality, docClassOf, type DocClass, type ScanInputMethod } from "../lib/scan";
@@ -443,9 +444,10 @@ export const getTaxYears = (db: Database) =>
 
 /** year 年の設定を保存する（前の年から引き継いでいた年も、その年の設定として持つ）。変更は履歴に残す（厳密モード） */
 const saveTaxYear_ = async (db: Database, t: TaxYear) => {
+  // 免税事業者の年は税込経理だけ
   const row: TaxYear = {
     ...t, taxable_from: t.status === "exempt" ? "" : t.taxable_from.trim(), deduction: t.deduction ?? "individual",
-    voluntary_interim: t.status === "exempt" ? 0 : t.voluntary_interim ? 1 : 0,
+    voluntary_interim: t.status === "exempt" ? 0 : t.voluntary_interim ? 1 : 0, method: t.status === "exempt" ? "inclusive" : t.method,
   };
   const err = validateTaxYear(row);
   if (err) throw new Error(err);
@@ -468,6 +470,10 @@ const saveTaxYear_ = async (db: Database, t: TaxYear) => {
        taxable_from = excluded.taxable_from, deduction = excluded.deduction, voluntary_interim = excluded.voluntary_interim`,
     [row.from_year, row.status, row.method, row.business_class, row.taxable_from, row.deduction, row.voluntary_interim],
   );
+  // 税抜経理にしたら、仮払消費税等・仮受消費税等の科目を表示する（初めは非表示の初期科目）
+  if (row.method === "exclusive") {
+    await db.execute("UPDATE accounts SET is_active = 1 WHERE is_system = 1 AND code IN (?, ?)", [CODE.TAX_PAID, CODE.TAX_RECEIVED]);
+  }
   const [o, n] = [taxYearText(before), taxYearText(row)];
   if (o !== n || before.inherited) {
     await logMaster(db, {
@@ -712,6 +718,12 @@ export const getTaxInterim = async (db: Database, year: number) => {
   return r[0] ?? { national: 0, local: 0 };
 };
 
+/** 消費税の申告書で書き込む額（非課税資産の輸出等の金額。無ければ 0） */
+export const getTaxReturnInput = async (db: Database, year: number) => {
+  const r = await db.select<{ nontax_export: number }[]>("SELECT nontax_export FROM tax_return_inputs WHERE fiscal_year = ?", [year]);
+  return { nontaxExport: r[0]?.nontax_export ?? 0 };
+};
+
 /** 消費税の棚卸資産の調整（付表2-3 ⑯。無ければ null） */
 // ────────────────────────────────────────────
 // 消費税の還付申告に関する明細書（個人事業者用）の入力。帳簿から作る候補・計算は lib/taxRefundDetail.ts
@@ -779,6 +791,24 @@ const saveInventoryAdjust_ = async (db: Database, year: number, adj: InventoryAd
   await logMaster(db, {
     target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の消費税の棚卸資産の調整`,
     old_value: text(before), new_value: text(next),
+  });
+};
+
+const saveNontaxExport_ = async (db: Database, year: number, amount: number) => {
+  if (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000_000) throw new Error("非課税資産の輸出等の金額は 0 以上の整数（円）で入れてください");
+  await assertYearOpen(db, year);
+  const before = (await getTaxReturnInput(db, year)).nontaxExport;
+  if (before === amount) return;
+  if (amount === 0) await db.execute("DELETE FROM tax_return_inputs WHERE fiscal_year = ?", [year]);
+  else {
+    await db.execute(
+      "INSERT INTO tax_return_inputs (fiscal_year, nontax_export) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET nontax_export = excluded.nontax_export",
+      [year, amount],
+    );
+  }
+  await logMaster(db, {
+    target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の消費税の非課税資産の輸出等の金額`,
+    old_value: `${before.toLocaleString()} 円`, new_value: `${amount.toLocaleString()} 円`,
   });
 };
 
@@ -1434,7 +1464,7 @@ const saveOpening_ = async (db: Database, year: number, bySub: SubOpeningBalance
 export const getLines = (db: Database, from: string, to: string, includeDeleted = false) =>
   db.select<FlatLine[]>(
     `SELECT l.entry_id, e.date, e.description, e.is_deleted, e.revision, e.counterparty_id, e.is_adjustment, l.row_no, l.side,
-            l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code, l.invoice_kind, l.business_class, l.purchase_use,
+            l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code, l.invoice_kind, l.business_class, l.purchase_use, l.tax_amount,
             COALESCE((SELECT h.recorded_at FROM entry_history h WHERE h.entry_id = e.id AND h.action = 'create'), e.created_at) AS created_at
        FROM journal_lines l
        JOIN journal_entries e ON e.id = l.entry_id
@@ -1453,7 +1483,7 @@ export const getEntry = async (db: Database, id: number): Promise<JournalEntry |
   );
   if (e.length === 0) return null;
   const lines = await db.select<JournalLine[]>(
-    `SELECT id, entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use
+    `SELECT id, entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount
        FROM journal_lines WHERE entry_id = ? ORDER BY row_no, CASE side WHEN 'debit' THEN 0 ELSE 1 END`,
     [id],
   );
@@ -1462,13 +1492,13 @@ export const getEntry = async (db: Database, id: number): Promise<JournalEntry |
 
 const insertLines = async (db: Database, entryId: number, lines: JournalLine[]) => {
   // 1文でまとめて INSERT（途中で失敗しても半端な明細が残らない）
-  const placeholders = lines.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+  const placeholders = lines.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
   const params = lines.flatMap((l) => [
     entryId, l.row_no, l.side, l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code ?? null, l.invoice_kind ?? null, l.business_class ?? null,
-    l.purchase_use ?? null,
+    l.purchase_use ?? null, l.tax_amount ?? null,
   ]);
   await db.execute(
-    `INSERT INTO journal_lines (entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use)
+    `INSERT INTO journal_lines (entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount)
      VALUES ${placeholders}`,
     params,
   );
@@ -1487,11 +1517,17 @@ const withTax = async (db: Database, date: string, lines: JournalLine[], counter
   const accounts = new Map((await getAccounts(db, Number(date.slice(0, 4)))).map((a) => [a.id, a]));
   const cp = counterpartyId ? (await getCounterparties(db)).find((c) => c.id === counterpartyId) : null;
   const ty = taxYearOf(years, Number(date.slice(0, 4)));
-  return resolveLineTax(
+  const out = resolveLineTax(
     lines, true, (id) => accounts.get(id), cp,
     stampMain && ty.status === "simplified" ? ty.business_class : null,
     stampMain && ty.status === "standard" ? "common" : null,
+    ty.method === "exclusive",
   );
+  for (const l of out) {
+    const p = l.tax_amount != null ? taxAmountProblem(l.amount, l.tax_amount) : null;
+    if (p) throw new Error(`${l.row_no}行目：${p}`);
+  }
+  return out;
 };
 
 const descriptionOf = (lines: JournalLine[]) => lines.find((l) => l.memo)?.memo ?? "";
@@ -1521,6 +1557,7 @@ const makeSnapshot = async (
       ...(l.invoice_kind ? { invoice: l.invoice_kind } : {}),
       ...(l.business_class ? { cls: l.business_class } : {}),
       ...(l.purchase_use ? { use: l.purchase_use } : {}),
+      ...(l.tax_amount != null ? { taxAmount: l.tax_amount } : {}),
     })),
   };
 };
@@ -1641,7 +1678,7 @@ export const untaxedEntryIds = async (db: Database, year: number) => {
       WHERE e.is_deleted = 0 AND e.date BETWEEN ? AND ?
         AND (l.tax_code IS NULL
              ${status === "simplified" ? "OR (l.tax_code IN ('sales10','sales8') AND l.business_class IS NULL)" : ""}
-             ${status === "standard" ? "OR (l.tax_code IN ('purchase10','purchase8') AND l.purchase_use IS NULL)" : ""})
+             ${status === "standard" ? "OR (l.tax_code IN ('purchase10','purchase8','import10','import8','reverse10') AND l.purchase_use IS NULL)" : ""})
       ORDER BY e.date, e.id`,
     [yearStart(year), yearEnd(year)],
   );
@@ -1945,7 +1982,8 @@ const saveDisposalEntry_ = async (db: Database, assetId: number, receiveAccountI
   if (a.disposal_kind === "sale" && receive?.category !== "asset") throw new Error("売却額を受け取った科目（現金・預金など）を選んでください");
   // 除却損は、不動産所得の資産なら雑費（不動産）
   const loss = idOf(a.income_kind === "realestate" ? "698" : CODE.DISPOSAL_LOSS);
-  const lines = disposalLines(a, { receive: receive?.id ?? 0, ownerLoan: idOf(CODE.OWNER_LOAN), ownerDraw: idOf(CODE.OWNER_DRAW), loss });
+  const exclusive = isExclusiveOn(await getTaxYears(db), a.disposed_on);
+  const lines = disposalLines(a, { receive: receive?.id ?? 0, ownerLoan: idOf(CODE.OWNER_LOAN), ownerDraw: idOf(CODE.OWNER_DRAW), loss }, exclusive);
   if (lines === null) throw new Error("売却・除却の仕訳は、定額法・定率法の資産だけ作れます（一括償却資産・少額減価償却資産・繰延資産は振替伝票で入れてください）");
   const before = (await getAssetDisposals(db)).find((x) => x.asset_id === assetId);
   if (lines.length === 0) {
@@ -2528,7 +2566,7 @@ const currentState = async (db: Database, key: string): Promise<string> => {
     );
     if (!e[0]) return "null";
     const lines = await db.select<Parameters<typeof entryState>[1]>(
-      "SELECT row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use FROM journal_lines WHERE entry_id = ?", [id],
+      "SELECT row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount FROM journal_lines WHERE entry_id = ?", [id],
     );
     return entryState(e[0], lines);
   }
@@ -2957,6 +2995,7 @@ export const saveRealEstate = inTx(saveRealEstate_, () => "不動産所得", { p
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
+export const saveNontaxExport = inTx(saveNontaxExport_, (year) => `${year}年の非課税資産の輸出等の金額`, { perm: "settings" });
 export const saveInventoryAdjust = inTx(saveInventoryAdjust_, (year) => `${year}年の棚卸資産の調整`, { perm: "settings" });
 export const saveRefundDetail = inTx(saveRefundDetail_, (year) => `${year}年の還付申告に関する明細書`, { perm: "settings" });
 export const saveYearEndRun = inTx(saveYearEndRun_, (year, kind) => `${year}年の${YEAR_END_LABEL[kind as YearEndKind]}`, { perm: "entry" });

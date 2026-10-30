@@ -365,3 +365,14 @@ test("様式に無い欄を書こうとしたらエラー（対応表の書き�
   expect(() => formXml("SHB070", { AYB99999: 1 }, { author: "x", createdOn: "2027-01-01" })).toThrow(/AYB99999/);
 });
 
+
+describe("輸入の消費税・特定課税仕入れ（付表2-3 ⑬⑭⑮・付表1-3 ①-2・第二表 ⑨⑩）", () => {
+  test("XSD に合い、欄に入る", () => {
+    const b = base({ sales: { 8: 0, 10: 11_000_000 }, nontaxSales: 2_000_000, purchase: { 8: 0, 10: 5_500_000 }, importTax: { 8: 6_240, 10: 40_000 }, reverse: 1_000_000 });
+    const xml = buildTaxXtx(standardReturn(b, opts), filer, period);
+    expect(validate(xml)).toBe("");
+    expect([val(xml, "DSC00060"), val(xml, "DSC00070")]).toEqual(["1000000", "1000000"]);
+    expect([val(xml, "DTE00100"), val(xml, "DTE00140"), val(xml, "DTE00160"), val(xml, "DTE00170"), val(xml, "DTE00180")]).toEqual(["1000000", "78000", "6240", "40000", "46240"]);
+    expect([val(xml, "AAR00020"), val(xml, "AAR00030")]).toEqual(["1000000", "1000000"]);
+  });
+});

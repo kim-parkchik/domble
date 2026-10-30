@@ -35,7 +35,8 @@ const MAX_ENTRIES = 20;
 
 export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
   const { db, year, accounts, accountMap, counterparties, taxYears, taxYear, settings, dataVersion } = useAppContext();
-  const { lines, opening, loading } = useYearData();
+  // 消費税は入れたとおりの明細（税込）から計算する（税抜経理の年も）
+  const { rawLines: lines, opening, loading } = useYearData();
   const inventory = useInventory(lines, opening);
   // 固定資産台帳（売却の漏れ・家事と兼用する資産の取得の確かめに使う）
   const [assets, setAssets] = useState<FixedAsset[] | null>(null);

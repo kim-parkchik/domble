@@ -33,6 +33,10 @@ export interface FlatLine {
   invoice_kind?: InvoiceKind | null;
   business_class?: number | null;
   purchase_use?: PurchaseUse | null;
+  /** 税抜経理の年の消費税額を手で直した額（null = 自動） */
+  tax_amount?: number | null;
+  /** 税抜経理の年に、明細から分けた仮払・仮受消費税等の行（帳簿・決算書の表示用。lib/taxExclusive.ts の bookLines） */
+  taxPart?: boolean;
 }
 
 export type AccountMap = Map<number, Account>;
@@ -243,8 +247,9 @@ const sameSlot = (a: FlatLine, b: FlatLine) => a.account_id === b.account_id && 
 
 /** 相手科目名（相手が1科目ならその名前、複数なら「諸口」） */
 export const counterLabel = (entryLines: FlatLine[], line: FlatLine, accounts: AccountMap): string => {
+  // 税抜経理で分けた仮受・仮払消費税等の行は相手科目に数えない（「消耗品費」が「諸口」にならないように）
   const ids = new Set(
-    entryLines.filter((l) => l.side !== line.side && !sameSlot(l, line)).map((l) => l.account_id),
+    entryLines.filter((l) => l.side !== line.side && !sameSlot(l, line) && !l.taxPart).map((l) => l.account_id),
   );
   if (ids.size === 0) return "";
   if (ids.size > 1) return "諸口";
@@ -297,7 +302,7 @@ export const buildLedger = (
     const entryLines = byEntry.get(l.entry_id) ?? [];
     balance += signedAmount(account, l.side, l.amount);
     const counter = counterLabel(entryLines, l, accounts);
-    const counterIds = entryLines.filter((x) => x.side !== l.side && !sameSlot(x, l));
+    const counterIds = entryLines.filter((x) => x.side !== l.side && !sameSlot(x, l) && !x.taxPart);
     return {
       entry_id: l.entry_id,
       date: l.date,
@@ -380,6 +385,8 @@ export const emptyRow = (): VoucherRow => ({
   creditClass: null,
   debitUse: null,
   creditUse: null,
+  debitTaxAmount: null,
+  creditTaxAmount: null,
 });
 
 const isBlankRow = (r: VoucherRow) =>
@@ -419,16 +426,17 @@ export const rowsToLines = (rows: VoucherRow[]): JournalLine[] => {
     rowNo++;
     const memo = r.memo.trim();
     // 税区分は入れたときだけ持たせる（null は保存のときに科目・取引先の初期値で埋める）
-    const tax = (code?: TaxCode | null, invoice?: InvoiceKind | null, cls?: number | null, use?: PurchaseUse | null) => ({
+    const tax = (code?: TaxCode | null, invoice?: InvoiceKind | null, cls?: number | null, use?: PurchaseUse | null, taxAmount?: number | null) => ({
       ...(code ? { tax_code: code } : {}),
       ...(invoice ? { invoice_kind: invoice } : {}),
       ...(cls ? { business_class: cls } : {}),
       ...(use ? { purchase_use: use } : {}),
+      ...(taxAmount != null ? { tax_amount: taxAmount } : {}),
     });
     if (r.debitAccountId && r.debitAmount)
-      lines.push({ row_no: rowNo, side: "debit", account_id: r.debitAccountId, sub_account_id: r.debitSubId, amount: r.debitAmount, memo, ...tax(r.debitTax, r.debitInvoice, r.debitClass, r.debitUse) });
+      lines.push({ row_no: rowNo, side: "debit", account_id: r.debitAccountId, sub_account_id: r.debitSubId, amount: r.debitAmount, memo, ...tax(r.debitTax, r.debitInvoice, r.debitClass, r.debitUse, r.debitTaxAmount) });
     if (r.creditAccountId && r.creditAmount)
-      lines.push({ row_no: rowNo, side: "credit", account_id: r.creditAccountId, sub_account_id: r.creditSubId, amount: r.creditAmount, memo, ...tax(r.creditTax, r.creditInvoice, r.creditClass, r.creditUse) });
+      lines.push({ row_no: rowNo, side: "credit", account_id: r.creditAccountId, sub_account_id: r.creditSubId, amount: r.creditAmount, memo, ...tax(r.creditTax, r.creditInvoice, r.creditClass, r.creditUse, r.creditTaxAmount) });
   }
   return lines;
 };
@@ -445,6 +453,7 @@ export const linesToRows = (lines: JournalLine[]): VoucherRow[] => {
       r.debitInvoice = l.invoice_kind ?? null;
       r.debitClass = l.business_class ?? null;
       r.debitUse = l.purchase_use ?? null;
+      r.debitTaxAmount = l.tax_amount ?? null;
     } else {
       r.creditAccountId = l.account_id;
       r.creditSubId = l.sub_account_id ?? null;
@@ -453,6 +462,7 @@ export const linesToRows = (lines: JournalLine[]): VoucherRow[] => {
       r.creditInvoice = l.invoice_kind ?? null;
       r.creditClass = l.business_class ?? null;
       r.creditUse = l.purchase_use ?? null;
+      r.creditTaxAmount = l.tax_amount ?? null;
     }
     if (!r.memo && l.memo) r.memo = l.memo;
     byRow.set(l.row_no, r);

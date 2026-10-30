@@ -68,6 +68,8 @@ export interface JournalLine {
   business_class?: number | null;
   /** 課税仕入の用途区分（本則課税の個別対応方式。課税仕入の明細だけ。null = 分からない＝共通対応として計算） */
   purchase_use?: PurchaseUse | null;
+  /** 税抜経理の年の消費税額を手で直した額（null = 自動。lib/taxExclusive.ts） */
+  tax_amount?: number | null;
 }
 
 export interface JournalEntry {
@@ -103,6 +105,8 @@ export interface SnapshotLine {
   /** 事業区分・用途区分（入っているときだけ） */
   cls?: number;
   use?: PurchaseUse;
+  /** 税抜経理の消費税額を手で直した額（入っているときだけ） */
+  taxAmount?: number;
 }
 
 /** 履歴に残す仕訳の写し。科目名は記録時点の名前で保存する */
@@ -147,6 +151,9 @@ export interface VoucherRow {
   /** 用途区分（課税仕入だけ）。null = 科目の初期値・共通対応 */
   debitUse?: PurchaseUse | null;
   creditUse?: PurchaseUse | null;
+  /** 税抜経理の年に手で直した消費税額。null = 自動 */
+  debitTaxAmount?: number | null;
+  creditTaxAmount?: number | null;
 }
 
 export type FilingType = "blue65" | "blue55" | "blue10" | "white";
@@ -167,9 +174,11 @@ export type DeductionMethod = "individual" | "lump";
 /** 明細の税区分（定義は constants/tax.ts の TAX_CODES） */
 export type TaxCode =
   | "none" | "sales10" | "sales8" | "export" | "sales_nontax"
-  | "purchase10" | "purchase8" | "purchase_nontax" | "baddebt10" | "baddebt8";
-/** インボイス区分：適格請求書あり／経過措置（適格請求書発行事業者以外からの仕入れ）／控除しない */
-export type InvoiceKind = "qualified" | "transitional" | "none";
+  | "purchase10" | "purchase8" | "purchase_nontax" | "baddebt10" | "baddebt8"
+  | "import10" | "import8" | "reverse10";
+/** インボイス区分：適格請求書あり／経過措置（適格請求書発行事業者以外からの仕入れ）／控除しない／帳簿のみ保存の特例（book_*。控除は適格と同じ） */
+export type InvoiceKind = "qualified" | "transitional" | "none"
+  | "book_transport" | "book_vending" | "book_postage" | "book_travel" | "book_ticket" | "book_used";
 
 /**
  * 消費税の設定（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ）

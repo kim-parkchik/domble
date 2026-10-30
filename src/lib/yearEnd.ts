@@ -5,6 +5,7 @@
  *          （青色申告の決算の手引き「棚卸表の作成」。棚卸表は作って保存する：所得税法施行規則60条）
  *  - 未払消費税等：税込経理で、その年の申告書の ㉖（中間納付を差し引いた後）を「租税公課 / 未払消費税等」に。還付なら「未収入金 / 雑収入」。どちらも対象外
  *          （国税庁 No.6901：納付税額は申告書を出した年の必要経費が原則。年末に未払金に計上すれば、その年の必要経費にできる）
+ *  - 税抜経理の年の精算：仮受消費税等・仮払消費税等の残高を消し、申告書の ㉖ を未払消費税等（還付なら未収入金）に、差額を雑収入・雑費にする。どれも対象外
  *  - 振り戻し：決算整理仕訳（未払費用・前払費用など）を、翌年1月1日付で逆の仕訳にする
  */
 import type { JournalLine } from "./types";
@@ -66,6 +67,26 @@ export const accruedTaxLines = (total: number, ids: { taxes: number; accrued: nu
     : total < 0
       ? [line(1, "debit", ids.receivable, -total, "未収消費税等（還付）"), line(1, "credit", ids.misc, -total, "未収消費税等（還付）")]
       : [];
+
+/**
+ * 税抜経理の年の消費税の精算。received・paid = 仮受・仮払消費税等の年末の残高（この精算の仕訳を除く）、total = 申告書の ㉖（納付はプラス・還付はマイナス）
+ */
+export const exclusiveSettlementLines = (
+  received: number, paid: number, total: number,
+  ids: { received: number; paid: number; accrued: number; receivable: number; misc: number; miscExpense: number },
+): JournalLine[] => {
+  const out: JournalLine[] = [];
+  const memo = "消費税の精算（税抜経理）";
+  if (received) out.push(line(1, received > 0 ? "debit" : "credit", ids.received, Math.abs(received), memo));
+  if (paid) out.push(line(1, paid > 0 ? "credit" : "debit", ids.paid, Math.abs(paid), memo));
+  if (total > 0) out.push(line(1, "credit", ids.accrued, total, "未払消費税等"));
+  if (total < 0) out.push(line(1, "debit", ids.receivable, -total, "未収消費税等（還付）"));
+  const debit = out.filter((l) => l.side === "debit").reduce((s, l) => s + l.amount, 0);
+  const credit = out.filter((l) => l.side === "credit").reduce((s, l) => s + l.amount, 0);
+  if (debit > credit) out.push(line(1, "credit", ids.misc, debit - credit, "消費税の精算の差額"));
+  if (credit > debit) out.push(line(1, "debit", ids.miscExpense, credit - debit, "消費税の精算の差額"));
+  return out;
+};
 
 /** 振り戻しの明細：貸借を入れ替える（税区分などはそのまま） */
 export const reversalLines = (lines: JournalLine[]): JournalLine[] =>

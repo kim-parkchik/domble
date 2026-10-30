@@ -58,7 +58,7 @@ describe("テーブルの作り直し（列の追加ではできない変更）"
  * 形式を変えてこのテストが落ちたら、constants/appConfig.ts の SCHEMA_VERSION を1つ上げ、ここの version と hash を新しい値にする
  * （古い版の domble で新しい帳簿を開いたときに、読み取り専用で開くようにするため）
  */
-const SCHEMA_FINGERPRINT = { version: 3, hash: "36c68baa67328393" };
+const SCHEMA_FINGERPRINT = { version: 4, hash: "dea1460f5f42f547" };
 
 test("帳簿の形式を変えたら、形式の版（SCHEMA_VERSION）を上げる", () => {
   const hash = createHash("sha256").update(JSON.stringify([SCHEMA, COLUMN_MIGRATIONS, RETIRED_TRIGGERS, TABLE_REBUILDS.map((t) => t.table)])).digest("hex").slice(0, 16);

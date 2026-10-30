@@ -98,7 +98,7 @@ const FUHYO13: Table = {
 };
 const FUHYO23: Table = {
   "①": abc("DTB", 20), "②": "DTB00050", "③": "DTB00060", "④": "DTB00070", "⑥": "DTC00020", "⑦": "DTC00030",
-  "⑨": abc("DTE", 20), "⑩": abc("DTE", 60), "⑪": abc("DTE", 280), "⑫": abc("DTE", 320), "⑯": abc("DTE", 200), "⑰": abc("DTE", 240),
+  "⑨": abc("DTE", 20), "⑩": abc("DTE", 60), "⑪": abc("DTE", 280), "⑫": abc("DTE", 320), "⑮": abc("DTE", 160), "⑯": abc("DTE", 200), "⑰": abc("DTE", 240),
   "⑱": abc("DTF", 10), "⑲": abc("DTG", 30), "⑳": abc("DTG", 70), "㉑": abc("DTG", 110), "㉒": abc("DTG", 150), "㉖": abc("DTI", 20), "㉗": abc("DTI", 60), "㉘": abc("DTJ", 10),
 };
 const FUHYO43: Table = {
@@ -125,9 +125,22 @@ const FUHYO6: Table = {
 const fuhyo23Values = (r: TaxReturn) => {
   const v = fill(fuhyoHead("DTA"), rowsOf(r, "2-3"), FUHYO23);
   v.DTC00010 = v.DTB00070; // ⑤ ＝ ④
+  // ⑬⑭ 特定課税仕入れ（7.8% と合計だけの欄）
+  const r13 = rowOf(r, "2-3", "⑬");
+  const r14 = rowOf(r, "2-3", "⑭");
+  if (r13) Object.assign(v, { DTE00100: r13.b ?? 0, DTE00110: r13.c ?? 0 });
+  if (r14) Object.assign(v, { DTE00130: r14.b ?? 0, DTE00140: r14.c ?? 0 });
   const r4 = rowOf(r, "2-3", "④")?.c ?? 0;
   const r7 = rowOf(r, "2-3", "⑦")?.c ?? 0;
   if (r7 > 0) v.DTD00000 = ratio(r4, r7, 2);
+  return v;
+};
+
+const fuhyo13Values = (r: TaxReturn) => {
+  const v = fill(fuhyoHead("DSA"), rowsOf(r, "1-3"), FUHYO13);
+  // ①-2 特定課税仕入れに係る支払対価等の額（7.8% と合計だけの欄）
+  const r12 = rowOf(r, "1-3", "①-2");
+  if (r12) Object.assign(v, { DSC00060: r12.b ?? 0, DSC00070: r12.c ?? 0 });
   return v;
 };
 
@@ -209,8 +222,8 @@ const firstValues = (r: TaxReturn, f: EtaxFiler) => {
 
 const secondValues = (r: TaxReturn, f: EtaxFiler) => {
   const general = r.firstKind === "一般用";
-  const t = general
-    ? { "①": "AAP00000", "⑤": "AAQ00040", "⑥": "AAQ00050", "⑦": "AAQ00060", "⑪": "AAS00000", "⑮": "AAT00040", "⑯": "AAT00050", "⑰": "AAU00000", "⑱": "AAV00010", "⑳": "AAW00010", "㉓": "AAW00040" }
+  const t: Table = general
+    ? { "①": "AAP00000", "⑤": "AAQ00040", "⑥": "AAQ00050", "⑦": "AAQ00060", "⑨": "AAR00020", "⑩": "AAR00030", "⑪": "AAS00000", "⑮": "AAT00040", "⑯": "AAT00050", "⑰": "AAU00000", "⑱": "AAV00010", "⑳": "AAW00010", "㉓": "AAW00040" }
     : { "①": "ABO00000", "⑤": "ABP00040", "⑥": "ABP00050", "⑦": "ABP00060", "⑪": "ABR00000", "⑮": "ABS00040", "⑯": "ABS00050", "⑰": "ABT00000", "⑱": "ABU00010", "⑳": "ABV00010", "㉓": "ABV00040" };
   return fill(headValues(general ? "AAN" : "ABM", f, false, false), rowsOf(r, "second"), t);
 };
@@ -322,7 +335,7 @@ export const buildTaxXtx = (r: TaxReturn, filer: EtaxFiler, o: XtxOptions): stri
   const first = { ...firstValues(r, filer), ...secondValues(r, filer) };
   const fuhyo: [string, EtaxValues][] =
     r.method === "twenty" ? [["SHB070", fill(fuhyoHead("AYA"), rowsOf(r, "6"), FUHYO6)]]
-      : r.method === "standard" ? [["SHB017", fill(fuhyoHead("DSA"), rowsOf(r, "1-3"), FUHYO13)], ["SHB033", fuhyo23Values(r)]]
+      : r.method === "standard" ? [["SHB017", fuhyo13Values(r)], ["SHB033", fuhyo23Values(r)]]
         : [["SHB047", fill(fuhyoHead("DUA"), rowsOf(r, "4-3"), FUHYO43)], ["SHB067", fuhyo53Values(r)]];
   // 還付申告に関する明細書（一般用で ⑧ 控除不足還付税額があるとき）
   const refund: [string, EtaxValues][] = refundShortfall(r) > 0 && o.refundDetail ? [["SHC025", refundDetailValues(r, o.refundDetail, Number(o.from.slice(0, 4)))]] : [];

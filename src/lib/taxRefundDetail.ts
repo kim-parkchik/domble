@@ -13,7 +13,7 @@
  */
 import type { Account, Counterparty, IncomeKind, TaxCode } from "./types";
 import type { FlatLine } from "./accounting";
-import { FIXED_ASSET_CODES } from "../constants/accounts";
+import { CODE, FIXED_ASSET_CODES } from "../constants/accounts";
 import { taxCodeDef } from "./tax";
 import { includedTax } from "./taxSummary";
 import { kindOf } from "./incomeKind";
@@ -115,8 +115,7 @@ export const withoutTax = (amount: number, code: TaxCode) => amount - includedTa
 const OPENING_INVENTORY = "501";
 const isPurchaseAccount = (a: Account) => a.category === "cogs" && a.normal_side === "debit" && a.code !== OPENING_INVENTORY;
 /** 固定資産等の科目（償却する資産の科目と土地。土地は非課税なので「課税仕入れにならないもの」に入る） */
-const LAND = "135";
-const isFixedAsset = (a: Account) => FIXED_ASSET_CODES.includes(a.code) || a.code === LAND;
+const isFixedAsset = (a: Account) => FIXED_ASSET_CODES.includes(a.code) || a.code === CODE.LAND;
 
 const inPeriod = (b: RefundBooks) => b.lines.filter((l) => !l.is_deleted && l.date >= b.from && l.date <= b.to);
 const signed = (l: FlatLine) => (l.side === "debit" ? l.amount : -l.amount);

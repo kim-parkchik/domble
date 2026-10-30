@@ -1800,3 +1800,27 @@ describe("製造原価を使う・使わない（repo）", () => {
     expect(actions).toEqual(["hide", "show", "hide", "show"]);
   });
 });
+
+describe("税抜経理（repo）", () => {
+  test("税抜経理にすると仮払・仮受消費税等を表示。手で直した消費税額は税抜経理の年だけ残り、記録の連鎖と履歴に入る。免税事業者の年は税込経理", async () => {
+    const { db } = makeDb("strict");
+    await repo.initChain(db);
+    const accts = await repo.getAccounts(db, 2026);
+    const acc = (code: string) => accts.find((a) => a.code === code)!;
+    expect([acc("118").is_active, acc("261").is_active]).toEqual([0, 0]);
+    await repo.saveTaxYear(db, { from_year: 2026, status: "standard", method: "exclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 });
+    const after = await repo.getAccounts(db, 2026);
+    expect(after.filter((a) => a.code === "118" || a.code === "261").map((a) => a.is_active)).toEqual([1, 1]);
+    const lines: JournalLine[] = [
+      { row_no: 1, side: "debit", account_id: acc("612").id, sub_account_id: null, amount: 1100, memo: "", tax_code: "purchase10", invoice_kind: "qualified", tax_amount: 99 },
+      { row_no: 1, side: "credit", account_id: acc("101").id, sub_account_id: null, amount: 1100, memo: "", tax_amount: 5 },
+    ];
+    const e = await repo.createEntry(db, "2026-05-01", lines);
+    expect((await repo.getEntry(db, e))!.lines.map((l) => l.tax_amount)).toEqual([99, null]);
+    expect((await repo.getHistory(db, e))[0].snapshot.lines[0].taxAmount).toBe(99);
+    expect((await repo.verifyIntegrity(db)).issues.filter((i) => i.level === "error")).toEqual([]);
+    await expect(repo.createEntry(db, "2026-05-02", [{ ...lines[0], tax_amount: 2000 }, { ...lines[1], tax_amount: null }])).rejects.toThrow(/消費税額が金額より大きく/);
+    await repo.saveTaxYear(db, { from_year: 2027, status: "exempt", method: "exclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 });
+    expect((await repo.getTaxYears(db)).find((t) => t.from_year === 2027)!.method).toBe("inclusive");
+  });
+});

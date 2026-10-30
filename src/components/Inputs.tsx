@@ -6,12 +6,13 @@ import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import type { Account, InvoiceKind, PurchaseUse, Side, TaxCode } from "../lib/types";
 import { parseAmount, parseDateInput, shortDate, toHalfWidth } from "../lib/format";
 import { useAppContext } from "../context/AppContext";
-import { BUSINESS_CLASSES, PURCHASE_USES, TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
+import { BUSINESS_CLASSES, INVOICE_KINDS, PURCHASE_USES, TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
 import {
-  defaultInvoiceKind, defaultTaxCode, effectiveBusinessClass, effectivePurchaseUse, isPurchaseCode, isSalesCode, taxLongLabel, taxShortLabel, taxYearOf, useLabel,
+  defaultInvoiceKind, defaultTaxCode, effectiveBusinessClass, effectivePurchaseUse, isPurchaseCode, isSalesCode, splitsTax, takesPurchaseUse, taxLongLabel, taxShortLabel, taxYearOf, useLabel,
 } from "../lib/tax";
 import { findCounterparty, normName, validateCounterparty } from "../lib/counterparty";
 import * as repo from "../db/repo";
+import { autoTaxAmount, isExclusiveOn } from "../lib/taxExclusive";
 
 type NavProps = {
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
@@ -294,7 +295,7 @@ export const MemoInput = ({ value, onChange, placeholder = "摘要", ...rest }: 
 
 /** 選択肢の値：課税仕入は「税区分|インボイス区分」（本則課税の年は「…@用途区分」）、簡易課税の年の課税売上は「税区分#事業区分」 */
 const optionValue = (code: TaxCode, invoice: InvoiceKind | null, cls: number | null = null, use: PurchaseUse | null = null) =>
-  isPurchaseCode(code) ? `${code}|${invoice ?? "qualified"}${use ? `@${use}` : ""}` : cls ? `${code}#${cls}` : code;
+  isPurchaseCode(code) ? `${code}|${invoice ?? "qualified"}${use ? `@${use}` : ""}` : takesPurchaseUse(code) && use ? `${code}@${use}` : cls ? `${code}#${cls}` : code;
 
 export const TaxSelect = ({ label, value, invoice, businessClass, purchaseUse, onChange, accountId, side, date, counterpartyId }: {
   label: string;
@@ -330,14 +331,17 @@ export const TaxSelect = ({ label, value, invoice, businessClass, purchaseUse, o
   // 簡易課税の年の課税売上は、事業区分も選ぶ（入っていなければ科目の初期値・主な事業区分）
   const cls = simplified && isSalesCode(code) ? effectiveBusinessClass({ business_class: businessClass }, account, ty.business_class) : null;
   // 本則課税の年の課税仕入は、用途区分も選ぶ（入っていなければ科目の初期値・共通対応）
-  const use = standard && isPurchaseCode(code) ? effectivePurchaseUse({ purchase_use: purchaseUse }, account) : null;
+  const use = standard && takesPurchaseUse(code) ? effectivePurchaseUse({ purchase_use: purchaseUse }, account) : null;
   const isDefault = value == null && (!cls || businessClass == null) && (!use || purchaseUse == null);
   const opt = (c: TaxCode, i: InvoiceKind | null = null, k: number | null = null, u: PurchaseUse | null = null) => (
     <option key={optionValue(c, i, k, u)} value={optionValue(c, i, k, u)} title={taxLongLabel(c, i, date, k, u)}>{taxShortLabel(c, i, date, k, u, true)}</option>
   );
   const group = (g: "sales" | "purchase") => TAX_CODES.filter((t) => t.group === g);
-  const invoices = ["qualified", "transitional", "none"] as const;
-  const purchases = (u: PurchaseUse | null) => group("purchase").filter((t) => isPurchaseCode(t.code)).flatMap((t) => invoices.map((i) => opt(t.code, i, null, u)));
+  // 帳簿のみ保存の特例は、本則課税の年だけ選べる（ほかの年は、入っているものだけ出す）
+  const BOOK_ONLY = INVOICE_KINDS.filter((k) => k.value.startsWith("book_")).map((k) => k.value);
+  const invoices: InvoiceKind[] = ["qualified", "transitional", "none", ...(standard ? BOOK_ONLY : inv && BOOK_ONLY.includes(inv) ? [inv] : [])];
+  const purchases = (u: PurchaseUse | null) => group("purchase").filter((t) => takesPurchaseUse(t.code))
+    .flatMap((t) => (isPurchaseCode(t.code) ? invoices.map((i) => opt(t.code, i, null, u)) : [opt(t.code, null, null, u)]));
   return (
     <select
       className={`input tax-select${isDefault ? " is-default" : ""}`}
@@ -358,7 +362,7 @@ export const TaxSelect = ({ label, value, invoice, businessClass, purchaseUse, o
       {standard
         ? <>
           {PURCHASE_USES.map((u) => <optgroup key={u.value} label={`仕入（${useLabel(u.value)}）`}>{purchases(u.value)}</optgroup>)}
-          <optgroup label="仕入（その他）">{group("purchase").filter((t) => !isPurchaseCode(t.code)).map((t) => opt(t.code))}</optgroup>
+          <optgroup label="仕入（その他）">{group("purchase").filter((t) => !takesPurchaseUse(t.code)).map((t) => opt(t.code))}</optgroup>
         </>
         : <optgroup label="仕入">{group("purchase").flatMap((t) => (isPurchaseCode(t.code) ? invoices.map((i) => opt(t.code, i)) : [opt(t.code)]))}</optgroup>}
     </select>
@@ -492,5 +496,42 @@ export const CounterpartyField = ({ value, onChange, onUnknown, ...rest }: Count
         <button type="button" className="btn ghost sm" onClick={add} disabled={adding} tabIndex={-1}>＋ 取引先に追加</button>
       )}
     </span>
+  );
+};
+
+// ────────────────────────────────────────────
+// 消費税額（税抜経理の年だけ。空 = 自動：税込の金額から割戻し。直したいときだけ入れる。lib/taxExclusive.ts）
+// ────────────────────────────────────────────
+export const TaxAmountField = ({ label, amount, code, invoice, accountId, side, date, counterpartyId, value, onChange }: {
+  label: string;
+  amount: number | null;
+  code: TaxCode | null | undefined;
+  invoice: InvoiceKind | null | undefined;
+  accountId: number | null;
+  side: Side;
+  date: string;
+  counterpartyId?: number | null;
+  value: number | null | undefined;
+  onChange: (v: number | null) => void;
+}) => {
+  const { accountMap, counterparties, taxYears } = useAppContext();
+  const account = accountId ? accountMap.get(accountId) : undefined;
+  if (!account || !amount || !isExclusiveOn(taxYears, date)) return null;
+  const c = code ?? defaultTaxCode(account, side);
+  if (!splitsTax(c)) return null;
+  const cp = counterpartyId ? counterparties.find((x) => x.id === counterpartyId) : null;
+  const auto = autoTaxAmount({ amount, tax_code: c, invoice_kind: isPurchaseCode(c) ? invoice ?? defaultInvoiceKind(cp) : null, date });
+  return (
+    <label className="tax-amount-field" title="税抜経理の消費税額。空なら自動（税込の金額から割戻し・1円未満切り捨て）。請求書の税額と違うときだけ入れます">
+      <span>税</span>
+      <input
+        className={`input amount-input tax-amount-input${value == null ? " is-default" : ""}`} inputMode="numeric" tabIndex={-1} aria-label={label}
+        placeholder={auto.toLocaleString("ja-JP")} value={value == null ? "" : String(value)}
+        onChange={(e) => {
+          const t = e.target.value.trim();
+          onChange(t === "" ? null : parseAmount(t));
+        }}
+      />
+    </label>
   );
 };

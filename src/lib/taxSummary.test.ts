@@ -2,13 +2,18 @@ import { describe, expect, test } from "bun:test";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account, Counterparty, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
-import { buildTaxSummary, codeMismatch, includedTax, taxChecks, taxKindOf } from "./taxSummary";
+import { buildTaxSummary, codeMismatch, includedTax, regimeIssues, taxChecks, taxKindOf } from "./taxSummary";
 import { privateTaxSplit } from "./homeUse";
+import { taxLongLabel, taxShortLabel } from "./tax";
 import { interimPlan } from "./taxInterim";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1, default_tax_code: null }));
 const id = (name: string) => accounts.find((a) => a.name === name)!.id;
 const acc = (name: string) => accounts.find((a) => a.name === name)!;
+/** 相手方の分からない課税仕入（本則課税の念のため）は、それを見るテストのほかでは除く */
+const noParty = <T extends { title: string }>(xs: T[]) => xs.filter((i) => i.title !== "相手方の分からない課税仕入");
+/** 登録済み（2割特例・3割特例の前提） */
+const REG = { invoiceNo: "T1234567890123", registeredOn: "2025-10-01" };
 const twenty: TaxYear[] = [{ from_year: 2026, status: "twenty", method: "inclusive", business_class: 5, taxable_from: "2026-04-01" }];
 
 let seq = 0;
@@ -74,7 +79,7 @@ describe("確認の一覧", () => {
   ];
   const run = (lines: FlatLine[], taxYears = twenty, extra: { invoiceNo?: string; registeredOn?: string } = {}) =>
     taxChecks({
-      year: 2026, lines, accounts, counterparties: cps, taxYears, invoiceNo: extra.invoiceNo ?? "", registeredOn: extra.registeredOn ?? "",
+      year: 2026, lines, accounts, counterparties: cps, taxYears, invoiceNo: extra.invoiceNo ?? REG.invoiceNo, registeredOn: extra.registeredOn ?? REG.registeredOn,
       summary: buildTaxSummary(lines, accounts, taxYears),
     });
 
@@ -153,7 +158,7 @@ describe("年末一括の家事分の税区分", () => {
 describe("確認の一覧：基準期間の課税売上高", () => {
   const info = (base: number | null, source: "books" | "manual" | "none" = "books") => ({ year: 2026, base, source, fromBooks: null, specific: null });
   const check = (taxYears: TaxYear[], baseSales: ReturnType<typeof info>) =>
-    taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, taxYears), baseSales });
+    taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears, ...(taxYears.length ? REG : { invoiceNo: "", registeredOn: "" }), summary: buildTaxSummary([], accounts, taxYears), baseSales });
 
   test("免税事業者なのに基準期間が 1,000万円超、2割特例なのに 1,000万円超、簡易課税なのに 5,000万円超", () => {
     expect(check([], info(12_000_000)).map((i) => i.title)).toEqual(["2026年は課税事業者です"]);
@@ -180,10 +185,10 @@ describe("確認の一覧：事業区分の分からない売上", () => {
     ];
     const summary = buildTaxSummary(lines, accounts, simplified);
     expect(summary.rows.map((r) => [r.businessClass, r.amount])).toEqual([[0, 1100], [2, 2200]]);
-    const issues = taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears: simplified, invoiceNo: "", registeredOn: "", summary });
+    const issues = taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears: simplified, ...REG, summary });
     expect(issues.map((i) => [i.level, i.title, i.entryIds])).toEqual([["error", "事業区分の分からない売上", [lines[0].entry_id]]]);
     // 本則課税の年は知らせない
-    expect(taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears: twenty, invoiceNo: "", registeredOn: "", summary: buildTaxSummary(lines, accounts, twenty) })).toEqual([]);
+    expect(taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears: twenty, ...REG, summary: buildTaxSummary(lines, accounts, twenty) })).toEqual([]);
   });
 });
 
@@ -199,14 +204,14 @@ describe("本則課税の用途区分（集計表・確認）", () => {
     const ls = lines();
     const summary = buildTaxSummary(ls, accounts, standard());
     expect(summary.rows.filter((r) => r.kind === "purchase").map((r) => [r.purchaseUse, r.amount])).toEqual([["taxable", 1100], ["unknown", 2200]]);
-    const issues = taxChecks({ year: 2026, lines: ls, accounts, counterparties: [], taxYears: standard(), invoiceNo: "", registeredOn: "", summary });
+    const issues = noParty(taxChecks({ year: 2026, lines: ls, accounts, counterparties: [], taxYears: standard(), ...REG, summary }));
     expect(issues.map((i) => [i.title, i.entryIds])).toEqual([
       [expect.stringMatching(/95% 未満/), []],
       ["用途区分の入っていない課税仕入", [ls[3].entry_id]],
     ]);
     expect(issues[0].detail).toMatch(/今は個別対応方式/);
     // 一括比例配分方式なら用途区分は使わない
-    const lump = taxChecks({ year: 2026, lines: ls, accounts, counterparties: [], taxYears: standard("lump"), invoiceNo: "", registeredOn: "", summary });
+    const lump = noParty(taxChecks({ year: 2026, lines: ls, accounts, counterparties: [], taxYears: standard("lump"), ...REG, summary }));
     expect(lump.map((i) => i.title)).toEqual([expect.stringMatching(/95% 未満/)]);
   });
 
@@ -218,7 +223,7 @@ describe("本則課税の用途区分（集計表・確認）", () => {
 
   test("前の年に一括比例配分方式にしたのに、この年が個別対応方式なら知らせる", () => {
     const years: TaxYear[] = [{ ...standard("lump")[0], from_year: 2025 }, ...standard("individual")];
-    const issues = taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears: years, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, years) });
+    const issues = taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears: years, ...REG, summary: buildTaxSummary([], accounts, years) });
     expect(issues.map((i) => [i.level, i.title])).toEqual([["error", "控除の方式を確かめてください"]]);
   });
 
@@ -238,7 +243,7 @@ describe("本則課税の用途区分（集計表・確認）", () => {
 describe("中間申告（確認）", () => {
   const standard: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }];
   const check = (prevTax: number | null, entered: { national: number; local: number }, voluntary = false) => taxChecks({
-    year: 2026, lines: [], accounts, counterparties: [], taxYears: standard, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, standard),
+    year: 2026, lines: [], accounts, counterparties: [], taxYears: standard, ...REG, summary: buildTaxSummary([], accounts, standard),
     interim: { plan: interimPlan({ year: 2026, prevTax, exempt: false, voluntary }), entered },
   });
 
@@ -263,7 +268,7 @@ describe("棚卸資産の調整（確認）", () => {
   const ty = (from_year: number, status: TaxYear["status"], taxable_from = ""): TaxYear =>
     ({ from_year, status, method: "inclusive", business_class: 5, taxable_from, deduction: "individual", voluntary_interim: 0 });
   const check = (taxYears: TaxYear[], inventory: { adjust: { direction: "add" | "sub"; rows: { rate: 8 | 10; pct: number; amount: number }[] } | null; opening: number; closing: number }) =>
-    taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears, invoiceNo: "", registeredOn: "", summary: buildTaxSummary([], accounts, taxYears), inventory });
+    taxChecks({ year: 2026, lines: [], accounts, counterparties: [], taxYears, ...REG, summary: buildTaxSummary([], accounts, taxYears), inventory });
   const add = { direction: "add" as const, rows: [{ rate: 10 as const, pct: 100, amount: 1_000_000 }] };
 
   test("前年が免税で本則課税になった年、期首の棚卸高があるのに加算が無ければ知らせる", () => {
@@ -281,7 +286,7 @@ describe("棚卸資産の調整（確認）", () => {
       level: "warn", title: "免税事業者になる前の年の棚卸資産の調整が入っていません",
     });
     expect(check([ty(2026, "standard")], { adjust: null, opening: 0, closing: 500_000 })).toEqual([]);
-    expect(check([ty(2025, "exempt"), ty(2026, "simplified")], { adjust: add, opening: 1_000_000, closing: 0 })).toEqual([
+    expect(check([ty(2025, "exempt"), ty(2026, "simplified")], { adjust: add, opening: 1_000_000, closing: 0 }).filter((i) => i.title.includes("棚卸"))).toEqual([
       expect.objectContaining({ level: "info", title: "棚卸資産の調整が入っていますが、本則課税ではありません" }),
     ]);
   });
@@ -294,7 +299,7 @@ describe("確認の一覧：固定資産と、課税・非課税を取り違え�
     useful_life: 6, business_rate: 70, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
   };
   const check = (lines: FlatLine[], assets: typeof car[], taxYears = standard) =>
-    taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears, invoiceNo: "", registeredOn: "", summary: buildTaxSummary(lines, accounts, taxYears), assets });
+    noParty(taxChecks({ year: 2026, lines, accounts, counterparties: [], taxYears, ...REG, summary: buildTaxSummary(lines, accounts, taxYears), assets }));
   const titles = (xs: ReturnType<typeof check>) => xs.map((i) => i.title);
 
   test("家事と兼用する資産の取得が全額課税仕入なら知らせる（事業用の部分だけなら知らせない）", () => {
@@ -325,5 +330,64 @@ describe("確認の一覧：固定資産と、課税・非課税を取り違え�
     ]);
     // 2割特例では仕入の区分は計算に使わないので、雑収入だけ
     expect(titles(check(ls.map((l) => ({ ...l, date: l.date.replace("-03-", "-05-") })), [], twenty))).toEqual(["念のため：雑収入が課税売上になっています"]);
+  });
+});
+
+describe("方式を選ぶ前提（登録・簡易課税の届出と2年継続・高額特定資産）", () => {
+  const ty = (from_year: number, status: TaxYear["status"], taxable_from = ""): TaxYear =>
+    ({ from_year, status, method: "inclusive", business_class: 5, taxable_from, deduction: "individual", voluntary_interim: 0 });
+  const titles = (xs: { title: string }[]) => xs.map((i) => i.title);
+  const none = { invoiceNo: "", registeredOn: "" };
+
+  test("2割特例・3割特例は登録（その年の12月31日まで）が前提", () => {
+    expect(titles(regimeIssues(2026, [ty(2026, "twenty")], none, [], []))).toEqual(["2割特例は登録した事業者だけが使えます"]);
+    expect(titles(regimeIssues(2027, [ty(2027, "thirty")], { invoiceNo: "T1234567890123", registeredOn: "2028-01-01" }, [], []))).toEqual(["3割特例は登録した事業者だけが使えます"]);
+    expect(regimeIssues(2026, [ty(2026, "twenty")], REG, [], [])).toEqual([]);
+  });
+  test("前の年が免税で、年の途中に登録したのに課税事業者になった日が空なら念のため", () => {
+    const reg = { invoiceNo: "T1234567890123", registeredOn: "2026-06-01" };
+    expect(titles(regimeIssues(2026, [ty(2025, "exempt"), ty(2026, "twenty")], reg, [], []))).toEqual(["年の途中に登録した年の「課税事業者になった日」"]);
+    expect(regimeIssues(2026, [ty(2025, "exempt"), ty(2026, "twenty", "2026-06-01")], reg, [], [])).toEqual([]);
+  });
+  test("簡易課税：始める年・戻す年は届出の念押し、1年で本則課税に戻すのは止める。前の年が帳簿に無ければ確かめない", () => {
+    expect(titles(regimeIssues(2026, [ty(2025, "standard"), ty(2026, "simplified")], REG, [], []))).toEqual(["2026年から簡易課税にするには届出が要ります"]);
+    expect(regimeIssues(2026, [ty(2026, "simplified")], REG, [], [])).toEqual([]);
+    expect(titles(regimeIssues(2027, [ty(2025, "standard"), ty(2026, "simplified"), ty(2027, "standard")], REG, [], [])))
+      .toEqual(["簡易課税は2年続けて使う決まりです", "2027年から本則課税に戻すには届出が要ります"]);
+    expect(titles(regimeIssues(2028, [ty(2025, "standard"), ty(2026, "simplified"), ty(2028, "standard")], REG, [], []))).toEqual(["2028年から本則課税に戻すには届出が要ります"]);
+  });
+  test("本則課税の年に税抜1,000万円以上の資産を取得したら、その年から3年間は本則課税", () => {
+    const building = {
+      id: 1, name: "工場", account_id: id("建物"), acquired_on: "2025-06-01", used_on: "2025-06-01", cost: 11_000_000, method: "straight" as const,
+      useful_life: 22, business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
+    };
+    const years = [ty(2025, "standard"), ty(2026, "simplified")];
+    expect(titles(regimeIssues(2026, years, REG, [building], []))).toContain("2026年は本則課税です（高額特定資産を取得したため）");
+    expect(titles(regimeIssues(2027, [ty(2025, "standard"), ty(2027, "exempt")], none, [building], []))).toEqual(["2027年は本則課税です（高額特定資産を取得したため）"]);
+    expect(regimeIssues(2028, [ty(2025, "standard"), ty(2028, "exempt")], none, [building], [])).toEqual([]);
+    // 税込 1,099万円（税抜 999万円）は高額特定資産ではない
+    expect(regimeIssues(2027, [ty(2025, "standard"), ty(2027, "exempt")], none, [{ ...building, cost: 10_990_000 }], [])).toEqual([]);
+  });
+});
+
+describe("帳簿の記載事項（本則課税）", () => {
+  const standard: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }];
+  const run = (ls: FlatLine[]) => taxChecks({ year: 2026, lines: ls, accounts, counterparties: [], taxYears: standard, ...REG, summary: buildTaxSummary(ls, accounts, standard) });
+  test("取引先も補助科目も無い課税仕入を念のため知らせる（控除しないものは除く）。2割特例の年は見ない", () => {
+    const anon = line("2026-05-01", "debit", "消耗品費", 1100, "purchase10", "qualified");
+    const withCp = line("2026-05-02", "debit", "消耗品費", 1100, "purchase10", "qualified", { counterparty_id: 9 });
+    const train = line("2026-05-03", "debit", "旅費交通費", 500, "purchase10", "book_transport");
+    const nodeduct = line("2026-05-04", "debit", "消耗品費", 1100, "purchase10", "none");
+    const issue = run([anon, withCp, train, nodeduct]).find((i) => i.title === "相手方の分からない課税仕入")!;
+    expect(issue.entryIds).toEqual([anon.entry_id, train.entry_id]);
+    expect(taxChecks({ year: 2026, lines: [anon], accounts, counterparties: [], taxYears: twenty, ...REG, summary: buildTaxSummary([anon], accounts, twenty) })
+      .some((i) => i.title === "相手方の分からない課税仕入")).toBe(false);
+  });
+  test("帳簿のみ保存の特例は、控除は適格と同じで、帳簿の表示に特例の旨が出る", () => {
+    const train = line("2026-05-03", "debit", "旅費交通費", 1100, "purchase10", "book_transport");
+    const summary = buildTaxSummary([train], accounts, standard);
+    expect(summary.rows[0]).toMatchObject({ invoice: "book_transport", transitional: null });
+    expect(taxLongLabel("purchase10", "book_transport", "2026-05-03")).toBe("課税仕入 10%（帳簿のみ保存の特例（3万円未満の公共交通機関の運賃））");
+    expect(taxShortLabel("purchase10", "book_transport", "2026-05-03")).toBe("課仕10% 帳簿のみ交通");
   });
 });

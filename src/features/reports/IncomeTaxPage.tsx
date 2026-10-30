@@ -34,6 +34,7 @@ import {
   type Relative,
 } from "../../lib/incomeTax";
 import * as repo from "../../db/repo";
+import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
 
 type View = "input" | "first" | "second" | "fourth";
 
@@ -45,7 +46,7 @@ const SOCIAL_WORDS = /国民健康保険|国保|国民年金|介護保険|後期
 const SMALL_WORDS = /小規模企業共済|iDeCo|イデコ|確定拠出年金|心身障害者扶養共済/i;
 
 export const IncomeTaxPage = () => {
-  const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump, filingTypeOf } = useAppContext();
+  const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump, filingTypeOf, taxYears } = useAppContext();
   const filingType = filingTypeOf(year);
   const white = filingType === "white";
   const { lines, opening } = useYearData();
@@ -92,13 +93,14 @@ export const IncomeTaxPage = () => {
       const n = await repo.getStatementNotes(db, y);
       const li = Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0;
       const scale = await repo.getRealEstateScale(db, y); // 不動産所得の規模はその年のもの
-      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, l), filingTypeOf(y), input, y, { scale, landInterest: li }).biz };
+      const books = bookLines(l, taxYears, exclusiveAccountsOf(accounts)); // 税抜経理の年は税抜で
+      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, books), filingTypeOf(y), input, y, { scale, landInterest: li }).biz };
     };
     carriedFromPast(year, load).then((v) => alive && setPastCarry(v)).catch(console.error);
     return () => {
       alive = false;
     };
-  }, [db, year, dataVersion, accounts, filingTypeOf]);
+  }, [db, year, dataVersion, accounts, filingTypeOf, taxYears]);
   const carried = useMemo(() => carriedLosses(x, year, pastCarry), [x, year, pastCarry]);
   const result = useMemo(() => computeIncomeTax(x, biz, year, carried), [x, biz, year, carried]);
   const fourth = result.loss.fourth;
