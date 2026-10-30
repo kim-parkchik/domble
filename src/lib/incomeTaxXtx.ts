@@ -98,6 +98,7 @@ export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" |
 export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer" | "input" | "result" | "biz">): string[] => {
   const p: string[] = [];
   if (src.year < INCOME_XTX_FIRST_YEAR) p.push(`e-Tax のデータは令和${INCOME_XTX_FIRST_YEAR - 2018}年（${INCOME_XTX_FIRST_YEAR}年）分から書き出せます`);
+  if (src.biz.realEstate) p.push("不動産所得があるときの e-Tax 用のデータ（青色申告決算書・収支内訳書（不動産所得用））は、まだ書き出せません");
   const missing = filerProblems(src.filer);
   if (missing.length) p.push(`事業者設定の e-Tax の欄：${missing.join("、")}`);
   const noPayer = src.result.second.withholding.filter((r) => r.withheld > 0 && (!r.payer.trim() || !r.payerId.trim()));
@@ -173,9 +174,11 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     ABA00240: src.white ? undefined : { kubun: 1 }, // 青色申告
     // 収入金額等
     ABB00025: src.bookKeeping, ABB00030: amount(row("㋐")),
+    // 不動産：区分2（事業と同じ記帳の区分）・収入金額 ㋒（区分1 は国外中古建物の特例で、扱わない）
+    ABB00046: src.biz.realEstate ? src.bookKeeping : undefined, ABB00050: src.biz.realEstate ? row("㋒") : undefined,
     ABB00080: amount(row("㋔")), ABB00100: amount(row("㋕")), ABB00105: amount(row("㋖")), ABB00110: amount(row("㋗")),
     // 所得金額等
-    ABB00300: row("①"), ABB00370: amount(row("⑥")), ABB01060: amount(row("⑦")), ABB01090: amount(row("⑧")), ABB01120: amount(row("⑨")),
+    ABB00300: row("①"), ABB00340: src.biz.realEstate ? row("③") : undefined, ABB00370: amount(row("⑥")), ABB01060: amount(row("⑦")), ABB01090: amount(row("⑧")), ABB01120: amount(row("⑨")),
     ABB01130: amount(row("⑩")), ABB00410: fourth ? undefined : row("⑫"),
     // 所得から差し引かれる金額（医療費控除の区分 1 = セルフメディケーション税制、配偶者（特別）控除の区分1 = 配偶者特別控除、ひとり親控除の区分 = 1）
     ABB00435: medical && x.medical.kind === "self" ? 1 : undefined, ABB00440: amount(medical),
@@ -271,6 +274,8 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     ABI00200: x.businessTax.change ? { kubun: x.businessTax.change === "open" ? 1 : 2 } : undefined,
     ABI00210: x.businessTax.change && isDate(x.businessTax.changeDate) ? { mmdd: x.businessTax.changeDate.slice(5) } : undefined,
     ABI00220: yes(x.businessTax.otherPrefecture),
+    // 不動産所得から差し引いた青色申告特別控除額（事業税）
+    ABI00170: amount(r.blueRealEstate),
     // 税理士署名欄（依頼している税理士等）
     ABS10050: ref(refs, "DAIRI_NM"), ABS10060: ref(refs, "DAIRI_TEL"),
   });
@@ -460,9 +465,11 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
   if (al.total || al.base) {
     Object.assign(v, { AMF01010: amount(al.individual), AMF01030: amount(al.base), AMF01040: amount(al.limit), AMF01050: amount(al.bulk), AMF01060: al.total });
   }
-  v.AMF01520 = pl.income;
-  if (src.biz.filingType === "blue10") Object.assign(v, { AMF01570: Math.min(100_000, Math.max(0, pl.income)), AMF01580: st.deduction });
-  else Object.assign(v, { AMF01540: st.deduction, AMF01550: st.deduction });
+  // 青色申告特別控除額の計算：⑥ 不動産所得、⑦ 控除前の所得、⑧ 不動産所得から差し引く額、⑨ 控除額
+  v.AMF01510 = st.realEstateIncome ? st.realEstateIncome : undefined;
+  v.AMF01520 = Math.max(0, pl.income);
+  if (src.biz.filingType === "blue10") Object.assign(v, { AMF01570: st.realEstateDeduction, AMF01580: st.deduction });
+  else Object.assign(v, { AMF01540: st.realEstateDeduction, AMF01550: st.deduction });
 
   // 3ページ：売上（収入）金額・仕入金額の明細（4件まで。残りは上記以外）
   Object.assign(v, partnerValues(st.sales, ["AMF02230", "AMF02240", "AMF02250", "AMF02270", "AMF02290", "AMF02300", "AMF02310"]));
@@ -521,9 +528,9 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
   bs("liability", LIABILITY_TAGS, "AMG00465", "AMG00470", "AMG00570", "AMG00700");
   v.AMG00230 = sumOf(sec.asset, (r) => r.opening);
   v.AMG00440 = sumOf(sec.asset, (r) => r.amount);
-  v.AMG00750 = pl.income;
+  v.AMG00750 = st.totalIncome;
   v.AMG00610 = sumOf(sec.liability, (r) => r.opening);
-  v.AMG00760 = sumOf(sec.liability, (r) => r.amount) + pl.income;
+  v.AMG00760 = sumOf(sec.liability, (r) => r.amount) + st.totalIncome;
   return clean(v);
 };
 

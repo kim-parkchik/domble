@@ -13,6 +13,11 @@ export type AccountCategory =
 
 export type Side = "debit" | "credit";
 
+/** 所得の区分（損益の科目ごと。貸借対照表の科目は共通）：business 事業所得（営業等） ／ realestate 不動産所得 */
+export type IncomeKind = "business" | "realestate";
+/** 不動産所得：none なし ／ small あり（事業的規模でない） ／ business あり（事業的規模。5棟10室など） */
+export type RealEstateScale = "none" | "small" | "business";
+
 export interface Account {
   id: number;
   code: string;
@@ -32,6 +37,8 @@ export interface Account {
   default_purchase_use: PurchaseUse | null;
   /** 青色申告決算書で書く欄（欄の名前か "extra" = 追加の欄。null = 自動。lib/statementLines.ts） */
   statement_line: string | null;
+  /** 所得の区分（損益の科目だけ意味がある。無い・business = 事業所得） */
+  income_kind?: IncomeKind;
 }
 
 /** 補助科目（例：普通預金 → ○○銀行、売掛金 → 取引先） */
@@ -232,6 +239,8 @@ export interface Settings {
   strict_from_year: number | null;
   /** 切り替えた日時 */
   strict_switched_at: string | null;
+  /** 不動産所得（none なし ／ small 事業的規模でない ／ business 事業的規模） */
+  real_estate?: RealEstateScale;
 }
 
 /** 期首残高: account_id → 金額（科目の正常残高側をプラスとする。補助科目の分も合算） */

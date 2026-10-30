@@ -50,7 +50,7 @@ const statement = (o: Partial<BlueStatement> = {}): BlueStatement => ({
     },
     warnings: [],
   },
-  deduction: 650_000,
+  deduction: 650_000, realEstateIncome: 0, realEstateDeduction: 0, totalIncome: 4_000_000,
   monthly: { sales: Array(12).fill(0).map((_, i) => (i === 11 ? 5_000_000 - 11 * 400_000 : 400_000)), purchases: Array(12).fill(0), householdUse: 0, miscIncome: 0 },
   salaries: [], family: [], interest: [], fees: [], rent: [], depreciation: [], special: "",
   sales: { rows: [{ key: "cp:1", name: "株式会社エー", address: "", invoiceNo: "1234567890123", amount: 3_000_000 }], other: 2_000_000, total: 5_000_000 },

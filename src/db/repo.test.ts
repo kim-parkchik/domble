@@ -27,10 +27,7 @@ const makeDb = (mode: "strict" | "standard") => {
   }
   for (const s of SCHEMA.filter(isTrigger)) raw.run(s);
   raw.run("INSERT INTO settings (id, fiscal_year, e_book_mode, business_name) VALUES (1, 2026, ?, 'テスト')", [mode]);
-  ACCOUNT_SEEDS.forEach((a, i) =>
-    raw.run("INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system) VALUES (?, ?, ?, ?, ?, ?, 1)",
-      [a.code, a.name, a.kana, a.category, a.normal_side, i]),
-  );
+  ACCOUNT_SEEDS.forEach((a, i) => raw.run(SEED_ACCOUNT_SQL, [a.code, a.name, a.kana, a.category, a.normal_side, i, a.income_kind ?? "business", a.hidden ? 0 : 1]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = (params?: unknown[]) => (params ?? []) as any[];
   const db = {
@@ -289,7 +286,7 @@ describe("貸倒引当金（repo）", () => {
     // 古い帳簿で、利用者が「貸倒引当金」を 208 で足していた → 250 には足さない。コードが使われていれば足さない
     raw.run("DELETE FROM accounts WHERE code IN ('250', '751')");
     raw.run("INSERT INTO accounts (code, name, kana, category, normal_side) VALUES ('208', '貸倒引当金', '', 'liability', 'credit'), ('751', '未払費用', '', 'special', 'debit')");
-    for (const [code, name] of [["250", "貸倒引当金"], ["751", "貸倒引当金戻入"], ["752", "新しい科目"]]) raw.run(SEED_ACCOUNT_SQL, [code, name, "", "special", "credit", 0]);
+    for (const [code, name] of [["250", "貸倒引当金"], ["751", "貸倒引当金戻入"], ["752", "新しい科目"]]) raw.run(SEED_ACCOUNT_SQL, [code, name, "", "special", "credit", 0, "business", 1]);
     const after = await repo.getAccounts(db, 2026);
     expect(after.filter((a) => a.name === "貸倒引当金").map((a) => a.code)).toEqual(["208"]);
     expect(after.some((a) => a.name === "貸倒引当金戻入")).toBe(false);
@@ -317,6 +314,32 @@ describe("貸倒引当金（repo）", () => {
     expect(await repo.getAllowanceRun(db, 2026)).toBeNull();
     await repo.closeYear(db, 2025);
     await expect(repo.saveAllowanceRun(db, 2025, allowanceLines(accts, calc({}, 0))!)).rejects.toThrow(/締め/);
+  });
+});
+
+describe("不動産所得（repo）", () => {
+  test("不動産所得の初期科目は非表示。事業者設定で「あり」にすると表示し、変更は履歴に残る", async () => {
+    const { db } = strict;
+    const hidden = (await repo.getAccounts(db, 2026)).filter((a) => a.income_kind === "realestate");
+    expect(hidden.length).toBeGreaterThan(5);
+    expect(hidden.every((a) => a.is_active === 0)).toBe(true);
+    await repo.saveRealEstate(db, "business");
+    expect((await repo.getSettings(db)).real_estate).toBe("business");
+    expect((await repo.getAccounts(db, 2026)).filter((a) => a.income_kind === "realestate").every((a) => a.is_active === 1)).toBe(true);
+    expect((await repo.getMasterHistory(db)).find((x) => x.label === "不動産所得")).toMatchObject({ old_value: "なし", new_value: "あり（事業的規模）" });
+    await expect(repo.saveRealEstate(db, "big" as never)).rejects.toThrow(/区分/);
+  });
+  test("足す科目は損益の科目だけ不動産所得にできる。固定資産は所得の区分を持つ", async () => {
+    const { db } = strict;
+    await repo.createAccount(db, { code: "463", name: "駐車場収入", kana: "", category: "revenue", income_kind: "realestate" });
+    await repo.createAccount(db, { code: "208", name: "預り保証金", kana: "", category: "liability", income_kind: "realestate" });
+    const accts = await repo.getAccounts(db, 2026);
+    expect(["463", "208"].map((c) => accts.find((a) => a.code === c)!.income_kind)).toEqual(["realestate", "business"]);
+    const id = await repo.saveAsset(db, null, {
+      name: "アパート", account_id: accts.find((a) => a.name === "建物")!.id, acquired_on: "2026-01-10", used_on: "2026-01-10", cost: 22_000_000, method: "straight",
+      useful_life: 22, business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: null, memo: "", income_kind: "realestate",
+    });
+    expect((await repo.getAssets(db)).find((a) => a.id === id)?.income_kind).toBe("realestate");
   });
 });
 

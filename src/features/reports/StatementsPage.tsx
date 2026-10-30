@@ -16,6 +16,7 @@ import { statementLayout } from "../../lib/statementLines";
 import { StatementPage2, StatementPage3 } from "./StatementPages";
 import { WhiteStatements } from "./WhiteStatementPages";
 import { isYearCompliant } from "../../lib/ebook";
+import { accountsOfKind } from "../../lib/incomeKind";
 
 
 type Tab = "pl" | "p2" | "p3" | "bs";
@@ -43,19 +44,23 @@ const BlueStatements = () => {
   const [tab, setTab] = useState<Tab>("pl");
 
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
-  const pl = summarizeIncome(accounts, end);
+  // 一般用の決算書は事業所得の科目だけ（不動産所得は不動産所得用の決算書）。貸借対照表は帳簿全体
+  const bizAccounts = useMemo(() => accountsOfKind(accounts, "business"), [accounts]);
+  const pl = summarizeIncome(bizAccounts, end);
   const bs = summarizeBalanceSheet(accounts, end);
-  const by = (cat: Account["category"]) => accounts.filter((a) => a.category === cat);
+  const by = (cat: Account["category"]) => bizAccounts.filter((a) => a.category === cat);
   const val = (a: Account) => end.get(a.id) ?? 0;
   const open = (a: Account) => opening[a.id] ?? 0;
 
   // e-Tax 用のデータの決算書では、追加の欄に上限がある（勘定科目の画面の「決算書の欄」で選べる）
-  const layout = useMemo(() => statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0), [accounts, end, opening]);
+  const layout = useMemo(() => statementLayout(bizAccounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0), [bizAccounts, end, opening]);
   const layoutWarnings = layout.warnings;
   const purchaseTotal = layout.sections.cogs.find((r) => r.label === "仕入金額（製品製造原価）")?.amount ?? 0;
 
   const limit = BLUE_DEDUCTION_LIMIT[filing.type];
-  const deduction = Math.min(limit, Math.max(0, pl.income));
+  // 青色申告特別控除は不動産所得から先に差し引く
+  const realEstateIncome = Math.max(0, summarizeIncome(accountsOfKind(accounts, "realestate"), end).income);
+  const deduction = Math.min(limit - Math.min(limit, realEstateIncome), Math.max(0, pl.income));
 
   const cogs = by("cogs");
   const cogsDebit = cogs.filter((a) => a.normal_side === "debit");
@@ -105,7 +110,7 @@ const BlueStatements = () => {
         </header>
 
         {tab === "p2" ? (
-          <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} end={end} opening={opening} />
+          <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} realEstateIncome={realEstateIncome} end={end} opening={opening} />
         ) : tab === "p3" ? (
           <StatementPage3 lines={lines} salesTotal={pl.revenue} purchaseTotal={purchaseTotal} />
         ) : tab === "pl" ? (

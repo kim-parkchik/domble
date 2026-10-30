@@ -13,6 +13,7 @@ import { monthlySales, partnerTotals, payeeBreakdown, type MonthlySales, type Pa
 import { lineOf, sectionOf, statementLayout, type StatementLayout } from "./statementLines";
 import { depreciationFor, isOldStraight, type FixedAsset } from "./depreciation";
 import { allowanceAccounts, allowanceCalc, type AllowanceCalc } from "./allowance";
+import { accountsOfKind } from "./incomeKind";
 import type { Account, HomeUseRate, OpeningBalances } from "./types";
 import { CODE } from "../constants/accounts";
 
@@ -128,10 +129,16 @@ export const partnerTable = (lines: PartnerLine[], total: number): PartnerTable 
 };
 
 export interface BlueStatement {
+  /** 事業所得（営業等）の損益（不動産所得の科目を除く） */
   pl: IncomeSummary;
   layout: StatementLayout;
-  /** 青色申告特別控除額 */
+  /** 青色申告特別控除額（⑨。不動産所得から先に差し引いた残り） */
   deduction: number;
+  /** 青色申告特別控除額の計算：⑥ 本年分の不動産所得の金額（控除前。赤字は 0）、⑧ そこから差し引く控除額 */
+  realEstateIncome: number;
+  realEstateDeduction: number;
+  /** 帳簿全体の青色申告特別控除前の所得金額（貸借対照表に書く。不動産所得があれば事業所得と合わせた額） */
+  totalIncome: number;
   monthly: MonthlySales;
   salaries: PayLine[];
   family: PayLine[];
@@ -161,9 +168,14 @@ const int = (v: string | undefined, min: number, max: number) => {
 const METHOD_LABEL: Record<FixedAsset["method"], string> = { straight: "定額法", lump3: "一括償却", small: "少額" };
 
 export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
-  const { accounts, notes } = s;
-  const end = closingBalances(accounts, s.opening, s.lines);
+  const { notes } = s;
+  // 一般用の決算書は事業所得の科目だけ（貸借対照表の科目は共通）
+  const accounts = accountsOfKind(s.accounts, "business");
+  const end = closingBalances(s.accounts, s.opening, s.lines);
   const pl = summarizeIncome(accounts, end);
+  // 青色申告特別控除は不動産所得から先に差し引く（2ページの ⑥〜⑨）
+  const realEstateIncome = Math.max(0, summarizeIncome(accountsOfKind(s.accounts, "realestate"), end).income);
+  const realEstateDeduction = Math.min(s.deductionLimit, realEstateIncome);
   const layout = statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => s.opening[a.id] ?? 0);
   const idOf = (code: string) => accounts.find((a) => a.code === code)?.id ?? 0;
   const drawId = idOf(CODE.OWNER_DRAW);
@@ -194,6 +206,7 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   const feeRows = breakdown(CODE.FEES, true).filter((r) => included(`fees:${r.key}:use`, false));
 
   const depreciation = s.assets
+    .filter((a) => a.income_kind !== "realestate")
     .map((a) => ({ a, d: depreciationFor(a, s.year) }))
     .filter((x) => x.d && !(x.d.opening === 0 && x.d.depreciation === 0))
     .map(({ a, d }): DepreciationLine => ({
@@ -212,7 +225,10 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   return {
     pl,
     layout,
-    deduction: Math.min(s.deductionLimit, Math.max(0, pl.income)),
+    deduction: Math.min(s.deductionLimit - realEstateDeduction, Math.max(0, pl.income)),
+    realEstateIncome,
+    realEstateDeduction,
+    totalIncome: summarizeIncome(s.accounts, end).income,
     monthly: monthlySales(accounts, s.lines),
     salaries: pay(breakdown(CODE.SALARIES, false), "salary"),
     family: pay(breakdown(CODE.FAMILY_SALARY, false), "family"),

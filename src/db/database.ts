@@ -116,7 +116,7 @@ export const openDatabase = async (
 
   // 初期科目：コードも名前も無いものだけ追加
   for (const [i, seed] of ACCOUNT_SEEDS.entries()) {
-    await db.execute(SEED_ACCOUNT_SQL, [seed.code, seed.name, seed.kana, seed.category, seed.normal_side, (i + 1) * 10]);
+    await db.execute(SEED_ACCOUNT_SQL, [seed.code, seed.name, seed.kana, seed.category, seed.normal_side, (i + 1) * 10, seed.income_kind ?? "business", seed.hidden ? 0 : 1]);
   }
 
   return { db, triggersBefore, encryption, backupError };

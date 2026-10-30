@@ -1,4 +1,4 @@
-import type { AccountCategory, Side } from "../lib/types";
+import type { AccountCategory, IncomeKind, Side } from "../lib/types";
 
 /**
  * 勘定科目マスター（初期投入用）
@@ -11,10 +11,17 @@ export interface AccountSeed {
   kana: string;
   category: AccountCategory;
   normal_side: Side;
+  /** 所得の区分（無ければ事業所得） */
+  income_kind?: IncomeKind;
+  /** 初めは非表示（不動産所得の科目。事業者設定で不動産所得を「あり」にすると表示する） */
+  hidden?: boolean;
 }
 
 const a = (code: string, name: string, kana: string, category: AccountCategory, normal_side: Side): AccountSeed =>
   ({ code, name, kana, category, normal_side });
+/** 不動産所得の科目（初めは非表示） */
+const re = (code: string, name: string, kana: string, category: AccountCategory, normal_side: Side): AccountSeed =>
+  ({ code, name, kana, category, normal_side, income_kind: "realestate", hidden: true });
 
 export const ACCOUNT_SEEDS: AccountSeed[] = [
   // ── 資産 ──
@@ -97,6 +104,21 @@ export const ACCOUNT_SEEDS: AccountSeed[] = [
   a("701", "専従者給与", "せんじゅうしゃきゅうよ", "special", "debit"),
   a("750", "貸倒引当金繰入", "かしだおれひきあてきんくりいれ", "special", "debit"),
   a("751", "貸倒引当金戻入", "かしだおれひきあてきんもどしいれ", "special", "credit"),
+
+  // ── 不動産所得（青色申告決算書（不動産所得用）・収支内訳書（不動産所得用）の欄。初めは非表示） ──
+  re("460", "賃貸料", "ちんたいりょう", "revenue", "credit"),
+  re("461", "礼金・権利金・更新料", "れいきんけんりきんこうしんりょう", "revenue", "credit"),
+  re("462", "名義書換料その他", "めいぎかきかえりょうそのた", "revenue", "credit"),
+  re("660", "租税公課（不動産）", "そぜいこうか", "expense", "debit"),
+  re("661", "損害保険料（不動産）", "そんがいほけんりょう", "expense", "debit"),
+  re("662", "修繕費（不動産）", "しゅうぜんひ", "expense", "debit"),
+  re("663", "減価償却費（不動産）", "げんかしょうきゃくひ", "expense", "debit"),
+  re("664", "借入金利子（不動産）", "かりいれきんりし", "expense", "debit"),
+  re("665", "地代家賃（不動産）", "ちだいやちん", "expense", "debit"),
+  re("666", "給料賃金（不動産）", "きゅうりょうちんぎん", "expense", "debit"),
+  re("667", "貸倒金（不動産）", "かしだおれきん", "expense", "debit"),
+  re("698", "雑費（不動産）", "ざっぴ", "expense", "debit"),
+  re("760", "専従者給与（不動産）", "せんじゅうしゃきゅうよ", "special", "debit"),
 ];
 
 /** ロジックで特別扱いする科目のコード */
@@ -119,6 +141,8 @@ export const CODE = {
   ALLOWANCE: "250",     // 貸倒引当金
   ALLOWANCE_ADD: "750", // 貸倒引当金繰入
   ALLOWANCE_BACK: "751", // 貸倒引当金戻入
+  RE_DEPRECIATION: "663", // 減価償却費（不動産）
+  RE_FAMILY_SALARY: "760", // 専従者給与（不動産）
   NOTES_RECEIVABLE: "110", // 受取手形
   RECEIVABLE: "111",    // 売掛金
   LOAN: "115",          // 貸付金

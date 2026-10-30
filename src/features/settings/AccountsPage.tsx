@@ -17,7 +17,8 @@ import { CATEGORY_CODE_RANGE, CATEGORY_LABEL, FIXED_ASSET_CODES, LOCKED_CODES } 
 import { MAX_SUB_ACCOUNTS_PER_ACCOUNT } from "../../constants/appConfig";
 import { BUSINESS_CLASSES, PURCHASE_USES, TAX_CODES } from "../../constants/tax";
 import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, useLabel } from "../../lib/tax";
-import type { Account, AccountCategory, PurchaseUse, Side, TaxCode } from "../../lib/types";
+import type { Account, AccountCategory, IncomeKind, PurchaseUse, Side, TaxCode } from "../../lib/types";
+import { isProfitLoss } from "../../lib/incomeKind";
 import * as repo from "../../db/repo";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../../lib/statementLines";
 
@@ -177,6 +178,7 @@ export const AccountsPage = () => {
                         <td className="muted">{a.code}</td>
                         <td>
                           {a.name}
+                          {a.income_kind === "realestate" && isProfitLoss(a) && <span className="badge" title="不動産所得用の決算書に書く科目">不動産</span>}
                           {locked && (
                             <span title="仕組みで使う科目のため、非表示とコードの変更はできません（名前は変えられます）">
                               <Lock size={12} className="lock-icon" aria-label="固定の科目" />
@@ -255,7 +257,7 @@ export const AccountsPage = () => {
 // 科目の追加・編集
 // ────────────────────────────────────────────
 const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: () => void }) => {
-  const { db, accounts, reloadAccounts, strict, year } = useAppContext();
+  const { db, accounts, reloadAccounts, strict, year, settings } = useAppContext();
   const toast = useToast();
   const isNew = target === "new";
   const [category, setCategory] = useState<AccountCategory>(isNew ? "expense" : target.category);
@@ -263,6 +265,7 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
   const [name, setName] = useState(isNew ? "" : target.name);
   const [kana, setKana] = useState(isNew ? "" : target.kana);
   const [side, setSide] = useState<Side>(isNew ? "debit" : target.normal_side);
+  const [kind, setKind] = useState<IncomeKind>(isNew ? "business" : target.income_kind ?? "business");
   const [error, setError] = useState("");
   const codeLocked = !isNew && target.is_system === 1;
 
@@ -272,7 +275,7 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
   };
 
   const submit = async () => {
-    const data = { code, name, kana, category, side };
+    const data = { code, name, kana, category, side, income_kind: kind };
     const err = repo.validateAccount(accounts, data, isNew ? undefined : target.id);
     if (err) return setError(err);
     if (isNew && !repo.nextAccountCode(accounts, category)) return setError("この区分のコードがいっぱいです");
@@ -297,6 +300,16 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
           </select>
           {!isNew && <small className="field-note">区分はあとから変えられません（過去の集計が変わってしまうため）</small>}
         </label>
+        {isNew && isProfitLoss({ category }) && (settings.real_estate ?? "none") !== "none" && (
+          <div className="field">
+            <span>所得の区分</span>
+            <div className="field-row wrap">
+              <label className="check"><input type="radio" name="income-kind" checked={kind === "business"} onChange={() => setKind("business")} /> 事業所得</label>
+              <label className="check"><input type="radio" name="income-kind" checked={kind === "realestate"} onChange={() => setKind("realestate")} /> 不動産所得</label>
+            </div>
+            <small className="field-note">不動産所得の科目は、不動産所得用の決算書に書きます（事業所得の決算書には入りません）。あとから変えられません。</small>
+          </div>
+        )}
         {category === "special" && (
           <div className="field">
             <span>決算書の欄（残高の側）</span>

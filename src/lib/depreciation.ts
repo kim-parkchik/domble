@@ -1,4 +1,4 @@
-import type { JournalLine } from "./types";
+import type { IncomeKind, JournalLine } from "./types";
 
 /**
  * 減価償却の計算（純粋関数）
@@ -65,6 +65,8 @@ export interface FixedAsset {
   /** 売却・除却した日（その月まで償却し、翌年からは台帳に出さない） */
   disposed_on: string | null;
   memo: string;
+  /** 所得の区分（不動産所得の資産は減価償却費（不動産）にし、不動産所得用の決算書に出す。無ければ事業所得） */
+  income_kind?: IncomeKind;
 }
 
 /** ある年度の償却 */
@@ -216,7 +218,7 @@ export const smallTotalOfYear = (assets: FixedAsset[], year: number) =>
  * 年末の減価償却の仕訳の明細（決算整理仕訳・直接法）
  *  資産ごとに「減価償却費（事業分） / 資産の科目（償却費の全額）」、家事分があれば次の行に「事業主貸（家事分）」
  */
-export const depreciationLines = (assets: FixedAsset[], year: number, ids: { expense: number; draw: number }): JournalLine[] => {
+export const depreciationLines = (assets: FixedAsset[], year: number, ids: { expense: number; draw: number; expenseRealEstate?: number }): JournalLine[] => {
   const lines: JournalLine[] = [];
   let row = 0;
   for (const a of assets) {
@@ -225,8 +227,9 @@ export const depreciationLines = (assets: FixedAsset[], year: number, ids: { exp
     const memo = `減価償却 ${a.name}`;
     const privateMemo = `${memo}（家事分 ${100 - a.business_rate}%）`;
     row++;
+    const expense = a.income_kind === "realestate" && ids.expenseRealEstate ? ids.expenseRealEstate : ids.expense;
     if (d.business > 0) {
-      lines.push({ row_no: row, side: "debit", account_id: ids.expense, sub_account_id: null, amount: d.business, memo });
+      lines.push({ row_no: row, side: "debit", account_id: expense, sub_account_id: null, amount: d.business, memo });
       lines.push({ row_no: row, side: "credit", account_id: a.account_id, sub_account_id: null, amount: d.depreciation, memo });
       if (d.private > 0) lines.push({ row_no: ++row, side: "debit", account_id: ids.draw, sub_account_id: null, amount: d.private, memo: privateMemo });
     } else {

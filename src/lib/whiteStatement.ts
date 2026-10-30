@@ -16,6 +16,7 @@ import { closingBalances, summarizeIncome, type IncomeSummary } from "./accounti
 import { buildBlueStatement, partnerTable, type BlueStatement, type BlueStatementSource, type PartnerTable } from "./blueStatement";
 import { statementLayout, type StatementRow } from "./statementLines";
 import { ageAt, type IncomeTaxInput } from "./incomeTax";
+import { accountsOfKind } from "./incomeKind";
 import type { Account } from "./types";
 import { CODE } from "../constants/accounts";
 
@@ -132,7 +133,9 @@ export interface WhiteExpenseLine {
   extra: boolean;
 }
 
-export const whiteSummary = (accounts: Account[], amount: (a: Account) => number): WhiteSummary => {
+/** 収支内訳書（一般用）の1ページ。不動産所得の科目は入れない（収支内訳書（不動産所得用）に書く） */
+export const whiteSummary = (allAccounts: Account[], amount: (a: Account) => number): WhiteSummary => {
+  const accounts = accountsOfKind(allAccounts, "business");
   const warnings: string[] = [];
   const family = accounts.find((a) => a.code === CODE.FAMILY_SALARY);
   const familySalaryBooked = family ? amount(family) : 0;
@@ -215,7 +218,7 @@ export const buildWhiteStatement = (s: WhiteStatementSource): WhiteStatement => 
   const familyDeduction = family.reduce((t, l) => t + l.deduction, 0);
   return {
     ...sum,
-    pl: summarizeIncome(s.accounts, end),
+    pl: summarizeIncome(accountsOfKind(s.accounts, "business"), end),
     family,
     familyDeduction,
     income: sum.beforeDeduction - familyDeduction,

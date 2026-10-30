@@ -17,7 +17,7 @@ import { partnerLines, partnerTable, type PartnerTable } from "../../lib/blueSta
 import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
 import type { FlatLine } from "../../lib/accounting";
 import { ALLOWANCE_NOTE, allowanceAccounts, allowanceCalc, allowanceLines } from "../../lib/allowance";
-import type { OpeningBalances } from "../../lib/types";
+import type { IncomeKind, OpeningBalances } from "../../lib/types";
 import * as repo from "../../db/repo";
 
 export type Notes = Record<string, string>;
@@ -103,13 +103,13 @@ export const useDetailRows = (lines: FlatLine[]) => {
   };
 };
 
-/** 固定資産台帳（減価償却費の計算に使う） */
-export const useAssets = () => {
+/** 固定資産台帳のうち、その所得の区分の資産（減価償却費の計算に使う） */
+export const useAssets = (kind: IncomeKind = "business") => {
   const { db, dataVersion } = useAppContext();
   const [assets, setAssets] = useState<FixedAsset[]>([]);
   useEffect(() => {
-    repo.getAssets(db).then(setAssets).catch(console.error);
-  }, [db, dataVersion]);
+    repo.getAssets(db).then((all) => setAssets(all.filter((a) => (a.income_kind ?? "business") === kind))).catch(console.error);
+  }, [db, dataVersion, kind]);
   return assets;
 };
 
@@ -160,8 +160,8 @@ export const PayTable = ({ rows, prefix, withRelation, notes, onSaved }: NotePro
 // ────────────────────────────────────────────
 // 2ページ
 // ────────────────────────────────────────────
-export const StatementPage2 = ({ lines, income, deductionLimit, end, opening }: {
-  lines: FlatLine[]; income: number; deductionLimit: number; end: Map<number, number>; opening: OpeningBalances;
+export const StatementPage2 = ({ lines, income, deductionLimit, realEstateIncome, end, opening }: {
+  lines: FlatLine[]; income: number; deductionLimit: number; realEstateIncome: number; end: Map<number, number>; opening: OpeningBalances;
 }) => {
   const { accounts } = useAppContext();
   const { notes, set } = useNotes();
@@ -169,7 +169,9 @@ export const StatementPage2 = ({ lines, income, deductionLimit, end, opening }: 
   const m = monthlySales(accounts, lines);
   const salesTotal = m.sales.reduce((s, x) => s + x, 0) + m.householdUse + m.miscIncome;
   const purchaseTotal = m.purchases.reduce((s, x) => s + x, 0);
-  const deduction = Math.min(deductionLimit, Math.max(0, income));
+  // 青色申告特別控除は不動産所得から先に差し引く（⑧）、残りを事業所得から（⑨）
+  const realEstateDeduction = Math.min(deductionLimit, realEstateIncome);
+  const deduction = Math.min(deductionLimit - realEstateDeduction, Math.max(0, income));
 
   return (
     <div className="st-pages">
@@ -203,12 +205,13 @@ export const StatementPage2 = ({ lines, income, deductionLimit, end, opening }: 
         <h3 className="st-h">青色申告特別控除額の計算</h3>
         <table className="ledger st-detail">
           <tbody>
-            <tr><td>青色申告特別控除前の所得金額</td><td className="num">{yen(income)}</td></tr>
-            <tr><td>青色申告特別控除額の上限</td><td className="num">{yen(deductionLimit)}</td></tr>
-            <tr className="st-strong"><td>青色申告特別控除額（目安）</td><td className="num">{yen(deduction)}</td></tr>
+            <tr><td>⑥ 本年分の不動産所得の金額（青色申告特別控除前）</td><td className="num">{yen(realEstateIncome)}</td></tr>
+            <tr><td>⑦ 青色申告特別控除前の所得金額</td><td className="num">{yen(Math.max(0, income))}</td></tr>
+            <tr><td>⑧ {yen(deductionLimit)}円と⑥のいずれか少ない方の金額（不動産所得から差し引く額）</td><td className="num">{yen(realEstateDeduction)}</td></tr>
+            <tr className="st-strong"><td>⑨ 青色申告特別控除額（「{yen(deductionLimit)}円－⑧」と⑦のいずれか少ない方）</td><td className="num">{yen(deduction)}</td></tr>
           </tbody>
         </table>
-        <p className="field-note">不動産所得がある場合などは、控除額の配分が変わります（ここでは事業所得だけで計算した目安です）。</p>
+        <p className="field-note">青色申告特別控除は、不動産所得、事業所得の順に差し引きます（不動産所得は不動産所得用の決算書に書きます）。</p>
       </section>
     </div>
   );

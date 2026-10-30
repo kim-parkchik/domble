@@ -26,7 +26,7 @@ describe("自動の欄", () => {
     expect(sectionOf(acc("元入金"))).toBe("liability");
   });
   test("初期の経費の追加科目はちょうど6つ", () => {
-    const extras = seeds.filter((a) => sectionOf(a) === "expense" && lineOf(a) === EXTRA_LINE).map((a) => a.name);
+    const extras = seeds.filter((a) => a.income_kind !== "realestate" && sectionOf(a) === "expense" && lineOf(a) === EXTRA_LINE).map((a) => a.name);
     expect(extras).toEqual(["支払手数料", "車両費", "新聞図書費", "会議費", "研修費", "諸会費"]);
   });
   test("選んだ欄を使う（その部分に無い欄なら自動）", () => {

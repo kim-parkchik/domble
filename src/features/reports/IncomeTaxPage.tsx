@@ -69,7 +69,16 @@ export const IncomeTaxPage = () => {
 
   // 事業所得（営業等）：帳簿と決算書から。白色申告は収支内訳書（専従者給与を経費にせず、事業専従者控除を差し引く）
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
-  const { biz, familyLines } = useMemo(() => businessFigures(accounts, end, filingType, x, year), [accounts, end, filingType, x, year]);
+  // 不動産所得：事業者設定の規模と、不動産所得用の決算書に書き込んだ「土地等を取得するために要した負債の利子の額」
+  const [landInterest, setLandInterest] = useState(0);
+  useEffect(() => {
+    repo.getStatementNotes(db, year).then((n) => setLandInterest(Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0)).catch(console.error);
+  }, [db, year, dataVersion]);
+  const reScale = settings.real_estate ?? "none";
+  const { biz, familyLines } = useMemo(
+    () => businessFigures(accounts, end, filingType, x, year, { scale: reScale, landInterest }),
+    [accounts, end, filingType, x, year, reScale, landInterest],
+  );
 
   // 前の年から繰り越した純損失：前の年の申告（保存した所得税の入力と帳簿）から引き継ぐ。前の年の入力が無ければ null
   const [pastCarry, setPastCarry] = useState<CarriedLoss[] | null>(null);
@@ -79,13 +88,15 @@ export const IncomeTaxPage = () => {
       const input = await repo.findIncomeTaxInput(db, y);
       if (!input) return null;
       const [l, o] = await Promise.all([repo.getLines(db, yearStart(y), yearEnd(y)), repo.getOpening(db, y)]);
-      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, l), filingTypeOf(y), input, y).biz };
+      const n = await repo.getStatementNotes(db, y);
+      const li = Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0;
+      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, l), filingTypeOf(y), input, y, { scale: reScale, landInterest: li }).biz };
     };
     carriedFromPast(year, load).then((v) => alive && setPastCarry(v)).catch(console.error);
     return () => {
       alive = false;
     };
-  }, [db, year, dataVersion, accounts, filingTypeOf]);
+  }, [db, year, dataVersion, accounts, filingTypeOf, reScale]);
   const carried = useMemo(() => carriedLosses(x, year, pastCarry), [x, year, pastCarry]);
   const result = useMemo(() => computeIncomeTax(x, biz, year, carried), [x, biz, year, carried]);
   const fourth = result.loss.fourth;

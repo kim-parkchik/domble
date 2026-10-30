@@ -27,6 +27,7 @@ import {
   validateAsset,
   type DepreciationMethod, type FixedAsset,
 } from "../../lib/depreciation";
+import type { IncomeKind } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { isBlue } from "../../lib/filing";
 
@@ -59,6 +60,8 @@ export const FixedAssetsPage = () => {
   const ids = {
     expense: accounts.find((a) => a.code === CODE.DEPRECIATION)?.id ?? 0,
     draw: accounts.find((a) => a.code === CODE.OWNER_DRAW)?.id ?? 0,
+    // 不動産所得の資産は減価償却費（不動産）
+    expenseRealEstate: accounts.find((a) => a.code === CODE.RE_DEPRECIATION)?.id ?? 0,
   };
 
   // この年度に償却する（台帳に出す）資産と、それ以外
@@ -82,7 +85,7 @@ export const FixedAssetsPage = () => {
     : null, [printing, assets, accounts, year, settings]); // eslint-disable-line react-hooks/exhaustive-deps
   const exportCsv = () => exportCsvFile(`固定資産台帳_${settings.business_name || "帳簿"}_${year}.csv`, ASSET_CSV_HEADER, assetCsvRows(printLines), toast);
 
-  const planned = useMemo(() => depreciationLines(assets, year, ids), [assets, year, ids.expense, ids.draw]); // eslint-disable-line react-hooks/exhaustive-deps
+  const planned = useMemo(() => depreciationLines(assets, year, ids), [assets, year, ids.expense, ids.draw, ids.expenseRealEstate]); // eslint-disable-line react-hooks/exhaustive-deps
   const outdated = runId !== null && runLines !== lineKey(planned);
   const smallTotal = smallTotalOfYear(assets, year);
 
@@ -282,7 +285,7 @@ const lineKey = (ls: { side: string; account_id: number; amount: number; memo: s
 const LIFE_EXAMPLES = "例：パソコン 4年、サーバー 5年、普通自動車 6年、軽自動車 4年、事務机・椅子（金属製）15年、ソフトウェア 5年";
 
 const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onClose: () => void; onSaved: () => void }) => {
-  const { db, year, accounts, can, filingTypeOf } = useAppContext();
+  const { db, year, accounts, can, filingTypeOf, settings } = useAppContext();
   const toast = useToast();
   const choices = accounts.filter((a) => a.category === "asset" && (FIXED_ASSET_CODES.includes(a.code) || !a.is_system));
   const lumpId = accounts.find((a) => a.code === CODE.LUMP_ASSET)?.id;
@@ -299,6 +302,9 @@ const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onC
   const [openingValue, setOpeningValue] = useState<number | null>(asset?.opening_book_value ?? null);
   const [disposed, setDisposed] = useState(asset?.disposed_on ?? "");
   const [memo, setMemo] = useState(asset?.memo ?? "");
+  const [kind, setKind] = useState<IncomeKind>(asset?.income_kind ?? "business");
+  // 不動産所得があるとき（または不動産所得の資産のとき）だけ、所得の区分を選ぶ
+  const showKind = (settings.real_estate ?? "none") !== "none" || kind === "realestate";
   const [error, setError] = useState("");
 
   const changeMethod = (m: DepreciationMethod) => {
@@ -314,7 +320,7 @@ const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onC
   const input = (): repo.AssetInput => ({
     name, account_id: accountId ?? 0, acquired_on: acquired, used_on: used || acquired, cost: cost ?? 0, method,
     useful_life: Number(life) || 0, business_rate: Number(rate), opening_year: hasOpening ? Number(openingYear) || 0 : null,
-    opening_book_value: hasOpening ? openingValue ?? null : null, disposed_on: disposed || null, memo,
+    opening_book_value: hasOpening ? openingValue ?? null : null, disposed_on: disposed || null, memo, income_kind: kind,
   });
 
   /** 日付の欄に読めない日付が入っているもの（そのままだと前の日付で保存されるので止める） */
@@ -385,10 +391,16 @@ const AssetModal = ({ asset, onClose, onSaved }: { asset: FixedAsset | null; onC
             </label>
           )}
           <label className="field">
-            <span>事業専用割合（%）</span>
+            <span>{kind === "realestate" ? "貸付割合（%）" : "事業専用割合（%）"}</span>
             <input className="input" inputMode="numeric" value={rate} onChange={(e) => setRate(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="事業専用割合" />
           </label>
         </div>
+        {showKind && (
+          <div className="field-row wrap">
+            <label className="check"><input type="radio" name="asset-kind" checked={kind === "business"} onChange={() => setKind("business")} /> 事業所得の資産</label>
+            <label className="check"><input type="radio" name="asset-kind" checked={kind === "realestate"} onChange={() => setKind("realestate")} /> 不動産所得の資産（貸家・アパートなど。減価償却費（不動産）にし、不動産所得用の決算書に出します）</label>
+          </div>
+        )}
         {method === "straight" && <p className="field-note">{LIFE_EXAMPLES}。耐用年数は国税庁の耐用年数表で確かめてください。</p>}
         {method === "straight" && acquired && acquired <= OLD_STRAIGHT_UNTIL && (
           <p className="field-note">

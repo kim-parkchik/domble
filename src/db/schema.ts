@@ -607,10 +607,10 @@ export const SCHEMA: string[] = [
  */
 /**
  * 初期科目を入れる（帳簿を開くたび）。コードも名前も無いものだけ足す（将来科目を足しても既存ファイルに自動で入る。
- * 同じ名前の科目を自分で足していれば足さない）。引数：code, name, kana, category, normal_side, sort_order
+ * 同じ名前の科目を自分で足していれば足さない）。引数：code, name, kana, category, normal_side, sort_order, income_kind, is_active
  */
-export const SEED_ACCOUNT_SQL = `INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system)
-  SELECT ?1, ?2, ?3, ?4, ?5, ?6, 1 WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE code = ?1 OR name = ?2)`;
+export const SEED_ACCOUNT_SQL = `INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system, income_kind, is_active)
+  SELECT ?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?8 WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE code = ?1 OR name = ?2)`;
 
 export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "e_book_mode", "TEXT CHECK (e_book_mode IN ('strict','standard'))"],
@@ -704,5 +704,10 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["tax_years", "deduction", "TEXT NOT NULL DEFAULT 'individual' CHECK (deduction IN ('individual','lump'))"],
   // 青色申告決算書で書く欄（NULL = 科目名から自動。lib/statementLines.ts）
   ["accounts", "statement_line", "TEXT"],
+  // 所得の区分（損益の科目ごと）：business 事業所得 ／ realestate 不動産所得
+  ["accounts", "income_kind", "TEXT NOT NULL DEFAULT 'business' CHECK (income_kind IN ('business','realestate'))"],
+  ["fixed_assets", "income_kind", "TEXT NOT NULL DEFAULT 'business' CHECK (income_kind IN ('business','realestate'))"],
+  // 不動産所得：none なし ／ small 事業的規模でない ／ business 事業的規模
+  ["settings", "real_estate", "TEXT NOT NULL DEFAULT 'none' CHECK (real_estate IN ('none','small','business'))"],
   ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],
 ];

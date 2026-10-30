@@ -20,7 +20,7 @@
  * 事業所得：青色申告は青色申告特別控除を差し引く。白色申告は収支内訳書の所得金額（事業専従者控除の後。lib/whiteStatement.ts）をそのまま使う
  * 扱わないもの：不動産・利子・配当・譲渡・一時所得、分離課税、雑損控除、所得金額調整控除、配当控除などほかの税額控除、災害減免、外国税額控除
  */
-import type { FilingType } from "./types";
+import type { FilingType, RealEstateScale } from "./types";
 
 // ────────────────────────────────────────────
 // 入力（年度ごとに保存する。帳簿から出せないもの）
@@ -530,6 +530,21 @@ export interface BusinessFigures {
   filingType: FilingType;
   /** 専従者給与の合計（白色は事業専従者控除の合計） */
   familySalary: number;
+  /** 不動産所得（不動産所得の科目に金額があるか、事業者設定で「あり」のとき） */
+  realEstate?: RealEstateFigures;
+}
+
+/** 帳簿と不動産所得用の決算書から出す不動産所得の数字 */
+export interface RealEstateFigures {
+  /** 収入金額の計（第一表 ㋒） */
+  revenue: number;
+  /** 青色申告特別控除前の所得金額（白色は収支内訳書（不動産所得用）の所得金額） */
+  incomeBeforeBlue: number;
+  /** 専従者給与（事業的規模のときだけ必要経費になる） */
+  familySalary: number;
+  scale: RealEstateScale;
+  /** 土地等を取得するために要した負債の利子の額（赤字のとき、この額までは損益通算しない） */
+  landInterest: number;
 }
 
 export interface IncomeTaxRow {
@@ -559,6 +574,8 @@ export interface IncomeTaxResult {
   totalIncome: number;
   /** 損失申告（第四表）と繰越控除 */
   loss: LossResult;
+  /** 不動産所得から差し引いた青色申告特別控除額（第二表の事業税の欄） */
+  blueRealEstate: number;
   /** 納める税金（＋）・還付される税金（−） */
   balance: number;
   notes: string[];
@@ -650,25 +667,35 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   }
   const DEPENDENT_LIMIT = rules.dependentLimit;
   const white = biz.filingType === "white";
-  const blue = white ? 0 : Math.min(BLUE_DEDUCTION_LIMIT[biz.filingType], Math.max(0, biz.incomeBeforeBlue));
+  // 青色申告特別控除は不動産所得、事業所得の順に差し引く。事業所得が無く、不動産の貸付けが事業的規模でなければ 10万円まで
+  const re = biz.realEstate;
+  const hasBusiness = biz.revenue !== 0 || biz.incomeBeforeBlue !== 0;
+  const blueLimit = re && !hasBusiness && re.scale !== "business" ? Math.min(BLUE_DEDUCTION_LIMIT[biz.filingType], 100_000) : BLUE_DEDUCTION_LIMIT[biz.filingType];
+  const blueRealEstate = white || !re ? 0 : Math.min(blueLimit, Math.max(0, re.incomeBeforeBlue));
+  const blue = white ? 0 : blueRealEstate + Math.min(blueLimit - blueRealEstate, Math.max(0, biz.incomeBeforeBlue));
 
   // 収入金額等・所得金額等
   const salaryIn = sum(input.salaries.map((r) => r.income));
   const pensionIn = sum(input.pensions.map((r) => r.income));
   const miscBizIn = sum(input.misc.filter((r) => r.kind === "business").map((r) => r.income));
   const miscOtherIn = sum(input.misc.filter((r) => r.kind === "other").map((r) => r.income));
-  const r1 = biz.incomeBeforeBlue - blue;
+  const r1 = biz.incomeBeforeBlue - (blue - blueRealEstate);
+  // 不動産所得 ③。赤字のうち土地等を取得するために要した負債の利子の額までは損益通算しない（③ は 0 か、その差額）
+  const r3Raw = re ? re.incomeBeforeBlue - blueRealEstate : 0;
+  const r3 = re && r3Raw < 0 && re.landInterest > 0 ? Math.min(0, r3Raw + re.landInterest) : r3Raw;
+  if (re && re.familySalary > 0 && re.scale !== "business") notes.push("不動産の貸付けが事業的規模でないので、不動産所得の専従者給与は必要経費になりません（事業者設定の「不動産所得」で規模を確かめてください）。");
+  if (re && r3 !== r3Raw) notes.push(`不動産所得の赤字のうち、土地等を取得するために要した負債の利子の額（${re.landInterest.toLocaleString()}円）までは、ほかの所得から差し引けません（③ は ${r3.toLocaleString()}円）。`);
   const r6 = salaryIncome(salaryIn, rules.year);
   const r8 = sum(input.misc.filter((r) => r.kind === "business").map((r) => r.income - r.expenses));
   const r9 = sum(input.misc.filter((r) => r.kind === "other").map((r) => r.income - r.expenses));
   // 公的年金等以外の合計所得金額（雑所得の損失はほかの所得から引けない）
-  const other = r1 + r6 + Math.max(r8 + r9, 0);
+  const other = r1 + r3 + r6 + Math.max(r8 + r9, 0);
   const age = ageAt(input.birthday, year);
   if (pensionIn > 0 && age === null) notes.push("公的年金等の控除額は、本人の生年月日が分からないため65歳未満として計算しています。");
   const r7 = pensionIncome(pensionIn, (age ?? 0) >= 65, other);
   const r10 = Math.max(r7 + r8 + r9, 0);
   // 合計所得金額（繰越控除の前）
-  const r12 = r1 + r6 + r10;
+  const r12 = r1 + r3 + r6 + r10;
   if (salaryIn > 8_500_000) notes.push("給与の収入が850万円を超えています。所得金額調整控除（23歳未満の扶養親族・特別障害者がいる場合など）には対応していません。");
   // 純損失の繰越控除。total = 総所得金額等（繰越控除の後。医療費控除・寄附金控除に使う）
   const loss = lossOf(r12, carried, year, white);
@@ -764,12 +791,14 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   const rows: IncomeTaxRow[] = [
     { no: "", label: "収入金額等", value: null, head: true },
     { no: "㋐", label: "事業（営業等）", value: biz.revenue, note: white ? "収支内訳書の収入金額の計（売上・家事消費・その他の収入）" : "決算書の売上（収入）金額（家事消費・雑収入を含む）" },
+    ...(re ? [{ no: "㋒", label: "不動産", value: re.revenue, note: white ? "収支内訳書（不動産所得用）の収入金額の計" : "決算書（不動産所得用）の収入金額の計" }] : []),
     { no: "㋔", label: "給与", value: salaryIn },
     { no: "㋕", label: "雑（公的年金等）", value: pensionIn },
     { no: "㋖", label: "雑（業務）", value: miscBizIn },
     { no: "㋗", label: "雑（その他）", value: miscOtherIn },
     { no: "", label: "所得金額等", value: null, head: true },
-    { no: "①", label: "事業（営業等）", value: r1, note: white ? "収支内訳書の所得金額（事業専従者控除の後）" : `青色申告特別控除 ${blue.toLocaleString()}円を差し引いた額` },
+    { no: "①", label: "事業（営業等）", value: r1, note: white ? "収支内訳書の所得金額（事業専従者控除の後）" : `青色申告特別控除 ${(blue - blueRealEstate).toLocaleString()}円を差し引いた額` },
+    ...(re ? [{ no: "③", label: "不動産", value: r3, note: white ? "収支内訳書（不動産所得用）の所得金額" : `青色申告特別控除 ${blueRealEstate.toLocaleString()}円を差し引いた額（不動産所得から先に差し引く）` }] : []),
     { no: "⑥", label: "給与", value: r6, note: `給与所得控除後の金額（${reiwaYear(rules.year)}）` },
     { no: "⑦", label: "雑（公的年金等）", value: r7, note: pensionIn ? `公的年金等控除（${(age ?? 0) >= 65 ? "65歳以上" : "65歳未満"}）後の金額` : undefined },
     { no: "⑧", label: "雑（業務）", value: r8 },
@@ -821,7 +850,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
     { no: "", label: "その他", value: null, head: true },
     { no: N("pensionOther"), label: "公的年金等以外の合計所得金額", value: pensionIn ? other : 0 },
     { no: N("spouseIncome"), label: "配偶者の合計所得金額", value: input.spouse && spouse.kind ? input.spouse.income : 0 },
-    { no: N("familySalary"), label: "専従者給与（控除）額の合計額", value: biz.familySalary },
+    { no: N("familySalary"), label: "専従者給与（控除）額の合計額", value: biz.familySalary + (re && re.scale === "business" ? re.familySalary : 0) },
     { no: N("blue"), label: "青色申告特別控除額", value: blue },
     { no: N("miscWithheld"), label: "雑所得・一時所得等の源泉徴収税額の合計額", value: sum([...input.pensions, ...input.misc].map((r) => r.withheld)) },
     {
@@ -842,6 +871,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
       socialInsurance: input.socialInsurance, smallBusiness: input.smallBusiness, life: input.life, quake: input.quake, donations: input.donations, relatives,
     },
     totalIncome: r12,
+    blueRealEstate,
     loss,
     balance: r52 - r53,
     notes,

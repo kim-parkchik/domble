@@ -9,7 +9,7 @@ import { RETIRED_TRIGGERS } from "./schema";
 import type {
   AccessLogRecord, Account, AccountCategory, Counterparty, User, EBookMode, EntrySnapshot, Evidence, EvidenceAction, EvidenceHistoryRecord, EvidenceKind, EvidenceMeta,
   EvidenceSnapshot, FilingType, FilingYear, FiscalClosing, HistoryAction, HistoryRecord, JournalEntry, JournalLine,
-  HomeUseRate, MasterHistoryRecord, OpeningBalances, PurchaseUse, Settings, Side, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
+  HomeUseRate, IncomeKind, MasterHistoryRecord, OpeningBalances, PurchaseUse, RealEstateScale, Settings, Side, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
 } from "../lib/types";
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
@@ -36,7 +36,7 @@ import {
   openingState, sourceLabel, stateLabel, verifyChain, type ChainRow, type ChainSource, type IntegrityIssue,
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
-import { CATEGORY_CODE_RANGE, LOCKED_CODES, normalSideOf } from "../constants/accounts";
+import { CATEGORY_CODE_RANGE, isBalanceSheet, LOCKED_CODES, normalSideOf } from "../constants/accounts";
 import { methodLabel, validateAsset, type FixedAsset } from "../lib/depreciation";
 import type { InventoryAdjust } from "../lib/taxReturn";
 import {
@@ -145,7 +145,7 @@ export const getSettings = async (db: Database): Promise<Settings> => {
             business_kana, occupation, householder_name, householder_relation, jan1_address, office_phone, refund_mode, bank_name, bank_kind,
             branch_name, branch_kind, deposit_kind, account_no, yucho_symbol, yucho_number,
             office_address, union_name, agent_name, agent_address, agent_phone,
-            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at
+            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at, real_estate
        FROM settings WHERE id = 1`,
   );
   return rows[0];
@@ -332,6 +332,22 @@ const saveSettings_ = async (db: Database, s: Settings) => {
             filing_type = ? WHERE id = 1`,
     [s.business_name, s.owner_name, normalizePostalCode(info.postal_code), info.address, s.industry, s.fiscal_year, s.filing_type],
   );
+};
+
+/**
+ * 不動産所得の有無と規模（事業者設定）。「あり」にすると、不動産所得の初期科目（非表示で入っている）を表示する。
+ * 規模は青色申告特別控除（事業所得が無く事業的規模でなければ 10万円まで）と専従者給与に使う。変更は履歴に残す（厳密モード）
+ */
+const REAL_ESTATE_LABEL: Record<RealEstateScale, string> = { none: "なし", small: "あり（事業的規模でない）", business: "あり（事業的規模）" };
+const saveRealEstate_ = async (db: Database, scale: RealEstateScale) => {
+  if (!(scale in REAL_ESTATE_LABEL)) throw new Error("不動産所得の区分が正しくありません");
+  const before = (await getSettings(db)).real_estate ?? "none";
+  if (before === scale) return;
+  await db.execute("UPDATE settings SET real_estate = ? WHERE id = 1", [scale]);
+  if (scale !== "none") await db.execute("UPDATE accounts SET is_active = 1 WHERE income_kind = 'realestate' AND is_system = 1");
+  await logMaster(db, {
+    target_type: "setting", target_id: 0, action: "change", fiscal_year: await currentYear(db), label: "不動産所得", old_value: REAL_ESTATE_LABEL[before], new_value: REAL_ESTATE_LABEL[scale],
+  });
 };
 
 // ────────────────────────────────────────────
@@ -802,7 +818,7 @@ const setInputPeriodDays_ = async (db: Database, n: number) => {
 export const getAccounts = (db: Database, year: number) =>
   db.select<Account[]>(
     `SELECT a.id, a.code, ${effectiveName("account", "a")} AS name, a.kana, a.category, a.normal_side,
-            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class, a.default_purchase_use, a.statement_line
+            a.sort_order, a.is_active, a.is_system, a.default_tax_code, a.default_business_class, a.default_purchase_use, a.statement_line, a.income_kind
        FROM accounts a ORDER BY a.code`,
     [year],
   );
@@ -910,6 +926,8 @@ export interface AccountInputData {
   category: AccountCategory;
   /** 専従者給与等の科目だけ選べる残高の側（debit 繰入額等 ／ credit 繰戻額等）。ほかは区分で決まる */
   side?: Side;
+  /** 損益の科目の所得の区分（事業所得 ／ 不動産所得）。貸借対照表の科目は事業所得のまま */
+  income_kind?: IncomeKind;
 }
 
 export const validateAccount = (accounts: Account[], data: AccountInputData, editingId?: number): string | null => {
@@ -927,8 +945,11 @@ export const validateAccount = (accounts: Account[], data: AccountInputData, edi
 
 const createAccount_ = async (db: Database, data: AccountInputData) => {
   const res = await db.execute(
-    `INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system) VALUES (?, ?, ?, ?, ?, ?, 0)`,
-    [data.code, data.name.trim(), data.kana.trim(), data.category, data.category === "special" && data.side ? data.side : normalSideOf(data.category), Number(data.code) * 10],
+    `INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system, income_kind) VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+    [
+      data.code, data.name.trim(), data.kana.trim(), data.category, data.category === "special" && data.side ? data.side : normalSideOf(data.category), Number(data.code) * 10,
+      isBalanceSheet(data.category) || data.income_kind !== "realestate" ? "business" : "realestate",
+    ],
   );
   await logMaster(db, {
     target_type: "account", target_id: Number(res.lastInsertId), action: "create",
@@ -1616,7 +1637,7 @@ export type AssetInput = Omit<FixedAsset, "id">;
 
 export const getAssets = (db: Database) =>
   db.select<FixedAsset[]>(
-    `SELECT id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo
+    `SELECT id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind
        FROM fixed_assets ORDER BY used_on, id`,
   );
 
@@ -1627,6 +1648,7 @@ const assetText = (a: AssetInput) =>
     a.opening_year !== null ? `${a.opening_year}年期首の未償却残高 ${a.opening_book_value?.toLocaleString()}円` : "",
     a.disposed_on ? `売却・除却 ${a.disposed_on}` : "",
     a.memo ? `備考 ${a.memo}` : "",
+    a.income_kind === "realestate" ? "不動産所得" : "",
   ].filter(Boolean).join("、");
 
 const normalizeAsset = (a: AssetInput): AssetInput => ({
@@ -1635,6 +1657,7 @@ const normalizeAsset = (a: AssetInput): AssetInput => ({
   memo: a.memo.trim(),
   useful_life: a.method === "straight" ? a.useful_life : 0,
   disposed_on: a.disposed_on || null,
+  income_kind: a.income_kind === "realestate" ? "realestate" : "business",
 });
 
 const assertAsset = async (db: Database, a: AssetInput) => {
@@ -1649,12 +1672,14 @@ const assertAsset = async (db: Database, a: AssetInput) => {
 const saveAsset_ = async (db: Database, id: number | null, input: AssetInput) => {
   const a = normalizeAsset(input);
   await assertAsset(db, a);
-  const values = [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo];
+  const values = [
+    a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind,
+  ];
   const fiscal_year = await currentYear(db);
   if (id === null) {
     const r = await db.execute(
-      `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       values,
     );
     const newId = Number(r.lastInsertId);
@@ -1665,7 +1690,7 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput) =>
   if (!before) throw new Error("固定資産が見つかりません");
   await db.execute(
     `UPDATE fixed_assets SET name = ?, account_id = ?, acquired_on = ?, used_on = ?, cost = ?, method = ?, useful_life = ?, business_rate = ?,
-       opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
+       opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, income_kind = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
     [...values, id],
   );
   const [oldText, newText] = [assetText(before), assetText(a)];
@@ -2521,6 +2546,7 @@ export const saveBankRule = inTx(saveBankRule_, (r) => `明細のルール「${r
 export const deleteBankRule = inTx(deleteBankRule_, (id) => `明細のルール #${id} の削除`, { perm: "entry" });
 export const setAccountStatementLine = inTx(setAccountStatementLine_, (id) => `勘定科目 #${id} の決算書の欄`, { perm: "master" });
 export const saveFilingYear = inTx(saveFilingYear_, (year) => `${year}年の申告の種類`, { perm: "settings" });
+export const saveRealEstate = inTx(saveRealEstate_, () => "不動産所得", { perm: "settings" });
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
