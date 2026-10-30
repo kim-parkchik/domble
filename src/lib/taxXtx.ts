@@ -9,10 +9,12 @@
  *      簡易課税：SHA020（第一表・第二表）・SHB047（付表4-3）・SHB067（付表5-3）
  *      2割特例：SHA020・SHB070。第一表の「税額控除に係る経過措置の適用（２割特例）」を 1（該当）にする
  *  - 3割特例は、国税庁の様式（付表）がまだ無いため書き出せない
+ *  - 一般用で ⑧ 控除不足還付税額があるときは、消費税の還付申告に関する明細書（個人事業者用）SHC025 も付ける（lib/taxRefundDetail.ts）
  * 確定申告だけ（中間申告・修正申告は対象外）。個人番号と提出年月日は e-Tax の側で入れる
  */
 import type { FormRow, TaxReturn } from "./taxReturn";
 import { documentXml, formXml, itRefs, itXml, type EtaxFiler, type EtaxValues, type FormAttrs } from "./etax";
+import type { PurchaseFigure, PurchaseFigures, RefundTradeRow, TaxRefundDetailInput } from "./taxRefundDetail";
 
 const NAMESPACE = "http://xml.e-tax.nta.go.jp/XSD/shohi";
 const PROCEDURES = {
@@ -219,6 +221,96 @@ export interface XtxOptions {
   to: string;
   /** 作成日（YYYY-MM-DD） */
   createdOn: string;
+  /** 還付申告に関する明細書（⑧ 控除不足還付税額があるときに付ける） */
+  refundDetail?: { input: TaxRefundDetailInput; purchases: PurchaseFigures };
+}
+
+/** 第一表の ⑧ 控除不足還付税額（明細書が要るのは、一般用でこれがあるとき） */
+export const refundShortfall = (r: TaxReturn) => (r.firstKind === "一般用" ? rowOf(r, "first", "⑧")?.c ?? 0 : 0);
+
+// ── 消費税の還付申告に関する明細書（個人事業者用）SHC025 ──
+const yesNo = (b: boolean) => ({ kubun: b ? 1 : 2 });
+const text = (s: string) => ({ text: s.trim() });
+/** 明細の行（年月日か「継続」・金額・登録番号・取引先） */
+const tradeRow = (r: RefundTradeRow, t: { kind: string; date: string; cont?: string; amount: string; reg?: string; name: string; addr: string }): EtaxValues => {
+  const v: EtaxValues = { [t.kind]: text(r.kind), [t.amount]: r.amount };
+  if (r.continuous && t.cont) v[t.cont] = text("継続");
+  else if (r.date) v[t.date] = { date: r.date };
+  if (t.reg && r.regNo) v[t.reg] = text(r.regNo);
+  if (r.name.trim()) v[t.name] = text(r.name);
+  if (r.address.trim()) v[t.addr] = text(r.address);
+  return v;
+};
+/** 決算額・課税仕入れにならないもの・課税仕入高の3つの欄 */
+const purchaseCells = (v: EtaxValues, f: PurchaseFigure, prefix: string, n: number) => {
+  v[tag(prefix, n)] = f.total;
+  v[tag(prefix, n + 10)] = f.notTaxable;
+  v[tag(prefix, n + 20)] = f.taxable;
+};
+
+const refundDetailValues = (r: TaxReturn, d: NonNullable<XtxOptions["refundDetail"]>, year: number): EtaxValues => {
+  const x = d.input;
+  const p = d.purchases;
+  const v: EtaxValues = {
+    CJA00020: { ref: "KAZEI_KIKAN_FROM" }, CJA00030: { ref: "KAZEI_KIKAN_TO" }, CJA00040: { ref: "NOZEISHA_ADR" }, CJA00050: { ref: "NOZEISHA_NM" },
+    CJB00010: yesNo(x.reasons.export), CJB00020: yesNo(x.reasons.capex), CJB00040: yesNo(x.reasons.other),
+  };
+  if (x.reasons.other && x.reasons.otherText.trim()) v.CJB00050 = text(x.reasons.otherText);
+  // 2(1) 主な課税資産の譲渡等（税込）
+  if (x.sales.length) {
+    v.CJC00020 = { kubun: 1 };
+    v.CJC00030 = { rows: x.sales.map((row) => tradeRow(row, { kind: "CJC00040", date: "CJC00050", cont: "CJC00060", amount: "CJC00070", name: "CJC00080", addr: "CJC00090" })) };
+  }
+  // 2(2) 主な輸出取引等の明細・利用する金融機関・通関業者
+  if (x.exports.length) {
+    v.CJC00110 = {
+      rows: x.exports.map((e) => {
+        const row: EtaxValues = { CJC00140: e.amount };
+        if (e.name.trim()) row.CJC00120 = text(e.name);
+        if (e.address.trim()) row.CJC00130 = text(e.address);
+        if (e.goods.trim()) row.CJC00150 = text(e.goods);
+        if (e.customs.trim()) row.CJC00160 = text(e.customs);
+        return row;
+      }),
+    };
+  }
+  if (x.bank.name.trim()) {
+    Object.assign(v, { CJC00190: text(x.bank.name), CJC00200: { kubun: x.bank.kind }, CJC00220: { kubun: x.bank.branchKind }, CJC00230: { kubun: x.bank.deposit } });
+    if (x.bank.branch.trim()) v.CJC00210 = text(x.bank.branch);
+    if (x.bank.number.trim()) v.CJC00240 = text(x.bank.number);
+  }
+  if (x.broker.name.trim()) v.CJC00260 = text(x.broker.name);
+  if (x.broker.address.trim()) v.CJC00270 = text(x.broker.address);
+  // 3(1) 仕入金額等の明細（税込）。不動産所得は動きがあるときだけ
+  v.CJD00020 = { kubun: 1 };
+  purchaseCells(v, p.business.purchase, "CJD", 50);
+  purchaseCells(v, p.business.expense, "CJD", 90);
+  purchaseCells(v, p.business.asset, "CJD", 130);
+  purchaseCells(v, p.business.subtotal, "CJD", 170);
+  const re = p.realEstate.subtotal;
+  if (re.total !== 0 || re.taxable !== 0) {
+    purchaseCells(v, p.realEstate.expense, "CJD", 220);
+    purchaseCells(v, p.realEstate.asset, "CJD", 260);
+    purchaseCells(v, re, "CJD", 300);
+  }
+  v.CJD00510 = p.taxableTotal;
+  // 課税仕入れ等の税額の合計額 ＝ 付表2-3 ⑰
+  v.CJD00520 = rowOf(r, "2-3", "⑰")?.c ?? 0;
+  // 3(2) 主な棚卸資産・原材料等の取得、3(3) 主な固定資産等の取得（税込）
+  if (x.inventory.length) {
+    v.CJD00540 = { kubun: 1 };
+    v.CJD00550 = { rows: x.inventory.map((row) => tradeRow(row, { kind: "CJD00560", date: "CJD00570", cont: "CJD00580", amount: "CJD00590", reg: "CJD00595", name: "CJD00600", addr: "CJD00610" })) };
+  }
+  if (x.assets.length) {
+    v.CJD00630 = { kubun: 1 };
+    v.CJD00640 = { rows: x.assets.map((row) => tradeRow(row, { kind: "CJD00650", date: "CJD00660", amount: "CJD00670", reg: "CJD00675", name: "CJD00680", addr: "CJD00690" })) };
+  }
+  // 4 その年の特殊事情
+  if (x.special.trim()) {
+    v.CJE00010 = { nen: year };
+    v.CJE00020 = text(x.special);
+  }
+  return v;
 }
 
 /** 申告書の数字（TaxReturn）から xtx を作る。書き出せない方式・年分なら例外 */
@@ -232,8 +324,10 @@ export const buildTaxXtx = (r: TaxReturn, filer: EtaxFiler, o: XtxOptions): stri
     r.method === "twenty" ? [["SHB070", fill(fuhyoHead("AYA"), rowsOf(r, "6"), FUHYO6)]]
       : r.method === "standard" ? [["SHB017", fill(fuhyoHead("DSA"), rowsOf(r, "1-3"), FUHYO13)], ["SHB033", fuhyo23Values(r)]]
         : [["SHB047", fill(fuhyoHead("DUA"), rowsOf(r, "4-3"), FUHYO43)], ["SHB067", fuhyo53Values(r)]];
-  // 手続の XSD の順番：第一表・第二表、付表1-3/4-3、付表2-3/5-3、付表6
-  const forms = [[p.first, first] as [string, EtaxValues], ...fuhyo].map(([id, values]) => ({ id, xml: formXml(id, values, attrs) }));
+  // 還付申告に関する明細書（一般用で ⑧ 控除不足還付税額があるとき）
+  const refund: [string, EtaxValues][] = refundShortfall(r) > 0 && o.refundDetail ? [["SHC025", refundDetailValues(r, o.refundDetail, Number(o.from.slice(0, 4)))]] : [];
+  // 手続の XSD の順番：第一表・第二表、付表1-3/4-3、付表2-3/5-3、付表6、還付申告に関する明細書
+  const forms = [[p.first, first] as [string, EtaxValues], ...fuhyo, ...refund].map(([id, values]) => ({ id, xml: formXml(id, values, attrs) }));
   return documentXml({
     namespace: NAMESPACE,
     procedure: p.procedure,

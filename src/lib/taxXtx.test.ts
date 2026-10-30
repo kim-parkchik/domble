@@ -7,7 +7,8 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { simplifiedReturn, standardReturn, thirtyReturn, twentyReturn, type TaxBase } from "./taxReturn";
-import { buildTaxXtx, xtxProblem, xtxVersionFor } from "./taxXtx";
+import { buildTaxXtx, refundShortfall, xtxProblem, xtxVersionFor } from "./taxXtx";
+import { EMPTY_REFUND_BANK, type PurchaseFigures, type TaxRefundDetailInput } from "./taxRefundDetail";
 import { filerProblems, formXml, isValidMyNumber, itXml, normalizeEtaxInfo, toKatakana, warekiXml, type EtaxFiler, type EtaxInfo } from "./etax";
 
 const base = (x: Partial<TaxBase>): TaxBase => ({
@@ -253,6 +254,49 @@ describe("個人番号・還付先の口座", () => {
     expect(normalizeEtaxInfo(info)).toMatchObject({ bank_name: "みずほ", branch_name: "渋谷", account_no: "1234567" });
     expect(normalizeEtaxInfo({ ...info, account_no: "" })).toMatch(/口座番号/);
     expect(normalizeEtaxInfo({ ...info, refund_mode: "yucho" })).toMatch(/ゆうちょ/);
+  });
+});
+
+describe("還付申告に関する明細書（SHC025）", () => {
+  const refundReturn = standardReturn(base({ sales: { 8: 0, 10: 1_100_000 }, purchase: { 8: 0, 10: 3_300_000 } }), opts);
+  const f = (total: number, taxable: number) => ({ total, notTaxable: total - taxable, taxable });
+  const purchases: PurchaseFigures = {
+    business: { purchase: f(0, 0), expense: f(500_000, 300_000), asset: f(3_000_000, 3_000_000), subtotal: f(3_500_000, 3_300_000) },
+    realEstate: { expense: f(0, 0), asset: f(0, 0), subtotal: f(0, 0) },
+    taxableTotal: 3_300_000, outside: 0,
+  };
+  const input: TaxRefundDetailInput = {
+    reasons: { export: false, capex: true, other: true, otherText: "期末に多額の棚卸資産を購入したため。" },
+    sales: [{ kind: "建設機械", date: "2026-05-20", continuous: false, amount: 1_100_000, regNo: "", name: "株式会社B", address: "東京都港区" }],
+    exports: [{ name: "Overseas Inc.", address: "Seattle", amount: 2_000_000, goods: "機械用部品", customs: "東京税関" }],
+    bank: { ...EMPTY_REFUND_BANK, name: "みずほ", branch: "渋谷", number: "1234567" },
+    broker: { name: "通関株式会社", address: "東京都江東区" },
+    inventory: [{ kind: "原材料", date: "", continuous: true, amount: 1_650_000, regNo: "1234567890123", name: "株式会社A", address: "" }],
+    assets: [{ kind: "車両", date: "2026-11-15", continuous: false, amount: 3_000_000, regNo: "", name: "自動車販売", address: "大阪市" }],
+    special: "多額の設備投資を行った。",
+  };
+
+  test("⑧ 控除不足還付税額があれば付け、XSD に合う", () => {
+    expect(refundShortfall(refundReturn)).toBeGreaterThan(0);
+    const xml = buildTaxXtx(refundReturn, filer, { ...period, refundDetail: { input, purchases } });
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain('<SHC025 VR="2.0"');
+    expect([val(xml, "CJB00010"), val(xml, "CJB00020"), val(xml, "CJB00040"), val(xml, "CJB00050")]).toEqual(["2", "1", "1", "期末に多額の棚卸資産を購入したため。"]);
+    expect([val(xml, "CJC00070"), val(xml, "CJC00140"), val(xml, "CJC00190"), val(xml, "CJC00260")]).toEqual(["1100000", "2000000", "みずほ", "通関株式会社"]);
+    expect([val(xml, "CJD00050"), val(xml, "CJD00090"), val(xml, "CJD00100"), val(xml, "CJD00190"), val(xml, "CJD00510")]).toEqual(["0", "500000", "200000", "3300000", "3300000"]);
+    // 課税仕入れ等の税額の合計額 ＝ 付表2-3 ⑰
+    expect(val(xml, "CJD00520")).toBe(String(Math.floor((3_300_000 * 78) / 1100)));
+    expect([val(xml, "CJD00580"), val(xml, "CJD00595"), val(xml, "CJD00670")]).toEqual(["継続", "1234567890123", "3000000"]);
+    expect(val(xml, "CJE00020")).toBe("多額の設備投資を行った。");
+    // 不動産所得の動きが無ければ書かない
+    expect(xml).not.toContain("CJD00220");
+  });
+
+  test("還付にならない申告・明細書を渡さないときは付けない", () => {
+    const pay = standardReturn(base({ sales: { 8: 0, 10: 3_300_000 }, purchase: { 8: 0, 10: 1_100_000 } }), opts);
+    expect(refundShortfall(pay)).toBe(0);
+    expect(buildTaxXtx(pay, filer, { ...period, refundDetail: { input, purchases } })).not.toContain("SHC025");
+    expect(buildTaxXtx(refundReturn, filer, period)).not.toContain("SHC025");
   });
 });
 

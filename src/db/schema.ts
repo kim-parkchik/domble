@@ -96,6 +96,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
   ...yearGuards("trg_closed_tax_inventory_adjusts", "tax_inventory_adjusts", "fiscal_year"),
+  ...yearGuards("trg_closed_tax_refund_details", "tax_refund_details", "fiscal_year"),
   ...yearGuards("trg_closed_tax_prev_amounts", "tax_prev_amounts", "fiscal_year"),
   ...yearGuards("trg_closed_income_tax_inputs", "income_tax_inputs", "fiscal_year"),
   // 固定資産台帳：締めた年に台帳に出る資産の追加・削除、売却・除却の日と事業専用割合のほかの変更、締めた年にかかる売却・除却の日の変更
@@ -319,6 +320,12 @@ export const SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS tax_base_sales (
     fiscal_year INTEGER PRIMARY KEY,
     amount INTEGER NOT NULL CHECK (amount >= 0)
+  );`,
+
+  /** 消費税の還付申告に関する明細書（個人事業者用）の入力（年度ごと。JSON。中身は lib/taxRefundDetail.ts の TaxRefundDetailInput） */
+  `CREATE TABLE IF NOT EXISTS tax_refund_details (
+    fiscal_year INTEGER PRIMARY KEY,
+    data TEXT NOT NULL
   );`,
 
   /**

@@ -1573,6 +1573,24 @@ describe("「何年から」の設定と年の締め（repo）", () => {
   });
 });
 
+describe("還付申告に関する明細書（repo）", () => {
+  test("年ごとに保存して読み直せる。おかしな入力は保存しない。締めた年は変えられない", async () => {
+    const { db } = strict;
+    expect(await repo.getRefundDetail(db, 2026)).toBeNull();
+    const x = {
+      reasons: { export: false, capex: true, other: false, otherText: "" }, sales: [], exports: [],
+      bank: { name: "", kind: 1, branch: "", branchKind: 2, deposit: 1, number: "" }, broker: { name: "", address: "" },
+      inventory: [], assets: [{ kind: "車両", date: "2026-11-15", continuous: false, amount: 4_400_000, regNo: "", name: "", address: "" }], special: "",
+    };
+    await repo.saveRefundDetail(db, 2026, x);
+    expect(await repo.getRefundDetail(db, 2026)).toEqual(x);
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "2026年の還付申告に関する明細書", new_value: "理由：設備投資、明細 1行" });
+    await expect(repo.saveRefundDetail(db, 2026, { ...x, reasons: { ...x.reasons, capex: false } })).rejects.toThrow(/理由/);
+    await repo.closeYear(db, 2026);
+    await expect(repo.saveRefundDetail(db, 2026, { ...x, special: "変更" })).rejects.toThrow(/締め/);
+  });
+});
+
 describe("所得税の申告書の入力（repo）", () => {
   test("年度ごとに保存して読み直せる。おかしな金額は保存しない。締めた年は変えられない", async () => {
     const { db } = strict;

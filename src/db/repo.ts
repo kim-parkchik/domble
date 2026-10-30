@@ -38,6 +38,7 @@ import {
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
 import { CATEGORY_CODE_RANGE, isBalanceSheet, LOCKED_CODES, normalSideOf } from "../constants/accounts";
 import { assetLockError, businessRateIn, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
+import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import type { InventoryAdjust } from "../lib/taxReturn";
 import {
   DEFAULT_BACKUP_GENERATIONS, DEFAULT_INPUT_PERIOD_DAYS, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
@@ -710,6 +711,34 @@ export const getTaxInterim = async (db: Database, year: number) => {
 };
 
 /** 消費税の棚卸資産の調整（付表2-3 ⑯。無ければ null） */
+// ────────────────────────────────────────────
+// 消費税の還付申告に関する明細書（個人事業者用）の入力。帳簿から作る候補・計算は lib/taxRefundDetail.ts
+// ────────────────────────────────────────────
+/** 保存した明細書（無ければ null：画面では帳簿の候補から作る） */
+export const getRefundDetail = async (db: Database, year: number): Promise<TaxRefundDetailInput | null> => {
+  const r = await db.select<{ data: string }[]>("SELECT data FROM tax_refund_details WHERE fiscal_year = ?", [year]);
+  return r[0] ? (JSON.parse(r[0].data) as TaxRefundDetailInput) : null;
+};
+
+/** 保存する（締めた年は変えられない）。変更は履歴に残す（厳密モード） */
+const saveRefundDetail_ = async (db: Database, year: number, x: TaxRefundDetailInput) => {
+  const problems = refundDetailProblems(x);
+  if (problems.length) throw new Error(problems.join("。"));
+  await assertYearOpen(db, year);
+  const before = await getRefundDetail(db, year);
+  const data = JSON.stringify(x);
+  if (before && JSON.stringify(before) === data) return;
+  await db.execute("INSERT INTO tax_refund_details (fiscal_year, data) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET data = excluded.data", [year, data]);
+  const text = (d: TaxRefundDetailInput | null) => d
+    ? `理由：${[d.reasons.export ? "輸出等" : "", d.reasons.capex ? "設備投資" : "", d.reasons.other ? `その他（${d.reasons.otherText}）` : ""].filter(Boolean).join("・")}、`
+      + `明細 ${d.sales.length + d.exports.length + d.inventory.length + d.assets.length}行`
+    : "なし";
+  await logMaster(db, {
+    target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の還付申告に関する明細書`,
+    old_value: text(before), new_value: text(x),
+  });
+};
+
 export const getInventoryAdjust = async (db: Database, year: number): Promise<InventoryAdjust | null> => {
   const r = await db.select<{ direction: string; rows: string }[]>("SELECT direction, rows FROM tax_inventory_adjusts WHERE fiscal_year = ?", [year]);
   if (!r[0]) return null;
@@ -2726,6 +2755,7 @@ export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}�
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
 export const saveInventoryAdjust = inTx(saveInventoryAdjust_, (year) => `${year}年の棚卸資産の調整`, { perm: "settings" });
+export const saveRefundDetail = inTx(saveRefundDetail_, (year) => `${year}年の還付申告に関する明細書`, { perm: "settings" });
 export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登録番号の保存", { perm: "settings" });
 export const saveEtaxInfo = inTx(saveEtaxInfo_, () => "e-Tax の申告者の情報の保存", { perm: "settings" });
 export const fillTaxCodes = inTx(fillTaxCodes_, (year) => `${year}年の仕訳の税区分の一括設定`, { perm: "entry" });

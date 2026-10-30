@@ -898,3 +898,23 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 /* 中の入力をまとめて止めるための枠（見た目は無し。固定資産台帳の締めた年の資産など） */
 .plain-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .plain-fieldset:disabled { opacity: .6; }
+
+/* ---------- 消費税の還付申告に関する明細書（features/reports/RefundDetailSection.tsx） ---------- */
+.refund-detail h5 { font-size: 13px; font-weight: 700; margin: 12px 0 4px; }
+.refund-detail h5.refund-part { font-size: 13.5px; margin-top: 18px; padding-bottom: 3px; border-bottom: 1px solid var(--rule); }
+.refund-block { margin-bottom: 10px; }
+.refund-rows { margin: 4px 0 6px; }
+.refund-rows td .check { font-size: 12px; margin-top: 2px; }
+.refund-cont { display: inline-block; padding: 4px 6px; font-weight: 600; }
+.refund-none { font-size: 12.5px; margin: 2px 0 6px; }
+.refund-purchase { max-width: 820px; }
+.refund-purchase td:first-child { width: 34%; }
+.refund-export-more { margin-top: 8px; }
+.refund-export-more .field { min-width: 120px; }
+.refund-actions { align-items: center; gap: 8px; margin-top: 10px; }
+.refund-detail textarea.input { width: 100%; resize: vertical; }
+@media print {
+  .refund-detail .input { border: none !important; background: none !important; padding: 0 !important; box-shadow: none !important; }
+  .refund-detail select.input { appearance: none; }
+  .refund-detail .input::placeholder { color: transparent; }
+}

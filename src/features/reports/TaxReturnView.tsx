@@ -5,6 +5,7 @@
  *  - 中間納付税額は年度ごとに入れる（前年の実績で計算した中間申告の額を「判定した額を入れる」で入れられる）
  *  - 本則課税の棚卸資産の調整（付表2-3 ⑯）は年度ごとに、税率・控除できる割合ごとの取得価額を入れる
  *  - 選んだ方式の申告書を e-Tax のデータ（.xtx）で書き出す（作るのは lib/taxXtx.ts。申告者の情報は事業者設定から）
+ *  - 一般用で ⑧ 控除不足還付税額があるときは、還付申告に関する明細書を出して保存し、e-Tax のデータにも入れる（RefundDetailSection.tsx）
  */
 import { useEffect, useMemo, useState } from "react";
 import { FileDown, Plus, Printer, Save, Trash2, Wand2 } from "lucide-react";
@@ -16,7 +17,9 @@ import { methodProblem } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
 import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings, filerProblems } from "../../lib/etax";
-import { buildTaxXtx, xtxProblem, xtxVersionFor } from "../../lib/taxXtx";
+import { buildTaxXtx, refundShortfall, xtxProblem, xtxVersionFor } from "../../lib/taxXtx";
+import { purchaseFigures, refundDetailFromBooks } from "../../lib/taxRefundDetail";
+import { RefundDetailSection, useRefundDetail } from "./RefundDetailSection";
 import {
   buildTaxBase, computeReturn, inventoryAdjustTax, inventoryOf, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn,
   type InventoryAdjust, type Rate, type ReturnMethod, type TaxForm,
@@ -139,9 +142,16 @@ const InventorySection = ({ inv, disabled }: { inv: NonNullable<ReturnType<typeo
 };
 
 export const TaxReturnView = () => {
-  const { db, year, settings, taxYears, taxYear, isClosed, can, dataVersion, bump } = useAppContext();
+  const { db, year, settings, taxYears, taxYear, isClosed, can, dataVersion, bump, accounts, counterparties } = useAppContext();
   const { lines, opening } = useYearData();
   const inv = useInventory(lines, opening);
+  // 還付申告に関する明細書（帳簿から作る候補と、仕入金額等の明細）
+  const books = useMemo(
+    () => ({ lines, accounts, counterparties, from: taxYear.taxable_from || `${year}-01-01`, to: `${year}-12-31` }),
+    [lines, accounts, counterparties, taxYear.taxable_from, year],
+  );
+  const purchases = useMemo(() => purchaseFigures(books), [books]);
+  const refund = useRefundDetail(books, () => refundDetailFromBooks(books));
   const toast = useToast();
   const available = methodsFor(year);
   const current = (taxYear.status === "exempt" ? null : taxYear.status) as ReturnMethod | null;
@@ -195,6 +205,9 @@ export const TaxReturnView = () => {
   // どれも同じ額なら「いちばん有利」は出さない
   const showBest = new Set(usable.map((x) => x.r.total)).size > 1;
   const admin = can("settings");
+  // ⑧ 控除不足還付税額（一般用）があれば、還付申告に関する明細書を付ける
+  const shortfall = refundShortfall(shown);
+  const needDetail = shortfall > 0 && !refund.saved;
 
   // e-Tax のデータ（.xtx）
   const filer = filerFromSettings(settings);
@@ -206,7 +219,10 @@ export const TaxReturnView = () => {
   const exportXtx = async (myNumber: string) => {
     setAskNumber(false);
     try {
-      const xml = buildTaxXtx(shown, { ...filer, myNumber }, { from: taxYear.taxable_from || `${year}-01-01`, to: `${year}-12-31`, createdOn: todayIso() });
+      const xml = buildTaxXtx(shown, { ...filer, myNumber }, {
+        from: taxYear.taxable_from || `${year}-01-01`, to: `${year}-12-31`, createdOn: todayIso(),
+        refundDetail: shortfall > 0 && refund.saved ? { input: refund.saved, purchases } : undefined,
+      });
       const path = await save({
         defaultPath: `消費税申告_${year}年分_${METHOD_LABEL[method]}.xtx`,
         filters: [{ name: "e-Tax のデータ", extensions: ["xtx"] }],
@@ -296,7 +312,7 @@ export const TaxReturnView = () => {
             </select>
           )}
           <button className="btn ghost sm print-skip" onClick={() => window.print()}><Printer size={14} /> 印刷</button>
-          <button className="btn primary sm print-skip" onClick={() => setAskNumber(true)} disabled={!!xtxBlocked || missing.length > 0}>
+          <button className="btn primary sm print-skip" onClick={() => setAskNumber(true)} disabled={!!xtxBlocked || missing.length > 0 || needDetail}>
             <FileDown size={14} /> e-Tax 用に書き出す
           </button>
         </div>
@@ -305,10 +321,13 @@ export const TaxReturnView = () => {
             <span>{xtxBlocked}。</span>
           ) : missing.length > 0 ? (
             <span>e-Tax 用に書き出すには、事業者設定で次のものを入れてください：{missing.join("、")}。</span>
+          ) : needDetail ? (
+            <span>還付申告になるので、下の「消費税の還付申告に関する明細書」を確かめて保存してください。保存すると、e-Tax 用のデータに明細書も入れて書き出せます。</span>
           ) : (
             <span>
               e-Tax 用のデータ（.xtx）は、e-Taxソフト（WEB版）の「作成済みデータの利用」で読み込み、内容を確かめて送信します。個人番号は書き出すときに入れます。
               {shown.total < 0 && (filer.refund ? "還付になるので、事業者設定の還付先も書きます。" : "還付になりますが、事業者設定に還付先が入っていません。")}
+              {shortfall > 0 && "還付申告に関する明細書も入れます。"}
               {current && method !== current && <b> この年の設定（{METHOD_LABEL[current]}）とは違う方式です。</b>}
               {xtxVersionFor(year).fallback && (
                 <b> 令和{year - 2018}年分の e-Tax の版はまだ domble に入っていないため、いちばん新しい版（{xtxVersionFor(year).version}）で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください。</b>
@@ -328,7 +347,15 @@ export const TaxReturnView = () => {
         {shown.notes.length > 0 && (
           <ul className="tax-return-notes">{shown.notes.map((n) => <li key={n}>{n}</li>)}</ul>
         )}
+        {shortfall > 0 && (
+          <p className="notice">
+            還付申告（⑧ 控除不足還付税額 {yen(shortfall)}円）になるので、「消費税の還付申告に関する明細書（個人事業者用）」を添付します（消費税法施行規則22条3項）。下の明細書を確かめて保存してください。
+          </p>
+        )}
         {forms.map((f) => <FormTable key={f.id} form={f} />)}
+        {shortfall > 0 && refund.draft && (
+          <RefundDetailSection draft={refund.draft} setDraft={refund.setDraft} saved={refund.saved} books={books} purchases={purchases} disabled={!admin || isClosed} />
+        )}
         <p className="field-note">
           確定申告書等作成コーナーや e-Tax に書き写すときの数字です。e-Tax 用のデータに書き出すこともできます（送信は e-Tax で行います）。
           申告の前に、集計表と「確認」の内容を確かめてください。
