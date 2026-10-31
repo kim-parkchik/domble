@@ -360,14 +360,14 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
         <div className="table-wrap scroll-y" ref={scrollRef}>
           <table className="ledger book-table">
             <colgroup>
-              <col style={{ width: 72 }} />
-              <col style={{ width: 52 }} />
-              <col style={{ width: "16%" }} />
-              <col style={{ width: 136 }} />
+              <col className="cb-date" />
+              <col className="cb-no" />
+              <col className="cb-acct" />
+              <col className="cb-tax" />
               <col />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "14%" }} />
+              <col className="cb-amt" />
+              <col className="cb-amt" />
+              <col className="cb-bal" />
             </colgroup>
             <thead>
               <tr>
@@ -414,14 +414,14 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
         <div className="table-wrap input-dock" data-navgroup>
           <table className="ledger book-table">
             <colgroup>
-              <col style={{ width: 72 }} />
-              <col style={{ width: 52 }} />
-              <col style={{ width: "16%" }} />
-              <col style={{ width: 136 }} />
+              <col className="cb-date" />
+              <col className="cb-no" />
+              <col className="cb-acct" />
+              <col className="cb-tax" />
               <col />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "14%" }} />
+              <col className="cb-amt" />
+              <col className="cb-amt" />
+              <col className="cb-bal" />
             </colgroup>
             <tbody>
               <tr ref={inputRowRef} className="input-row">

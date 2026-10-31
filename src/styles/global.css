@@ -705,6 +705,32 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .memo-cp .memo-input { flex: 1; min-width: 0; }
 .memo-cp .cp-field { flex: none; }
 .memo-cp .cp-input { width: 9.5em; }
+/* 振替伝票・帳簿入力の列の幅。金額・税区分・残高は決まった幅にし、残りを摘要の列にする（広げても摘要が広がる）。
+   狭いウィンドウ（最小 1100）では科目・金額・税区分をさらに詰めて、摘要の欄を残す（税区分の長い名前は選ぶ欄に重ねると出る） */
+.voucher-table col.vc-no { width: 36px; }
+.voucher-table col.vc-acct { width: 14%; }
+.voucher-table col.vc-amt { width: 112px; }
+.voucher-table col.vc-tax { width: 136px; }
+.voucher-table col.vc-del { width: 40px; }
+.book-table col.cb-date { width: 72px; }
+.book-table col.cb-no { width: 52px; }
+.book-table col.cb-acct { width: 15%; }
+.book-table col.cb-tax { width: 136px; }
+.book-table col.cb-amt { width: 112px; }
+.book-table col.cb-bal { width: 120px; }
+.book-table .memo-cp .cp-input { width: 8em; }
+@media (max-width: 1279px) {
+  .voucher-table col.vc-acct { width: 112px; }
+  .voucher-table col.vc-amt { width: 96px; }
+  .voucher-table col.vc-tax { width: 96px; }
+  .voucher-table col.vc-del { width: 32px; }
+  .book-table col.cb-no { width: 44px; }
+  .book-table col.cb-acct { width: 13%; }
+  .book-table col.cb-tax { width: 96px; }
+  .book-table col.cb-amt { width: 96px; }
+  .book-table col.cb-bal { width: 104px; }
+  .book-table .memo-cp .cp-input { width: 6em; }
+}
 .cp-tag { display: inline-block; margin-left: 8px; font-size: 11.5px; color: var(--accent); background: var(--accent-tint); border-radius: 3px; padding: 0 6px; }
 .anchor-box { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; }
 .anchor-code { font-family: ui-monospace, Menlo, monospace; font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: .04em; user-select: all; }

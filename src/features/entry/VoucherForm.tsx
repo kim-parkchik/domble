@@ -229,15 +229,15 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
       <div className="table-wrap">
         <table className="ledger voucher-table">
           <colgroup>
-            <col style={{ width: 36 }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: 136 }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: 136 }} />
+            <col className="vc-no" />
+            <col className="vc-acct" />
+            <col className="vc-amt" />
+            <col className="vc-tax" />
+            <col className="vc-acct" />
+            <col className="vc-amt" />
+            <col className="vc-tax" />
             <col />
-            <col style={{ width: 40 }} />
+            <col className="vc-del" />
           </colgroup>
           <thead>
             <tr>
