@@ -9,12 +9,13 @@ import { useAppContext, useInputDays } from "../../context/AppContext";
 import { CounterpartyField, AccountWithSub, AmountInput, DateInput, MemoInput, TaxAmountField, TaxSelect } from "../../components/Inputs";
 import { checkVoucher, emptyRow, rowsToLines, yearEnd } from "../../lib/accounting";
 import { enterToNext, isComposing } from "../../lib/keyboard";
-import { todayIso, yen } from "../../lib/format";
+import { shortDate, todayIso, yen } from "../../lib/format";
 import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import type { VoucherRow } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { useToast } from "../../components/Toast";
 import { applyTemplate, type JournalTemplate } from "../../lib/templates";
+import { usableSide, voucherFill } from "../../lib/memoFill";
 import { TemplatePickModal, TemplateSaveModal } from "./TemplateModals";
 import { entryRateOf, splitLinesByHomeUse } from "../../lib/homeUse";
 import { CODE } from "../../constants/accounts";
@@ -84,6 +85,32 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
 
   const check = checkVoucher(rows);
   const diff = check.debitTotal - check.creditTotal;
+
+  // 摘要からの自動入力：科目が両側とも空の行に、同じ摘要のいちばん新しい仕訳の同じ行の科目（補助科目・税区分）と、空なら取引先を入れる。金額は入れない
+  const fillFromMemo = async (i: number, m: string) => {
+    if (!m.trim() || rows[i]?.debitAccountId || rows[i]?.creditAccountId) return;
+    const e = await repo.findMemoEntry(db, m).catch(() => null);
+    const f = e ? voucherFill(e, m) : null;
+    if (!e || !f) return;
+    const d = usableSide(f.debit, accounts, subAccounts);
+    const c = usableSide(f.credit, accounts, subAccounts);
+    const patch: Partial<VoucherRow> = {
+      ...(d ? { debitAccountId: d.accountId, debitSubId: d.subId, debitTax: d.tax, debitInvoice: d.invoice, debitClass: d.cls, debitUse: d.use } : {}),
+      ...(c ? { creditAccountId: c.accountId, creditSubId: c.subId, creditTax: c.tax, creditInvoice: c.invoice, creditClass: c.cls, creditUse: c.use } : {}),
+    };
+    const filled: string[] = [];
+    if (d || c) {
+      // update は科目を変えると補助科目・税区分を初期値に戻すので、ここでは直接入れる（その間に科目を入れた行はそのまま）
+      setRows((rs) => rs.map((r, j) => (j === i && !r.debitAccountId && !r.creditAccountId ? { ...r, ...patch } : r)));
+      filled.push("科目");
+    }
+    const cp = !counterpartyId && e.counterparty_id ? counterparties.find((x) => x.id === e.counterparty_id && x.is_active) : null;
+    if (cp) {
+      setCounterpartyId(cp.id);
+      filled.push("取引先");
+    }
+    if (filled.length) toast(`前の「${m.trim()}」（${shortDate(e.date)}・No.${e.id}）から、${filled.join("・")}を入れました`);
+  };
 
   const update = (i: number, patch: Partial<VoucherRow>) =>
     setRows((rs) => {
@@ -253,7 +280,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
                     date={date} counterpartyId={counterpartyId} value={r.creditTaxAmount} onChange={(v) => update(i, { creditTaxAmount: v })}
                   />
                 </td>
-                <td><MemoInput value={r.memo} onChange={(v) => update(i, { memo: v })} onKeyDown={nav} aria-label={`${i + 1}行目 摘要`} /></td>
+                <td><MemoInput value={r.memo} onChange={(v) => update(i, { memo: v })} onCommit={(v) => fillFromMemo(i, v)} onKeyDown={nav} aria-label={`${i + 1}行目 摘要`} /></td>
                 <td>
                   <button className="icon-btn subtle" tabIndex={-1} onClick={() => removeRow(i)} aria-label={`${i + 1}行目を消す`}>
                     <X size={14} />

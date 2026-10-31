@@ -27,6 +27,7 @@ import { CashbookTabsModal } from "./CashbookTabsModal";
 import { BankImportModal } from "./BankImportModal";
 import { TemplatePickModal } from "./TemplateModals";
 import { applyTemplate, templateForBook, type JournalTemplate } from "../../lib/templates";
+import { bookFill, usableSide } from "../../lib/memoFill";
 import * as repo from "../../db/repo";
 import { subKey, type InvoiceKind, type JournalLine, type PurchaseUse, type TaxCode } from "../../lib/types";
 import { splitByRate } from "../../lib/homeUse";
@@ -215,6 +216,27 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     setPicking(false);
     if (applied.dropped > 0) toast(`消された科目・補助科目が ${applied.dropped} か所あったため、外して入れました`, "error");
     else toast(`「${t.name}」を入れました${x.amount ? "" : `。${x.bookDebit ? labels.dr : labels.cr}に金額を入れて登録します`}`);
+  };
+
+  // 摘要からの自動入力：同じ摘要でこの帳簿に登録したいちばん新しい仕訳から、空いている相手科目（補助科目・税区分）と取引先を入れる。金額は入れない
+  const fillFromMemo = async (m: string) => {
+    if (!m.trim() || (counterId && counterpartyId)) return;
+    const e = await repo.findMemoEntry(db, m, accountId).catch(() => null);
+    if (!e) return;
+    const filled: string[] = [];
+    const f = counterId ? null : usableSide(bookFill(e, accountId, m), accounts, subAccounts);
+    if (f) {
+      setCounterId(f.accountId);
+      setCounterSubId(f.subId);
+      setCounterTax({ code: f.tax, invoice: f.invoice, cls: f.cls, use: f.use });
+      filled.push("相手科目");
+    }
+    const cp = !counterpartyId && e.counterparty_id ? counterparties.find((c) => c.id === e.counterparty_id && c.is_active) : null;
+    if (cp) {
+      setCounterpartyId(cp.id);
+      filled.push("取引先");
+    }
+    if (filled.length) toast(`前の「${m.trim()}」（${shortDate(e.date)}・No.${e.id}）から、${filled.join("・")}を入れました`);
   };
 
   const save = async () => {
@@ -419,7 +441,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                 </td>
                 <td>
                   <div className="memo-cp">
-                    <MemoInput value={memo} onChange={setMemo} onKeyDown={nav} aria-label="摘要" />
+                    <MemoInput value={memo} onChange={setMemo} onCommit={fillFromMemo} onKeyDown={nav} aria-label="摘要" />
                     <CounterpartyField key={cpKey} value={counterpartyId} onChange={setCounterpartyId} onUnknown={setCpUnknown} onKeyDown={nav} aria-label="取引先" />
                   </div>
                 </td>

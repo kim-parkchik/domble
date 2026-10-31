@@ -28,6 +28,7 @@ import { isExclusiveOn, taxAmountProblem } from "../lib/taxExclusive";
 import type { AccountListRow } from "../lib/masterCsv";
 import { columnMapProblem, parseColumnMap, type BankRule, type BankRuleSplit, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
+import type { MemoEntry, MemoEntryLine } from "../lib/memoFill";
 import { checkScanQuality, docClassOf, scanMethodName, toScanInputMethod, type DocClass, type ScanInputMethod } from "../lib/scan";
 import {
   counterpartyOfName, parsePayrollSettings, payrollEntryLines, payrollSettingsProblem, sameName, type AccountRef, type PayrollRow, type PayrollSettings,
@@ -1582,6 +1583,29 @@ export const getCreateReasons = async (db: Database, from: string, to: string): 
     [from, to],
   );
   return new Map(rows.map((r) => [r.entry_id, r.reason]));
+};
+
+/**
+ * 摘要からの自動入力：同じ摘要の明細がある、いちばん新しい仕訳（削除したものは除く）。
+ * bookAccountId を渡すと、その科目を使った仕訳から探す（帳簿入力）。無ければ null
+ */
+export const findMemoEntry = async (db: Database, memo: string, bookAccountId?: number): Promise<MemoEntry | null> => {
+  const m = memo.trim();
+  if (!m) return null;
+  const hit = await db.select<{ id: number; date: string; counterparty_id: number | null }[]>(
+    `SELECT e.id, e.date, e.counterparty_id FROM journal_entries e
+      WHERE e.is_deleted = 0 AND EXISTS (SELECT 1 FROM journal_lines l WHERE l.entry_id = e.id AND l.memo = ?)
+        ${bookAccountId ? "AND EXISTS (SELECT 1 FROM journal_lines b WHERE b.entry_id = e.id AND b.account_id = ?)" : ""}
+      ORDER BY e.date DESC, e.id DESC LIMIT 1`,
+    bookAccountId ? [m, bookAccountId] : [m],
+  );
+  if (!hit[0]) return null;
+  const lines = await db.select<MemoEntryLine[]>(
+    `SELECT row_no, side, account_id, sub_account_id, memo, tax_code, invoice_kind, business_class, purchase_use
+       FROM journal_lines WHERE entry_id = ? ORDER BY row_no, CASE side WHEN 'debit' THEN 0 ELSE 1 END`,
+    [hit[0].id],
+  );
+  return { ...hit[0], lines };
 };
 
 export const getEntry = async (db: Database, id: number): Promise<JournalEntry | null> => {

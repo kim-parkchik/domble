@@ -793,6 +793,29 @@ describe("まとめて削除・取り込みの記録（repo）", () => {
   });
 });
 
+describe("摘要からの自動入力（repo）", () => {
+  test("同じ摘要のいちばん新しい仕訳。帳簿の科目で絞れる。削除したものは使わない", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const pay = (date: string, expense: string, from: string) => repo.createEntry(db, date, [
+      { row_no: 1, side: "debit", account_id: id(expense), sub_account_id: null, amount: 1000, memo: "外注" },
+      { row_no: 1, side: "credit", account_id: id(from), sub_account_id: null, amount: 1000, memo: "外注" },
+    ]);
+    const older = await pay("2026-01-10", "外注工賃", "現金");
+    const newer = await pay("2026-02-10", "支払手数料", "普通預金");
+    expect((await repo.findMemoEntry(db, " 外注 "))?.id).toBe(newer);
+    expect((await repo.findMemoEntry(db, "外注", id("現金")))?.id).toBe(older);
+    expect((await repo.findMemoEntry(db, "外注", id("現金")))?.lines.map((l) => [l.side, l.account_id, l.memo])).toEqual([
+      ["debit", id("外注工賃"), "外注"], ["credit", id("現金"), "外注"],
+    ]);
+    await repo.deleteEntry(db, newer, "誤り");
+    expect((await repo.findMemoEntry(db, "外注"))?.id).toBe(older);
+    expect(await repo.findMemoEntry(db, "電気代")).toBeNull();
+    expect(await repo.findMemoEntry(db, " ")).toBeNull();
+  });
+});
+
 describe("給与（repo）", () => {
   const row = (r: number, date: string, kind: "salary" | "bonus", name: string, gross: number, tax: number, social = 0) =>
     ({ row: r, date, kind, name, gross, commute: 0, social, tax, resident: 0, other: 0, net: gross - tax - social });

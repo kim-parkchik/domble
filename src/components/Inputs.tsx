@@ -261,9 +261,11 @@ interface MemoInputProps extends NavProps {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  /** 摘要を確定したとき（Enter で次の欄へ・欄を離れたとき）。摘要からの自動入力に使う */
+  onCommit?: (v: string) => void;
 }
 
-export const MemoInput = ({ value, onChange, placeholder = "摘要", ...rest }: MemoInputProps) => {
+export const MemoInput = ({ value, onChange, placeholder = "摘要", onCommit, ...rest }: MemoInputProps) => {
   const { memoSuggestions } = useAppContext();
   const listId = useId();
   return (
@@ -276,6 +278,7 @@ export const MemoInput = ({ value, onChange, placeholder = "摘要", ...rest }: 
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onCommit ? (e) => onCommit(e.target.value) : undefined}
       />
       <datalist id={listId}>
         {memoSuggestions.map((m) => (
