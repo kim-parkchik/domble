@@ -189,6 +189,8 @@ export const CODE = {
   LAND: "135",          // 土地
   TAX_PAID: "118",      // 仮払消費税等（税抜経理）
   TAX_RECEIVED: "261",  // 仮受消費税等（税抜経理）
+  DEPOSITS_RECEIVED: "206", // 預り金（源泉所得税・住民税・社会保険料を預かる）
+  TRAVEL: "604",        // 旅費交通費（通勤手当）
   MISC_EXPENSE: "699",  // 雑費
 } as const;
 

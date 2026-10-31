@@ -12,7 +12,7 @@
 import type { Account, FilingType, RealEstateScale } from "./types";
 import { closingBalances, summarizeIncome, type FlatLine } from "./accounting";
 import { partnerTotals, payeeBreakdown } from "./statements";
-import { depreciationLinesOf, payeeLinesOf, payLinesOf, type BlueStatementSource, type DepreciationLine, type PayeeLine, type PayLine } from "./blueStatement";
+import { depreciationLinesOf, payeeLinesOf, payFiguresOf, payLinesOf, type BlueStatementSource, type DepreciationLine, type PayeeLine, type PayLine } from "./blueStatement";
 import { CODE } from "../constants/accounts";
 import { accountsOfKind } from "./incomeKind";
 import { BLUE_DEDUCTION_LIMIT } from "./incomeTax";
@@ -266,8 +266,8 @@ export const buildRealEstateBook = (s: RealEstateBookSource): RealEstateBook => 
   );
   return {
     st, hasBusiness, income,
-    salaries: payLinesOf(breakdown(CODE.RE_SALARIES), "re-salary", notes, s.payeeName),
-    family: payLinesOf(breakdown(CODE.RE_FAMILY_SALARY), "re-family", notes, s.payeeName),
+    salaries: payLinesOf(breakdown(CODE.RE_SALARIES), "re-salary", notes, s.payeeName, payFiguresOf(s, idOf(CODE.RE_SALARIES))),
+    family: payLinesOf(breakdown(CODE.RE_FAMILY_SALARY), "re-family", notes, s.payeeName, payFiguresOf(s, idOf(CODE.RE_FAMILY_SALARY))),
     depreciation: depreciationLinesOf(s.assets.filter((a) => a.income_kind === "realestate"), s.year, notes),
     rent: payeeLinesOf(breakdown(CODE.RE_RENT), "re-rent", "key", notes, s.payeeName),
     // 借入金利子の内訳は「書く」のチェックを外したものを除く（金融機関の分も書く）

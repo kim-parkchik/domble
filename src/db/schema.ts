@@ -640,13 +640,13 @@ export const SCHEMA: string[] = [
    *  - bank_rule_splits：ルールの分け方（決まった額を別の相手科目に。bank_rules の相手科目には残りの額が入る。ルールを消すときに一緒に消す）
    */
   /**
-   * 取り込みの記録（仕訳の CSV 取り込み・明細の登録を1回ごとに。まとめて削除するときに使う）
-   *  - import_batches：kind は journal（仕訳の CSV）/ bank（銀行・カードの明細）、source はファイル名や口座、user_id は操作した人
+   * 取り込みの記録（仕訳の CSV 取り込み・明細の登録・給与の取り込みを1回ごとに。まとめて削除するときに使う）
+   *  - import_batches：kind は journal（仕訳の CSV）/ bank（銀行・カードの明細）/ payroll（給与の CSV）、source はファイル名や口座、user_id は操作した人
    *  - import_batch_entries：その取り込みで登録した仕訳（仕訳を削除しても行は残す。残っている数は仕訳と合わせて数える）
    */
   `CREATE TABLE IF NOT EXISTS import_batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    kind TEXT NOT NULL CHECK (kind IN ('journal','bank')),
+    kind TEXT NOT NULL CHECK (kind IN ('journal','bank','payroll')),
     source TEXT NOT NULL DEFAULT '',
     user_id INTEGER,
     created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
@@ -655,6 +655,15 @@ export const SCHEMA: string[] = [
     batch_id INTEGER NOT NULL,
     entry_id INTEGER NOT NULL,
     PRIMARY KEY (batch_id, entry_id)
+  );`,
+
+  /**
+   * 給与の仕訳（給与の CSV から作ったもの）。kind は salary（給与）/ bonus（賞与）。
+   * 金額は仕訳から読む（決算書の給料賃金の内訳の賞与、源泉所得税の納付書の区分に使う。lib/payroll.ts）
+   */
+  `CREATE TABLE IF NOT EXISTS payroll_entries (
+    entry_id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('salary','bonus'))
   );`,
 
   `CREATE TABLE IF NOT EXISTS bank_formats (
@@ -916,4 +925,6 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   // 不動産所得：none なし ／ small 事業的規模でない ／ business 事業的規模
   ["settings", "real_estate", "TEXT NOT NULL DEFAULT 'none' CHECK (real_estate IN ('none','small','business'))"],
   ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],
+  // 給与の設定（預かる科目・支払う口座・通勤手当の科目・専従者・源泉所得税の納期の特例。JSON。lib/payroll.ts の PayrollSettings）
+  ["settings", "payroll_settings", "TEXT NOT NULL DEFAULT ''"],
 ];

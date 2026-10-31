@@ -1037,3 +1037,15 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .next-tasks li { padding: 4px 8px; border-left: 3px solid var(--accent); }
 .next-tasks li.warn { border-left-color: #c98a1c; background: var(--warn-bg); }
 .next-tasks .link-btn { display: inline-flex; align-items: center; gap: 2px; text-align: left; font-size: 13px; }
+
+/* 給与 */
+.withholding-table, .payroll-preview { table-layout: auto; width: 100%; }
+.withholding-table td, .withholding-table th { white-space: nowrap; overflow: visible; text-overflow: clip; }
+.slip-box { display: flex; gap: 12px; align-items: flex-start; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); }
+.slip-box pre { margin: 0; flex: 1; white-space: pre-wrap; font-family: var(--font-ui); font-size: 12.5px; line-height: 1.7; }
+.payroll-settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px 16px; }
+.payroll-settings .payroll-wide { grid-column: 1 / -1; }
+.payroll-ref .field-row { gap: 6px; }
+.payroll-preview td, .payroll-preview th { white-space: nowrap; overflow: visible; text-overflow: clip; }
+.payroll-preview .badge { margin-left: 6px; }
+.import-issue-list { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; max-height: 160px; overflow-y: auto; }

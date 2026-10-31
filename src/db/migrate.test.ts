@@ -53,12 +53,26 @@ describe("テーブルの作り直し（列の追加ではできない変更）"
   });
 });
 
+describe("テーブルの作り直し：取り込みの記録", () => {
+  test("種類に給与（payroll）が無い帳簿を作り直し、記録と番号の続きを残す", async () => {
+    const raw = new Sqlite(":memory:");
+    const isTrigger = (s: string) => s.trimStart().startsWith("CREATE TRIGGER");
+    const old = SCHEMA.find((s) => s.includes("CREATE TABLE IF NOT EXISTS import_batches ("))!.replace("'journal','bank','payroll'", "'journal','bank'");
+    for (const s of SCHEMA.filter((x) => !isTrigger(x))) raw.run(s.includes("CREATE TABLE IF NOT EXISTS import_batches (") ? old : s);
+    raw.run("INSERT INTO import_batches (id, kind, source) VALUES (3, 'bank', 'a.csv')");
+    expect(() => raw.run("INSERT INTO import_batches (kind, source) VALUES ('payroll', 'b.csv')")).toThrow(/CHECK/);
+    await rebuildTables(wrap(raw));
+    raw.run("INSERT INTO import_batches (kind, source) VALUES ('payroll', 'b.csv')");
+    expect(raw.query("SELECT id, kind, source FROM import_batches ORDER BY id").all()).toEqual([{ id: 3, kind: "bank", source: "a.csv" }, { id: 4, kind: "payroll", source: "b.csv" }]);
+  });
+});
+
 /**
  * 帳簿の形式（テーブル・列・トリガー・作り直し）の指紋と、そのときの形式の版。
  * 形式を変えてこのテストが落ちたら、constants/appConfig.ts の SCHEMA_VERSION を1つ上げ、ここの version と hash を新しい値にする
  * （古い版の domble で新しい帳簿を開いたときに、読み取り専用で開くようにするため）
  */
-const SCHEMA_FINGERPRINT = { version: 6, hash: "985a80c9e25cd0eb" };
+const SCHEMA_FINGERPRINT = { version: 7, hash: "d2589b1f2f478e82" };
 
 test("帳簿の形式を変えたら、形式の版（SCHEMA_VERSION）を上げる", () => {
   const hash = createHash("sha256").update(JSON.stringify([SCHEMA, COLUMN_MIGRATIONS, RETIRED_TRIGGERS, TABLE_REBUILDS.map((t) => t.table)])).digest("hex").slice(0, 16);

@@ -4,7 +4,7 @@ import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
   House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Users, UserRound, Repeat,
-  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked, ClipboardCheck,
+  ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked, ClipboardCheck, Wallet,
 } from "lucide-react";
 import { Popover } from "./components/Popover";
 import { copyText } from "./lib/clipboard";
@@ -28,6 +28,7 @@ import type { Account, Settings, SubAccount, User } from "./lib/types";
 import { useToast } from "./components/Toast";
 import { StartScreen, Logo } from "./features/start/StartScreen";
 import { DashboardPage } from "./features/home/DashboardPage";
+import { PayrollPage } from "./features/payroll/PayrollPage";
 import { CashBookPage } from "./features/entry/CashBookPage";
 import { JournalVoucherPage } from "./features/entry/JournalVoucherPage";
 import { JournalListPage } from "./features/books/JournalListPage";
@@ -57,7 +58,8 @@ import { IntegrityNotice } from "./components/IntegrityNotice";
 import { displayName } from "./lib/business";
 
 export type Page =
-  | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook" | "manual" | "yearend";
+  | "home" | "cashbook" | "voucher" | "payroll" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening"
+  | "accounts" | "counterparties" | "users" | "settings" | "ebook" | "manual" | "yearend";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
   { group: "", items: [{ id: "home", label: "ホーム", icon: <House size={17} /> }] },
@@ -66,6 +68,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
     items: [
       { id: "cashbook", label: "帳簿入力", icon: <BookOpen size={17} /> },
       { id: "voucher", label: "振替伝票", icon: <FileText size={17} /> },
+      { id: "payroll", label: "給与", icon: <Wallet size={17} /> },
     ],
   },
   {
@@ -602,6 +605,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
           {page === "home" && <DashboardPage go={go} />}
           {page === "cashbook" && <CashBookPage go={go} />}
           {page === "voucher" && <JournalVoucherPage />}
+          {page === "payroll" && <PayrollPage go={go} />}
           {page === "journal" && <JournalListPage />}
           {page === "ledger" && <GeneralLedgerPage />}
           {page === "evidence" && <EvidencePage />}

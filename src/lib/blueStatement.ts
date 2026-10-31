@@ -16,6 +16,7 @@ import { allowanceAccounts, allowanceCalc, type AllowanceCalc } from "./allowanc
 import { accountsOfKind } from "./incomeKind";
 import type { Account, HomeUseRate, OpeningBalances } from "./types";
 import { CODE } from "../constants/accounts";
+import { payrollFigures, type AccountRef, type PayFigure } from "./payroll";
 
 export interface BlueStatementSource {
   year: number;
@@ -36,6 +37,11 @@ export interface BlueStatementSource {
   deductionLimit: number;
   /** 不動産所得の青色申告特別控除前の所得金額（不動産所得用の決算書の ㉑。無ければ帳簿の不動産所得の科目から） */
   realEstateIncome?: number;
+  /**
+   * 給与（給料賃金・専従者給与の内訳の賞与・源泉徴収税額・従事月数を帳簿から出すため。lib/payroll.ts）：
+   * 源泉所得税の科目と、賞与として取り込んだ仕訳。無ければ書き込みだけ
+   */
+  payroll?: { tax: AccountRef | null; bonusEntryIds: ReadonlySet<number> };
 }
 
 /** 給料賃金・専従者給与の1人分 */
@@ -168,16 +174,28 @@ const int = (v: string | undefined, min: number, max: number) => {
 const METHOD_LABEL: Record<FixedAsset["method"], string> = { straight: "定額法", declining: "定率法", lump3: "一括償却", small: "少額", deferred: "任意償却" };
 
 type PayeeName = (r: Pick<PayeeRow, "counterpartyId" | "subId">) => string;
-/** 給料賃金・専従者給与の内訳の行（年齢・従事月数・賞与・源泉徴収税額は書き込み prefix:key:…） */
-export const payLinesOf = (rows: PayeeRow[], prefix: string, notes: Record<string, string>, payeeName: PayeeName): PayLine[] =>
+/** 書き込みがあるか（空欄なら帳簿から出す） */
+const written = (v: string | undefined) => !!v && v.trim() !== "";
+
+/**
+ * 給料賃金・専従者給与の内訳の行（年齢・続柄・仕事の内容は書き込み prefix:key:…）。
+ * 従事月数・賞与・源泉徴収税額は、書き込みがあればそれを、無ければ帳簿から（figures。lib/payroll.ts の payrollFigures）
+ */
+export const payLinesOf = (rows: PayeeRow[], prefix: string, notes: Record<string, string>, payeeName: PayeeName, figures?: Map<string, PayFigure>): PayLine[] =>
   rows.map((r) => {
-    const bonus = num(notes[`${prefix}:${r.key}:bonus`]);
+    const k = (f: string) => notes[`${prefix}:${r.key}:${f}`];
+    const f = figures?.get(r.key);
+    const bonus = written(k("bonus")) ? num(k("bonus")) : f?.bonus ?? 0;
     return {
-      name: payeeName(r), relation: notes[`${prefix}:${r.key}:relation`] ?? "", work: notes[`${prefix}:${r.key}:work`] ?? "",
-      age: int(notes[`${prefix}:${r.key}:age`], 1, 999), months: int(notes[`${prefix}:${r.key}:months`], 1, 12),
-      salary: r.gross - bonus, bonus, total: r.gross, tax: num(notes[`${prefix}:${r.key}:tax`]),
+      name: payeeName(r), relation: k("relation") ?? "", work: k("work") ?? "",
+      age: int(k("age"), 1, 999), months: written(k("months")) ? int(k("months"), 1, 12) : f?.months ? Math.min(12, f.months) : null,
+      salary: r.gross - bonus, bonus, total: r.gross, tax: written(k("tax")) ? num(k("tax")) : f?.tax ?? 0,
     };
   });
+
+/** 給料賃金・専従者給与の科目の、人ごとの賞与・源泉徴収税額・給与を払った月の数（帳簿から。給与の設定が無ければ undefined） */
+export const payFiguresOf = (s: Pick<BlueStatementSource, "lines" | "payroll" | "excludeEntryIds">, accountId: number) =>
+  s.payroll && accountId ? payrollFigures(s.lines, accountId, s.payroll.tax, s.payroll.bonusEntryIds, s.excludeEntryIds) : undefined;
 /** 支払先の内訳の行（住所・賃借物件・extraKey の金額は書き込み） */
 export const payeeLinesOf = (rows: PayeeRow[], prefix: string, extraKey: string, notes: Record<string, string>, payeeName: PayeeName): PayeeLine[] =>
   rows.map((r) => ({
@@ -217,7 +235,7 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   const included = (k: string, defaultOn: boolean) => (notes[k] ? notes[k] === "1" : defaultOn);
   const openingOf = (id: number | undefined) => (id ? s.opening[id] ?? 0 : 0);
 
-  const pay = (rows: PayeeRow[], prefix: string) => payLinesOf(rows, prefix, notes, s.payeeName);
+  const pay = (rows: PayeeRow[], prefix: string, code: string) => payLinesOf(rows, prefix, notes, s.payeeName, payFiguresOf(s, idOf(code)));
   const payees = (rows: PayeeRow[], prefix: string, extraKey: string) => payeeLinesOf(rows, prefix, extraKey, notes, s.payeeName);
 
   const interestRows = breakdown(CODE.INTEREST, true).filter((r) => included(`interest:${r.key}:use`, true));
@@ -240,8 +258,8 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
     realEstateDeduction,
     totalIncome: summarizeIncome(s.accounts, end).income,
     monthly,
-    salaries: pay(breakdown(CODE.SALARIES, false), "salary"),
-    family: pay(breakdown(CODE.FAMILY_SALARY, false), "family"),
+    salaries: pay(breakdown(CODE.SALARIES, false), "salary", CODE.SALARIES),
+    family: pay(breakdown(CODE.FAMILY_SALARY, false), "family", CODE.FAMILY_SALARY),
     interest: payees(interestRows, "interest", "loan"),
     fees: payees(feeRows, "fees", "tax"),
     rent: payees(breakdown(CODE.RENT, true), "rent", ""),

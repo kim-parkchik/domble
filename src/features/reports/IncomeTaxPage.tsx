@@ -151,11 +151,12 @@ export const IncomeTaxPage = () => {
   const [ebookNote, setEbookNote] = useState("");
   const prepareExport = async () => {
     try {
-      const [notes, assets, homeRun, depRun, inputDays] = await Promise.all([
+      const [notes, assets, homeRun, depRun, inputDays, payrollSettings, bonusEntryIds] = await Promise.all([
         repo.getStatementNotes(db, year), repo.getAssets(db), repo.getHomeUseRun(db, year), repo.getDepreciationRun(db, year), repo.getInputPeriodDays(db),
+        repo.getPayrollSettings(db), repo.getPayrollBonusIds(db),
       ]);
       const books = {
-        year, accounts, opening, lines, notes, assets, homeUseRates,
+        year, accounts, opening, lines, notes, assets, homeUseRates, payroll: { tax: payrollSettings.tax, bonusEntryIds },
         excludeEntryIds: [homeRun, depRun].filter((v): v is number => v !== null),
         payeeName: (r: { counterpartyId: number | null; subId: number | null }) =>
           r.counterpartyId ? counterparties.find((c) => c.id === r.counterpartyId)?.name ?? "（取引先）" : r.subId ? subMap.get(r.subId)?.name ?? "（補助科目）" : "（支払先の指定なし）",

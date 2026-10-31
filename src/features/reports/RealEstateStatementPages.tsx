@@ -20,7 +20,7 @@ import type { Account } from "../../lib/types";
 import type { FlatLine } from "../../lib/accounting";
 import * as repo from "../../db/repo";
 import {
-  BalanceSheetView, DepreciationSection, InterestSection, Note, PayTable, RentSection, SpecialSection, useAssets, useNotes, usePayeeName, useRunIds, type NoteProps,
+  BalanceSheetView, DepreciationSection, InterestSection, Note, PayTable, RentSection, SpecialSection, useAssets, useNotes, usePayeeName, usePayFigures, useRunIds, type NoteProps,
 } from "./StatementPages";
 import { ownerText } from "../../lib/printLayout";
 
@@ -212,6 +212,7 @@ export const RealEstateStatements = ({ white }: { white: boolean }) => {
   const { lines, opening } = useYearData();
   const { notes, set } = useNotes();
   const rows = useReRows(lines);
+  const payFigures = usePayFigures(lines);
   const assets = useAssets("realestate");
   const [tab, setTab] = useState<Tab>("p1");
 
@@ -262,7 +263,7 @@ export const RealEstateStatements = ({ white }: { white: boolean }) => {
                 <section><RentIncomeSection rows={income} notes={notes} onSaved={set} /></section>
                 <section>
                   <h3 className="st-h">給料賃金の内訳</h3>
-                  <PayTable rows={rows.salaries} prefix="re-salary" withRelation={false} notes={notes} onSaved={set} />
+                  <PayTable rows={rows.salaries} prefix="re-salary" withRelation={false} notes={notes} onSaved={set} figures={payFigures(CODE.RE_SALARIES)} />
                 </section>
               </div>
             )}
@@ -272,9 +273,9 @@ export const RealEstateStatements = ({ white }: { white: boolean }) => {
             <section><RentIncomeSection rows={income} notes={notes} onSaved={set} /></section>
             <section>
               <h3 className="st-h">給料賃金の内訳</h3>
-              <PayTable rows={rows.salaries} prefix="re-salary" withRelation={false} notes={notes} onSaved={set} />
+              <PayTable rows={rows.salaries} prefix="re-salary" withRelation={false} notes={notes} onSaved={set} figures={payFigures(CODE.RE_SALARIES)} />
               <h3 className="st-h">専従者給与の内訳</h3>
-              <PayTable rows={rows.family} prefix="re-family" withRelation notes={notes} onSaved={set} />
+              <PayTable rows={rows.family} prefix="re-family" withRelation notes={notes} onSaved={set} figures={payFigures(CODE.RE_FAMILY_SALARY)} />
               {scale !== "business" && rows.family.length > 0 && <p className="field-note">不動産の貸付けが事業的規模でないので、専従者給与は必要経費になりません。</p>}
             </section>
           </div>

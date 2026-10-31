@@ -26,6 +26,7 @@ import * as repo from "../../db/repo";
 import type { Page } from "../../App";
 import { useYearReturn } from "./TaxReturnView";
 import { useTaxIssues } from "./TaxPage";
+import { useWithholding } from "../payroll/useWithholding";
 import { fileLabel } from "../../lib/business";
 import { ownerText } from "../../lib/printLayout";
 
@@ -79,6 +80,7 @@ export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (
   }, [db, year, dataVersion]);
   const { issues: taxIssues } = useTaxIssues();
   const carryChecks = useCarryForwardCheck();
+  const withholding = useWithholding(year);
   const missingCarry = useMissingCarry();
 
   // 棚卸
@@ -181,6 +183,14 @@ export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (
     {
       title: "未払費用・前払費用など（あれば）", status: { text: "手で入れる", tone: "none" },
       note: "振替伝票の「決算整理」で入れます。翌年1月1日付の振り戻しは、仕訳を開いて「翌年1月1日付で振り戻す」で作れます", page: "voucher", pageLabel: "振替伝票",
+    },
+    {
+      title: "給与：源泉所得税の納付・年末調整（給与を払った事業者）",
+      status: !withholding ? { text: "…", tone: "none" } : !withholding.periods.some((p) => p.total > 0) ? { text: "預かった源泉所得税なし", tone: "none" }
+        : withholding.periods.some((p) => p.total > 0 && p.status !== "paid")
+          ? { text: `未納 ${withholding.periods.filter((p) => p.total > 0 && p.status !== "paid").length} 期間`, tone: "todo" } : { text: "納付済み", tone: "ok" },
+      note: "給与の画面で、源泉所得税の納付（期限）と納付書の数字を確かめます。年末調整・源泉徴収票・法定調書合計表（翌年1月31日まで）は給与計算ソフトで作ります",
+      page: "payroll", pageLabel: "給与",
     },
     { title: "確かめる", status: { text: "—", tone: "none" }, note: "残高試算表で残高を確かめます（月次推移表・前年比較で、おかしな月や科目が無いかも）", page: "trial", pageLabel: "残高試算表" },
     {

@@ -16,9 +16,10 @@ import { businessMonths, familyDeductions, familyMembers, whiteSummary } from ".
 import { isYearCompliant } from "../../lib/ebook";
 import * as repo from "../../db/repo";
 import {
-  DepreciationSection, FeesSection, InterestSection, PartnerSections, PayTable, RentSection, SpecialSection, useAssets, useDetailRows, useNotes,
+  DepreciationSection, FeesSection, InterestSection, PartnerSections, PayTable, RentSection, SpecialSection, useAssets, useDetailRows, useNotes, usePayFigures,
 } from "./StatementPages";
 import { ownerText } from "../../lib/printLayout";
+import { CODE } from "../../constants/accounts";
 
 type Tab = "p1" | "p2";
 const TAB_LABEL: Record<Tab, string> = { p1: "収支・給料・専従者", p2: "売上先・減価償却など" };
@@ -48,6 +49,7 @@ export const WhiteStatements = () => {
   const { lines, opening } = useYearData();
   const { notes, set } = useNotes();
   const rows = useDetailRows(lines);
+  const payFigures = usePayFigures(lines);
   const assets = useAssets();
   const input = useIncomeTaxInput();
   const [tab, setTab] = useState<Tab>("p1");
@@ -128,7 +130,7 @@ export const WhiteStatements = () => {
             <div className="st-pages st-page3">
               <section>
                 <h3 className="st-h">給料賃金の内訳</h3>
-                <PayTable rows={rows.salaries} prefix="salary" withRelation={false} notes={notes} onSaved={set} />
+                <PayTable rows={rows.salaries} prefix="salary" withRelation={false} notes={notes} onSaved={set} figures={payFigures(CODE.SALARIES)} />
                 <p className="field-note screen-only">氏名は、仕訳の取引先か補助科目から出します（人ごとに補助科目を作っておくと分かれます）。賞与を入れると、合計のうち残りを給料にします。</p>
                 <FeesSection rows={rows.fees} notes={notes} onSaved={set} />
               </section>

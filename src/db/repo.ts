@@ -14,7 +14,7 @@ import type {
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
 import { closedLabel, closedMonthOf, inheritingClosedYears, inheritMessage, monthEnd, yearsToAutoClose } from "../lib/closing";
-import { isValidInvoiceNo, normalizeInvoiceNo, validateCounterparty, type CounterpartyInput } from "../lib/counterparty";
+import { isValidInvoiceNo, normalizeInvoiceNo, normName, validateCounterparty, type CounterpartyInput } from "../lib/counterparty";
 import {
   builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isInvoiceKind, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
   useLabel, validateTaxYear,
@@ -29,6 +29,9 @@ import type { AccountListRow } from "../lib/masterCsv";
 import { columnMapProblem, parseColumnMap, type BankRule, type BankRuleSplit, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import { checkScanQuality, docClassOf, scanMethodName, toScanInputMethod, type DocClass, type ScanInputMethod } from "../lib/scan";
+import {
+  counterpartyOfName, parsePayrollSettings, payrollEntryLines, payrollSettingsProblem, sameName, type AccountRef, type PayrollRow, type PayrollSettings,
+} from "../lib/payroll";
 import { lastHolidayYear, mergeHolidays, type Holiday } from "../lib/holidays";
 import { BUILTIN_HOLIDAYS } from "../constants/holidays";
 import { hashPassword, validatePassword, verifyPassword } from "../lib/password";
@@ -1249,6 +1252,7 @@ const createSub_ = async (db: Database, accountId: number, name: string, kana = 
   );
   const id = Number(res.lastInsertId);
   await logMaster(db, { target_type: "sub", target_id: id, action: "create", fiscal_year: await currentYear(db), label: await subLabel(db, id), old_value: "", new_value: name.trim() });
+  return id;
 };
 
 /** 補助科目の名前変更（厳密モードでは表示中の年度から。過去は元の名前） */
@@ -1702,8 +1706,8 @@ const CSV_IMPORT_REASON = "CSV 取り込み";
 // 取り込みの記録（仕訳の CSV 取り込み・明細の登録を1回ごとに。その分の仕訳をまとめて削除できる）
 // ────────────────────────────────────────────
 
-export type ImportKind = "journal" | "bank";
-export const IMPORT_KIND_LABEL: Record<ImportKind, string> = { journal: "仕訳の CSV", bank: "銀行・カードの明細" };
+export type ImportKind = "journal" | "bank" | "payroll";
+export const IMPORT_KIND_LABEL: Record<ImportKind, string> = { journal: "仕訳の CSV", bank: "銀行・カードの明細", payroll: "給与の CSV" };
 
 export interface ImportBatch {
   id: number;
@@ -1758,6 +1762,109 @@ const deleteEntries_ = async (db: Database, ids: number[], reason: string) => {
     }
   });
   return n;
+};
+
+// ────────────────────────────────────────────
+// 給与（給与の CSV の取り込み・給与の設定。考え方は lib/payroll.ts）
+// ────────────────────────────────────────────
+
+export const getPayrollSettings = async (db: Database): Promise<PayrollSettings> => {
+  const r = await db.select<{ payroll_settings: string }[]>("SELECT payroll_settings FROM settings WHERE id = 1");
+  return parsePayrollSettings(r[0]?.payroll_settings);
+};
+
+/** 給与の設定の文（変更の履歴に残す） */
+const payrollSettingsText = async (db: Database, s: PayrollSettings) => {
+  const year = await currentYear(db);
+  const accounts = new Map((await getAccounts(db, year)).map((a) => [a.id, a.name]));
+  const subs = new Map((await getSubAccounts(db, year)).map((x) => [x.id, x.name]));
+  const ref = (r: AccountRef | null) => (r ? `${accounts.get(r.account_id) ?? "?"}${r.sub_account_id ? `（${subs.get(r.sub_account_id) ?? "?"}）` : ""}` : "なし");
+  return [
+    `源泉所得税：${ref(s.tax)}`, `住民税：${ref(s.resident)}`, `社会保険料：${ref(s.social)}`, `その他の控除：${ref(s.other)}`, `支払う口座：${ref(s.bank)}`,
+    `通勤手当：${s.commute ? accounts.get(s.commute) ?? "?" : "なし"}`, `専従者：${s.family.join("・") || "なし"}`, `納期の特例：${s.special ? "あり" : "なし"}`,
+  ].join("、");
+};
+
+const savePayrollSettings_ = async (db: Database, s: PayrollSettings) => {
+  const next = parsePayrollSettings(JSON.stringify(s));
+  const problem = payrollSettingsProblem(next);
+  if (problem) throw new Error(problem);
+  const year = await currentYear(db);
+  const accounts = new Set((await getAccounts(db, year)).map((a) => a.id));
+  const subs = new Map((await getSubAccounts(db, year)).map((x) => [x.id, x.account_id]));
+  for (const r of [next.tax, next.resident, next.social, next.other, next.bank]) {
+    if (!r) continue;
+    if (!accounts.has(r.account_id) || (r.sub_account_id !== null && subs.get(r.sub_account_id) !== r.account_id)) throw new Error("給与の設定の科目・補助科目が見つかりません");
+  }
+  if (next.commute !== null && !accounts.has(next.commute)) throw new Error("通勤手当の科目が見つかりません");
+  const before = await getPayrollSettings(db);
+  if (JSON.stringify(before) === JSON.stringify(next)) return;
+  await db.execute("UPDATE settings SET payroll_settings = ? WHERE id = 1", [JSON.stringify(next)]);
+  await logMaster(db, {
+    target_type: "setting", target_id: 0, action: "change", fiscal_year: year, label: "給与の設定",
+    old_value: await payrollSettingsText(db, before), new_value: await payrollSettingsText(db, next),
+  });
+};
+
+/** 預り金に補助科目（源泉所得税・住民税・社会保険料。無いものだけ）を作り、給与の設定の科目をその既定にする（専従者・納期の特例はそのまま） */
+const setupPayroll_ = async (db: Database) => {
+  const year = await currentYear(db);
+  const accounts = await getAccounts(db, year);
+  const idOf = (code: string) => accounts.find((a) => a.code === code)?.id ?? null;
+  const deposit = idOf(CODE.DEPOSITS_RECEIVED);
+  if (!deposit) throw new Error("預り金の科目がありません");
+  const subOf = async (name: string, kana: string) =>
+    (await getSubAccounts(db, year)).find((x) => x.account_id === deposit && x.name === name)?.id ?? (await createSub_(db, deposit, name, kana));
+  const ref = (sub: number | null): AccountRef => ({ account_id: deposit, sub_account_id: sub });
+  const before = await getPayrollSettings(db);
+  const bank = idOf(CODE.BANK);
+  await savePayrollSettings_(db, {
+    ...before,
+    tax: ref(await subOf("源泉所得税", "げんせんしょとくぜい")),
+    resident: ref(await subOf("住民税", "じゅうみんぜい")),
+    social: ref(await subOf("社会保険料", "しゃかいほけんりょう")),
+    other: before.other ?? ref(null),
+    bank: before.bank ?? (bank ? { account_id: bank, sub_account_id: null } : null),
+    commute: before.commute ?? idOf(CODE.TRAVEL),
+  });
+};
+
+/** 賞与として取り込んだ仕訳 */
+export const getPayrollBonusIds = async (db: Database) =>
+  new Set((await db.select<{ entry_id: number }[]>("SELECT entry_id FROM payroll_entries WHERE kind = 'bonus'")).map((r) => r.entry_id));
+
+/**
+ * 給与の CSV の行を仕訳にする（1行 = 1つの仕訳。取引先は氏名。無い人は取引先に足す。専従者は専従者給与）。
+ * 1つのトランザクションなので、途中で失敗したら1件も残らない。登録の履歴に「給与の取り込み（ファイル名）」と残る
+ */
+const importPayroll_ = async (db: Database, rows: PayrollRow[], source: string) => {
+  const ids: number[] = [];
+  if (rows.length === 0) return ids;
+  const s = await getPayrollSettings(db);
+  const problem = payrollSettingsProblem(s);
+  if (problem) throw new Error(problem);
+  const accounts = await getAccounts(db, await currentYear(db));
+  const idOf = (code: string) => accounts.find((a) => a.code === code)?.id ?? 0;
+  const counterparties = await getCounterparties(db);
+  const cpIds = new Map<string, number>();
+  for (const r of rows) {
+    const key = normName(r.name);
+    if (cpIds.has(key)) continue;
+    const found = counterpartyOfName(counterparties, r.name);
+    cpIds.set(key, found ? found.id : await createCounterparty_(db, { name: r.name.trim(), kana: "", invoice_no: "", memo: "給与の取り込みで追加" }));
+  }
+  const link = await startImportBatch(db, "payroll", source);
+  await inBatch(async () => {
+    for (const r of rows) {
+      const lines = payrollEntryLines(r, s, idOf(s.family.some((f) => sameName(f, r.name)) ? CODE.FAMILY_SALARY : CODE.SALARIES));
+      if (typeof lines === "string") throw new Error(`${r.row}行目：${lines}`);
+      const id = await createEntry_(db, r.date, lines, cpIds.get(normName(r.name))!, `給与の取り込み（${source}）`);
+      await db.execute("INSERT INTO payroll_entries (entry_id, kind) VALUES (?, ?)", [id, r.kind]);
+      await link(id);
+      ids.push(id);
+    }
+  });
+  return ids;
 };
 
 /** 1回の取り込みで登録した仕訳を、まとめて削除する（明細の登録なら、明細は未登録に戻る） */
@@ -3284,6 +3391,9 @@ export const importEntries = inTx(importEntries_, (entries, source) => `仕訳 $
 export const updateEntry = inTx(updateEntry_, (id) => `伝票 No.${id} の訂正`, { perm: "entry" });
 export const deleteEntry = inTx(deleteEntry_, (id) => `伝票 No.${id} の削除`, { perm: "entry" });
 export const deleteEntries = inTx(deleteEntries_, (ids) => `仕訳 ${ids.length} 件のまとめての削除`, { perm: "entry" });
+export const savePayrollSettings = inTx(savePayrollSettings_, () => "給与の設定", { perm: "settings" });
+export const setupPayroll = inTx(setupPayroll_, () => "給与の設定（預り金の補助科目）", { perm: "settings" });
+export const importPayroll = inTx(importPayroll_, (rows, source) => `給与 ${rows.length} 件の取り込み（${source}）`, { perm: "entry" });
 export const deleteImportBatch = inTx(deleteImportBatch_, (id) => `取り込み No.${id} の仕訳の削除`, { perm: "entry" });
 export const saveHomeUseRate = inTx(saveHomeUseRate_, (year) => `${year}年の家事按分の設定`, { perm: "master" });
 export const setHomeUseRun = inTx(setHomeUseRun_, (year) => `${year}年の家事按分の振替`, { perm: "entry" });

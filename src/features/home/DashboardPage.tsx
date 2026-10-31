@@ -1,7 +1,7 @@
 /**
  * ホーム
  * 今年の数字をひと目で確認し、よく使う入力画面へすぐ移れるようにします。
- * 「次にやること」に、未登録の明細・消費税の確認の件数と、年末からは決算と申告（期限）・繰越を出します。
+ * 「次にやること」に、未登録の明細・消費税の確認の件数、源泉所得税の納付（期限の30日前から）と、年末からは決算と申告（期限）・繰越を出します。
  */
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronRight, FileText, TriangleAlert } from "lucide-react";
@@ -10,6 +10,7 @@ import { buildMonthly, closingBalances, groupByEntry, openingDifference, summari
 import { longDate, shortDate, todayIso, yen } from "../../lib/format";
 import { consumptionTaxDeadline, daysUntil, incomeTaxDeadline } from "../../lib/deadlines";
 import { useTaxIssues } from "../reports/TaxPage";
+import { periodLabel, useWithholding } from "../payroll/useWithholding";
 import * as repo from "../../db/repo";
 import type { Page } from "../../App";
 import { fileLabel } from "../../lib/business";
@@ -18,6 +19,7 @@ import { fileLabel } from "../../lib/business";
 const useNextTasks = () => {
   const { db, year, taxYear, isClosed, dataVersion } = useAppContext();
   const { issues } = useTaxIssues();
+  const withholding = useWithholding(year);
   const [info, setInfo] = useState<{ pendingBank: number; nextOpening: boolean; holidays: Set<string> } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -34,6 +36,18 @@ const useNextTasks = () => {
   if (info.pendingBank > 0) tasks.push({ text: `銀行・カードの明細が ${info.pendingBank} 件、仕訳になっていません`, page: "cashbook", tone: "todo" });
   const taxToFix = taxYear.status === "exempt" ? 0 : issues.filter((i) => i.level !== "info").length;
   if (taxToFix > 0) tasks.push({ text: `消費税の確認が ${taxToFix} 件あります`, page: "tax", tone: "warn" });
+  // 源泉所得税の納付（前の年の7〜12月分・12月分も。期限の30日前から、納め終わるまで）
+  for (const [y, ps] of withholding ? [[year - 1, withholding.previous], [year, withholding.periods]] as const : []) {
+    for (const p of ps) {
+      if (p.total <= 0 || p.status === "paid") continue;
+      const left = daysUntil(today, p.due);
+      if (left > 30) continue;
+      tasks.push({
+        text: `源泉所得税（${y !== year ? `${y}年` : ""}${periodLabel(p)} ${yen(p.total - p.paid)}円）の納付は ${longDate(p.due)} まで${left < 0 ? "（過ぎています）" : `（あと${left}日）`}`,
+        page: "payroll", tone: left < 0 ? "warn" : "todo",
+      });
+    }
+  }
   // 12月からは決算と申告（締めるまで）
   if (!isClosed && today >= `${year}-12-01`) {
     const due = (label: string, date: string) => {

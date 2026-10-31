@@ -793,6 +793,54 @@ describe("まとめて削除・取り込みの記録（repo）", () => {
   });
 });
 
+describe("給与（repo）", () => {
+  const row = (r: number, date: string, kind: "salary" | "bonus", name: string, gross: number, tax: number, social = 0) =>
+    ({ row: r, date, kind, name, gross, commute: 0, social, tax, resident: 0, other: 0, net: gross - tax - social });
+
+  test("預り金の補助科目と既定の設定を作る。取り込みは人ごとに取引先、賞与の印、取り込みの記録。専従者は専従者給与", async () => {
+    const { db } = strict;
+    await expect(repo.importPayroll(db, [row(2, "2026-01-25", "salary", "佐藤 一郎", 150_000, 3_000)], "給与.csv")).rejects.toThrow(/源泉所得税・支払う口座の科目を決めて/);
+    await repo.setupPayroll(db);
+    const s = await repo.getPayrollSettings(db);
+    const accts = await repo.getAccounts(db, 2026);
+    const subs = await repo.getSubAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const sub = (n: string) => subs.find((x) => x.account_id === id("預り金") && x.name === n)!.id;
+    expect(s).toMatchObject({
+      tax: { account_id: id("預り金"), sub_account_id: sub("源泉所得税") }, resident: { sub_account_id: sub("住民税") }, social: { sub_account_id: sub("社会保険料") },
+      bank: { account_id: id("普通預金"), sub_account_id: null }, commute: id("旅費交通費"),
+    });
+    // もう一度しても補助科目は増えない
+    await repo.setupPayroll(db);
+    expect((await repo.getSubAccounts(db, 2026)).filter((x) => x.account_id === id("預り金"))).toHaveLength(3);
+    await repo.savePayrollSettings(db, { ...s, family: ["山田 花子"], special: true });
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "給与の設定" });
+    await expect(repo.savePayrollSettings(db, { ...s, resident: s.tax })).rejects.toThrow(/別の科目/);
+
+    const ids = await repo.importPayroll(db, [
+      row(2, "2026-01-25", "salary", "佐藤 一郎", 150_000, 3_000, 20_000),
+      row(3, "2026-07-10", "bonus", "佐藤　一郎", 200_000, 8_000),
+      row(4, "2026-01-25", "salary", "山田 花子", 80_000, 0),
+    ], "給与.csv");
+    expect(ids).toHaveLength(3);
+    const cps = await repo.getCounterparties(db);
+    expect(cps.map((c) => c.name).sort()).toEqual(["佐藤 一郎", "山田 花子"]);
+    const e1 = (await repo.getEntry(db, ids[0]))!;
+    expect(e1.counterparty_id).toBe(cps.find((c) => c.name === "佐藤 一郎")!.id);
+    expect(e1.lines.map((l) => [l.side, l.account_id, l.sub_account_id, l.amount])).toEqual([
+      ["debit", id("給料賃金"), null, 150_000],
+      ["credit", id("預り金"), sub("社会保険料"), 20_000],
+      ["credit", id("預り金"), sub("源泉所得税"), 3_000],
+      ["credit", id("普通預金"), null, 127_000],
+    ]);
+    expect((await repo.getEntry(db, ids[2]))!.lines[0].account_id).toBe(id("専従者給与"));
+    expect([...(await repo.getPayrollBonusIds(db))]).toEqual([ids[1]]);
+    expect((await repo.getHistory(db, ids[0]))[0].reason).toBe("給与の取り込み（給与.csv）");
+    expect((await repo.getImportBatches(db))[0]).toMatchObject({ kind: "payroll", source: "給与.csv", total: 3, live: 3 });
+    expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
+  });
+});
+
 describe("履歴の読み込み（repo）", () => {
   test("件数で打ち切らず、すべて返す（訂正・削除履歴は全件確認できること）", async () => {
     const { db, raw } = strict;

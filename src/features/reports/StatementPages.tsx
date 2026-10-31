@@ -13,7 +13,8 @@ import { useToast } from "../../components/Toast";
 import { yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
 import { monthlySales, payeeBreakdown, type PayeeRow } from "../../lib/statements";
-import { partnerLines, partnerTable, type PartnerTable } from "../../lib/blueStatement";
+import { partnerLines, partnerTable, payFiguresOf, type PartnerTable } from "../../lib/blueStatement";
+import type { AccountRef, PayFigure } from "../../lib/payroll";
 import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
 import { summarizeBalanceSheet, type FlatLine } from "../../lib/accounting";
 import { statementLayout } from "../../lib/statementLines";
@@ -38,8 +39,9 @@ export const useNotes = () => {
 };
 
 /** 書き込み欄。離れたときに保存する（印刷では枠を消して文字だけ出す） */
-export const Note = ({ k, notes, onSaved, placeholder, align, wide, short }: {
-  k: string; notes: Notes; onSaved: (k: string, v: string) => void; placeholder?: string; align?: "right"; wide?: boolean; short?: boolean;
+/** label：欄の名前（無ければ placeholder。placeholder に帳簿の値を出すときに分ける） */
+export const Note = ({ k, notes, onSaved, placeholder, label, align, wide, short }: {
+  k: string; notes: Notes; onSaved: (k: string, v: string) => void; placeholder?: string; label?: string; align?: "right"; wide?: boolean; short?: boolean;
 }) => {
   const { db, year, isClosed, can, readOnly } = useAppContext();
   const toast = useToast();
@@ -63,7 +65,7 @@ export const Note = ({ k, notes, onSaved, placeholder, align, wide, short }: {
       }}
       placeholder={placeholder}
       disabled={isClosed || readOnly || !can("master")}
-      aria-label={placeholder}
+      aria-label={label ?? placeholder}
     />
   );
 };
@@ -88,6 +90,26 @@ export const useRunIds = () => {
 };
 
 const accountIdOf = (accounts: { id: number; code: string }[], code: string) => accounts.find((a) => a.code === code)?.id ?? 0;
+
+/** 給与の設定の源泉所得税の科目と、賞与として取り込んだ仕訳（決算書の内訳を帳簿から出すため） */
+export const usePayrollSource = () => {
+  const { db, dataVersion } = useAppContext();
+  const [src, setSrc] = useState<{ tax: AccountRef | null; bonusEntryIds: ReadonlySet<number> } | undefined>(undefined);
+  useEffect(() => {
+    Promise.all([repo.getPayrollSettings(db), repo.getPayrollBonusIds(db)])
+      .then(([s, bonusEntryIds]) => setSrc({ tax: s.tax, bonusEntryIds }))
+      .catch(console.error);
+  }, [db, dataVersion]);
+  return src;
+};
+
+/** 給料賃金・専従者給与の科目ごとの、人ごとの賞与・源泉徴収税額・給与を払った月の数（帳簿から） */
+export const usePayFigures = (lines: FlatLine[]) => {
+  const { accounts } = useAppContext();
+  const runIds = useRunIds();
+  const payroll = usePayrollSource();
+  return (code: string) => payFiguresOf({ lines, payroll, excludeEntryIds: runIds }, accountIdOf(accounts, code));
+};
 
 /** 支払先ごとの内訳（給料賃金・専従者給与・利子割引料・地代家賃・支払手数料）。家事按分の年末の振替・減価償却の仕訳は数えない */
 export const useDetailRows = (lines: FlatLine[]) => {
@@ -117,11 +139,20 @@ export const useAssets = (kind: IncomeKind = "business") => {
 
 export type NoteProps = { notes: Notes; onSaved: (k: string, v: string) => void };
 
-/** 給料賃金・専従者給与の内訳（氏名は支払先、年齢・従事月数・賞与・源泉徴収税額は書き込み） */
-export const PayTable = ({ rows, prefix, withRelation, notes, onSaved }: NoteProps & { rows: PayeeRow[]; prefix: string; withRelation: boolean }) => {
+/**
+ * 給料賃金・専従者給与の内訳（氏名は支払先、年齢・従事月数・賞与・源泉徴収税額は書き込み）。
+ * 従事月数・賞与・源泉徴収税額は、空欄なら帳簿の値（figures）を使い、欄に薄く出す
+ */
+export const PayTable = ({ rows, prefix, withRelation, notes, onSaved, figures }: NoteProps & {
+  rows: PayeeRow[]; prefix: string; withRelation: boolean; figures?: Map<string, PayFigure>;
+}) => {
   const payeeName = usePayeeName();
-  const bonus = (r: PayeeRow) => num(notes[`${prefix}:${r.key}:bonus`]);
-  const tax = rows.reduce((s, r) => s + num(notes[`${prefix}:${r.key}:tax`]), 0);
+  const written = (r: PayeeRow, f: string) => (notes[`${prefix}:${r.key}:${f}`] ?? "").trim() !== "";
+  const bookOf = (r: PayeeRow, f: "bonus" | "tax") => figures?.get(r.key)?.[f] ?? 0;
+  const bonus = (r: PayeeRow) => (written(r, "bonus") ? num(notes[`${prefix}:${r.key}:bonus`]) : bookOf(r, "bonus"));
+  const taxOf = (r: PayeeRow) => (written(r, "tax") ? num(notes[`${prefix}:${r.key}:tax`]) : bookOf(r, "tax"));
+  const tax = rows.reduce((s, r) => s + taxOf(r), 0);
+  const hint = (label: string, v: number | undefined) => (v ? yen(v) : label);
   return rows.length === 0 ? (
     <p className="muted">該当する支払いはありません。</p>
   ) : (
@@ -138,11 +169,11 @@ export const PayTable = ({ rows, prefix, withRelation, notes, onSaved }: NotePro
             <td>{payeeName(r)}</td>
             {withRelation && <td><Note k={`${prefix}:${r.key}:relation`} notes={notes} onSaved={onSaved} placeholder="続柄" short /></td>}
             <td><Note k={`${prefix}:${r.key}:age`} notes={notes} onSaved={onSaved} placeholder="年齢" align="right" short /></td>
-            <td><Note k={`${prefix}:${r.key}:months`} notes={notes} onSaved={onSaved} placeholder="月数" align="right" short /></td>
+            <td><Note k={`${prefix}:${r.key}:months`} notes={notes} onSaved={onSaved} placeholder={figures?.get(r.key)?.months ? String(Math.min(12, figures.get(r.key)!.months)) : "月数"} label="従事月数" align="right" short /></td>
             <td className="num">{yen(r.gross - bonus(r))}</td>
-            <td><Note k={`${prefix}:${r.key}:bonus`} notes={notes} onSaved={onSaved} placeholder="賞与" align="right" /></td>
+            <td><Note k={`${prefix}:${r.key}:bonus`} notes={notes} onSaved={onSaved} placeholder={hint("賞与", figures?.get(r.key)?.bonus)} label="賞与" align="right" /></td>
             <td className="num">{yen(r.gross)}</td>
-            <td><Note k={`${prefix}:${r.key}:tax`} notes={notes} onSaved={onSaved} placeholder="源泉" align="right" /></td>
+            <td><Note k={`${prefix}:${r.key}:tax`} notes={notes} onSaved={onSaved} placeholder={hint("源泉", figures?.get(r.key)?.tax)} label="源泉徴収税額" align="right" /></td>
           </tr>
         ))}
       </tbody>
@@ -168,6 +199,7 @@ export const StatementPage2 = ({ lines, income, deductionLimit, realEstateIncome
   const { accounts } = useAppContext();
   const { notes, set } = useNotes();
   const { salaries, family } = useDetailRows(lines);
+  const payFigures = usePayFigures(lines);
   const m = monthlySales(accounts, lines);
   const salesTotal = m.sales.reduce((s, x) => s + x, 0) + m.householdUse + m.miscIncome;
   const purchaseTotal = m.purchases.reduce((s, x) => s + x, 0);
@@ -194,11 +226,12 @@ export const StatementPage2 = ({ lines, income, deductionLimit, realEstateIncome
 
       <section>
         <h3 className="st-h">給料賃金の内訳</h3>
-        <PayTable rows={salaries} prefix="salary" withRelation={false} notes={notes} onSaved={set} />
+        <PayTable rows={salaries} prefix="salary" withRelation={false} notes={notes} onSaved={set} figures={payFigures(CODE.SALARIES)} />
         <h3 className="st-h">専従者給与の内訳</h3>
-        <PayTable rows={family} prefix="family" withRelation notes={notes} onSaved={set} />
+        <PayTable rows={family} prefix="family" withRelation notes={notes} onSaved={set} figures={payFigures(CODE.FAMILY_SALARY)} />
         <p className="field-note screen-only">
           氏名は、仕訳の取引先か補助科目から出します（人ごとに補助科目を作っておくと分かれます）。賞与を入れると、合計のうち残りを給料にします。
+          従事月数・賞与・源泉徴収税額は、空欄なら帳簿から出します（欄に薄く出ている値。従事月数は給与を払った月の数、源泉徴収税額は給与の設定の源泉所得税の科目、賞与は給与の CSV で賞与として取り込んだ分。入れればそちらを使います）。
           専従者の続柄と従事月数は、確定申告書の第二表「事業専従者に関する事項」にも書きます。
         </p>
 
