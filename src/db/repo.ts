@@ -28,7 +28,7 @@ import { isExclusiveOn, taxAmountProblem } from "../lib/taxExclusive";
 import type { AccountListRow } from "../lib/masterCsv";
 import { columnMapProblem, parseColumnMap, type BankRule, type BankRuleSplit, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
-import { checkScanQuality, docClassOf, type DocClass, type ScanInputMethod } from "../lib/scan";
+import { checkScanQuality, docClassOf, scanMethodName, toScanInputMethod, type DocClass, type ScanInputMethod } from "../lib/scan";
 import { lastHolidayYear, mergeHolidays, type Holiday } from "../lib/holidays";
 import { BUILTIN_HOLIDAYS } from "../constants/holidays";
 import { hashPassword, validatePassword, verifyPassword } from "../lib/password";
@@ -1659,6 +1659,9 @@ const createEntry_ = async (
   return entryId;
 };
 
+/** CSV 取り込みで登録した仕訳の、登録の履歴の理由（の初め） */
+const CSV_IMPORT_REASON = "CSV 取り込み";
+
 /**
  * 仕訳をまとめて登録する（CSV 取り込み）。1つのトランザクションなので、途中で失敗したら1件も残らない
  * 中身の確かめは lib/journalImport.ts で済ませておく（ここでも締め済みの年度などは拒否される）
@@ -1668,8 +1671,19 @@ const importEntries_ = async (
 ) => {
   const ids: number[] = [];
   // 事業区分を指定していない売上は「不明」のまま取り込む（主な事業区分は入れない。確認の一覧で知らせる）
-  for (const e of entries) ids.push(await createEntry_(db, e.date, e.lines, e.counterpartyId, `CSV 取り込み（${source}）`, !!e.adjustment, false));
+  for (const e of entries) ids.push(await createEntry_(db, e.date, e.lines, e.counterpartyId, `${CSV_IMPORT_REASON}（${source}）`, !!e.adjustment, false));
   return ids;
+};
+
+/** その年の仕訳のうち、CSV 取り込みで登録したものの数（削除済みを除く。登録の履歴で見るので厳密モードだけ） */
+export const countImportedEntries = async (db: Database, year: number) => {
+  const r = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM journal_entries e
+      WHERE e.is_deleted = 0 AND e.date BETWEEN ? AND ?
+        AND EXISTS (SELECT 1 FROM entry_history h WHERE h.entry_id = e.id AND h.action = 'create' AND h.reason LIKE ?)`,
+    [yearStart(year), yearEnd(year), `${CSV_IMPORT_REASON}（%`],
+  );
+  return Number(r[0]?.n ?? 0);
 };
 
 /** 訂正：仕訳を書き換える。厳密モードでは新しい版を履歴に積む */
@@ -2389,18 +2403,17 @@ export const SCAN_STRICT_ONLY = "スキャナ保存は、電子帳簿保存法�
 /** スキャナ保存の入力期間の方式 */
 export const getScanInputMethod = async (db: Database): Promise<ScanInputMethod> => {
   const r = await db.select<{ scan_input_method: string }[]>("SELECT scan_input_method FROM settings WHERE id = 1");
-  return r[0]?.scan_input_method === "cycle" ? "cycle" : "early";
+  return toScanInputMethod(r[0]?.scan_input_method);
 };
 
 const setScanInputMethod_ = async (db: Database, method: ScanInputMethod) => {
-  if (method !== "early" && method !== "cycle") throw new Error("入力期間の方式が正しくありません");
+  if (toScanInputMethod(method) !== method) throw new Error("入力期間の方式が正しくありません");
   const before = await getScanInputMethod(db);
   if (before === method) return;
   await db.execute("UPDATE settings SET scan_input_method = ? WHERE id = 1", [method]);
-  const label = { early: "早期入力方式", cycle: "業務処理サイクル方式" };
   await logMaster(db, {
     target_type: "setting", target_id: 0, action: "change", fiscal_year: await currentYear(db),
-    label: "スキャナ保存の入力期間", old_value: label[before], new_value: label[method],
+    label: "スキャナ保存の入力期間", old_value: scanMethodName(before), new_value: scanMethodName(method),
   });
 };
 

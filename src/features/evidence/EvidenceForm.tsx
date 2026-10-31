@@ -13,7 +13,7 @@ import { MAX_EVIDENCE_BYTES } from "../../constants/appConfig";
 import { formatBytes, sha256Hex, validateEvidenceFile, validateEvidenceMeta } from "../../lib/evidence";
 import type { EvidenceKind, EvidenceMeta } from "../../lib/types";
 import {
-  businessDaysBetween, checkScanQuality, DOC_CLASS_LABEL, docClassOf, scanDeadline, SCAN_KEEP_PAPER, SCAN_METHOD_LABEL, type DocClass, type ScanInputMethod,
+  businessDaysBetween, checkScanQuality, DOC_CLASS_LABEL, docClassOf, scanDeadline, SCAN_KEEP_PAPER, scanMethodName, type DocClass, type ScanInputMethod,
 } from "../../lib/scan";
 import { todayIso } from "../../lib/format";
 import * as repo from "../../db/repo";
@@ -202,7 +202,7 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
         </label>
         {scan && deadline && (
           <div className={`field scan-deadline${late ? " late" : ""}`}>
-            <span>入力期限（参考・{SCAN_METHOD_LABEL[scanMethod].split("（")[0]}）</span>
+            <span>入力期限（参考・{scanMethodName(scanMethod)}）</span>
             <div>
               {deadline.replace(/-/g, "/")}
               {withFile && (late

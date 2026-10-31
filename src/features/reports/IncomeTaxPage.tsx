@@ -19,7 +19,7 @@ import { useToast } from "../../components/Toast";
 import { closingBalances, yearEnd, yearStart } from "../../lib/accounting";
 import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings } from "../../lib/etax";
-import { isYearCompliant } from "../../lib/ebook";
+import { inputTimeliness, isYearCompliant, timelinessCaution } from "../../lib/ebook";
 import { buildBlueStatement } from "../../lib/blueStatement";
 import { buildWhiteStatement, businessMonths, familyMembers, type FamilyLine } from "../../lib/whiteStatement";
 import { businessFigures } from "../../lib/incomeTaxBooks";
@@ -50,7 +50,7 @@ export const IncomeTaxPage = () => {
   const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump, filingTypeOf, taxYears } = useAppContext();
   const filingType = filingTypeOf(year);
   const white = filingType === "white";
-  const { lines, opening } = useYearData();
+  const { lines, rawLines, opening } = useYearData();
   const toast = useToast();
   const [view, setView] = useState<View>("input");
   const [saved, setSaved] = useState<IncomeTaxInput | null>(null);
@@ -147,10 +147,12 @@ export const IncomeTaxPage = () => {
   const filer = filerFromSettings(settings);
   const xtxProblems = incomeXtxProblems({ year, filer, input: x, result, biz });
   const [exportSrc, setExportSrc] = useState<IncomeTaxXtxSource | null>(null);
+  // 「優良な電子帳簿」の区分で書き出すのに、まとめて入力した年のおそれがあるときの注意
+  const [ebookNote, setEbookNote] = useState("");
   const prepareExport = async () => {
     try {
-      const [notes, assets, homeRun, depRun] = await Promise.all([
-        repo.getStatementNotes(db, year), repo.getAssets(db), repo.getHomeUseRun(db, year), repo.getDepreciationRun(db, year),
+      const [notes, assets, homeRun, depRun, inputDays] = await Promise.all([
+        repo.getStatementNotes(db, year), repo.getAssets(db), repo.getHomeUseRun(db, year), repo.getDepreciationRun(db, year), repo.getInputPeriodDays(db),
       ]);
       const books = {
         year, accounts, opening, lines, notes, assets, homeUseRates,
@@ -163,9 +165,11 @@ export const IncomeTaxPage = () => {
       // 不動産所得用の決算書（不動産所得がある年）
       const realEstate = biz.realEstate ? buildRealEstateBook({ ...books, white, scale: reScale, filingType }) : undefined;
       const whiteSt = white ? buildWhiteStatement({ ...books, family: familyMembers(x), periodMonths: businessMonths(x.businessTax, year) }) : undefined;
+      const bookKeeping = isYearCompliant(settings, year) && notes["ebook:filed"] ? 1 : 2;
+      const timing = inputTimeliness(rawLines, inputDays, year);
+      setEbookNote(bookKeeping === 1 && timing.caution ? `第一表の事業の区分を「優良な電子帳簿」で書き出します。${timelinessCaution(timing, inputDays, year)}。` : "");
       setExportSrc({
-        year, filer, input: x, result, biz, statement, white: whiteSt, realEstate, settings, numbers: {}, createdOn: todayIso(),
-        bookKeeping: isYearCompliant(settings, year) && notes["ebook:filed"] ? 1 : 2,
+        year, filer, input: x, result, biz, statement, white: whiteSt, realEstate, settings, numbers: {}, createdOn: todayIso(), bookKeeping,
       });
     } catch (e) {
       toast(`書き出せませんでした：${String(e).replace(/^Error: /, "")}`, "error");
@@ -222,6 +226,7 @@ export const IncomeTaxPage = () => {
           note={[
             publicRefund ? "公金受取口座で還付を受けるので、本人の個人番号が要ります。" : "入れない人は、個人番号の欄が空になります。",
             ...incomeXtxNotices(exportSrc).map((n) => `${n}。`),
+            ebookNote,
           ].join("")}
           onSubmit={exportXtx} onClose={() => setExportSrc(null)}
         />

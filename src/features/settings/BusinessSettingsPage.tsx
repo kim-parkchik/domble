@@ -13,7 +13,8 @@ import { carryForwardWithSubs, closingBalances, subClosingBalances, summarizeInc
 import { subKey } from "../../lib/types";
 import { yen } from "../../lib/format";
 import { normalizePostalCode, validateBusinessInfo } from "../../lib/business";
-import { SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
+import { cycleMonthsOf, SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
+import { scanStorageRule } from "../../lib/ebook";
 import { HolidaySection } from "./HolidaySection";
 import { EncryptionSection } from "./EncryptionSection";
 import { BackupSection } from "./BackupSection";
@@ -591,9 +592,9 @@ const InputPeriodSection = () => {
   );
 };
 
-/** スキャナ保存の入力期間の方式（厳密モードの帳簿だけ） */
+/** スキャナ保存の入力期間の方式（厳密モードの帳簿だけ）と、スキャナ保存の規程のひな形（業務処理サイクル方式では規程が要件） */
 const ScanSection = () => {
-  const { db, strict, bump } = useAppContext();
+  const { db, strict, bump, settings, year, filePath } = useAppContext();
   const toast = useToast();
   const [method, setMethod] = useState<ScanInputMethod | null>(null);
 
@@ -620,7 +621,7 @@ const ScanSection = () => {
       <p className="prose">
         紙で受け取った書類を読み取って保存するときの、入力期間の方式です。期限を過ぎて取り込んだものには「入力期間外」の印がつきます。
         domble はタイムスタンプを付けないため、スキャナ保存の要件を満たしません。読み取って取り込んだ書類も、紙の原本を保存してください（入力期限・画質の確かめは参考として出します）。
-        業務処理サイクル方式を使うときは、事務処理の規程を定めておく必要があります。変更は「訂正・削除履歴」に記録されます。
+        業務処理サイクル方式は、事務処理規程でサイクル（業務の処理に係る通常の期間。最長2か月）を決めた場合に使えます。変更は「訂正・削除履歴」に記録されます。
       </p>
       <div className="field">
         {(Object.keys(SCAN_METHOD_LABEL) as ScanInputMethod[]).map((m) => (
@@ -629,6 +630,33 @@ const ScanSection = () => {
           </label>
         ))}
       </div>
+      {method && cycleMonthsOf(method) > 0 && (
+        <p className="warn-box">
+          業務処理サイクル方式は、各事務の処理に関する規程を定めている場合に限り使えます（電子帳簿保存法施行規則2条6項1号ロ）。
+          下のひな形を自分の運用に合わせて直し、すぐ見られるところに備え付けてください。
+        </p>
+      )}
+      <h3 className="st-h">スキャナによる電子化保存規程のひな形</h3>
+      <p className="prose">
+        国税庁のサンプル（スキャナによる電子化保存規程）の章立てに沿い、選んだ方式の入力の時期と domble での取り込みの手順を書いてあります。
+        タイムスタンプが無いので、原本は廃棄せずに保存する形にしてあります。自分の運用に合わせて直してから使ってください。
+      </p>
+      <button
+        className="btn ghost"
+        disabled={method === null}
+        onClick={async () => {
+          if (!method) return;
+          const fileName = filePath.split(/[\\/]/).pop() ?? "";
+          const text = scanStorageRule({ businessName: settings.business_name, ownerName: settings.owner_name, year, method, fileName });
+          try {
+            if (await saveAnchorFile(text, `スキャナ保存規程_${year}年.txt`)) toast("保存しました");
+          } catch (e) {
+            toast(`保存できませんでした：${String(e)}`, "error");
+          }
+        }}
+      >
+        <FileDown size={16} /> ひな形を保存
+      </button>
     </section>
   );
 };

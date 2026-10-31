@@ -1,21 +1,24 @@
 /**
  * 電子帳簿保存法（優良な電子帳簿）の届出・要件の確認
- *  - その年の保存方式（対応しているか）
+ *  - その年の保存方式（対応しているか）と入力の時期（遅れて登録が半分以上の年は注意。年の初めから順次記録していたとは言えないおそれ）
  *  - 受けられる優遇措置（過少申告加算税の軽減・青色申告特別控除）とその条件
  *  - 要件のチェックリスト：domble が満たしているもの（自動）と、自分で行うこと（チェックを年度ごとに残す）
  *  - 届出書に書く内容（コピー用）と提出期限、事務処理マニュアルのひな形
  *  - 電子取引データの保存（帳簿の保存方式によらない義務）：要件と、訂正及び削除の防止に関する事務処理規程のひな形
  * 内容は国税庁の案内（令和8年時点）に基づく。最新の様式・要件は国税庁の案内で確かめてもらう
  */
-import { useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert, Copy, FileDown, ShieldCheck, ShieldOff } from "lucide-react";
-import { useAppContext } from "../../context/AppContext";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, CircleAlert, Copy, FileDown, ShieldAlert, ShieldCheck, ShieldOff } from "lucide-react";
+import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { useToast } from "../../components/Toast";
 import { copyText } from "../../lib/clipboard";
 import { longDate } from "../../lib/format";
 import { saveAnchorFile } from "../books/IntegrityModal";
-import { ELECTRONIC_ITEMS, electronicRule, filingDeadline, filingFormName, isYearCompliant, keepingStartDate, MANUAL_ITEMS, processingManual } from "../../lib/ebook";
+import {
+  ELECTRONIC_ITEMS, electronicRule, filingDeadline, filingFormName, inputTimeliness, isYearCompliant, keepingStartDate, MANUAL_ITEMS, percentOf, processingManual,
+  timelinessCaution,
+} from "../../lib/ebook";
 import { MODE_LABEL } from "../start/SetupScreen";
 import type { Page } from "../../App";
 import * as repo from "../../db/repo";
@@ -32,15 +35,21 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
   const [inputDays, setInputDays] = useState(70);
   const [hasAssets, setHasAssets] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [imported, setImported] = useState(0);
+  const { rawLines } = useYearData();
 
   useEffect(() => {
     repo.getHolidayData(db).then((h) => setHolidays(new Set(h.holidays.map((x) => x.date)))).catch(console.error);
     repo.getInputPeriodDays(db).then(setInputDays).catch(console.error);
     repo.getAssets(db).then((a) => setHasAssets(a.length > 0)).catch(console.error);
     repo.getStatementNotes(db, year).then(setNotes).catch(console.error);
+    repo.countImportedEntries(db, year).then(setImported).catch(console.error);
   }, [db, year, dataVersion]);
 
   const compliant = isYearCompliant(settings, year);
+  // 入力の時期（年末や年が明けてからまとめて入れた年か）
+  const timing = useMemo(() => inputTimeliness(rawLines, inputDays, year), [rawLines, inputDays, year]);
+  const caution = compliant && timing.caution;
   const blue = isBlue(filingTypeOf(year));
   const deadline = filingDeadline(year, holidays);
   const fileName = filePath.split(/[\\/]/).pop() ?? "";
@@ -94,19 +103,39 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
     <div className="page">
       <PageHeader title="電子帳簿保存法" note={`${year}年分の、優良な電子帳簿の要件と届出の確認です。内容は国税庁の案内（令和8年時点）に基づきます。`} />
 
-      <section className={`sheet ebook-status ${compliant ? "ok" : "off"}`}>
-        {compliant ? <ShieldCheck size={22} /> : <ShieldOff size={22} />}
+      <section className={`sheet ebook-status ${caution ? "warn" : compliant ? "ok" : "off"}`}>
+        {caution ? <ShieldAlert size={22} /> : compliant ? <ShieldCheck size={22} /> : <ShieldOff size={22} />}
         <div>
           <h2 className="sheet-h" style={{ margin: 0 }}>
-            {year}年：{compliant ? `${MODE_LABEL.strict}で保存しています` : "電子帳簿保存法の対応外（通常の保存）"}
+            {year}年：{compliant ? `${MODE_LABEL.strict}で保存しています${caution ? "（注意：まとめて入力した年のおそれ）" : ""}` : "電子帳簿保存法の対応外（通常の保存）"}
           </h2>
           <p className="prose">
-            {compliant
-              ? `${year}年の初めから、優良な電子帳簿の要件を満たす保存方式で記録しています。下のチェックリストと届出を済ませると、優遇措置を受けられます。`
-              : settings.e_book_mode === "strict" && settings.strict_from_year
-                ? `${settings.strict_from_year}年から対応しています。${year}年は通常の保存で記録していたため、優遇措置は受けられません。`
-                : "この帳簿は通常の保存方式です。優遇措置は受けられません。電子帳簿保存法に対応したい場合は、翌年への繰越のときに、翌年から切り替えられます（事業者設定）。"}
+            {caution
+              ? `${timelinessCaution(timing, inputDays, year)}。`
+              : compliant
+                ? `${year}年の初めから、優良な電子帳簿の要件を満たす保存方式で記録しています。下のチェックリストと届出を済ませると、優遇措置を受けられます。`
+                : settings.e_book_mode === "strict" && settings.strict_from_year
+                  ? `${settings.strict_from_year}年から対応しています。${year}年は通常の保存で記録していたため、優遇措置は受けられません。`
+                  : "この帳簿は通常の保存方式です。優遇措置は受けられません。電子帳簿保存法に対応したい場合は、翌年への繰越のときに、翌年から切り替えられます（事業者設定）。"}
           </p>
+          {compliant && timing.total > 0 && (
+            <dl className="ebook-timing" aria-label="入力の時期">
+              <dt>仕訳の数</dt>
+              <dd>{timing.total.toLocaleString()} 件</dd>
+              <dt>遅れて登録</dt>
+              <dd>
+                {timing.late.toLocaleString()} 件（{percentOf(timing.late, timing.total)}）
+                <span className="hint">取引日から {inputDays} 日を過ぎて登録したもの</span>
+                {timing.late > 0 && <button className="link-btn" onClick={() => go("journal")}>仕訳日記帳を開く</button>}
+              </dd>
+              <dt>年が明けてから登録</dt>
+              <dd>{timing.afterYearEnd.toLocaleString()} 件<span className="hint">決算整理を除く</span></dd>
+              <dt>CSV 取り込みで登録</dt>
+              <dd>{imported.toLocaleString()} 件</dd>
+              <dt>最初の登録</dt>
+              <dd>{timing.firstRecorded ? longDate(timing.firstRecorded) : ""}</dd>
+            </dl>
+          )}
         </div>
       </section>
 

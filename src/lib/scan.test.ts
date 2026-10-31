@@ -31,6 +31,9 @@ describe("入力期限", () => {
   test("早期入力方式は7営業日、業務処理サイクル方式は2か月＋7営業日", () => {
     expect(scanDeadline("2026-10-19", "early")).toBe("2026-10-28");
     expect(scanDeadline("2026-10-19", "cycle")).toBe(addBusinessDays("2026-12-19", 7));
+    // サイクルが1か月なら、1か月後からおおむね7営業日
+    expect(scanDeadline("2026-10-19", "cycle1")).toBe(addBusinessDays("2026-11-19", 7));
+    expect(withinScanPeriod("2026-10-19", "2026-12-01 09:00:00", "cycle1")).toBe(false);
     expect(withinScanPeriod("2026-10-19", "2026-10-28 23:00:00", "early")).toBe(true);
     expect(withinScanPeriod("2026-10-19", "2026-10-29 09:00:00", "early")).toBe(false);
     expect(withinScanPeriod("2026-10-19", "2026-10-29 09:00:00", "cycle")).toBe(true);

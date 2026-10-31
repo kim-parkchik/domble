@@ -717,6 +717,10 @@ describe("仕訳の CSV 取り込み（repo）", () => {
     const h = await repo.getHistory(db);
     expect(h.map((x) => x.reason)).toEqual(["CSV 取り込み（仕訳.csv）", "CSV 取り込み（仕訳.csv）"]);
     expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
+    // 電子帳簿保存法の画面の「CSV 取り込みで登録」の数（手で入れた仕訳・削除した仕訳・ほかの年は数えない）
+    await repo.createEntry(db, "2026-01-07", lines);
+    await repo.deleteEntry(db, ids[1], "二重");
+    expect([await repo.countImportedEntries(db, 2026), await repo.countImportedEntries(db, 2025)]).toEqual([1, 0]);
   });
 
   test("途中で失敗したら1件も残らない（締め済みの年度が混ざっていた）", async () => {
@@ -1314,7 +1318,12 @@ describe("スキャナ保存（repo）", () => {
     expect(await repo.getScanInputMethod(db)).toBe("early");
     await repo.setScanInputMethod(db, "cycle");
     expect(await repo.getScanInputMethod(db)).toBe("cycle");
-    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "スキャナ保存の入力期間", old_value: "早期入力方式", new_value: "業務処理サイクル方式" });
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "スキャナ保存の入力期間", old_value: "早期入力方式", new_value: "業務処理サイクル方式・2か月" });
+    // サイクルを1か月に
+    await repo.setScanInputMethod(db, "cycle1");
+    expect(await repo.getScanInputMethod(db)).toBe("cycle1");
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ old_value: "業務処理サイクル方式・2か月", new_value: "業務処理サイクル方式・1か月" });
+    await expect(repo.setScanInputMethod(db, "monthly" as never)).rejects.toThrow(/正しくありません/);
   });
 });
 

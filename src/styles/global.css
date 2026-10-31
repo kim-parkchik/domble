@@ -841,6 +841,12 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .ebook-status.ok > svg { color: #2f8f5b; }
 .ebook-status.off { border-left: 4px solid #c98a1c; background: var(--warn-bg); }
 .ebook-status.off > svg { color: var(--warn-ink); }
+.ebook-status.warn { border-left: 4px solid var(--cr); background: #fbe9e9; }
+.ebook-status.warn > svg { color: var(--cr); }
+.ebook-timing { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 10px 0 0; font-size: 13px; }
+.ebook-timing dt { color: var(--muted); }
+.ebook-timing dd { margin: 0; }
+.ebook-timing .hint, .ebook-timing .link-btn { margin-left: 8px; font-size: 12px; }
 .ebook-benefits { margin: 0; }
 .ebook-benefits dt { font-weight: 700; font-size: 13.5px; padding-left: 8px; border-left: 3px solid var(--accent); }
 .ebook-benefits dd { margin: 4px 0 14px; line-height: 1.7; font-size: 13px; }

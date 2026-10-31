@@ -2,7 +2,7 @@
  * スキャナ保存（純粋関数）
  * 紙で受け取った書類をスキャナ（スマートフォンのカメラを含む）で読み取って保存するときの要件の確認。
  * 令和6年1月1日以後の要件にそって、次を確かめる
- *  - 入力期間：受け取ってからの期限（早期入力方式：おおむね7営業日／業務処理サイクル方式：最長2か月＋おおむね7営業日）
+ *  - 入力期間：受け取ってからの期限（早期入力方式：おおむね7営業日／業務処理サイクル方式：事務処理規程で決めたサイクル〔1か月・2か月。最長2か月〕＋おおむね7営業日）
  *  - 画質：解像度 200dpi 以上（dpi が書かれていない・200 未満なら画素数で判断：A4 なら 2,338×1,654 画素以上）、
  *          重要書類はカラー（赤・緑・青 各256階調以上）、一般書類はグレースケールでもよい
  *  - 帳簿との相互関連性：重要書類だけ（仕訳とひも付ける）
@@ -22,12 +22,22 @@ export const DOC_CLASS_LABEL: Record<DocClass, string> = { important: "重要書
 /** 書類の種類から決める区分の初期値 */
 export const docClassOf = (docType: string): DocClass => (["見積書", "注文書"].includes(docType) ? "general" : "important");
 
-/** 入力期間の方式 */
-export type ScanInputMethod = "early" | "cycle";
+/**
+ * 入力期間の方式。業務処理サイクル方式は、事務処理規程で決めたサイクル（業務の処理に係る通常の期間。最長2か月）ごと
+ * （cycle は前からある値で2か月、cycle1 は1か月）
+ */
+export type ScanInputMethod = "early" | "cycle1" | "cycle";
 export const SCAN_METHOD_LABEL: Record<ScanInputMethod, string> = {
   early: "早期入力方式（受け取ってからおおむね7営業日以内）",
-  cycle: "業務処理サイクル方式（最長2か月＋おおむね7営業日以内）",
+  cycle1: "業務処理サイクル方式・1か月（受け取ってから1か月＋おおむね7営業日以内）",
+  cycle: "業務処理サイクル方式・2か月（受け取ってから最長2か月＋おおむね7営業日以内）",
 };
+/** 方式の短い名前（例：業務処理サイクル方式・1か月） */
+export const scanMethodName = (m: ScanInputMethod) => SCAN_METHOD_LABEL[m].split("（")[0];
+/** 業務処理サイクル方式のサイクルの月数（早期入力方式は 0） */
+export const cycleMonthsOf = (m: ScanInputMethod) => (m === "cycle1" ? 1 : m === "cycle" ? 2 : 0);
+/** 保存されている値を方式に（知らない値は早期入力方式） */
+export const toScanInputMethod = (v: unknown): ScanInputMethod => (v === "cycle1" || v === "cycle" ? v : "early");
 
 const toDate = (iso: string) => {
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
@@ -79,7 +89,7 @@ export const addMonths = (iso: string, n: number) => {
 
 /** 入力期限（この日までに取り込めば期間内） */
 export const scanDeadline = (receivedDate: string, method: ScanInputMethod, daysOff: DaysOff = NO_DAYS_OFF) =>
-  method === "early" ? addBusinessDays(receivedDate, 7, daysOff) : addBusinessDays(addMonths(receivedDate, 2), 7, daysOff);
+  addBusinessDays(addMonths(receivedDate, cycleMonthsOf(method)), 7, daysOff);
 
 /** 入力期間内に取り込んだか（registeredAt は登録日時。日付部分だけ見る） */
 export const withinScanPeriod = (receivedDate: string, registeredAt: string, method: ScanInputMethod, daysOff: DaysOff = NO_DAYS_OFF) =>
