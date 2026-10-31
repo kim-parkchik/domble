@@ -639,6 +639,24 @@ export const SCHEMA: string[] = [
    *  - bank_rules：摘要に keyword を含む明細に入れる相手科目など（direction：increase / decrease / any。target_account_id が NULL ならどの口座にも）
    *  - bank_rule_splits：ルールの分け方（決まった額を別の相手科目に。bank_rules の相手科目には残りの額が入る。ルールを消すときに一緒に消す）
    */
+  /**
+   * 取り込みの記録（仕訳の CSV 取り込み・明細の登録を1回ごとに。まとめて削除するときに使う）
+   *  - import_batches：kind は journal（仕訳の CSV）/ bank（銀行・カードの明細）、source はファイル名や口座、user_id は操作した人
+   *  - import_batch_entries：その取り込みで登録した仕訳（仕訳を削除しても行は残す。残っている数は仕訳と合わせて数える）
+   */
+  `CREATE TABLE IF NOT EXISTS import_batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('journal','bank')),
+    source TEXT NOT NULL DEFAULT '',
+    user_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
+  );`,
+  `CREATE TABLE IF NOT EXISTS import_batch_entries (
+    batch_id INTEGER NOT NULL,
+    entry_id INTEGER NOT NULL,
+    PRIMARY KEY (batch_id, entry_id)
+  );`,
+
   `CREATE TABLE IF NOT EXISTS bank_formats (
     account_id INTEGER NOT NULL,
     sub_account_id INTEGER NOT NULL DEFAULT 0,

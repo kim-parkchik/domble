@@ -38,13 +38,20 @@ export const exportOne = async (db: Database, e: Evidence) => {
   return true;
 };
 
+/** フォルダへ書き出す（ファイル + 証憑一覧.csv。帳簿をまとめて書き出すときも） */
+export const writeEvidenceFolder = async (
+  db: Database, dir: string, list: Evidence[], counterparties: Counterparty[] = [], scanMethod: ScanInputMethod = "early", daysOff: DaysOff = new Set(),
+) => {
+  for (const e of list) await writeFile(await join(dir, exportFileName(e)), await repo.getEvidenceBytes(db, e.id));
+  await writeTextFile(await join(dir, "証憑一覧.csv"), evidenceCsv(list, counterparties, scanMethod, daysOff));
+};
+
 /** まとめてフォルダへ書き出す（ファイル + 一覧.csv）。書き出した件数（やめたら null） */
 export const exportAll = async (
   db: Database, list: Evidence[], counterparties: Counterparty[] = [], scanMethod: ScanInputMethod = "early", daysOff: DaysOff = new Set(),
 ) => {
   const dir = await open({ directory: true, multiple: false, title: "書き出し先のフォルダを選ぶ" });
   if (typeof dir !== "string") return null;
-  for (const e of list) await writeFile(await join(dir, exportFileName(e)), await repo.getEvidenceBytes(db, e.id));
-  await writeTextFile(await join(dir, "証憑一覧.csv"), evidenceCsv(list, counterparties, scanMethod, daysOff));
+  await writeEvidenceFolder(db, dir, list, counterparties, scanMethod, daysOff);
   return list.length;
 };

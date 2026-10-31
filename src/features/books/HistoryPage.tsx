@@ -29,6 +29,7 @@ const LOGIN_END_LABEL: Record<LoginEnd, string> = {
   current: "利用中（または最後に強制終了）",
 };
 import * as repo from "../../db/repo";
+import { fileLabel } from "../../lib/business";
 
 type Filter = "all" | HistoryAction | "changes";
 const FILTER_LABEL: Record<Filter, string> = { changes: "訂正と削除", update: "訂正", delete: "削除", all: "登録も含む", create: "登録" };
@@ -51,6 +52,32 @@ const usePaged = (deps: unknown[]) => {
   useEffect(() => setLimit(PAGE_SIZE), deps);
   return { limit, more: () => setLimit((n) => n + PAGE_SIZE) };
 };
+
+/** 履歴の CSV（訂正削除履歴の画面と、事業者設定の「帳簿をまとめて書き出す」） */
+export interface CsvFile {
+  name: string;
+  header: string[];
+  rows: CsvValue[][];
+}
+export const entryHistoryCsv = (records: HistoryRecord[]): CsvFile => ({
+  name: "訂正削除履歴",
+  header: ["記録日時", "伝票No", "版", "操作", "操作者", "理由", "日付", "取引先", "借貸", "科目", "補助科目", "金額", "摘要"],
+  rows: records.flatMap((r) =>
+    r.snapshot.lines.map((l) => [r.recorded_at, r.entry_id, r.revision, ACTION_LABEL[r.action], r.user_name ?? "", r.reason, r.snapshot.date,
+      r.snapshot.counterparty ?? "", l.side === "debit" ? "借方" : "貸方", l.account, l.sub, l.amount, l.memo]),
+  ),
+});
+export const masterHistoryCsv = (records: MasterHistoryRecord[]): CsvFile => ({
+  name: "変更履歴",
+  header: ["記録日時", "年度", "対象", "操作", "名称", "変更前", "変更後", "操作者"],
+  rows: records.map((r) => [r.recorded_at, r.fiscal_year, TARGET_LABEL[r.target_type], MASTER_ACTION[r.action], r.label, r.old_value, r.new_value, r.user_name ?? ""]),
+});
+export const evidenceHistoryCsv = (records: EvidenceHistoryRecord[]): CsvFile => ({
+  name: "証憑の履歴",
+  header: ["記録日時", "証憑No", "版", "操作", "取引年月日", "取引先", "金額", "伝票No", "ファイル名", "SHA-256", "理由・内容", "操作者"],
+  rows: records.map((r) => [r.recorded_at, r.evidence_id, r.revision, EVIDENCE_ACTION_LABEL[r.action], r.snapshot.txn_date, r.snapshot.counterparty,
+    r.snapshot.amount, r.snapshot.entry_ids.join(" "), r.snapshot.file_name, r.snapshot.sha256, r.reason, r.user_name ?? ""]),
+});
 
 export const HistoryPage = () => {
   const { db, dataVersion, settings } = useAppContext();
@@ -94,22 +121,9 @@ export const HistoryPage = () => {
   };
 
   /** 表示中のタブの CSV（絞り込みはそのまま、件数は全件） */
-  const csvOf = (): { name: string; header: string[]; rows: CsvValue[][] } => {
-    if (kind === "masters") {
-      return {
-        name: "変更履歴",
-        header: ["記録日時", "年度", "対象", "操作", "名称", "変更前", "変更後", "操作者"],
-        rows: masters.map((r) => [r.recorded_at, r.fiscal_year, TARGET_LABEL[r.target_type], MASTER_ACTION[r.action], r.label, r.old_value, r.new_value, r.user_name ?? ""]),
-      };
-    }
-    if (kind === "evidence") {
-      return {
-        name: "証憑の履歴",
-        header: ["記録日時", "証憑No", "版", "操作", "取引年月日", "取引先", "金額", "伝票No", "ファイル名", "SHA-256", "理由・内容", "操作者"],
-        rows: evidence.map((r) => [r.recorded_at, r.evidence_id, r.revision, EVIDENCE_ACTION_LABEL[r.action], r.snapshot.txn_date, r.snapshot.counterparty,
-          r.snapshot.amount, r.snapshot.entry_ids.join(" "), r.snapshot.file_name, r.snapshot.sha256, r.reason, r.user_name ?? ""]),
-      };
-    }
+  const csvOf = (): CsvFile => {
+    if (kind === "masters") return masterHistoryCsv(masters);
+    if (kind === "evidence") return evidenceHistoryCsv(evidence);
     if (kind === "access") {
       const ends = loginEnds(access);
       return {
@@ -118,20 +132,13 @@ export const HistoryPage = () => {
         rows: access.map((r) => [r.recorded_at, r.action === "login" ? "ログイン" : "ログアウト", r.user_name, LOGIN_END_LABEL[ends.get(r.id) ?? "logout"]]),
       };
     }
-    return {
-      name: "訂正削除履歴",
-      header: ["記録日時", "伝票No", "版", "操作", "操作者", "理由", "日付", "取引先", "借貸", "科目", "補助科目", "金額", "摘要"],
-      rows: shown.flatMap((r) =>
-        r.snapshot.lines.map((l) => [r.recorded_at, r.entry_id, r.revision, ACTION_LABEL[r.action], r.user_name ?? "", r.reason, r.snapshot.date,
-          r.snapshot.counterparty ?? "", l.side === "debit" ? "借方" : "貸方", l.account, l.sub, l.amount, l.memo]),
-      ),
-    };
+    return entryHistoryCsv(shown);
   };
 
   const exportCsv = async () => {
     const { name, header, rows } = csvOf();
     const path = await save({
-      defaultPath: `${name}_${settings.business_name || "帳簿"}.csv`,
+      defaultPath: `${name}_${fileLabel(settings)}.csv`,
       filters: [{ name: "CSV", extensions: ["csv"] }],
     });
     if (!path) return;

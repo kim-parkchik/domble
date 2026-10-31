@@ -54,6 +54,7 @@ import { EBookPage } from "./features/settings/EBookPage";
 import { ManualPage } from "./features/settings/ManualPage";
 import { YearNotice } from "./components/YearNotice";
 import { IntegrityNotice } from "./components/IntegrityNotice";
+import { displayName } from "./lib/business";
 
 export type Page =
   | "home" | "cashbook" | "voucher" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening" | "accounts" | "counterparties" | "users" | "settings" | "ebook" | "manual" | "yearend";
@@ -334,7 +335,7 @@ export default function App() {
   };
 
   // 新しい帳簿（または保存方式が未設定の帳簿）は、まず初期設定（読み取り専用のときは設定できないので、そのまま見る）
-  if (!session.readOnly && (!session.settings.business_name || !session.settings.e_book_mode)) {
+  if (!session.readOnly && (!displayName(session.settings) || !session.settings.e_book_mode)) {
     return (
       <SetupScreen
         db={session.db}
@@ -451,7 +452,7 @@ const UserGate = ({ db, settings, readOnly, onLogin, onBack }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]);
   if (!users) return null;
-  return <LoginScreen db={db} users={users} businessName={settings.business_name} onLogin={onLogin} onBack={onBack} />;
+  return <LoginScreen db={db} users={users} businessName={displayName(settings)} onLogin={onLogin} onBack={onBack} />;
 };
 
 const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose: () => void; onSwitchUser: () => void; interrupted: string[]; readOnlyReason?: string }) => {
@@ -468,6 +469,18 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
     await repo.setFiscalYear(db, y);
     await reloadSettings();
   };
+  // 事業者設定の「翌年への繰越」を、その年を表示して開く（繰越していない年のお知らせ・年の切り替えの「次の年を始める」から）。
+  // carryFocus は開くたびに増やす番号（0 = 繰越の欄へは動かない）
+  const [carryFocus, setCarryFocus] = useState(0);
+  const goCarry = async (fromYear: number) => {
+    if (fromYear !== year) await switchYear(fromYear);
+    setPage("settings");
+    setCarryFocus((n) => n + 1);
+  };
+  const go = (p: Page) => {
+    setCarryFocus(0);
+    setPage(p);
+  };
 
   const fileName = filePath.split(/[\\/]/).pop();
   const current = NAV.flatMap((g) => g.items).find((i) => i.id === page)!;
@@ -478,8 +491,8 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
         <div className="brand">
           <Logo size={30} />
           <div className="brand-text">
-            <strong>{settings.business_name}</strong>
-            <span>{settings.owner_name}</span>
+            <strong>{displayName(settings)}</strong>
+            {settings.business_name.trim() && <span>{settings.owner_name}</span>}
           </div>
         </div>
         {isYearCompliant(settings, year) ? (
@@ -495,7 +508,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
           <div key={g.group || "top"} className="nav-group">
             {g.group && <div className="nav-label">{g.group}</div>}
             {g.items.filter((i) => strict || i.id !== "history").map((i) => (
-              <button key={i.id} className={`nav-item${page === i.id ? " on" : ""}`} onClick={() => setPage(i.id)} aria-current={page === i.id ? "page" : undefined}>
+              <button key={i.id} className={`nav-item${page === i.id ? " on" : ""}`} onClick={() => go(i.id)} aria-current={page === i.id ? "page" : undefined}>
                 {i.icon}
                 <span>{i.label}</span>
               </button>
@@ -511,8 +524,9 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
             <FilePath path={filePath} name={fileName ?? filePath} />
             <label className="year-pick">
               <span className="sr-only">会計年度</span>
-              <select value={year} onChange={(e) => switchYear(Number(e.target.value))}>
+              <select value={year} onChange={(e) => (e.target.value === "next" ? goCarry(Math.max(...years)) : switchYear(Number(e.target.value)))}>
                 {years.map((y) => <option key={y} value={y}>{y}年{isBeforeStrict(settings, y) ? "（電帳法の対応外）" : ""}</option>)}
+                {can("settings") && !readOnly && <option value="next">＋ {Math.max(...years) + 1}年を始める（繰越）</option>}
               </select>
             </label>
             <Popover
@@ -582,29 +596,29 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
             </div>
           </div>
         )}
-        <IntegrityNotice goHistory={() => setPage("history")} />
-        <YearNotice goSettings={() => setPage("settings")} switchYear={switchYear} />
+        <IntegrityNotice goHistory={() => go("history")} />
+        <YearNotice goSettings={() => go("settings")} switchYear={switchYear} goCarry={goCarry} />
         <main className="content">
-          {page === "home" && <DashboardPage go={setPage} />}
-          {page === "cashbook" && <CashBookPage go={setPage} />}
+          {page === "home" && <DashboardPage go={go} />}
+          {page === "cashbook" && <CashBookPage go={go} />}
           {page === "voucher" && <JournalVoucherPage />}
           {page === "journal" && <JournalListPage />}
           {page === "ledger" && <GeneralLedgerPage />}
           {page === "evidence" && <EvidencePage />}
           {page === "history" && <HistoryPage />}
           {page === "trial" && <TrialBalancePage />}
-          {page === "yearend" && <YearEndPage go={setPage} />}
+          {page === "yearend" && <YearEndPage go={go} goCarry={goCarry} />}
           {page === "homeuse" && <HomeUsePage />}
           {page === "assets" && <FixedAssetsPage />}
-          {page === "tax" && <TaxPage go={setPage} />}
+          {page === "tax" && <TaxPage go={go} />}
           {page === "statements" && <StatementsPage />}
           {page === "incometax" && <IncomeTaxPage />}
           {page === "opening" && <OpeningBalancesPage />}
           {page === "accounts" && <AccountsPage />}
           {page === "counterparties" && <CounterpartiesPage />}
           {page === "users" && <UsersPage />}
-          {page === "settings" && <BusinessSettingsPage />}
-          {page === "ebook" && <EBookPage go={setPage} />}
+          {page === "settings" && <BusinessSettingsPage carryFocus={carryFocus} />}
+          {page === "ebook" && <EBookPage go={go} />}
           {page === "manual" && <ManualPage />}
         </main>
       </div>

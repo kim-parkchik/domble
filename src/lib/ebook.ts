@@ -9,6 +9,7 @@ import type { Settings } from "./types";
 import type { FlatLine } from "./accounting";
 import { isLateInput } from "./inputPeriod";
 import { cycleMonthsOf, scanMethodName, type ScanInputMethod } from "./scan";
+import { incomeTaxDeadline } from "./deadlines";
 
 export const isYearCompliant = (s: Pick<Settings, "e_book_mode" | "strict_from_year">, year: number) =>
   s.e_book_mode === "strict" && (s.strict_from_year === null || s.strict_from_year === undefined || year >= s.strict_from_year);
@@ -33,17 +34,11 @@ export const filingFormName = (blue: boolean, year: number) =>
       ? "国税関係帳簿の電磁的記録等による保存等に係る75万円の青色申告特別控除・過少申告加算税の特例の適用を受ける旨の届出書（令和9年3月頃に「65万円」から名称が変わる予定。すでに65万円の届出を出していれば出し直し不要）"
       : "国税関係帳簿の電磁的記録等による保存等に係る65万円の青色申告特別控除・過少申告加算税の特例の適用を受ける旨の届出書";
 
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
 /**
  * 届出書の提出期限：その年分の確定申告の期限（翌年3月15日）。土日・祝日なら次の平日
  * @param holidays 祝日（YYYY-MM-DD）
  */
-export const filingDeadline = (year: number, holidays: ReadonlySet<string>) => {
-  const d = new Date(year + 1, 2, 15);
-  while (d.getDay() === 0 || d.getDay() === 6 || holidays.has(iso(d))) d.setDate(d.getDate() + 1);
-  return iso(d);
-};
+export const filingDeadline = (year: number, holidays: ReadonlySet<string>) => incomeTaxDeadline(year, holidays);
 
 // ────────────────────────────────────────────
 // 入力の時期（年末や年が明けてからまとめて入力した年か）

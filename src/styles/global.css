@@ -1017,3 +1017,23 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .trend-table tr.cat-row td:first-child { background: var(--accent-tint); }
 .multi-table tr.grand td { font-size: 12.5px; text-overflow: clip; }
 .multi-table tfoot td:first-child { white-space: normal; }
+
+/* 仕訳日記帳のまとめての削除 */
+.journal-table .pick { text-align: center; padding-left: 4px; padding-right: 4px; }
+.bulk-bar { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 8px 12px; border: 1px solid #e8c9c9; border-radius: 6px; background: #fbefef; font-size: 13px; }
+.import-batches { max-height: 60vh; overflow: auto; }
+.import-batches table { table-layout: auto; width: 100%; }
+.import-batches th, .import-batches td { white-space: nowrap; overflow: visible; text-overflow: clip; }
+.import-batches td.wrap { white-space: normal; min-width: 8em; overflow-wrap: anywhere; }
+
+/* 初期設定の消費税 */
+.setup-tax { border: 1px solid var(--rule); border-radius: 6px; padding: 8px 12px 10px; margin: 4px 0 12px; display: flex; flex-direction: column; gap: 4px; }
+.setup-tax legend { font-weight: 700; font-size: 13.5px; padding: 0 4px; }
+.setup-tax .field-note { margin: 0 0 4px; }
+
+/* ホームの「次にやること」 */
+.next-tasks { padding-bottom: 10px; }
+.next-tasks ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.next-tasks li { padding: 4px 8px; border-left: 3px solid var(--accent); }
+.next-tasks li.warn { border-left-color: #c98a1c; background: var(--warn-bg); }
+.next-tasks .link-btn { display: inline-flex; align-items: center; gap: 2px; text-align: left; font-size: 13px; }

@@ -17,13 +17,12 @@ import { FullDateInput } from "../../components/Inputs";
 import { ADJUSTMENT_PERIOD, buildLedger, closingBalances, periodNote, type LedgerRow } from "../../lib/accounting";
 import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
 import { displayClass, displayUse, taxLongLabel, taxShortLabel } from "../../lib/tax";
-import { LEDGER_CSV_HEADER, ledgerCsvRows, ledgerSection } from "../../lib/printBooks";
+import { LEDGER_CSV_HEADER, ledgerSection } from "../../lib/printBooks";
 import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
-import type { CsvValue } from "../../lib/csv";
+import { LEDGER_ORDER, ledgerCsvAll, ledgerHelpers, type BookSource } from "../../lib/bookExport";
 import { CATEGORY_LABEL, isBalanceSheet } from "../../constants/accounts";
-import { subKey, type Account, type AccountCategory } from "../../lib/types";
-
-const ORDER: AccountCategory[] = ["asset", "liability", "equity", "revenue", "cogs", "expense", "special"];
+import { subKey } from "../../lib/types";
+import { fileLabel } from "../../lib/business";
 
 export const GeneralLedgerPage = () => {
   const { year, accounts, accountMap, subAccounts, labelOf, subMap, taxYears, settings, counterparties } = useAppContext();
@@ -99,19 +98,13 @@ export const GeneralLedgerPage = () => {
     (a) => showAll || a.id === accountId || used.has(a.id) || (balances.get(a.id) ?? 0) !== 0,
   );
 
-  // ── 印刷・CSV ──
-  const counterOf = (r: LedgerRow) => (r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter);
-  const taxOf = (r: LedgerRow) => {
-    const lt = { date: r.date, tax_code: r.taxCode, business_class: r.businessClass, purchase_use: r.purchaseUse };
-    return r.taxCode && r.taxCode !== "none" ? taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, lt), displayUse(taxYears, lt)) : "";
-  };
-  const subName = (id: number | null) => (id ? subMap.get(id)?.name ?? "" : "");
+  // ── 印刷・CSV（相手科目・税区分などの名前と、対象の科目は lib/bookExport.ts。まとめての書き出しと同じ） ──
+  const book: BookSource = useMemo(() => ({ accounts, subs: subAccounts, counterparties, taxYears, opening, subOpening, lines }), [accounts, subAccounts, counterparties, taxYears, opening, subOpening, lines]);
+  const { counterOf, taxOf, subName, baseOf, targets: allTargets } = useMemo(() => ledgerHelpers(book), [book]);
   /** 期間（1〜13。13 = 決算整理） */
   const period = { from, to };
-  /** 印刷・CSV の対象の科目（すべて = 残高か動きがある科目） */
-  const targets = (all: boolean) => (all ? ORDER.flatMap((c) => accounts.filter((a) => a.category === c && (used.has(a.id) || (balances.get(a.id) ?? 0) !== 0))) : [account]);
-  const baseOf = (a: Account, s?: number | null) =>
-    !isBalanceSheet(a.category) ? 0 : s === undefined ? opening[a.id] ?? 0 : subOpening[subKey(a.id, s)] ?? 0;
+  /** 印刷の対象の科目（すべて = 残高か動きがある科目） */
+  const targets = (all: boolean) => (all ? allTargets() : [account]);
 
   const printDoc = useMemo((): PrintDoc | null => {
     if (!printing) return null;
@@ -138,12 +131,7 @@ export const GeneralLedgerPage = () => {
     };
   }, [printing, printAll, splitSubs, account, sub, lines, opening, subOpening, from, to, year, settings, cpOfEntry, accounts, subAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const exportCsv = () => {
-    const rows: CsvValue[][] = targets(true).flatMap((a) =>
-      ledgerCsvRows(a.name, { rows: buildLedger(a, baseOf(a), lines, accountMap), opening: baseOf(a), ...period, counterOf, taxOf },
-        (r) => subName(r.subId), (r) => cpOfEntry.get(r.entry_id) ?? ""));
-    exportCsvFile(`総勘定元帳_${settings.business_name || "帳簿"}_${year}.csv`, LEDGER_CSV_HEADER, rows, toast);
-  };
+  const exportCsv = () => exportCsvFile(`総勘定元帳_${fileLabel(settings)}_${year}.csv`, LEDGER_CSV_HEADER, ledgerCsvAll(book, from, to), toast);
 
   return (
     <div className="page">
@@ -156,7 +144,7 @@ export const GeneralLedgerPage = () => {
 
       <div className="split">
         <aside className="account-rail" aria-label="勘定科目">
-          {ORDER.map((cat) => {
+          {LEDGER_ORDER.map((cat) => {
             const items = visible.filter((a) => a.category === cat);
             if (items.length === 0) return null;
             return (

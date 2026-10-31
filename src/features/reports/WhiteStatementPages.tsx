@@ -18,6 +18,7 @@ import * as repo from "../../db/repo";
 import {
   DepreciationSection, FeesSection, InterestSection, PartnerSections, PayTable, RentSection, SpecialSection, useAssets, useDetailRows, useNotes,
 } from "./StatementPages";
+import { ownerText } from "../../lib/printLayout";
 
 type Tab = "p1" | "p2";
 const TAB_LABEL: Record<Tab, string> = { p1: "収支・給料・専従者", p2: "売上先・減価償却など" };
@@ -82,7 +83,7 @@ export const WhiteStatements = () => {
         <header className="statement-head">
           <h2>収支内訳書（一般用）{tab === "p2" ? "　2ページ" : ""}</h2>
           <p>
-            {settings.business_name || "（屋号未設定）"}　{settings.owner_name}
+            {ownerText(settings.business_name, settings.owner_name)}
             <br />
             {year}年分　事業期間 {from}〜{to}（営業等）
             {closedHead && <><br /><span className="statement-anchor">確認コード {repo.anchorCode(closedHead)}</span></>}

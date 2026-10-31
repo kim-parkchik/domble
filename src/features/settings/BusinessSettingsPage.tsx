@@ -12,12 +12,13 @@ import { Modal } from "../../components/Modal";
 import { carryForwardWithSubs, closingBalances, subClosingBalances, summarizeIncome } from "../../lib/accounting";
 import { subKey } from "../../lib/types";
 import { yen } from "../../lib/format";
-import { normalizePostalCode, validateBusinessInfo } from "../../lib/business";
+import { fileLabel, normalizePostalCode, validateBusinessInfo } from "../../lib/business";
 import { cycleMonthsOf, SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
 import { scanStorageRule } from "../../lib/ebook";
 import { HolidaySection } from "./HolidaySection";
 import { EncryptionSection } from "./EncryptionSection";
 import { BackupSection } from "./BackupSection";
+import { BookExportSection } from "./BookExportSection";
 import { CODE } from "../../constants/accounts";
 import type { FilingType, RealEstateScale, Settings } from "../../lib/types";
 import { FILING_LABEL } from "../../lib/filing";
@@ -29,14 +30,17 @@ import { DEFAULT_INPUT_PERIOD_DAYS, MAX_INPUT_PERIOD_DAYS } from "../../constant
 import { TaxSection } from "./TaxSection";
 import { EtaxSection } from "./EtaxSection";
 
-export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, filing = true }: {
+export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, setup = false }: {
   initial: Settings;
   onSubmit: (s: Settings) => Promise<void>;
   submitLabel: string;
-  /** 送信ボタンの直前に差し込む欄（初期設定の保存方式など） */
-  extra?: ReactNode;
-  /** 申告の種類の欄を出すか（帳簿を作るときだけ。そのあとは年度ごとの設定 FilingSection で変える） */
-  filing?: boolean;
+  /** 送信ボタンの直前に差し込む欄（初期設定の保存方式・消費税など。入れている途中の設定を受け取れる） */
+  extra?: ReactNode | ((s: Settings) => ReactNode);
+  /**
+   * 帳簿を作るときか。帳簿を始める年と申告の種類の欄を出す（そのあとは、年は画面上部の切り替えと繰越、
+   * 申告の種類は年度ごとの設定 FilingSection で変える）
+   */
+  setup?: boolean;
 }) => {
   const [s, setS] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -54,18 +58,20 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, filing = t
         setBusy(true);
         try {
           await onSubmit({ ...s, postal_code: normalizePostalCode(s.postal_code) });
+        } catch (e) {
+          setError(String(e).replace(/^Error: /, ""));
         } finally {
           setBusy(false);
         }
       }}
     >
       <label className="field">
-        <span>屋号</span>
-        <input className="input" value={s.business_name} onChange={(e) => set("business_name", e.target.value)} placeholder="例：山田デザイン事務所" required />
+        <span>屋号（任意）</span>
+        <input className="input" value={s.business_name} onChange={(e) => set("business_name", e.target.value)} placeholder="例：山田デザイン事務所（屋号が無ければ空のまま）" />
       </label>
       <label className="field">
         <span>氏名</span>
-        <input className="input" value={s.owner_name} onChange={(e) => set("owner_name", e.target.value)} placeholder="例：山田 太郎" />
+        <input className="input" value={s.owner_name} onChange={(e) => set("owner_name", e.target.value)} placeholder="例：山田 太郎" required />
       </label>
       <div className="field-row">
         <label className="field" style={{ maxWidth: 140 }}>
@@ -84,21 +90,28 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, filing = t
         <span>業種</span>
         <input className="input" value={s.industry} onChange={(e) => set("industry", e.target.value)} placeholder="例：デザイン業" />
       </label>
-      <div className="field-row">
-        <label className="field">
-          <span>会計年度</span>
-          <input className="input" type="number" min={2000} max={2100} value={s.fiscal_year} onChange={(e) => set("fiscal_year", Number(e.target.value))} />
-        </label>
-        {filing && (
-          <label className="field">
-            <span>申告の種類</span>
-            <select className="input" value={s.filing_type} onChange={(e) => set("filing_type", e.target.value as FilingType)}>
-              {Object.entries(FILING_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </label>
-        )}
-      </div>
-      {extra}
+      {setup && (
+        <>
+          <div className="field-row">
+            <label className="field">
+              <span>帳簿を始める年</span>
+              <input className="input" type="number" min={2000} max={2100} value={s.fiscal_year} onChange={(e) => set("fiscal_year", Number(e.target.value))} />
+            </label>
+            <label className="field">
+              <span>申告の種類</span>
+              <select className="input" value={s.filing_type} onChange={(e) => set("filing_type", e.target.value as FilingType)}>
+                {Object.entries(FILING_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+          </div>
+          <p className="field-note">
+            青色申告は、税務署に青色申告承認申請書を出している人です（その年の3月15日まで。1月16日以後に開業した年は、開業の日から2か月以内）。
+            正規の簿記で記帳して決算書を添え、e-Tax で申告するか優良な電子帳簿で保存すると65万円、そうでなければ55万円、簡易な記帳なら10万円の控除です。
+            出していなければ白色申告です。年ごとにあとから変えられます（事業者設定の「申告の種類」）。
+          </p>
+        </>
+      )}
+      {typeof extra === "function" ? extra(s) : extra}
       {error && <p className="form-error-inline" role="alert">{error}</p>}
       <div>
         <button className="btn primary" type="submit" disabled={busy}>
@@ -249,10 +262,14 @@ const FilingSection = () => {
   );
 };
 
-export const BusinessSettingsPage = () => {
+/** carryFocus：0 でなければ「翌年への繰越」の欄を見せる（画面上部のお知らせ・年の切り替えの「次の年を始める」から。開くたびに番号が変わる） */
+export const BusinessSettingsPage = ({ carryFocus = 0 }: { carryFocus?: number }) => {
   const { db, settings, year, accounts, closings, reloadSettings, bump } = useAppContext();
   const { lines, opening, subOpening } = useYearData();
   const toast = useToast();
+  useEffect(() => {
+    if (carryFocus) document.getElementById("carry-forward")?.scrollIntoView({ block: "start" });
+  }, [carryFocus, year]);
 
   const end = closingBalances(accounts, opening, lines);
   const income = summarizeIncome(accounts, end).income;
@@ -315,7 +332,6 @@ export const BusinessSettingsPage = () => {
             key={JSON.stringify(settings)}
             initial={settings}
             submitLabel="保存する"
-            filing={false}
             onSubmit={async (s) => {
               await repo.saveSettings(db, s);
               await reloadSettings();
@@ -356,7 +372,7 @@ export const BusinessSettingsPage = () => {
             </>
           )}
 
-          <h2 className="sheet-h">翌年への繰越</h2>
+          <h2 className="sheet-h" id="carry-forward">翌年への繰越</h2>
           <p className="prose">
             {year}年12月31日の残高を {year + 1}年1月1日の期首残高にして、{year + 1}年を始めます。
             事業主貸・事業主借は元入金に振り替えて 0 に戻します。補助科目ごとの残高も引き継ぎます。
@@ -382,6 +398,7 @@ export const BusinessSettingsPage = () => {
         <ScanSection />
         <HolidaySection />
         <BackupSection />
+        <BookExportSection />
         <EncryptionSection />
       </div>
     </div>
@@ -472,7 +489,7 @@ const ClosingSection = () => {
                           onClick={async () => {
                             const head = { row_hash: c.chain_head, recorded_at: c.closed_at };
                             const text = anchorText({ business: settings.business_name, file: filePath.split(/[\\/]/).pop() ?? "", head, label: `${y}年の締め` });
-                            if (await saveAnchorFile(text, `確認コード_${settings.business_name || "帳簿"}_${y}年締め.txt`)) toast("書き出しました");
+                            if (await saveAnchorFile(text, `確認コード_${fileLabel(settings)}_${y}年締め.txt`)) toast("書き出しました");
                           }}
                         ><FileDown size={14} /></button>
                       </span>

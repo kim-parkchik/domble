@@ -191,6 +191,26 @@ const isStrict = async (db: Database) => {
   return r[0]?.e_book_mode === "strict";
 };
 
+/**
+ * まとめての登録（CSV 取り込み・明細の登録）の間だけ使う、読み取りの控え。
+ * 仕訳1件ごとに科目一覧・税の設定・保存方式などを読み直さないため（その間、これらは変わらない）
+ */
+let batchReads: Map<string, Promise<unknown>> | null = null;
+const batchRead = <T>(key: string, load: () => Promise<T>): Promise<T> => {
+  if (!batchReads) return load();
+  let p = batchReads.get(key) as Promise<T> | undefined;
+  if (!p) batchReads.set(key, (p = load()));
+  return p;
+};
+const inBatch = async <T>(fn: () => Promise<T>): Promise<T> => {
+  batchReads = new Map();
+  try {
+    return await fn();
+  } finally {
+    batchReads = null;
+  }
+};
+
 const currentYear = async (db: Database) => {
   const r = await db.select<{ fiscal_year: number }[]>("SELECT fiscal_year FROM settings WHERE id = 1");
   return r[0].fiscal_year;
@@ -336,7 +356,7 @@ const effectiveName = (type: "account" | "sub", alias: string) =>
 
 /** 事業者の情報（登録番号は消費税の設定で saveInvoiceRegistration から変える。申告の種類は saveFilingYear で年度ごとに） */
 const saveSettings_ = async (db: Database, s: Settings) => {
-  const info = { postal_code: s.postal_code ?? "", address: (s.address ?? "").trim(), invoice_no: "" };
+  const info = { business_name: s.business_name ?? "", owner_name: s.owner_name ?? "", postal_code: s.postal_code ?? "", address: (s.address ?? "").trim(), invoice_no: "" };
   const err = validateBusinessInfo(info);
   if (err) throw new Error(err);
   // settings.filing_type は年度ごとの設定の無い年に効く。変えられるのは、まだ年度ごとに決めておらず、締めた年も無いとき（帳簿を作るとき）だけ
@@ -620,6 +640,16 @@ export const getBankHistory = async (db: Database, accountId: number, subId: num
     [accountId, subKeyOf(subId)],
   )).map((r) => ({ entryId: r.entry_id, description: r.description }));
 
+/** その年の日付の、未登録の明細の数（決算の手順・ホームの「次にやること」） */
+export const countPendingBankLines = async (db: Database, year: number) => {
+  const r = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM bank_lines b LEFT JOIN journal_entries e ON e.id = b.entry_id
+      WHERE b.date BETWEEN ? AND ? AND (b.status = 'pending' OR (b.status = 'done' AND (e.id IS NULL OR e.is_deleted = 1)))`,
+    [yearStart(year), yearEnd(year)],
+  );
+  return Number(r[0]?.n ?? 0);
+};
+
 /** 取り込まない・未登録に戻す */
 const setBankLinesStatus_ = async (db: Database, ids: number[], status: "pending" | "skipped") => {
   for (const id of ids) {
@@ -632,17 +662,22 @@ const registerBankLines_ = async (
   db: Database, items: { lineId: number; date: string; lines: JournalLine[]; counterpartyId: number | null }[], source: string,
 ) => {
   const ids: number[] = [];
-  for (const it of items) {
-    const r = await db.select<{ status: string; entry_id: number | null; live: number }[]>(
-      "SELECT b.status, b.entry_id, (e.id IS NOT NULL AND e.is_deleted = 0) AS live FROM bank_lines b LEFT JOIN journal_entries e ON e.id = b.entry_id WHERE b.id = ?",
-      [it.lineId],
-    );
-    if (!r[0]) throw new Error("明細が見つかりません");
-    if (r[0].status === "done" && r[0].live) throw new Error("この明細はもう仕訳にしています");
-    const entryId = await createEntry_(db, it.date, it.lines, it.counterpartyId, `明細の取り込み（${source}）`);
-    await db.execute("UPDATE bank_lines SET status = 'done', entry_id = ? WHERE id = ?", [entryId, it.lineId]);
-    ids.push(entryId);
-  }
+  if (items.length === 0) return ids;
+  const link = await startImportBatch(db, "bank", source);
+  await inBatch(async () => {
+    for (const it of items) {
+      const r = await db.select<{ status: string; entry_id: number | null; live: number }[]>(
+        "SELECT b.status, b.entry_id, (e.id IS NOT NULL AND e.is_deleted = 0) AS live FROM bank_lines b LEFT JOIN journal_entries e ON e.id = b.entry_id WHERE b.id = ?",
+        [it.lineId],
+      );
+      if (!r[0]) throw new Error("明細が見つかりません");
+      if (r[0].status === "done" && r[0].live) throw new Error("この明細はもう仕訳にしています");
+      const entryId = await createEntry_(db, it.date, it.lines, it.counterpartyId, `明細の取り込み（${source}）`);
+      await db.execute("UPDATE bank_lines SET status = 'done', entry_id = ? WHERE id = ?", [entryId, it.lineId]);
+      await link(entryId);
+      ids.push(entryId);
+    }
+  });
   return ids;
 };
 
@@ -1571,11 +1606,12 @@ const insertLines = async (db: Database, entryId: number, lines: JournalLine[]) 
  * 本則課税の年の課税仕入には用途区分を記録する（明細 → 科目の初期値 → 共通対応）。stampMain = false なら共通対応は入れない（分からないまま）
  */
 const withTax = async (db: Database, date: string, lines: JournalLine[], counterpartyId: number | null, stampMain = true) => {
-  const years = await getTaxYears(db);
+  const years = await batchRead("taxYears", () => getTaxYears(db));
   const active = taxActiveOn(years, date);
   if (!active) return resolveLineTax(lines, false, () => undefined, null);
-  const accounts = new Map((await getAccounts(db, Number(date.slice(0, 4)))).map((a) => [a.id, a]));
-  const cp = counterpartyId ? (await getCounterparties(db)).find((c) => c.id === counterpartyId) : null;
+  const year = Number(date.slice(0, 4));
+  const accounts = new Map((await batchRead(`accounts:${year}`, () => getAccounts(db, year))).map((a) => [a.id, a]));
+  const cp = counterpartyId ? (await batchRead("counterparties", () => getCounterparties(db))).find((c) => c.id === counterpartyId) : null;
   const ty = taxYearOf(years, Number(date.slice(0, 4)));
   const out = resolveLineTax(
     lines, true, (id) => accounts.get(id), cp,
@@ -1598,11 +1634,11 @@ const makeSnapshot = async (
 ): Promise<EntrySnapshot> => {
   // 仕訳の日付の年度で使われている名前で残す
   const year = Number(date.slice(0, 4));
-  const accounts = await getAccounts(db, year);
-  const subs = await getSubAccounts(db, year);
+  const accounts = await batchRead(`accounts:${year}`, () => getAccounts(db, year));
+  const subs = await batchRead(`subs:${year}`, () => getSubAccounts(db, year));
   const an = new Map(accounts.map((a) => [a.id, a.name]));
   const sn = new Map(subs.map((s) => [s.id, s.name]));
-  const counterparty = await counterpartyName(db, counterpartyId);
+  const counterparty = await batchRead(`cp:${counterpartyId ?? 0}`, () => counterpartyName(db, counterpartyId));
   return {
     date,
     ...(counterparty ? { counterparty } : {}),
@@ -1655,12 +1691,81 @@ const createEntry_ = async (
   const entryId = Number(res.lastInsertId);
   // 途中で失敗しても tx() が丸ごと取り消す
   await insertLines(db, entryId, lines);
-  if (await isStrict(db)) await writeHistory(db, entryId, 1, "create", await makeSnapshot(db, date, lines, counterpartyId, adjustment), reason);
+  if (await batchRead("strict", () => isStrict(db))) await writeHistory(db, entryId, 1, "create", await makeSnapshot(db, date, lines, counterpartyId, adjustment), reason);
   return entryId;
 };
 
 /** CSV 取り込みで登録した仕訳の、登録の履歴の理由（の初め） */
 const CSV_IMPORT_REASON = "CSV 取り込み";
+
+// ────────────────────────────────────────────
+// 取り込みの記録（仕訳の CSV 取り込み・明細の登録を1回ごとに。その分の仕訳をまとめて削除できる）
+// ────────────────────────────────────────────
+
+export type ImportKind = "journal" | "bank";
+export const IMPORT_KIND_LABEL: Record<ImportKind, string> = { journal: "仕訳の CSV", bank: "銀行・カードの明細" };
+
+export interface ImportBatch {
+  id: number;
+  kind: ImportKind;
+  source: string;
+  created_at: string;
+  /** 操作した人（ユーザーが無い帳簿は空） */
+  user_name: string;
+  /** 登録した仕訳の数 */
+  total: number;
+  /** そのうち削除していない数 */
+  live: number;
+  /** 取引日の範囲（残っている仕訳の） */
+  first_date: string | null;
+  last_date: string | null;
+}
+
+/** 取り込みの記録を1つ作り、その記録に仕訳を足す関数を返す */
+const startImportBatch = async (db: Database, kind: ImportKind, source: string) => {
+  const res = await db.execute("INSERT INTO import_batches (kind, source, user_id) VALUES (?, ?, ?)", [kind, source, currentActor]);
+  const batchId = Number(res.lastInsertId);
+  return (entryId: number) => db.execute("INSERT INTO import_batch_entries (batch_id, entry_id) VALUES (?, ?)", [batchId, entryId]);
+};
+
+/** 取り込みの記録の一覧（新しい順） */
+export const getImportBatches = (db: Database) =>
+  db.select<ImportBatch[]>(
+    `SELECT b.id, b.kind, b.source, b.created_at, COALESCE(u.name, '') AS user_name, COUNT(l.entry_id) AS total,
+            COALESCE(SUM(CASE WHEN e.id IS NOT NULL AND e.is_deleted = 0 THEN 1 ELSE 0 END), 0) AS live,
+            MIN(CASE WHEN e.is_deleted = 0 THEN e.date END) AS first_date, MAX(CASE WHEN e.is_deleted = 0 THEN e.date END) AS last_date
+       FROM import_batches b
+       LEFT JOIN import_batch_entries l ON l.batch_id = b.id
+       LEFT JOIN journal_entries e ON e.id = l.entry_id
+       LEFT JOIN users u ON u.id = b.user_id
+      GROUP BY b.id ORDER BY b.id DESC`,
+  );
+
+/**
+ * 仕訳をまとめて削除する（理由は1つ。厳密モードでは必須で、1件ずつ履歴に残る）。1つのトランザクションなので、締めた月の仕訳が
+ * 混ざっていたら1件も消さない。削除済みのものは飛ばし、削除した数を返す
+ */
+const deleteEntries_ = async (db: Database, ids: number[], reason: string) => {
+  if (ids.length === 0) throw new Error("削除する仕訳を選んでください");
+  if ((await isStrict(db)) && !reason.trim()) throw new Error("まとめて削除する理由を入れてください");
+  let n = 0;
+  await inBatch(async () => {
+    for (const id of new Set(ids)) {
+      const e = await db.select<{ is_deleted: number }[]>("SELECT is_deleted FROM journal_entries WHERE id = ?", [id]);
+      if (!e[0] || e[0].is_deleted) continue;
+      await deleteEntry_(db, id, reason);
+      n++;
+    }
+  });
+  return n;
+};
+
+/** 1回の取り込みで登録した仕訳を、まとめて削除する（明細の登録なら、明細は未登録に戻る） */
+const deleteImportBatch_ = async (db: Database, batchId: number, reason: string) => {
+  const ids = (await db.select<{ entry_id: number }[]>("SELECT entry_id FROM import_batch_entries WHERE batch_id = ?", [batchId])).map((r) => r.entry_id);
+  if (ids.length === 0) throw new Error("この取り込みで登録した仕訳はありません");
+  return deleteEntries_(db, ids, reason);
+};
 
 /**
  * 仕訳をまとめて登録する（CSV 取り込み）。1つのトランザクションなので、途中で失敗したら1件も残らない
@@ -1670,8 +1775,16 @@ const importEntries_ = async (
   db: Database, entries: { date: string; lines: JournalLine[]; counterpartyId: number | null; adjustment?: boolean }[], source: string,
 ) => {
   const ids: number[] = [];
+  if (entries.length === 0) return ids;
+  const link = await startImportBatch(db, "journal", source);
   // 事業区分を指定していない売上は「不明」のまま取り込む（主な事業区分は入れない。確認の一覧で知らせる）
-  for (const e of entries) ids.push(await createEntry_(db, e.date, e.lines, e.counterpartyId, `${CSV_IMPORT_REASON}（${source}）`, !!e.adjustment, false));
+  await inBatch(async () => {
+    for (const e of entries) {
+      const id = await createEntry_(db, e.date, e.lines, e.counterpartyId, `${CSV_IMPORT_REASON}（${source}）`, !!e.adjustment, false);
+      await link(id);
+      ids.push(id);
+    }
+  });
   return ids;
 };
 
@@ -1719,7 +1832,7 @@ const deleteEntry_ = async (db: Database, id: number, reason = "") => {
   if (!before || before.is_deleted) return;
   await assertDateOpen(db, before.date);
   // 通常モード：本当に消す（履歴が無いのでトリガーにも止められない）
-  if (!(await isStrict(db))) {
+  if (!(await batchRead("strict", () => isStrict(db)))) {
     // 証憑そのものは残し、この仕訳とのひも付けだけ外す
     await db.execute("DELETE FROM evidence_links WHERE entry_id = ?", [id]);
     // 家事按分の年末振替の仕訳なら、振替の記録も消す（次は作り直しになる）
@@ -2672,6 +2785,62 @@ const currentState = async (db: Database, key: string): Promise<string> => {
   return "";
 };
 
+/**
+ * たくさんの状態のキーの今の中身を、まとめて読む（改ざんの確認。仕訳・証憑・期首残高は種類ごとに数回の問い合わせで読み、
+ * 仕訳1件ごとに問い合わせない）。中身は currentState と同じ（正規形の関数が並べ替えるので、読む順は関係ない）
+ */
+const currentStates = async (db: Database, keys: Iterable<string>): Promise<Map<string, string>> => {
+  const out = new Map<string, string>();
+  const byKind = new Map<string, number[]>();
+  for (const key of keys) {
+    const [kind, id] = key.split(":");
+    byKind.set(kind, [...(byKind.get(kind) ?? []), Number(id)]);
+  }
+  const group = <T, K extends keyof T>(rows: T[], col: K) => {
+    const m = new Map<number, T[]>();
+    for (const r of rows) {
+      const k = Number(r[col]);
+      const xs = m.get(k);
+      if (xs) xs.push(r);
+      else m.set(k, [r]);
+    }
+    return m;
+  };
+  for (const [kind, ids] of byKind) {
+    if (kind === "entry") {
+      const es = new Map((await db.select<({ id: number } & Parameters<typeof entryState>[0])[]>(
+        "SELECT id, date, counterparty_id, is_deleted, revision, is_adjustment FROM journal_entries",
+      )).map((e) => [e.id, e]));
+      const lines = group(await db.select<({ entry_id: number } & Parameters<typeof entryState>[1][number])[]>(
+        "SELECT entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount FROM journal_lines",
+      ), "entry_id");
+      for (const id of ids) {
+        const e = es.get(id);
+        out.set(`entry:${id}`, e ? entryState(e, lines.get(id) ?? []) : "null");
+      }
+    } else if (kind === "evidence") {
+      const evs = new Map((await db.select<({ id: number } & Parameters<typeof evidenceState>[0])[]>(
+        `SELECT id, doc_type, doc_class, scan_info, txn_date, received_date, amount, counterparty, counterparty_id, memo, file_name, mime, size, sha256, revision, is_void
+           FROM evidences`,
+      )).map((e) => [e.id, e]));
+      const links = group(await db.select<{ evidence_id: number; entry_id: number }[]>("SELECT evidence_id, entry_id FROM evidence_links"), "evidence_id");
+      for (const id of ids) {
+        const e = evs.get(id);
+        out.set(`evidence:${id}`, e ? evidenceState(e, (links.get(id) ?? []).map((l) => l.entry_id)) : "null");
+      }
+    } else if (kind === "opening") {
+      const rows = group(await db.select<{ fiscal_year: number; account_id: number; sub_account_id: number; amount: number }[]>(
+        "SELECT fiscal_year, account_id, sub_account_id, amount FROM opening_balances",
+      ), "fiscal_year");
+      for (const id of ids) out.set(`opening:${id}`, openingState(rows.get(id) ?? []));
+    } else {
+      // 締め・固定資産台帳は数が少ないので1件ずつ
+      for (const id of ids) out.set(`${kind}:${id}`, await currentState(db, `${kind}:${id}`));
+    }
+  }
+  return out;
+};
+
 /** 連鎖の「基準点」：連鎖を始めた時点の状態を記録する行（source = baseline、source_id は基準点の通し番号。中身は state_key そのもの） */
 const BASELINE = "baseline";
 
@@ -2689,7 +2858,7 @@ export const getChainHead = async (db: Database) => {
 
 /** 連鎖に1行積む（厳密モードで、連鎖を始めたあとだけ） */
 const appendChain = async (db: Database, source: ChainSource | typeof BASELINE, sourceId: number, stateKey = "", force = false) => {
-  if (!force && !(await chainReady(db))) return;
+  if (!force && !(await batchRead("chainReady", () => chainReady(db)))) return;
   let content: string;
   if (source === BASELINE) content = stateKey;
   else {
@@ -2837,9 +3006,10 @@ const verifyIntegrity_ = async (db: Database, opts: { files?: boolean } = {}): P
   const latest = new Map<string, string>();
   for (const c of chain) if (c.state_key) latest.set(c.state_key, c.state_hash);
   const keys = new Set([...latest.keys(), ...(await allStateKeys(db))]);
+  const states = await currentStates(db, keys);
   for (const key of keys) {
     const recorded = latest.get(key);
-    const now = await hashText(await currentState(db, key));
+    const now = await hashText(states.get(key) ?? "");
     if (recorded === undefined) {
       issues.push({ level: "error", message: `${stateLabel(key)} に記録がありません（ソフトを通さずに追加された可能性があります）` });
     } else if (recorded !== now) {
@@ -3113,6 +3283,8 @@ export const createEntry = inTx(createEntry_, (date) => `仕訳（${date}）の�
 export const importEntries = inTx(importEntries_, (entries, source) => `仕訳 ${entries.length} 件の CSV 取り込み（${source}）`, { perm: "entry" });
 export const updateEntry = inTx(updateEntry_, (id) => `伝票 No.${id} の訂正`, { perm: "entry" });
 export const deleteEntry = inTx(deleteEntry_, (id) => `伝票 No.${id} の削除`, { perm: "entry" });
+export const deleteEntries = inTx(deleteEntries_, (ids) => `仕訳 ${ids.length} 件のまとめての削除`, { perm: "entry" });
+export const deleteImportBatch = inTx(deleteImportBatch_, (id) => `取り込み No.${id} の仕訳の削除`, { perm: "entry" });
 export const saveHomeUseRate = inTx(saveHomeUseRate_, (year) => `${year}年の家事按分の設定`, { perm: "master" });
 export const setHomeUseRun = inTx(setHomeUseRun_, (year) => `${year}年の家事按分の振替`, { perm: "entry" });
 export const closeYear = inTx(closeYear_, (year) => `${year}年の締め`, { perm: "settings" });

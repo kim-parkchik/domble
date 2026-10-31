@@ -13,6 +13,7 @@ import { useToast } from "../../components/Toast";
 import { useAppContext } from "../../context/AppContext";
 import * as repo from "../../db/repo";
 import { copyText } from "../../lib/clipboard";
+import { fileLabel } from "../../lib/business";
 
 /** 確認コードを書き出す内容（タイムスタンプを付ける対象にもなる） */
 export const anchorText = (p: { business: string; file: string; head: { id?: number; row_hash: string; recorded_at: string }; label?: string }) =>
@@ -97,7 +98,7 @@ export const IntegrityModal = ({ onClose }: { onClose: () => void }) => {
                 <button
                   className="btn ghost sm"
                   onClick={async () => {
-                    const ok = await saveAnchorFile(anchorText({ business: settings.business_name, file: fileName, head: report.head! }), `確認コード_${settings.business_name || "帳簿"}_${report.head!.recorded_at.slice(0, 10)}.txt`);
+                    const ok = await saveAnchorFile(anchorText({ business: settings.business_name, file: fileName, head: report.head! }), `確認コード_${fileLabel(settings)}_${report.head!.recorded_at.slice(0, 10)}.txt`);
                     if (ok) toast("書き出しました");
                   }}
                 ><FileDown size={14} /> 書き出す</button>

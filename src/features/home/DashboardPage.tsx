@@ -1,17 +1,58 @@
 /**
  * ホーム
  * 今年の数字をひと目で確認し、よく使う入力画面へすぐ移れるようにします。
+ * 「次にやること」に、未登録の明細・消費税の確認の件数と、年末からは決算と申告（期限）・繰越を出します。
  */
-import { useMemo } from "react";
-import { BookOpen, FileText, TriangleAlert } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, ChevronRight, FileText, TriangleAlert } from "lucide-react";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { buildMonthly, closingBalances, groupByEntry, openingDifference, summarizeIncome } from "../../lib/accounting";
-import { shortDate, yen } from "../../lib/format";
+import { longDate, shortDate, todayIso, yen } from "../../lib/format";
+import { consumptionTaxDeadline, daysUntil, incomeTaxDeadline } from "../../lib/deadlines";
+import { useTaxIssues } from "../reports/TaxPage";
+import * as repo from "../../db/repo";
 import type { Page } from "../../App";
+import { fileLabel } from "../../lib/business";
+
+/** 次にやること（件数があるもの・時期が来たものだけ） */
+const useNextTasks = () => {
+  const { db, year, taxYear, isClosed, dataVersion } = useAppContext();
+  const { issues } = useTaxIssues();
+  const [info, setInfo] = useState<{ pendingBank: number; nextOpening: boolean; holidays: Set<string> } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([repo.countPendingBankLines(db, year), repo.hasOpening(db, year + 1), repo.getHolidayData(db)])
+      .then(([pendingBank, nextOpening, h]) => alive && setInfo({ pendingBank, nextOpening, holidays: new Set(h.holidays.map((x) => x.date)) }))
+      .catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [db, year, dataVersion]);
+  if (!info) return [];
+  const today = todayIso();
+  const tasks: { text: string; page: Page; tone: "todo" | "warn" }[] = [];
+  if (info.pendingBank > 0) tasks.push({ text: `銀行・カードの明細が ${info.pendingBank} 件、仕訳になっていません`, page: "cashbook", tone: "todo" });
+  const taxToFix = taxYear.status === "exempt" ? 0 : issues.filter((i) => i.level !== "info").length;
+  if (taxToFix > 0) tasks.push({ text: `消費税の確認が ${taxToFix} 件あります`, page: "tax", tone: "warn" });
+  // 12月からは決算と申告（締めるまで）
+  if (!isClosed && today >= `${year}-12-01`) {
+    const due = (label: string, date: string) => {
+      const left = daysUntil(today, date);
+      return `${label}は ${longDate(date)} まで${left < 0 ? "（過ぎています）" : left <= 60 ? `（あと${left}日）` : ""}`;
+    };
+    const income = incomeTaxDeadline(year, info.holidays);
+    const tone = daysUntil(today, income) < 0 ? "warn" : "todo";
+    tasks.push({ text: `${year}年の決算と申告：${due("所得税の申告", income)}`, page: "yearend", tone });
+    if (taxYear.status !== "exempt") tasks.push({ text: `${year}年の${due("消費税の申告", consumptionTaxDeadline(year, info.holidays))}`, page: "tax", tone });
+  }
+  if (today >= `${year + 1}-01-01` && !info.nextOpening) tasks.push({ text: `${year + 1}年への繰越がまだです（決算整理の画面の最後）`, page: "yearend", tone: "todo" });
+  return tasks;
+};
 
 export const DashboardPage = ({ go }: { go: (p: Page) => void }) => {
   const { year, accounts, accountMap, settings } = useAppContext();
   const { lines, opening } = useYearData();
+  const tasks = useNextTasks();
 
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
   const pl = summarizeIncome(accounts, end);
@@ -28,7 +69,7 @@ export const DashboardPage = ({ go }: { go: (p: Page) => void }) => {
     <div className="page">
       <div className="home-head">
         <div>
-          <h1>{settings.business_name || "帳簿"}</h1>
+          <h1>{fileLabel(settings)}</h1>
           <p className="page-note">{year}年の帳簿　仕訳 {groupByEntry(lines).size} 件</p>
         </div>
         <div className="page-actions">
@@ -41,6 +82,19 @@ export const DashboardPage = ({ go }: { go: (p: Page) => void }) => {
         <button className="warn-box clickable" onClick={() => go("opening")}>
           <TriangleAlert size={16} /> 期首残高の貸借が一致していません。期首残高を確認してください。
         </button>
+      )}
+
+      {tasks.length > 0 && (
+        <section className="sheet next-tasks" aria-label="次にやること">
+          <h2 className="sheet-h">次にやること（{year}年）</h2>
+          <ul>
+            {tasks.map((t) => (
+              <li key={t.text} className={t.tone}>
+                <button className="link-btn" onClick={() => go(t.page)}>{t.text}<ChevronRight size={14} /></button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="figures" aria-label="今年の集計">

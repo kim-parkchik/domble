@@ -24,6 +24,7 @@ import { TaxReturnView, useInventory } from "./TaxReturnView";
 import * as repo from "../../db/repo";
 import type { FixedAsset } from "../../lib/depreciation";
 import { TaxInterimView } from "./TaxInterimView";
+import { fileLabel } from "../../lib/business";
 
 type View = "summary" | "checks" | "return" | "interim";
 
@@ -33,8 +34,9 @@ const invoiceLabel = (r: TaxSummaryRow) =>
 /** 確認の一覧に出す仕訳の数（多いときは「ほか○件」） */
 const MAX_ENTRIES = 20;
 
-export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, accounts, accountMap, counterparties, taxYears, taxYear, settings, dataVersion } = useAppContext();
+/** 消費税の集計と確認の一覧（消費税の画面・決算整理の画面の手順・ホームの「次にやること」） */
+export const useTaxIssues = () => {
+  const { db, year, accounts, counterparties, taxYears, settings, dataVersion } = useAppContext();
   // 消費税は入れたとおりの明細（税込）から計算する（税抜経理の年も）
   const { rawLines: lines, opening, loading } = useYearData();
   const inventory = useInventory(lines, opening);
@@ -43,11 +45,6 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
   useEffect(() => {
     repo.getAssets(db).then(setAssets).catch(console.error);
   }, [db, dataVersion]);
-  const toast = useToast();
-  const [view, setView] = useState<View>("summary");
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const [editing, setEditing] = useState<number | null>(null);
-
   const summary = useMemo(() => buildTaxSummary(lines, accounts, taxYears), [lines, accounts, taxYears]);
   const baseSales = useBaseSales();
   const interim = useInterim();
@@ -57,6 +54,16 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
     }),
     [year, lines, accounts, counterparties, taxYears, settings.invoice_no, settings.invoice_registered_on, summary, baseSales, interim, inventory, assets],
   );
+  return { lines, loading, summary, issues };
+};
+
+export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
+  const { year, accountMap, taxYear, settings } = useAppContext();
+  const { lines, loading, summary, issues } = useTaxIssues();
+  const toast = useToast();
+  const [view, setView] = useState<View>("summary");
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<number | null>(null);
   const byEntry = useMemo(() => groupByEntry(lines), [lines]);
 
   const exempt = taxYear.status === "exempt";
@@ -82,7 +89,7 @@ export const TaxPage = ({ go }: { go: (p: Page) => void }) => {
       [TAX_KIND_LABEL[r.kind], codeLabel(r), invoiceLabel(r), "（合計）", r.amount, r.tax, r.lines],
       ...r.accounts.map((a) => [TAX_KIND_LABEL[r.kind], codeLabel(r), invoiceLabel(r), accountMap.get(a.account_id)?.name ?? "", a.amount, "", a.lines]),
     ]);
-    const path = await save({ defaultPath: `消費税集計表_${settings.business_name || "帳簿"}_${year}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
+    const path = await save({ defaultPath: `消費税集計表_${fileLabel(settings)}_${year}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
     if (!path) return;
     try {
       await writeTextFile(path, toCsv(header, body));

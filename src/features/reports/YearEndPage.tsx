@@ -1,5 +1,6 @@
 /**
  * 決算整理（決算でやることを順に並べ、状態を出す。決算・申告の手順の案内も兼ねる）
+ *  - 手順：決算の前（未登録の明細・消費税の確認・期首残高）→ 決算整理 → 決算書・申告（期限）→ 年の締め（確認コードの控え）→ 翌年への繰越
  *  - 棚卸：期末の棚卸高（棚卸表から）を入れ、期首・期末の振替の決算整理仕訳を作る（lib/yearEnd.ts）
  *  - 未払消費税等：その年の課税区分の申告書の ㉖ から決算整理仕訳を作る（課税事業者の年。任意）
  *  - 家事按分・減価償却・貸倒引当金は、それぞれの画面で作る（ここでは状態と入口だけ）
@@ -7,14 +8,15 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Download, Plus, Printer, Save, Trash2, Wand2 } from "lucide-react";
-import { useAppContext, useYearData } from "../../context/AppContext";
+import { useAppContext, useCarryForwardCheck, useMissingCarry, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { useToast } from "../../components/Toast";
 import { AmountInput } from "../../components/Inputs";
 import { exportCsvFile } from "../../components/csvExport";
 import { EntryEditModal } from "../entry/EntryEditModal";
-import { closingBalances } from "../../lib/accounting";
-import { yen } from "../../lib/format";
+import { closingBalances, openingDifference } from "../../lib/accounting";
+import { longDate, todayIso, yen } from "../../lib/format";
+import { consumptionTaxDeadline, daysUntil, incomeTaxDeadline } from "../../lib/deadlines";
 import { CODE } from "../../constants/accounts";
 import {
   accruedTaxLines, closingInventory, exclusiveSettlementLines, inventoryIssues, inventoryLines, rowAmount, type InventoryCount, type InventoryRow,
@@ -23,6 +25,9 @@ import type { JournalLine } from "../../lib/types";
 import * as repo from "../../db/repo";
 import type { Page } from "../../App";
 import { useYearReturn } from "./TaxReturnView";
+import { useTaxIssues } from "./TaxPage";
+import { fileLabel } from "../../lib/business";
+import { ownerText } from "../../lib/printLayout";
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 /** 仕訳の明細を比べるための文字列（作成済みの仕訳が今の計算と同じか） */
@@ -31,7 +36,8 @@ const lineKey = (ls: Pick<JournalLine, "side" | "account_id" | "amount">[]) => l
 type Status = { text: string; tone: "ok" | "todo" | "none" | "warn" };
 const Chip = ({ s }: { s: Status }) => <span className={`yearend-chip ${s.tone}`}>{s.text}</span>;
 
-export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
+/** goCarry：その年から翌年への繰越（事業者設定の「翌年への繰越」）を開く */
+export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (fromYear: number) => void }) => {
   const { db, year, accounts, taxYear, homeUseRates, isClosed, can, bump, dataVersion, filing } = useAppContext();
   const { lines, opening } = useYearData();
   const toast = useToast();
@@ -59,6 +65,21 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
       alive = false;
     };
   }, [db, year, dataVersion]);
+
+  // 決算の前と後の手順の状態（未登録の明細・翌年の期首残高・祝日（申告の期限））
+  const [around, setAround] = useState<{ pendingBank: number; nextOpening: boolean; holidays: Set<string> } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([repo.countPendingBankLines(db, year), repo.hasOpening(db, year + 1), repo.getHolidayData(db)])
+      .then(([pendingBank, nextOpening, h]) => alive && setAround({ pendingBank, nextOpening, holidays: new Set(h.holidays.map((x) => x.date)) }))
+      .catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [db, year, dataVersion]);
+  const { issues: taxIssues } = useTaxIssues();
+  const carryChecks = useCarryForwardCheck();
+  const missingCarry = useMissingCarry();
 
   // 棚卸
   const stockId = idOf(CODE.STOCK);
@@ -104,7 +125,37 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
   };
   const disabled = isClosed || !can("entry");
 
-  const steps: { title: string; status: Status; note: string; page?: Page; pageLabel?: string }[] = [
+  // 決算の前に済ませること
+  const exempt = taxYear.status === "exempt";
+  const taxToFix = taxIssues.filter((i) => i.level !== "info").length;
+  const openingStatus: Status = missingCarry ? { text: "繰越していない", tone: "todo" }
+    : carryChecks.some((c) => c.to === year) ? { text: "前年の残高とずれ", tone: "warn" }
+      : openingDifference(accounts, opening).difference !== 0 ? { text: "貸借が合わない", tone: "warn" }
+        : { text: "問題なし", tone: "ok" };
+  // 申告の期限（過ぎていて年を締めていなければ目立たせる）
+  const deadlineStatus = (date: string | null): Status => {
+    if (!date) return { text: "—", tone: "none" };
+    const left = daysUntil(todayIso(), date);
+    return { text: `期限 ${date.slice(5).replace("-", "/")}${left >= 0 && left <= 30 ? `（あと${left}日）` : ""}`, tone: left < 0 && !isClosed ? "warn" : "none" };
+  };
+  const incomeDue = around ? incomeTaxDeadline(year, around.holidays) : null;
+  const consumptionDue = around && !exempt ? consumptionTaxDeadline(year, around.holidays) : null;
+
+  const steps: { title: string; status: Status; note: string; page?: Page; pageLabel?: string; action?: { label: string; run: () => void } }[] = [
+    {
+      title: "銀行・カードの明細を仕訳にする",
+      status: !around ? { text: "…", tone: "none" } : around.pendingBank > 0 ? { text: `未登録 ${around.pendingBank} 件`, tone: "todo" } : { text: "未登録なし", tone: "ok" },
+      note: "取り込んだ明細のうち、その年の日付でまだ仕訳にしていないものです（帳簿入力の「明細の取り込み」）", page: "cashbook", pageLabel: "帳簿入力",
+    },
+    {
+      title: "消費税の確認（課税事業者）",
+      status: exempt ? { text: "免税事業者", tone: "none" } : taxToFix > 0 ? { text: `${taxToFix} 件`, tone: "warn" } : { text: "問題なし", tone: "ok" },
+      note: "税区分の付け忘れ・インボイスの区分・課税区分の届出などを、消費税の画面の「確認」で直します", page: "tax", pageLabel: "消費税",
+    },
+    {
+      title: "期首残高", status: openingStatus,
+      note: "1月1日の残高が、前の年の年末の残高（繰越）と合っているか確かめます", page: "opening", pageLabel: "期首残高",
+    },
     {
       title: "棚卸（在庫がある事業）", status: !hasStock ? { text: "在庫なし", tone: "none" } : runStatus(runs?.inventory, plannedInventory),
       note: "年末に在庫を数えて棚卸表を作り、期首・期末の振替の仕訳を作ります（この画面の下）",
@@ -131,16 +182,41 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
       title: "未払費用・前払費用など（あれば）", status: { text: "手で入れる", tone: "none" },
       note: "振替伝票の「決算整理」で入れます。翌年1月1日付の振り戻しは、仕訳を開いて「翌年1月1日付で振り戻す」で作れます", page: "voucher", pageLabel: "振替伝票",
     },
-    { title: "確かめる", status: { text: "—", tone: "none" }, note: "残高試算表で残高を確かめ、決算書を印刷します", page: "trial", pageLabel: "残高試算表" },
-    { title: "年を締める", status: isClosed ? { text: "締め済み", tone: "ok" } : { text: "未", tone: "none" }, note: "申告が済んだら、事業者設定の「締め」で年を締めます", page: "settings", pageLabel: "事業者設定" },
+    { title: "確かめる", status: { text: "—", tone: "none" }, note: "残高試算表で残高を確かめます（月次推移表・前年比較で、おかしな月や科目が無いかも）", page: "trial", pageLabel: "残高試算表" },
+    {
+      title: filing.type === "white" ? "収支内訳書" : "青色申告決算書", status: { text: "—", tone: "none" },
+      note: "書き込みの欄（地代家賃・税理士等の報酬の内訳など）を埋めて、印刷するか所得税と一緒に e-Tax 用に書き出します", page: "statements", pageLabel: "決算書",
+    },
+    {
+      title: "消費税の申告（課税事業者）", status: exempt ? { text: "免税事業者", tone: "none" } : deadlineStatus(consumptionDue),
+      note: `消費税の画面の「申告書」で数字を確かめ、e-Tax 用に書き出して申告・納付します${consumptionDue ? `（期限 ${longDate(consumptionDue)}）` : ""}`,
+      page: "tax", pageLabel: "消費税",
+    },
+    {
+      title: "所得税の確定申告", status: deadlineStatus(incomeDue),
+      note: `所得税の画面で控除などを入れ、e-Tax 用に書き出して申告・納付します${incomeDue ? `（期限 ${longDate(incomeDue)}）` : ""}`,
+      page: "incometax", pageLabel: "所得税",
+    },
+    {
+      title: "年を締める", status: isClosed ? { text: "締め済み", tone: "ok" } : { text: "未", tone: "none" },
+      note: "申告が済んだら、事業者設定の「締め」で年を締めます。締めたときに出る確認コードを、決算書の控えなど帳簿ファイルの外に残します",
+      page: "settings", pageLabel: "事業者設定",
+    },
+    {
+      title: `${year + 1}年への繰越`,
+      status: !around ? { text: "…", tone: "none" } : !around.nextOpening ? { text: "未", tone: "todo" }
+        : carryChecks.some((c) => c.from === year) ? { text: "やり直しが必要", tone: "warn" } : { text: "繰越済み", tone: "ok" },
+      note: `${year}年末の残高を ${year + 1}年の期首残高にします（締める前でも繰り越せます。直したらやり直します）`,
+      action: { label: "繰越を開く", run: () => goCarry(year) },
+    },
   ];
 
   return (
     <div className="page">
-      <PageHeader title="決算整理" note={`${year}年の決算でやることを、順に並べています。仕訳はどれも12月31日付の決算整理仕訳です（作り直すと同じ仕訳を訂正します）。`} />
+      <PageHeader title="決算整理" note={`${year}年の決算と申告でやることを、順に並べています。この画面で作る仕訳はどれも12月31日付の決算整理仕訳です（作り直すと同じ仕訳を訂正します）。`} />
 
       <section className="sheet print-skip">
-        <h2 className="sheet-h">決算の進め方（{year}年）</h2>
+        <h2 className="sheet-h">決算・申告の進め方（{year}年）</h2>
         <ol className="yearend-steps">
           {steps.map((s) => (
             <li key={s.title}>
@@ -148,6 +224,7 @@ export const YearEndPage = ({ go }: { go: (p: Page) => void }) => {
                 <b>{s.title}</b>
                 <Chip s={s.status} />
                 {s.page && <button className="link-btn" onClick={() => go(s.page!)}>{s.pageLabel}を開く</button>}
+                {s.action && <button className="link-btn" onClick={s.action.run}>{s.action.label}</button>}
               </div>
               <p className="field-note">{s.note}</p>
             </li>
@@ -229,7 +306,7 @@ const InventorySection = ({ count, openingStock, planned, runId, issues, disable
     }
   };
   const exportCsv = () => exportCsvFile(
-    `棚卸表_${settings.business_name || "帳簿"}_${year}.csv`, ["品名", "数量", "単価", "金額"],
+    `棚卸表_${fileLabel(settings)}_${year}.csv`, ["品名", "数量", "単価", "金額"],
     draft.rows.map((r) => [r.name, String(r.quantity), String(r.unitPrice), String(rowAmount(r))]), toast,
   );
 
@@ -237,7 +314,7 @@ const InventorySection = ({ count, openingStock, planned, runId, issues, disable
     <section className="sheet yearend-inventory print-area">
       <div className="sheet-title">
         <h2 className="sheet-h" style={{ margin: 0 }}>棚卸（{year}年12月31日）</h2>
-        <span className="print-only">{settings.business_name}　{settings.owner_name}</span>
+        <span className="print-only">{ownerText(settings.business_name, settings.owner_name)}</span>
         <div className="spacer" />
         <button className="btn ghost sm print-skip" onClick={exportCsv} disabled={draft.rows.length === 0}><Download size={14} /> CSV</button>
         <button className="btn ghost sm print-skip" onClick={() => window.print()} disabled={draft.rows.length === 0}><Printer size={14} /> 棚卸表を印刷</button>

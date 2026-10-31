@@ -22,8 +22,9 @@ export const FILE_FILTER_NAME = "domble 帳簿ファイル";
  *  3 = 2026-10-30（形式の版を比べるようにした時点）
  *  4 = 2026-10-31（消費税の申告書で書き込む額、税抜経理の明細の消費税額）
  *  5 = 2026-10-31（明細のルールの分け方）
+ *  6 = 2026-10-31（取り込みの記録）
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

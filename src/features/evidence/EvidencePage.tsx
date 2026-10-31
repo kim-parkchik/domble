@@ -21,6 +21,7 @@ import { parseAmount, yen } from "../../lib/format";
 import type { Evidence } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { DOC_CLASS_LABEL, scanStatusOf, type DocClass, type ScanInputMethod } from "../../lib/scan";
+import { fileLabel } from "../../lib/business";
 
 export const EvidencePage = () => {
   const { db, year, settings, dataVersion, counterparties, daysOff } = useAppContext();
@@ -71,7 +72,7 @@ export const EvidencePage = () => {
   const total = list.filter((e) => !e.is_void).reduce((t, e) => t + e.amount, 0);
 
   const exportCsv = async () => {
-    const path = await save({ defaultPath: `証憑一覧_${settings.business_name || "帳簿"}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
+    const path = await save({ defaultPath: `証憑一覧_${fileLabel(settings)}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
     if (!path) return;
     try {
       await writeTextFile(path, evidenceCsv(list, counterparties, scanMethod, daysOff));

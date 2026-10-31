@@ -22,6 +22,7 @@ import * as repo from "../../db/repo";
 import {
   BalanceSheetView, DepreciationSection, InterestSection, Note, PayTable, RentSection, SpecialSection, useAssets, useNotes, usePayeeName, useRunIds, type NoteProps,
 } from "./StatementPages";
+import { ownerText } from "../../lib/printLayout";
 
 const Line = ({ no, label, value, strong, indent }: { no?: string; label: string; value: number; strong?: boolean; indent?: boolean }) => (
   <tr className={strong ? "st-strong" : ""}>
@@ -245,7 +246,7 @@ export const RealEstateStatements = ({ white }: { white: boolean }) => {
         <header className="statement-head">
           <h2 className={tab === "p1" ? "" : "st-title-small"}>{title}{tab === "p1" ? "" : `　${tabs.findIndex(([t]) => t === tab) + 1}ページ`}</h2>
           <p>
-            {settings.business_name || "（屋号未設定）"}　{settings.owner_name}
+            {ownerText(settings.business_name, settings.owner_name)}
             <br />
             {tab === "bs" ? `${year}年12月31日 現在` : `自 ${year}年1月1日　至 ${year}年12月31日`}
             {closedHead && <><br /><span className="statement-anchor">確認コード {repo.anchorCode(closedHead)}</span></>}

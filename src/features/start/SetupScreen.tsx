@@ -1,6 +1,7 @@
 /**
  * 新しい帳簿の初期設定
- *  - 事業者の情報（あとから変更できる）
+ *  - 事業者の情報（屋号は任意）・帳簿を始める年・申告の種類（あとから変更できる）
+ *  - 消費税の課税区分（その年の設定。免税事業者でなければ保存する。経理方式・登録番号などは事業者設定の消費税で）
  *  - 電子帳簿保存法モード（あとから変更できない）
  */
 import { useState } from "react";
@@ -8,8 +9,11 @@ import { ShieldCheck, NotebookPen } from "lucide-react";
 import type Database from "../../db/connection";
 import { Logo } from "./StartScreen";
 import { SettingsForm } from "../settings/BusinessSettingsPage";
-import type { EBookMode, Settings } from "../../lib/types";
+import type { EBookMode, Settings, TaxStatus } from "../../lib/types";
 import * as repo from "../../db/repo";
+import { displayName } from "../../lib/business";
+import { EXEMPT_YEAR, statusProblem } from "../../lib/tax";
+import { BUSINESS_CLASSES, TAX_STATUS_OPTIONS } from "../../constants/tax";
 
 export const MODE_LABEL: Record<EBookMode, string> = {
   strict: "電子帳簿保存法に対応（優良な電子帳簿）",
@@ -25,11 +29,18 @@ interface Props {
 
 export const SetupScreen = ({ db, settings, onDone, onBack }: Props) => {
   const [mode, setMode] = useState<EBookMode>(settings.e_book_mode ?? "strict");
-  const needsInfo = !settings.business_name;
+  const [taxStatus, setTaxStatus] = useState<TaxStatus>("exempt");
+  const [businessClass, setBusinessClass] = useState(5);
+  const needsInfo = !displayName(settings);
   const needsMode = !settings.e_book_mode;
 
   const finish = async (s: Settings) => {
-    if (needsInfo) await repo.saveSettings(db, s);
+    if (needsInfo) {
+      const problem = statusProblem(taxStatus, s.fiscal_year);
+      if (problem) throw new Error(problem);
+      await repo.saveSettings(db, s);
+      if (taxStatus !== "exempt") await repo.saveTaxYear(db, { ...EXEMPT_YEAR(s.fiscal_year), status: taxStatus, business_class: businessClass });
+    }
     if (needsMode) {
       await repo.setEBookMode(db, mode);
       await repo.initChain(db); // 厳密モードなら、ここから記録の連鎖を始める
@@ -59,6 +70,30 @@ export const SetupScreen = ({ db, settings, onDone, onBack }: Props) => {
     </fieldset>
   );
 
+  // 消費税の課税区分（帳簿を始める年に選べるものだけ）
+  const taxPicker = (year: number) => (
+    <fieldset className="setup-tax">
+      <legend>消費税（{year}年）</legend>
+      <p className="field-note">
+        前々年の課税売上高が1,000万円以下で、インボイス（適格請求書発行事業者）の登録をしていなければ、ふつうは免税事業者です。
+        登録している人や、前々年の課税売上高が1,000万円を超える人は課税事業者です。経理方式・登録番号などは、あとで事業者設定の「消費税」で決めます。
+      </p>
+      {TAX_STATUS_OPTIONS.filter((o) => !statusProblem(o.value, year)).map((o) => (
+        <label key={o.value} className="check">
+          <input type="radio" name="tax-status" checked={taxStatus === o.value} onChange={() => setTaxStatus(o.value)} /> {o.label}
+        </label>
+      ))}
+      {taxStatus === "simplified" && (
+        <label className="field">
+          <span>主な事業区分</span>
+          <select className="input" value={businessClass} onChange={(e) => setBusinessClass(Number(e.target.value))}>
+            {BUSINESS_CLASSES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+          </select>
+        </label>
+      )}
+    </fieldset>
+  );
+
   return (
     <div className="start">
       <div className="start-card setup-card">
@@ -68,7 +103,7 @@ export const SetupScreen = ({ db, settings, onDone, onBack }: Props) => {
           {needsInfo ? "帳簿の持ち主の情報と、保存方式を決めてください。事業者の情報はあとから「事業者設定」で変えられます。" : "この帳簿の保存方式を決めてください。"}
         </p>
         {needsInfo ? (
-          <SettingsForm initial={settings} submitLabel="帳簿をはじめる" onSubmit={finish} extra={modePicker} />
+          <SettingsForm initial={settings} submitLabel="帳簿をはじめる" onSubmit={finish} setup extra={(s) => <>{taxPicker(s.fiscal_year)}{modePicker}</>} />
         ) : (
           <>
             {modePicker}

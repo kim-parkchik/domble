@@ -22,6 +22,7 @@ import { RealEstateStatements } from "./RealEstateStatementPages";
 import { isYearCompliant } from "../../lib/ebook";
 import { accountsOfKind } from "../../lib/incomeKind";
 import { realEstateStatement } from "../../lib/realEstateStatement";
+import { ownerText } from "../../lib/printLayout";
 
 
 type Tab = "pl" | "p2" | "p3" | "bs";
@@ -95,7 +96,7 @@ const BlueStatements = () => {
     <header className="statement-head">
       <h2 className={t === "p2" || t === "p3" ? "st-title-small" : ""}>{TAB_TITLE[t]}</h2>
       <p>
-        {t !== "pl" && <>{settings.business_name || "（屋号未設定）"}　{settings.owner_name}<br /></>}
+        {t !== "pl" && <>{ownerText(settings.business_name, settings.owner_name)}<br /></>}
         {t === "bs" ? `${year}年12月31日 現在` : `自 ${year}年${period.from}　至 ${year}年${period.to}`}
         {closedHead && <><br /><span className="statement-anchor">確認コード {repo.anchorCode(closedHead)}</span></>}
         {!isYearCompliant(settings, year) && <><br /><span className="statement-off">電子帳簿保存法の対応外（通常の保存）</span></>}

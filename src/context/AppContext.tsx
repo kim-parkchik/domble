@@ -364,3 +364,33 @@ export const useCarryForwardCheck = () => {
 
   return checks;
 };
+
+/**
+ * 表示中の年度を繰越していないか：期首残高が1つも無いのに、前年の期末残高（繰り越す額）がある
+ * （事業者設定の繰越をせずに新しい年を始めた、など。前年にデータが無い最初の年度は対象外）
+ */
+export const useMissingCarry = () => {
+  const { db, year, accounts, taxYears, dataVersion } = useAppContext();
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      let m = false;
+      if (!(await repo.hasOpening(db, year))) {
+        const from = year - 1;
+        const [lines, op] = await Promise.all([repo.getLines(db, yearStart(from), yearEnd(from)), repo.getOpening(db, from)]);
+        if (lines.length > 0 || Object.keys(op.bySub).length > 0) {
+          const next = expectedNextOpening(accounts, op.byAccount, op.bySub, bookLines(lines, taxYears, exclusiveAccountsOf(accounts)));
+          m = Object.values(next).some((v) => v !== 0);
+        }
+      }
+      if (alive) setMissing(m);
+    })().catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [db, year, accounts, taxYears, dataVersion]);
+
+  return missing;
+};

@@ -1,9 +1,10 @@
 /**
  * 仕訳日記帳
  * すべての仕訳を日付順に表示します。行をクリックすると修正できます。
+ * チェックを付けた仕訳をまとめて削除でき、取り込みの記録からは1回の取り込みの分をまとめて削除できます（BulkDelete.tsx）。
  */
 import { useEffect, useMemo, useState } from "react";
-import { Download, Paperclip, Printer, Search, Upload } from "lucide-react";
+import { Download, History, Paperclip, Printer, Search, Trash2, Upload } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext, useYearData } from "../../context/AppContext";
@@ -13,6 +14,7 @@ import { useToast } from "../../components/Toast";
 import { PrintPreview } from "../../components/PrintPreview";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { JournalImportModal } from "./JournalImportModal";
+import { DeleteReasonDialog, ImportBatchesModal } from "./BulkDelete";
 import { FullDateInput } from "../../components/Inputs";
 import { ADJUSTMENT_PERIOD, groupByEntry, inPeriods, periodNote, yearEnd, yearStart, type FlatLine } from "../../lib/accounting";
 import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
@@ -20,31 +22,20 @@ import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
 import { journalSection, type JournalPrintEntry, type JournalSide } from "../../lib/printBooks";
 import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
-import { classLabel, displayClass, displayUse, invoiceCsvLabel, isPurchaseCode, taxLongLabel, taxShortLabel, useLabel } from "../../lib/tax";
+import { displayClass, displayUse, taxLongLabel, taxShortLabel } from "../../lib/tax";
+import { JOURNAL_CSV_HEADER, journalCsvRows, journalRowsOf, type JournalRow } from "../../lib/bookExport";
 import { lineTaxAmount } from "../../lib/taxExclusive";
 import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
+import { fileLabel } from "../../lib/business";
 
-interface DisplayRow {
-  entryId: number;
-  date: string;
-  first: boolean;
-  span: number;
-  dr?: FlatLine;
-  cr?: FlatLine;
-  memo: string;
-  deleted: boolean;
-  counterparty: string;
-  /** 登録日時 */
-  createdAt: string;
-  /** 入力期間を過ぎて登録したか */
-  late: boolean;
-  /** 決算整理仕訳か */
-  adjustment: boolean;
-}
+type DisplayRow = JournalRow;
 
 export const JournalListPage = () => {
-  const { db, year, accountMap, activeAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear, taxYears } = useAppContext();
+  const {
+    db, year, accounts, accountMap, activeAccounts, subAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear, taxYears, can, readOnly,
+    closedMonth,
+  } = useAppContext();
   /** 税区分での絞り込み："" = すべて、unset = 未設定（課税事業者の期間で税区分が無い）、transitional / nodeduct = インボイス区分、それ以外は税区分 */
   const [taxFilter, setTaxFilter] = useState("");
   const cpMap = useMemo(() => new Map(counterparties.map((c) => [c.id, c])), [counterparties]);
@@ -84,6 +75,11 @@ export const JournalListPage = () => {
   const [editing, setEditing] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
   const [printing, setPrinting] = useState(false);
+  // まとめての削除：チェックを付けた伝票番号と、取り込みの記録
+  const canDelete = can("entry") && !readOnly;
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [showBatches, setShowBatches] = useState(false);
 
   const rows = useMemo(() => {
     const grouped = groupByEntry(lines.filter((l) => inPeriods(l, from, to)));
@@ -116,33 +112,22 @@ export const JournalListPage = () => {
       if (lo != null && total < lo) continue;
       if (hi != null && total > hi) continue;
       // 振替伝票の行番号ごとに「借方｜貸方」を横に並べる
-      const byRow = new Map<number, { dr?: FlatLine; cr?: FlatLine }>();
-      for (const l of ls) {
-        const r = byRow.get(l.row_no) ?? {};
-        if (l.side === "debit") r.dr = l;
-        else r.cr = l;
-        byRow.set(l.row_no, r);
-      }
-      const pairs = [...byRow.entries()].sort((a, b) => a[0] - b[0]);
-      pairs.forEach(([, p], i) =>
-        out.push({
-          entryId,
-          date: ls[0].date,
-          first: i === 0,
-          span: pairs.length,
-          dr: p.dr,
-          cr: p.cr,
-          memo: p.dr?.memo || p.cr?.memo || "",
-          deleted: ls[0].is_deleted === 1,
-          counterparty,
-          createdAt,
-          late,
-          adjustment: ls[0].is_adjustment === 1,
-        }),
-      );
+      out.push(...journalRowsOf(entryId, ls, { counterparty, late }));
     }
     return out;
   }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly, taxFilter, isTaxActive]);
+
+  // 選べる仕訳（削除済み・締めた月のものは選べない）と、表示中で選んでいるもの
+  const selectable = (r: DisplayRow) => !r.deleted && Number(r.date.slice(5, 7)) > closedMonth;
+  const selectableIds = useMemo(() => rows.filter((r) => r.first && selectable(r)).map((r) => r.entryId), [rows, closedMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+  const chosen = selectableIds.filter((id) => selected.has(id));
+  const allChosen = selectableIds.length > 0 && chosen.length === selectableIds.length;
+  const toggle = (id: number, on: boolean) => setSelected((s) => {
+    const next = new Set(s);
+    if (on) next.add(id);
+    else next.delete(id);
+    return next;
+  });
 
   const total = rows.filter((r) => !r.deleted).reduce((s, r) => s + (r.dr?.amount ?? 0), 0);
   const entryCount = rows.filter((r) => r.first && !r.deleted).length;
@@ -158,27 +143,14 @@ export const JournalListPage = () => {
       : null;
 
   const exportCsv = async () => {
-    const header = ["伝票No", "日付", "借方科目", "借方補助", "借方金額", "貸方科目", "貸方補助", "貸方金額", "摘要", "取引先", "登録番号", "状態", "登録日時", "登録までの日数", "入力期間", "決算整理",
-      "借方税区分", "借方インボイス", "借方事業区分", "借方用途区分", "貸方税区分", "貸方インボイス", "貸方事業区分", "貸方用途区分"];
-    const taxCols = (l?: FlatLine) => [
-      l?.tax_code ? taxLongLabel(l.tax_code, null, l.date) : "", invoiceCsvLabel(l?.tax_code, l?.invoice_kind), l?.business_class ? classLabel(l.business_class) : "",
-      isPurchaseCode(l?.tax_code) && l?.purchase_use ? useLabel(l.purchase_use) : "",
-    ];
-    const sub = (l?: FlatLine) => (l?.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "");
-    const body = rows.map((r) =>
-      [r.entryId, r.date, r.dr ? accountMap.get(r.dr.account_id)?.name ?? "" : "", sub(r.dr), r.dr?.amount ?? "",
-        r.cr ? accountMap.get(r.cr.account_id)?.name ?? "" : "", sub(r.cr), r.cr?.amount ?? "", r.memo, r.counterparty,
-        r.counterparty ? counterparties.find((c) => c.name === r.counterparty)?.invoice_no ?? "" : "", r.deleted ? "削除済み" : "",
-        r.createdAt, r.createdAt ? inputDelayDays(r.date, r.createdAt) : "", r.late ? "過ぎて登録" : "", r.adjustment ? "決算整理" : "",
-        ...taxCols(r.dr), ...taxCols(r.cr)],
-    );
+    const body = journalCsvRows(rows, accounts, subAccounts, counterparties);
     const path = await save({
-      defaultPath: `仕訳日記帳_${settings.business_name || "帳簿"}_${year}.csv`,
+      defaultPath: `仕訳日記帳_${fileLabel(settings)}_${year}.csv`,
       filters: [{ name: "CSV", extensions: ["csv"] }],
     });
     if (!path) return;
     try {
-      await writeTextFile(path, toCsv(header, body));
+      await writeTextFile(path, toCsv(JOURNAL_CSV_HEADER, body));
       toast("CSV を書き出しました");
     } catch (e) {
       toast(`書き出せませんでした：${String(e)}`, "error");
@@ -227,6 +199,9 @@ export const JournalListPage = () => {
       <PageHeader title="仕訳日記帳" note="行をクリックすると訂正・削除できます。日付（月のボタンか、日単位の範囲）・金額・取引先（補助科目）を組み合わせて検索できます。">
         <button className="btn ghost" onClick={() => setImporting(true)}>
           <Upload size={16} /> CSV 取り込み
+        </button>
+        <button className="btn ghost" onClick={() => setShowBatches(true)} title="仕訳の CSV 取り込み・明細の登録の記録（その回の仕訳をまとめて削除できます）">
+          <History size={16} /> 取り込みの記録
         </button>
         <button className="btn ghost" onClick={exportCsv} disabled={rows.length === 0}>
           <Download size={16} /> CSV 書き出し
@@ -282,20 +257,37 @@ export const JournalListPage = () => {
         <span className="filter-count">{entryCount} 件</span>
       </div>
 
+      {canDelete && chosen.length > 0 && (
+        <div className="bulk-bar" role="region" aria-label="選んだ仕訳">
+          <span><b>{chosen.length.toLocaleString()}</b> 件を選んでいます</span>
+          <button className="btn sm danger-ghost" onClick={() => setBulkDeleting(true)}><Trash2 size={14} /> 選んだ仕訳を削除</button>
+          <button className="btn sm ghost" onClick={() => setSelected(new Set())}>選ぶのをやめる</button>
+        </div>
+      )}
+
       <section className="sheet sheet-fill">
         <div className="table-wrap scroll-y">
           <table className="ledger journal-table">
             <colgroup>
+              {canDelete && <col style={{ width: 30 }} />}
               <col style={{ width: 64 }} />
               <col style={{ width: 56 }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "11%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "11%" }} />
+              <col style={{ width: "19%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "19%" }} />
+              <col style={{ width: "12%" }} />
               <col />
             </colgroup>
             <thead>
               <tr>
+                {canDelete && (
+                  <th className="pick">
+                    <input
+                      type="checkbox" checked={allChosen} disabled={selectableIds.length === 0} aria-label="表示中の仕訳をすべて選ぶ"
+                      onChange={(e) => setSelected(e.target.checked ? new Set([...selected, ...selectableIds]) : new Set([...selected].filter((id) => !selectableIds.includes(id))))}
+                    />
+                  </th>
+                )}
                 <th>日付</th>
                 <th className="num">No.</th>
                 <th className="dr">借方科目</th>
@@ -312,6 +304,13 @@ export const JournalListPage = () => {
                   className={`clickable${r.first ? " entry-first" : ""}${r.deleted ? " deleted" : ""}`}
                   onClick={() => setEditing(r.entryId)}
                 >
+                  {canDelete && (
+                    <td className="pick" onClick={(e) => e.stopPropagation()}>
+                      {r.first && selectable(r) && (
+                        <input type="checkbox" checked={selected.has(r.entryId)} onChange={(e) => toggle(r.entryId, e.target.checked)} aria-label={`伝票 No.${r.entryId} を選ぶ`} />
+                      )}
+                    </td>
+                  )}
                   <td>{r.first ? shortDate(r.date) : ""}</td>
                   <td className="num muted">{r.first ? r.entryId : ""}</td>
                   <td>{name(r.dr)}{tax(r.dr)}</td>
@@ -334,12 +333,12 @@ export const JournalListPage = () => {
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr className="empty-row"><td colSpan={7}>条件に合う仕訳はありません。</td></tr>
+                <tr className="empty-row"><td colSpan={canDelete ? 8 : 7}>条件に合う仕訳はありません。</td></tr>
               )}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3} className="total-label">合計</td>
+                <td colSpan={canDelete ? 4 : 3} className="total-label">合計</td>
                 <td className="num">{yen(total)}</td>
                 <td />
                 <td className="num">{yen(total)}</td>
@@ -352,6 +351,18 @@ export const JournalListPage = () => {
 
       {editing && <EntryEditModal entryId={editing} onClose={() => setEditing(null)} />}
       {importing && <JournalImportModal onClose={() => setImporting(false)} />}
+      {showBatches && <ImportBatchesModal canDelete={canDelete} onClose={() => setShowBatches(false)} />}
+      {bulkDeleting && (
+        <DeleteReasonDialog
+          title="選んだ仕訳の削除" count={chosen.length}
+          onDelete={async (reason) => {
+            const n = await repo.deleteEntries(db, chosen, reason);
+            setSelected(new Set());
+            return n;
+          }}
+          onClose={() => setBulkDeleting(false)}
+        />
+      )}
       {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
     </div>
   );

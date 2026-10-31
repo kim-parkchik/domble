@@ -12,19 +12,16 @@ import { PeriodTabs, periodLabel } from "../../components/MonthRange";
 import { PrintPreview } from "../../components/PrintPreview";
 import { exportCsvFile } from "../../components/csvExport";
 import { useToast } from "../../components/Toast";
-import {
-  ADJUSTMENT_PERIOD, buildTrialBalance, periodNote, subTrialRow, summarizeIncome, yearEnd, yearStart, type TrialBalanceRow,
-} from "../../lib/accounting";
+import { ADJUSTMENT_PERIOD, buildTrialBalance, periodNote, yearEnd, yearStart } from "../../lib/accounting";
 import { todayIso, yen } from "../../lib/format";
 import { multiCsvRows, multiSection, TRIAL_CSV_HEADER, trialSection, type TrialPrintLine } from "../../lib/printBooks";
 import { changeRate, compareLines, trendHeads, trendLines, type BookData, type MultiLine } from "../../lib/trend";
 import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
 import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
-import { BS_CATEGORIES, CATEGORY_LABEL, PL_CATEGORIES } from "../../constants/accounts";
-import type { AccountCategory } from "../../lib/types";
+import { fileLabel } from "../../lib/business";
+import { trialCsvRows, trialLines, VIEW_LABEL, type StatementView } from "../../lib/bookExport";
 
-type View = "bs" | "pl";
-const VIEW_LABEL: Record<View, string> = { bs: "貸借対照表", pl: "損益計算書" };
+type View = StatementView;
 /** 表の種類：残高試算表・月次推移表・前年比較 */
 type Mode = "tb" | "trend" | "compare";
 const MODE_LABEL: Record<Mode, string> = { tb: "残高試算表", trend: "月次推移表", compare: "前年比較" };
@@ -66,53 +63,11 @@ export const TrialBalancePage = () => {
   const headsOf = (v: View) => (mode === "trend" ? trendHeads(v, from, to) : [`${year}年`, `${year - 1}年`, "差額"]);
   const multi = useMemo(() => (mode === "tb" ? [] : multiOf(view)), [mode, view, accounts, subAccounts, book, prev, from, to, showSubs, hideZero]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toBalances = (pick: (r: TrialBalanceRow) => number) => new Map(rows.map((r) => [r.account.id, pick(r)]));
-  const incomeCarried = summarizeIncome(accounts, toBalances((r) => r.carried)).income;
-  const incomeEnd = summarizeIncome(accounts, toBalances((r) => r.balance)).income;
-  const incomeDuring = incomeEnd - incomeCarried;
-
-  const isEmpty = (r: TrialBalanceRow) => r.carried === 0 && r.debit === 0 && r.credit === 0 && r.balance === 0;
-
-  const subtotal = (cat: AccountCategory) =>
-    rows
-      .filter((r) => r.account.category === cat)
-      .reduce(
-        (t, r) => {
-          // 期末商品棚卸高は原価のマイナスとして集計
-          const sign = cat === "cogs" && r.account.normal_side === "credit" ? -1 : 1;
-          return {
-            carried: t.carried + sign * r.carried,
-            debit: t.debit + r.debit,
-            credit: t.credit + r.credit,
-            balance: t.balance + sign * r.balance,
-          };
-        },
-        { carried: 0, debit: 0, credit: 0, balance: 0 },
-      );
-
-  /** 画面と印刷の行（区分の見出し・科目・補助科目・小計、最後に所得金額） */
-  const linesOf = (v: View): TrialPrintLine[] => {
-    const out: TrialPrintLine[] = [];
-    const amounts = (r: TrialBalanceRow) => ({ carried: r.carried, debit: r.debit, credit: r.credit, balance: r.balance });
-    for (const cat of v === "bs" ? BS_CATEGORIES : PL_CATEGORIES) {
-      out.push({ kind: "category", label: CATEGORY_LABEL[cat], carried: 0, debit: 0, credit: 0, balance: 0 });
-      for (const r of rows.filter((x) => x.account.category === cat && !(hideZero && isEmpty(x)))) {
-        out.push({ kind: "account", label: r.account.name, ...amounts(r) });
-        const subs = showSubs ? subAccounts.filter((x) => x.account_id === r.account.id) : [];
-        if (subs.length === 0) continue;
-        const sub = (id: number | null) => subTrialRow(r.account, id, subOpening, lines, from, to);
-        for (const [label, row] of [...subs.map((x) => [x.name, sub(x.id)] as const), ["補助なし", sub(null)] as const])
-          if (!(hideZero && isEmpty(row))) out.push({ kind: "sub", label, ...amounts(row) });
-      }
-      out.push({ kind: "subtotal", label: `${CATEGORY_LABEL[cat]}合計`, ...subtotal(cat) });
-    }
-    out.push({
-      kind: "total", label: v === "bs" ? "所得金額（当期の利益）" : "青色申告特別控除前の所得金額",
-      carried: incomeCarried, debit: 0, credit: 0, balance: incomeEnd, middle: `期間中 ${yen(incomeDuring)}`,
-    });
-    return out;
-  };
+  /** 画面と印刷の行（区分の見出し・科目・補助科目・小計、最後に所得金額。lib/bookExport.ts） */
+  const linesOf = (v: View): TrialPrintLine[] => trialLines(v, { accounts, subs: subAccounts, opening, subOpening, lines }, from, to, { showSubs, hideZero });
   const shown = linesOf(view);
+  // 所得金額（最後の行）
+  const income = shown[shown.length - 1];
   const carriedHead = from === 1 ? "前期繰越" : from === ADJUSTMENT_PERIOD ? "12月末残高" : "前月繰越";
   const balanceHead = to === ADJUSTMENT_PERIOD ? (from === 1 ? "期末残高" : "決算整理後残高") : `${to}月末残高`;
 
@@ -139,7 +94,7 @@ export const TrialBalancePage = () => {
   }, [printing, mode, rows, prev, hideZero, showSubs, settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const exportCsv = () => {
-    const name = `${settings.business_name || "帳簿"}_${year}_${periodLabel(from)}-${periodLabel(to)}`;
+    const name = `${fileLabel(settings)}_${year}_${periodLabel(from)}-${periodLabel(to)}`;
     if (mode === "trend") {
       exportCsvFile(`月次推移表_${VIEW_LABEL[view]}_${name}.csv`, ["区分", "勘定科目", "補助科目", ...headsOf(view)], multiCsvRows(VIEW_LABEL[view], multi), toast);
       return;
@@ -149,18 +104,7 @@ export const TrialBalancePage = () => {
       exportCsvFile(`前年比較_${name}.csv`, ["区分", "勘定科目", "補助科目", ...headsOf("pl"), "増減率"], body, toast);
       return;
     }
-    // 区分は「貸借対照表・資産」など。補助科目の行は科目の名前も入れる
-    const body = (["bs", "pl"] as View[]).flatMap((v) => {
-      let cat = "";
-      let parent = "";
-      return linesOf(v).flatMap((l) => {
-        if (l.kind === "category") cat = l.label;
-        if (l.kind === "account") parent = l.label;
-        if (l.kind === "category") return [];
-        if (l.kind === "total") return [[VIEW_LABEL[v], l.label, "", l.carried, "", "", l.balance]];
-        return [[`${VIEW_LABEL[v]}・${cat}`, l.kind === "sub" ? parent : l.label, l.kind === "sub" ? l.label : "", l.carried, l.debit, l.credit, l.balance]];
-      });
-    });
+    const body = (["bs", "pl"] as View[]).flatMap((v) => trialCsvRows(v, linesOf(v)));
     exportCsvFile(`残高試算表_${name}.csv`, TRIAL_CSV_HEADER, body, toast);
   };
 
@@ -247,9 +191,9 @@ export const TrialBalancePage = () => {
             <tfoot>
               <tr className="grand">
                 <td>{view === "bs" ? "所得金額（当期の利益）" : "青色申告特別控除前の所得金額"}</td>
-                <td className="num">{yen(incomeCarried)}</td>
-                <td colSpan={2} className="num muted">期間中 {yen(incomeDuring)}</td>
-                <td className={`num${incomeEnd < 0 ? " negative" : ""}`}>{yen(incomeEnd)}</td>
+                <td className="num">{yen(income.carried)}</td>
+                <td colSpan={2} className="num muted">期間中 {yen(income.balance - income.carried)}</td>
+                <td className={`num${income.balance < 0 ? " negative" : ""}`}>{yen(income.balance)}</td>
               </tr>
             </tfoot>
           </table>

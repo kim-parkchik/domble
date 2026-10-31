@@ -734,6 +734,65 @@ describe("仕訳の CSV 取り込み（repo）", () => {
   });
 });
 
+describe("まとめて削除・取り込みの記録（repo）", () => {
+  test("取り込みごとに記録し、その分をまとめて削除できる（厳密モードは理由が要り、1件ずつ履歴に残る）", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const bank = accts.find((a) => a.name === "普通預金")!.id;
+    const fee = accts.find((a) => a.name === "支払手数料")!.id;
+    const csv = await repo.importEntries(db, [
+      { date: "2026-02-01", lines, counterpartyId: null },
+      { date: "2026-03-01", lines, counterpartyId: null },
+      { date: "2026-04-01", lines, counterpartyId: null },
+    ], "仕訳.csv");
+    await repo.addBankLines(db, bank, null, [{ row: 0, date: "2026-05-01", description: "テスウリョウ", side: "credit", amount: 330, balance: null, fingerprint: "f" }], "明細.csv");
+    const line = (await repo.getBankLines(db, bank, null))[0];
+    const feeLines: JournalLine[] = [
+      { row_no: 1, side: "debit", account_id: fee, sub_account_id: null, amount: 330, memo: "手数料" },
+      { row_no: 1, side: "credit", account_id: bank, sub_account_id: null, amount: 330, memo: "手数料" },
+    ];
+    const [bankEntry] = await repo.registerBankLines(db, [{ lineId: line.id, date: line.date, lines: feeLines, counterpartyId: null }], "明細.csv");
+    await repo.deleteEntry(db, csv[2], "1件だけ取り消し");
+
+    const batches = await repo.getImportBatches(db);
+    expect(batches.map((b) => [b.kind, b.source, b.total, b.live, b.first_date, b.last_date])).toEqual([
+      ["bank", "明細.csv", 1, 1, "2026-05-01", "2026-05-01"],
+      ["journal", "仕訳.csv", 3, 2, "2026-02-01", "2026-03-01"],
+    ]);
+
+    // 厳密モードは理由が要る
+    await expect(repo.deleteImportBatch(db, batches[1].id, " ")).rejects.toThrow(/理由/);
+    expect(await repo.deleteImportBatch(db, batches[1].id, "2回取り込んだ")).toBe(2);
+    expect(await repo.getLines(db, "2026-01-01", "2026-12-31")).toHaveLength(2); // 明細の仕訳だけ残る
+    expect((await repo.getHistory(db, csv[0])).map((h) => [h.action, h.reason])).toEqual([["delete", "2回取り込んだ"], ["create", "CSV 取り込み（仕訳.csv）"]]);
+    // 明細の取り込みを消すと、明細は未登録に戻る
+    expect(await repo.deleteImportBatch(db, batches[0].id, "やり直す")).toBe(1);
+    expect((await repo.getBankLines(db, bank, null))[0]).toMatchObject({ status: "pending", entry_id: null });
+    expect((await repo.getImportBatches(db)).map((b) => b.live)).toEqual([0, 0]);
+    expect(bankEntry).toBeGreaterThan(0);
+    expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
+  });
+
+  test("選んでまとめて削除。締めた月が混ざっていたら1件も消さない。通常モードは本当に消す", async () => {
+    const { db } = strict;
+    const a = await repo.createEntry(db, "2026-01-10", lines);
+    const b = await repo.createEntry(db, "2026-02-10", lines);
+    const c = await repo.createEntry(db, "2026-03-10", lines);
+    await repo.closeThrough(db, 2026, 1);
+    await expect(repo.deleteEntries(db, [a, b], "まとめて")).rejects.toThrow(/締め/);
+    expect(await repo.getLines(db, "2026-01-01", "2026-12-31")).toHaveLength(6);
+    expect(await repo.deleteEntries(db, [b, c, c], "まとめて")).toBe(2);
+    expect(await repo.deleteEntries(db, [b], "もう一度")).toBe(0);
+    await expect(repo.deleteEntries(db, [], "x")).rejects.toThrow(/選んで/);
+
+    const { db: std } = makeDb("standard");
+    const x = await repo.createEntry(std, "2026-01-10", lines);
+    const y = await repo.createEntry(std, "2026-01-11", lines);
+    expect(await repo.deleteEntries(std, [x, y], "")).toBe(2);
+    expect(await repo.getLines(std, "2026-01-01", "2026-12-31", true)).toEqual([]);
+  });
+});
+
 describe("履歴の読み込み（repo）", () => {
   test("件数で打ち切らず、すべて返す（訂正・削除履歴は全件確認できること）", async () => {
     const { db, raw } = strict;
@@ -835,6 +894,46 @@ describe("家事按分の年末振替（repo）", () => {
     // 作り直せる
     const id2 = await repo.saveHomeUseRunEntry(db, 2026, "2026-12-31", lines, null);
     expect(await repo.getHomeUseRun(db, 2026)).toBe(id2);
+  });
+});
+
+describe("仕訳が多いときの問い合わせの数（repo）", () => {
+  /** db.select / execute を数える */
+  const counting = (db: Database) => {
+    let n = 0;
+    const wrapped = {
+      select: (sql: string, params?: unknown[]) => (n++, db.select(sql, params)),
+      execute: (sql: string, params?: unknown[]) => (n++, db.execute(sql, params)),
+    } as unknown as Database;
+    return { db: wrapped, count: () => n, reset: () => (n = 0) };
+  };
+  const batch = (k: number, from = 0) => Array.from({ length: k }, (_, i) => ({ date: `2026-0${1 + ((from + i) % 9)}-1${(from + i) % 10}`, lines, counterpartyId: null }));
+
+  test("改ざんの確認は、仕訳が増えても問い合わせの数が増えない（中身は同じに判定）", async () => {
+    await repo.initChain(strict.db);
+    const c = counting(strict.db);
+    await repo.importEntries(strict.db, batch(20), "a.csv");
+    c.reset();
+    expect((await repo.verifyIntegrity(c.db)).issues).toEqual([]);
+    const small = c.count();
+    await repo.importEntries(strict.db, batch(40, 20), "b.csv");
+    c.reset();
+    expect((await repo.verifyIntegrity(c.db)).issues).toEqual([]);
+    expect(c.count()).toBe(small);
+    // 書き換えは今までどおり見つける
+    strict.raw.run("UPDATE journal_lines SET amount = 1 WHERE entry_id = 7");
+    expect((await repo.verifyIntegrity(strict.db)).issues.map((i) => i.message)).toEqual([expect.stringMatching(/伝票 No.7）.*一致しません/)]);
+  });
+
+  test("まとめての登録は、科目一覧などを仕訳ごとに読み直さない", async () => {
+    await repo.initChain(strict.db);
+    const c = counting(strict.db);
+    await repo.importEntries(c.db, batch(10), "a.csv");
+    const ten = c.count();
+    c.reset();
+    await repo.importEntries(c.db, batch(30, 10), "b.csv");
+    // 20 件増えた分の問い合わせ。1件あたり 10 回以下（前は 18 回）
+    expect((c.count() - ten) / 20).toBeLessThanOrEqual(10);
   });
 });
 

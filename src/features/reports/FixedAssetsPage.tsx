@@ -36,6 +36,8 @@ import * as repo from "../../db/repo";
 import { isExclusiveOn } from "../../lib/taxExclusive";
 import { isBlue } from "../../lib/filing";
 import { closedMonthOf } from "../../lib/closing";
+import { fileLabel } from "../../lib/business";
+import { assetPrintLine } from "../../lib/bookExport";
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 const ymd = (iso: string) => iso.replace(/-/g, "/");
@@ -109,19 +111,14 @@ export const FixedAssetsPage = () => {
   ].filter(Boolean).join("・");
 
   // 印刷・CSV の行（画面の台帳と同じ資産）
-  const printLines: AssetPrintLine[] = shownActive.map(({ a, d }) => ({
-    name: a.name, account: accountName(a.account_id), acquired: a.acquired_on, used: a.used_on, cost: a.cost, method: methodLabel(a),
-    life: a.method === "straight" || a.method === "declining" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—", rate: d!.rate !== null ? d!.rate.toFixed(3) : "—",
-    months: d!.months, opening: d!.opening, depreciation: d!.depreciation, businessRate: d!.businessRate, business: d!.business, closing: d!.closing,
-    memo: [d!.disposed ? `${ymd(a.disposed_on!)} 売却・除却` : "", a.memo].filter(Boolean).join("　"),
-  }));
+  const printLines: AssetPrintLine[] = shownActive.map(({ a, d }) => assetPrintLine(a, d!, accountName));
   const printDoc = useMemo((): PrintDoc | null => printing
     ? {
       title: "固定資産台帳", owner: ownerText(settings.business_name, settings.owner_name),
       period: periodText(`${year}-01-01`, `${year}-12-31`), printedOn: todayIso(), conditions, sections: [assetSection(`${year}年の減価償却`, printLines)],
     }
     : null, [printing, assets, accounts, year, settings, conditions]); // eslint-disable-line react-hooks/exhaustive-deps
-  const exportCsv = () => exportCsvFile(`固定資産台帳_${settings.business_name || "帳簿"}_${year}.csv`, ASSET_CSV_HEADER, assetCsvRows(printLines), toast);
+  const exportCsv = () => exportCsvFile(`固定資産台帳_${fileLabel(settings)}_${year}.csv`, ASSET_CSV_HEADER, assetCsvRows(printLines), toast);
 
   const planned = useMemo(() => depreciationLines(assets, year, ids), [assets, year, ids.expense, ids.draw, ids.expenseRealEstate]); // eslint-disable-line react-hooks/exhaustive-deps
   const outdated = runId !== null && runLines !== lineKey(planned);
