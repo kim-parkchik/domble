@@ -1572,6 +1572,18 @@ export const getLines = (db: Database, from: string, to: string, includeDeleted 
     [from, to],
   );
 
+/**
+ * 期間内の仕訳を登録したときの理由（伝票番号 → 理由）。厳密モードの登録時の履歴から（遅れて登録した理由・取り込みのファイル名など。空のものは除く）
+ */
+export const getCreateReasons = async (db: Database, from: string, to: string): Promise<Map<number, string>> => {
+  const rows = await db.select<{ entry_id: number; reason: string }[]>(
+    `SELECT h.entry_id, h.reason FROM entry_history h JOIN journal_entries e ON e.id = h.entry_id
+      WHERE h.action = 'create' AND h.reason <> '' AND e.date BETWEEN ? AND ?`,
+    [from, to],
+  );
+  return new Map(rows.map((r) => [r.entry_id, r.reason]));
+};
+
 export const getEntry = async (db: Database, id: number): Promise<JournalEntry | null> => {
   const e = await db.select<Omit<JournalEntry, "lines">[]>(
     `SELECT e.id, e.date, e.description, e.counterparty_id, e.revision, e.is_deleted, e.is_adjustment, e.created_at, e.updated_at,

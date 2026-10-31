@@ -1,6 +1,6 @@
 /**
  * 決算整理（決算でやることを順に並べ、状態を出す。決算・申告の手順の案内も兼ねる）
- *  - 手順：決算の前（未登録の明細・消費税の確認・期首残高）→ 決算整理 → 決算書・申告（期限）→ 年の締め（確認コードの控え）→ 翌年への繰越
+ *  - 手順：決算の前（未登録の明細・現金・預金の残高のマイナス・消費税の確認・期首残高）→ 決算整理 → 決算書・申告（期限）→ 年の締め（確認コードの控え）→ 翌年への繰越
  *  - 棚卸：期末の棚卸高（棚卸表から）を入れ、期首・期末の振替の決算整理仕訳を作る（lib/yearEnd.ts）
  *  - 未払消費税等：その年の課税区分の申告書の ㉖ から決算整理仕訳を作る（課税事業者の年。任意）
  *  - 家事按分・減価償却・貸倒引当金は、それぞれの画面で作る（ここでは状態と入口だけ）
@@ -16,6 +16,7 @@ import { exportCsvFile } from "../../components/csvExport";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { closingBalances, openingDifference } from "../../lib/accounting";
 import { longDate, todayIso, yen } from "../../lib/format";
+import { negativeBalances, negativeLabel, negativeText } from "../../lib/cashbook";
 import { consumptionTaxDeadline, daysUntil, incomeTaxDeadline } from "../../lib/deadlines";
 import { CODE } from "../../constants/accounts";
 import {
@@ -39,8 +40,8 @@ const Chip = ({ s }: { s: Status }) => <span className={`yearend-chip ${s.tone}`
 
 /** goCarry：その年から翌年への繰越（事業者設定の「翌年への繰越」）を開く */
 export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (fromYear: number) => void }) => {
-  const { db, year, accounts, taxYear, homeUseRates, isClosed, can, bump, dataVersion, filing } = useAppContext();
-  const { lines, opening } = useYearData();
+  const { db, year, accounts, taxYear, homeUseRates, isClosed, can, bump, dataVersion, filing, labelOf, subAccounts } = useAppContext();
+  const { lines, opening, subOpening } = useYearData();
   const toast = useToast();
   const idOf = (code: string) => accounts.find((a) => a.code === code)?.id ?? 0;
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
@@ -128,6 +129,8 @@ export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (
   const disabled = isClosed || !can("entry");
 
   // 決算の前に済ませること
+  // 現金・預金の残高が一日の終わりにマイナスになった日（入力漏れ・日付の誤りの手がかり）
+  const negatives = useMemo(() => negativeBalances(accounts, subOpening, lines), [accounts, subOpening, lines]);
   const exempt = taxYear.status === "exempt";
   const taxToFix = taxIssues.filter((i) => i.level !== "info").length;
   const openingStatus: Status = missingCarry ? { text: "繰越していない", tone: "todo" }
@@ -148,6 +151,15 @@ export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (
       title: "銀行・カードの明細を仕訳にする",
       status: !around ? { text: "…", tone: "none" } : around.pendingBank > 0 ? { text: `未登録 ${around.pendingBank} 件`, tone: "todo" } : { text: "未登録なし", tone: "ok" },
       note: "取り込んだ明細のうち、その年の日付でまだ仕訳にしていないものです（帳簿入力の「明細の取り込み」）", page: "cashbook", pageLabel: "帳簿入力",
+    },
+    {
+      title: "現金・預金の残高",
+      status: negatives.length ? { text: `マイナスの日あり（${negatives.length} 件）`, tone: "warn" } : { text: "マイナスの日なし", tone: "ok" },
+      note: negatives.length
+        ? `残高がマイナスになっています（期首か一日の終わり）。${negatives.map((x) => negativeText(x, negativeLabel(x, labelOf, subAccounts))).join("、")}。` +
+          "現金や口座の残高はマイナスにならないので、入金の入れ漏れ・日付の誤り・二重の登録がないか帳簿入力で、期首残高は前の年の残高と繰越を確かめます（当座預金は見ません）"
+        : "現金・預金の残高が、期首や一日の終わりにマイナスになっていないかを確かめます（入金の入れ漏れ・日付の誤りの手がかり。当座預金は見ません）",
+      page: "cashbook", pageLabel: "帳簿入力",
     },
     {
       title: "消費税の確認（課税事業者）",

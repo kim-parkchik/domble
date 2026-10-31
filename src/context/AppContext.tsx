@@ -262,6 +262,16 @@ export const useYearData = () => {
   return { lines, rawLines, opening, subOpening, loading };
 };
 
+/** 入力期間（日。事業者設定）。読み込むまでは null。遅れて登録かどうかの判定に使う */
+export const useInputDays = () => {
+  const { db, dataVersion } = useAppContext();
+  const [days, setDays] = useState<number | null>(null);
+  useEffect(() => {
+    repo.getInputPeriodDays(db).then(setDays).catch(console.error);
+  }, [db, dataVersion]);
+  return days;
+};
+
 /**
  * 表示中の年度の基準期間（前々年）・特定期間（前年1〜6月）の課税売上高（lib/baseSales.ts）
  * 前々年・前年の明細と、手で入れた額を読み込む。読み込むまでは null

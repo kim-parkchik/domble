@@ -836,6 +836,9 @@ describe("給与（repo）", () => {
     expect((await repo.getEntry(db, ids[2]))!.lines[0].account_id).toBe(id("専従者給与"));
     expect([...(await repo.getPayrollBonusIds(db))]).toEqual([ids[1]]);
     expect((await repo.getHistory(db, ids[0]))[0].reason).toBe("給与の取り込み（給与.csv）");
+    // 登録したときの理由（仕訳日記帳の「遅れて登録」と CSV に出す）。その年の分だけ
+    expect((await repo.getCreateReasons(db, "2026-01-01", "2026-12-31")).get(ids[0])).toBe("給与の取り込み（給与.csv）");
+    expect((await repo.getCreateReasons(db, "2027-01-01", "2027-12-31")).size).toBe(0);
     expect((await repo.getImportBatches(db))[0]).toMatchObject({ kind: "payroll", source: "給与.csv", total: 3, live: 3 });
     expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
   });

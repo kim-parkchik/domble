@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account, SubAccount, VoucherRow } from "./types";
 import { emptyRow } from "./accounting";
-import { applyTemplate, removeFromTemplate, templateRows, validateTemplateName } from "./templates";
+import { applyTemplate, removeFromTemplate, templateForBook, templateRows, validateTemplateName } from "./templates";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
 const id = (n: string) => accounts.find((a) => a.name === n)!.id;
@@ -74,4 +74,17 @@ test("補助科目を消すとき：補助科目だけ空にして科目は残�
   expect(removeFromTemplate(rows, { subId: 1 })).toEqual({
     rows: [row({ debitAccountId: id("地代家賃"), creditAccountId: id("普通預金") })], changed: true, empty: false,
   });
+});
+
+test("帳簿入力に入れる形：この帳簿の科目と相手科目1つの定型仕訳だけ。相手の税区分も", () => {
+  const bank = id("普通預金");
+  const electric = row({ debitAccountId: id("水道光熱費"), debitTax: "purchase10", creditAccountId: bank, creditSubId: 1, memo: "電気代" });
+  expect(templateForBook([electric], bank, "普通預金")).toEqual({
+    bookDebit: false, counterId: id("水道光熱費"), counterSubId: null, amount: null, memo: "電気代", tax: { code: "purchase10", invoice: null, cls: null, use: null },
+  });
+  // 入金（この帳簿が借方）。金額は相手の側、なければこの帳簿の側
+  expect(templateForBook([row({ debitAccountId: bank, debitAmount: 5_000, creditAccountId: id("売上高") })], bank, "普通預金")).toMatchObject({ bookDebit: true, counterId: id("売上高"), amount: 5_000 });
+  expect(templateForBook([electric, electric], bank, "普通預金")).toEqual({ error: expect.stringMatching(/何行も/) });
+  expect(templateForBook([electric], id("現金"), "現金")).toEqual({ error: expect.stringMatching(/現金を使っていない/) });
+  expect(templateForBook([row({ debitAccountId: bank, creditAccountId: bank, creditSubId: 1 })], bank, "普通預金")).toEqual({ error: expect.stringMatching(/同じ科目どうし/) });
 });

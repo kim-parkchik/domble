@@ -20,7 +20,7 @@ import type { Account } from "../../lib/types";
 import type { FlatLine } from "../../lib/accounting";
 import * as repo from "../../db/repo";
 import {
-  BalanceSheetView, DepreciationSection, InterestSection, Note, PayTable, RentSection, SpecialSection, useAssets, useNotes, usePayeeName, usePayFigures, useRunIds, type NoteProps,
+  BalanceSheetView, BusinessHead, DepreciationSection, InterestSection, Note, PayTable, RentSection, SpecialSection, useAssets, useNotes, usePayeeName, usePayFigures, useRunIds, type NoteProps,
 } from "./StatementPages";
 import { ownerText } from "../../lib/printLayout";
 
@@ -257,6 +257,7 @@ export const RealEstateStatements = ({ white }: { white: boolean }) => {
 
         {tab === "p1" ? (
           <>
+            <BusinessHead kind="realestate" year={year} />
             <ProfitTable st={st} notes={notes} onSaved={set} />
             {white && (
               <div className="st-pages st-page3">

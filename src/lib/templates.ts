@@ -2,7 +2,7 @@
  * 定型仕訳（純粋関数）
  * よく使う仕訳を名前をつけて保存し、振替伝票に呼び出す。金額は空のままでもよい（毎回変わる電気代など）
  */
-import type { Account, SubAccount, VoucherRow } from "./types";
+import type { Account, InvoiceKind, PurchaseUse, SubAccount, TaxCode, VoucherRow } from "./types";
 import { emptyRow } from "./accounting";
 
 export interface JournalTemplate {
@@ -101,4 +101,36 @@ export const applyTemplate = (rows: VoucherRow[], accounts: Account[], subs: Sub
     if (!isBlank(x)) out.push(x);
   }
   return { rows: out, dropped };
+};
+
+/** 帳簿入力（出納帳）の入力の行に入れる形 */
+export interface BookTemplateLine {
+  /** この帳簿の科目が借方か（現金・預金なら入金） */
+  bookDebit: boolean;
+  counterId: number;
+  counterSubId: number | null;
+  /** 空なら呼び出したあとに入れる */
+  amount: number | null;
+  memo: string;
+  tax: { code: TaxCode | null; invoice: InvoiceKind | null; cls: number | null; use: PurchaseUse | null };
+}
+
+/**
+ * 定型仕訳を、帳簿入力（出納帳）の入力の行に入れる形にする（applyTemplate のあとの行）。
+ * 入れられるのは、明細が1行で、片側がこの帳簿の科目、もう片側が相手科目のものだけ（ほかは振替伝票で呼び出す）。
+ * この帳簿の側の補助科目は、帳簿入力で選んでいる補助科目を使う
+ */
+export const templateForBook = (rows: VoucherRow[], bookAccountId: number, bookName: string): BookTemplateLine | { error: string } => {
+  if (rows.length !== 1) return { error: "明細が何行もある定型仕訳は、振替伝票で呼び出してください" };
+  const r = rows[0];
+  const bookDebit = r.debitAccountId === bookAccountId;
+  if (!bookDebit && r.creditAccountId !== bookAccountId) return { error: `${bookName}を使っていない定型仕訳です。振替伝票で呼び出してください` };
+  const side = bookDebit ? "credit" : "debit";
+  const counterId = r[`${side}AccountId`];
+  if (!counterId) return { error: "相手科目のない定型仕訳です。振替伝票で呼び出してください" };
+  if (counterId === bookAccountId) return { error: "同じ科目どうしの定型仕訳（口座の間の振替など）は、振替伝票で呼び出してください" };
+  return {
+    bookDebit, counterId, counterSubId: r[`${side}SubId`] ?? null, amount: r[`${side}Amount`] ?? r[`${bookDebit ? "debit" : "credit"}Amount`] ?? null, memo: r.memo,
+    tax: { code: r[`${side}Tax`] ?? null, invoice: r[`${side}Invoice`] ?? null, cls: r[`${side}Class`] ?? null, use: r[`${side}Use`] ?? null },
+  };
 };

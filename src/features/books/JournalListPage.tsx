@@ -55,6 +55,11 @@ export const JournalListPage = () => {
   useEffect(() => {
     repo.getInputPeriodDays(db).then(setInputDays).catch(console.error);
   }, [db, dataVersion]);
+  // 登録したときの理由（厳密モード。遅れて登録した理由など）
+  const [reasons, setReasons] = useState<Map<number, string>>(new Map());
+  useEffect(() => {
+    repo.getCreateReasons(db, yearStart(year), yearEnd(year)).then(setReasons).catch(console.error);
+  }, [db, year, dataVersion]);
 
   // 削除済みも表示するときだけ、削除済みを含めて読み直す
   useEffect(() => {
@@ -112,10 +117,10 @@ export const JournalListPage = () => {
       if (lo != null && total < lo) continue;
       if (hi != null && total > hi) continue;
       // 振替伝票の行番号ごとに「借方｜貸方」を横に並べる
-      out.push(...journalRowsOf(entryId, ls, { counterparty, late }));
+      out.push(...journalRowsOf(entryId, ls, { counterparty, late, reason: reasons.get(entryId) }));
     }
     return out;
-  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly, taxFilter, isTaxActive]);
+  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly, taxFilter, isTaxActive, reasons]);
 
   // 選べる仕訳（削除済み・締めた月のものは選べない）と、表示中で選んでいるもの
   const selectable = (r: DisplayRow) => !r.deleted && Number(r.date.slice(5, 7)) > closedMonth;
@@ -172,7 +177,7 @@ export const JournalListPage = () => {
         const revised = !r.deleted && (r.dr?.revision ?? r.cr?.revision ?? 1) > 1;
         entries.push({
           entryId: r.entryId, date: r.date, deleted: r.deleted, counterparty: r.counterparty, lines: [],
-          tags: [r.deleted && "削除済み", revised && "訂正あり", r.adjustment && "決算整理", r.late && "遅れて登録"].filter((t): t is string => !!t),
+          tags: [r.deleted && "削除済み", revised && "訂正あり", r.adjustment && "決算整理", r.late && (r.reason ? `遅れて登録（理由：${r.reason}）` : "遅れて登録")].filter((t): t is string => !!t),
         });
       }
       entries[entries.length - 1].lines.push({ dr: side(r.dr), cr: side(r.cr), memo: r.memo });
@@ -322,7 +327,9 @@ export const JournalListPage = () => {
                     {r.first && !r.deleted && (r.dr?.revision ?? r.cr?.revision ?? 1) > 1 && <span className="badge badge-update">訂正あり</span>}
                     {r.first && r.adjustment && <span className="badge badge-adjust">決算整理</span>}
                     {r.first && r.late && (
-                      <span className="badge badge-late" title={`登録 ${r.createdAt}（取引日から ${inputDelayDays(r.date, r.createdAt)} 日後。入力期間 ${inputDays} 日）`}>遅れて登録</span>
+                      <span className="badge badge-late" title={`登録 ${r.createdAt}（取引日から ${inputDelayDays(r.date, r.createdAt)} 日後。入力期間 ${inputDays} 日）${r.reason ? `\n理由：${r.reason}` : ""}`}>
+                        遅れて登録{r.reason && "・理由あり"}
+                      </span>
                     )}
                     {r.first && evidenceCounts.get(r.entryId) ? (
                       <span className="clip" title={`証憑 ${evidenceCounts.get(r.entryId)}件`}><Paperclip size={12} />{evidenceCounts.get(r.entryId)}</span>

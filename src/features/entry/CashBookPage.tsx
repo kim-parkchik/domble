@@ -2,11 +2,13 @@
  * 帳簿入力（現金出納帳・預金出納帳など）
  * 1つの科目から見た「入金・出金」で入力する、いちばん手軽な入力画面です。
  * 入力した行は「この科目 ⇔ 相手科目」の2行の仕訳として保存されます。
+ *  - 定型仕訳は、この帳簿の科目と相手科目1つのものを入力の行に入れる（lib/templates.ts の templateForBook）
+ *  - 現金・預金の残高が一日の終わりにマイナスになった日を上に知らせる。入力期間を過ぎた日付では遅れた理由を入れられる（厳密モード）
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CornerDownLeft, FileUp, Landmark, Printer, Settings2 } from "lucide-react";
+import { CornerDownLeft, FileStack, FileUp, Landmark, Printer, Settings2 } from "lucide-react";
 import type { Page } from "../../App";
-import { useAppContext, useYearData } from "../../context/AppContext";
+import { useAppContext, useInputDays, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { ADJUSTMENT_PERIOD, MonthTabs, periodLabel } from "../../components/MonthRange";
 import { AccountWithSub, AmountInput, CounterpartyField, DateInput, MemoInput, TaxSelect } from "../../components/Inputs";
@@ -16,12 +18,15 @@ import { EntryEditModal } from "./EntryEditModal";
 import { buildLedger, monthEnd, monthStart, yearEnd } from "../../lib/accounting";
 import { enterToNext } from "../../lib/keyboard";
 import { defaultDateInYear, shortDate, todayIso, yen } from "../../lib/format";
+import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
 import { ledgerSection } from "../../lib/printBooks";
 import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE } from "../../constants/accounts";
-import { cashbookTabs } from "../../lib/cashbook";
+import { cashbookTabs, negativeBalances, negativeLabel, negativeText } from "../../lib/cashbook";
 import { CashbookTabsModal } from "./CashbookTabsModal";
 import { BankImportModal } from "./BankImportModal";
+import { TemplatePickModal } from "./TemplateModals";
+import { applyTemplate, templateForBook, type JournalTemplate } from "../../lib/templates";
 import * as repo from "../../db/repo";
 import { subKey, type InvoiceKind, type JournalLine, type PurchaseUse, type TaxCode } from "../../lib/types";
 import { splitByRate } from "../../lib/homeUse";
@@ -39,7 +44,7 @@ const columnLabels = (code: string, normal: "debit" | "credit") => {
 };
 
 export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion, settings } = useAppContext();
+  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion, settings, strict, subAccounts } = useAppContext();
   const { lines, opening, subOpening, loading } = useYearData();
   const toast = useToast();
 
@@ -89,6 +94,12 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     const carried = prefix.length ? prefix[prefix.length - 1].balance : base;
     return { carried, rows: all.filter((r) => periodOf(r) >= from && periodOf(r) <= to) };
   }, [account, opening, subOpening, lines, accountMap, from, to, fullYear, year, bookSub]);
+
+  // 残高が一日の終わりにマイナスになった日（現金・預金の帳簿。補助科目を選んでいればその補助科目だけ）
+  const negatives = useMemo(
+    () => negativeBalances([account], subOpening, lines).filter((x) => bookSub === undefined || x.subId === bookSub),
+    [account, subOpening, lines, bookSub],
+  );
 
   // 伝票番号 → 取引先の名前（表示用）
   const cpOfEntry = useMemo(() => {
@@ -180,6 +191,32 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     if (el) el.scrollTop = el.scrollHeight;
   }, [rows.length, accountId, from, to]);
 
+  // 入力期間を過ぎた日付で登録するとき（厳密モード）は、遅れた理由を履歴に残せる（続けて入れるときのために、登録しても残す）
+  const inputDays = useInputDays();
+  const [lateReason, setLateReason] = useState("");
+  const inputDate = adjustmentOnly ? yearEnd(year) : date;
+  const late = strict && inputDays != null && !dateBad && isLateInput(inputDate, todayIso(), inputDays);
+
+  // 定型仕訳の呼び出し（この帳簿の科目と相手科目1つのものだけ。ほかは振替伝票で）
+  const [picking, setPicking] = useState(false);
+  const pickTemplate = (t: JournalTemplate) => {
+    const applied = applyTemplate(t.rows, accounts, subAccounts);
+    const x = templateForBook(applied.rows, accountId, account.name);
+    if ("error" in x) return toast(x.error, "error");
+    setCounterId(x.counterId);
+    setCounterSubId(x.counterSubId);
+    setCounterTax(x.tax);
+    setMemo(x.memo);
+    setDr(x.bookDebit ? x.amount : null);
+    setCr(x.bookDebit ? null : x.amount);
+    const cp = t.counterparty_id ? counterparties.find((c) => c.id === t.counterparty_id && c.is_active) : null;
+    setCounterpartyId(cp ? cp.id : null);
+    setCpKey((k) => k + 1);
+    setPicking(false);
+    if (applied.dropped > 0) toast(`消された科目・補助科目が ${applied.dropped} か所あったため、外して入れました`, "error");
+    else toast(`「${t.name}」を入れました${x.amount ? "" : `。${x.bookDebit ? labels.dr : labels.cr}に金額を入れて登録します`}`);
+  };
+
   const save = async () => {
     setError("");
     // 決算整理だけを見ているときは、年度末の決算整理仕訳として登録する
@@ -216,7 +253,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       lines.push({ row_no: 2, side: "debit", account_id: drawId, sub_account_id: null, amount: split.private, memo: m ? `${m}（家事分）` : "家事分" });
     }
     try {
-      await repo.createEntry(db, entryDate, lines, counterpartyId, "", adjustmentOnly);
+      await repo.createEntry(db, entryDate, lines, counterpartyId, late ? lateReason : "", adjustmentOnly);
       bump();
       toast("登録しました");
       setCounterId(null);
@@ -257,6 +294,9 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
           </button>
           <MonthTabs from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
         </div>
+        <button className="btn ghost" onClick={() => setPicking(true)} title="この帳簿の科目と相手科目1つの定型仕訳を、入力の行に入れます（何行もあるものは振替伝票で）">
+          <FileStack size={16} /> 定型仕訳
+        </button>
         <button className="btn ghost" onClick={() => setPrinting(true)} title="表示中の帳簿を、表示中の期間で印刷します"><Printer size={16} /> 印刷</button>
       </PageHeader>
 
@@ -288,6 +328,12 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
             ))}
             <button role="tab" aria-selected={bookSub === null} className={bookSub === null ? "on" : ""} onClick={() => setBookSub(null)}>補助なし</button>
           </div>
+        )}
+        {negatives.length > 0 && (
+          <p className="notice book-negative">
+            {`${negatives.map((x) => negativeText(x, negativeLabel(x, labelOf, subAccounts))).join("、")}。残高がマイナスになっています（期首か一日の終わり）。` +
+              "入金の入れ漏れ・日付の誤り・二重の登録がないか確かめてください。"}
+          </p>
         )}
         <div className="table-wrap scroll-y" ref={scrollRef}>
           <table className="ledger book-table">
@@ -397,6 +443,12 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                   <span className="muted">入力するときは、上で補助科目（または「補助なし」）を選んでください</span>
                 ) : "")}
             </span>
+            {late && (
+              <label className="reason-field late-reason">
+                <span>取引日から {inputDelayDays(inputDate, todayIso())} 日後（入力期間 {inputDays} 日を過ぎています）。遅れた理由（任意・履歴に残ります）</span>
+                <input className="input" value={lateReason} onChange={(e) => setLateReason(e.target.value)} placeholder="例：領収書をあとから見つけた" maxLength={100} />
+              </label>
+            )}
             <span className="dock-totals">
               {fullYear ? "期間" : from === to ? periodLabel(from) : `${periodLabel(from)}〜${periodLabel(to)}`}合計　{labels.dr} <b>{yen(totals.dr)}</b>　{labels.cr} <b>{yen(totals.cr)}</b>
             </span>
@@ -406,6 +458,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
 
       {editing && <EntryEditModal entryId={editing} onClose={() => setEditing(null)} />}
       {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
+      {picking && <TemplatePickModal onPick={pickTemplate} onClose={() => setPicking(false)} />}
       {importing && <BankImportModal account={account} initialSub={bookSub} onClose={() => setImporting(false)} />}
       {editingTabs && (
         <CashbookTabsModal

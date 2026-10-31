@@ -45,6 +45,9 @@ describe("仕訳日記帳", () => {
     const csv = journalCsvRows(rows, accounts, subs, cps);
     expect(csv[0].slice(0, 12)).toEqual([1, "2026-01-10", "普通預金", "A銀行", 330_000, "売上高", "", 300_000, "売上", "株式会社A", "T1234567890123", ""]);
     expect(csv[2].slice(12, 15)).toEqual(["2026-06-30 09:00:00", 125, "過ぎて登録"]);
+    // 遅れた理由があれば添える
+    const withReason = journalCsvRows(journalRowsAll(lines, cps, 70, new Map([[2, "領収書をあとから見つけた"]])), accounts, subs, cps);
+    expect(withReason[2][14]).toBe("過ぎて登録（理由：領収書をあとから見つけた）");
   });
 });
 

@@ -16,7 +16,8 @@ import { businessMonths, familyDeductions, familyMembers, whiteSummary } from ".
 import { isYearCompliant } from "../../lib/ebook";
 import * as repo from "../../db/repo";
 import {
-  DepreciationSection, FeesSection, InterestSection, PartnerSections, PayTable, RentSection, SpecialSection, useAssets, useDetailRows, useNotes, usePayFigures,
+  BusinessHead, DepreciationSection, FeesSection, InterestSection, PartnerSections, PayTable, RentSection, SpecialSection, useAssets, useDetailRows, useNotes,
+  usePayFigures,
 } from "./StatementPages";
 import { ownerText } from "../../lib/printLayout";
 import { CODE } from "../../constants/accounts";
@@ -95,6 +96,7 @@ export const WhiteStatements = () => {
 
         {tab === "p1" ? (
           <>
+            <BusinessHead kind="general" period={{ from, to }} year={year} />
             <div className="pl-grid">
               <table className="ledger st-table">
                 <tbody>

@@ -23,6 +23,31 @@ import { ALLOWANCE_NOTE, allowanceAccounts, allowanceCalc, allowanceLines } from
 import type { IncomeKind, OpeningBalances } from "../../lib/types";
 import * as repo from "../../db/repo";
 
+/**
+ * 1ページの見出し（事業者設定・e-Tax の申告者の情報から。欄は e-Tax の様式に合わせる）
+ *  - 一般用（青色申告決算書・収支内訳書）：住所・事業所所在地・電話番号・業種名・屋号・氏名・加入団体名・依頼税理士等・事業期間
+ *  - 不動産所得用（青色申告決算書・収支内訳書）：住所・氏名・職業・電話番号・依頼税理士等
+ */
+export const BusinessHead = ({ kind, period, year }: { kind: "general" | "realestate"; period?: { from: string; to: string }; year: number }) => {
+  const { settings: s } = useAppContext();
+  const name = s.owner_kana ? `${s.owner_name}（${s.owner_kana}）` : s.owner_name;
+  const agent: [string, string] = ["依頼税理士等", [s.agent_name, s.agent_address, s.agent_phone].filter(Boolean).join("　")];
+  const items: [string, string][] = kind === "general"
+    ? [
+      ["住所", s.address], ["事業所所在地", s.office_address], ["電話番号", [s.phone && `自宅 ${s.phone}`, s.office_phone && `事業所 ${s.office_phone}`].filter(Boolean).join("　")],
+      ["業種名", s.industry], ["屋号", s.business_name], ["氏名", name], ["加入団体名", s.union_name], agent,
+      ...(period ? [["事業期間", `${year}年 ${period.from}〜${period.to}`] as [string, string]] : []),
+    ]
+    : [["住所", s.address], ["氏名", name], ["職業", s.occupation], ["電話番号", s.phone || s.office_phone], agent];
+  return (
+    <dl className="st-business">
+      {items.map(([k, v]) => (
+        <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
+      ))}
+    </dl>
+  );
+};
+
 export type Notes = Record<string, string>;
 
 /** 書き込み欄の数値（カンマ・空白は無視。読めなければ 0） */

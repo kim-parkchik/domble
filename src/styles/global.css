@@ -253,6 +253,8 @@ select { width: auto; padding-right: 24px; }
 .dock-totals { color: var(--muted); }
 .dock-totals b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .form-error-inline { color: var(--cr); font-weight: 600; }
+.late-reason { flex: 1; margin: 0 12px; }
+.late-reason .input { max-width: 280px; }
 
 /* 期間のボタン。選んでも幅が変わらないよう、太さは変えずに幅を決めておく */
 .month-tabs { display: flex; gap: 0; background: #e3e8ee; padding: 3px; border-radius: 6px; user-select: none; }
@@ -572,6 +574,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .sub-select:disabled { background: transparent !important; color: #b5bdc6; }
 .sub-picker { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px dashed var(--rule); }
 .sub-picker-label { font-size: 12px; color: var(--muted); margin-right: 6px; }
+.book-negative { margin: 0 0 8px; }
 .sub-picker button { border: 1px solid var(--rule-strong); background: #fff; border-radius: 999px; padding: 3px 12px; font-size: 12.5px; cursor: pointer; color: var(--muted); }
 .sub-picker button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
 .sub-tag { display: inline-block; font-size: 11px; padding: 0 6px; margin-right: 6px; border-radius: 3px; background: var(--accent-tint); color: var(--accent-dark); }
@@ -616,8 +619,8 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .history-item.act-update { border-left-color: #e3b33c; }
 .history-item.act-delete { border-left-color: var(--cr); }
 .history-meta { display: flex; align-items: center; gap: 10px; font-size: 12.5px; margin-bottom: 4px; flex-wrap: wrap; }
-.reason-field { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
-.reason-field .input { flex: 1; max-width: 420px; }
+.reason-field { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 12.5px; color: var(--muted); }
+.reason-field .input { flex: 1; min-width: 240px; max-width: 420px; }
 .notice { background: #fbe9e9; color: var(--cr); padding: 10px 14px; border-radius: 4px; font-size: 13px; }
 
 /* ---------- 保存方式（電子帳簿保存法モード） ---------- */

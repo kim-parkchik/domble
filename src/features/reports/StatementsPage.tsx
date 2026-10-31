@@ -16,7 +16,7 @@ import { statementLayout, type StatementLayout } from "../../lib/statementLines"
 import { incomeStatementForm, manufacturingForm, type FormRow } from "../../lib/statementForm";
 import { monthlySales } from "../../lib/statements";
 import { businessPeriod } from "../../lib/incomeTax";
-import { BalanceSheetView, StatementPage2, StatementPage3 } from "./StatementPages";
+import { BalanceSheetView, BusinessHead, StatementPage2, StatementPage3 } from "./StatementPages";
 import { WhiteStatements } from "./WhiteStatementPages";
 import { RealEstateStatements } from "./RealEstateStatementPages";
 import { isYearCompliant } from "../../lib/ebook";
@@ -132,7 +132,7 @@ const BlueStatements = () => {
           {head(t)}
           {t === "pl" ? (
             <>
-              <BusinessHead period={period} year={year} />
+              <BusinessHead kind="general" period={period} year={year} />
               <div className="pl-grid">
                 <FormTable rows={form.left} />
                 <FormTable rows={form.right} />
@@ -157,23 +157,6 @@ const BlueStatements = () => {
         </section>
       ))}
     </div>
-  );
-};
-
-/** 1ページの見出し：住所・事業所所在地・電話番号・業種名・屋号・氏名・加入団体名・依頼税理士等・事業期間（事業者設定・e-Tax の申告者の情報から） */
-const BusinessHead = ({ period, year }: { period: { from: string; to: string }; year: number }) => {
-  const { settings: s } = useAppContext();
-  const items: [string, string][] = [
-    ["住所", s.address], ["事業所所在地", s.office_address], ["電話番号", [s.phone && `自宅 ${s.phone}`, s.office_phone && `事業所 ${s.office_phone}`].filter(Boolean).join("　")],
-    ["業種名", s.industry], ["屋号", s.business_name], ["氏名", s.owner_name], ["加入団体名", s.union_name],
-    ["依頼税理士等", [s.agent_name, s.agent_address, s.agent_phone].filter(Boolean).join("　")], ["事業期間", `${year}年 ${period.from}〜${period.to}`],
-  ];
-  return (
-    <dl className="st-business">
-      {items.map(([k, v]) => (
-        <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
-      ))}
-    </dl>
   );
 };
 

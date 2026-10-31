@@ -61,12 +61,14 @@ export interface JournalRow {
   createdAt: string;
   /** 入力期間を過ぎて登録したか */
   late: boolean;
+  /** 登録したときの理由（厳密モードの登録時の履歴。遅れた理由・取り込みのファイル名など） */
+  reason: string;
   /** 決算整理仕訳か */
   adjustment: boolean;
 }
 
 /** 1つの伝票の明細を、行番号ごとに借方｜貸方を横に並べた行にする */
-export const journalRowsOf = (entryId: number, ls: FlatLine[], o: { counterparty: string; late: boolean }): JournalRow[] => {
+export const journalRowsOf = (entryId: number, ls: FlatLine[], o: { counterparty: string; late: boolean; reason?: string }): JournalRow[] => {
   const byRow = new Map<number, { dr?: FlatLine; cr?: FlatLine }>();
   for (const l of ls) {
     const r = byRow.get(l.row_no) ?? {};
@@ -77,16 +79,16 @@ export const journalRowsOf = (entryId: number, ls: FlatLine[], o: { counterparty
   const pairs = [...byRow.entries()].sort((a, b) => a[0] - b[0]);
   return pairs.map(([, p], i) => ({
     entryId, date: ls[0].date, first: i === 0, span: pairs.length, dr: p.dr, cr: p.cr, memo: p.dr?.memo || p.cr?.memo || "",
-    deleted: ls[0].is_deleted === 1, counterparty: o.counterparty, createdAt: ls[0].created_at ?? "", late: o.late, adjustment: ls[0].is_adjustment === 1,
+    deleted: ls[0].is_deleted === 1, counterparty: o.counterparty, createdAt: ls[0].created_at ?? "", late: o.late, reason: o.reason ?? "", adjustment: ls[0].is_adjustment === 1,
   }));
 };
 
-/** 1年分の仕訳をすべて行にする（まとめての書き出し。入力期間を過ぎて登録したかも付ける） */
-export const journalRowsAll = (lines: FlatLine[], counterparties: Counterparty[], inputDays: number | null): JournalRow[] => {
+/** 1年分の仕訳をすべて行にする（まとめての書き出し。入力期間を過ぎて登録したかと、登録したときの理由も付ける） */
+export const journalRowsAll = (lines: FlatLine[], counterparties: Counterparty[], inputDays: number | null, reasons: ReadonlyMap<number, string> = new Map()): JournalRow[] => {
   const cp = new Map(counterparties.map((c) => [c.id, c.name]));
   return [...groupByEntry(lines)].flatMap(([id, ls]) => journalRowsOf(id, ls, {
     counterparty: ls[0].counterparty_id ? cp.get(ls[0].counterparty_id) ?? "" : "",
-    late: inputDays != null && isLateInput(ls[0].date, ls[0].created_at, inputDays),
+    late: inputDays != null && isLateInput(ls[0].date, ls[0].created_at, inputDays), reason: reasons.get(id),
   }));
 };
 
@@ -108,7 +110,7 @@ export const journalCsvRows = (rows: JournalRow[], accounts: Account[], subs: Su
     [r.entryId, r.date, r.dr ? an.get(r.dr.account_id) ?? "" : "", sub(r.dr), r.dr?.amount ?? "",
       r.cr ? an.get(r.cr.account_id) ?? "" : "", sub(r.cr), r.cr?.amount ?? "", r.memo, r.counterparty,
       r.counterparty ? counterparties.find((c) => c.name === r.counterparty)?.invoice_no ?? "" : "", r.deleted ? "削除済み" : "",
-      r.createdAt, r.createdAt ? inputDelayDays(r.date, r.createdAt) : "", r.late ? "過ぎて登録" : "", r.adjustment ? "決算整理" : "",
+      r.createdAt, r.createdAt ? inputDelayDays(r.date, r.createdAt) : "", r.late ? (r.reason ? `過ぎて登録（理由：${r.reason}）` : "過ぎて登録") : "", r.adjustment ? "決算整理" : "",
       ...taxCols(r.dr), ...taxCols(r.cr)],
   );
 };
