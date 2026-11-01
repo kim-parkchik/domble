@@ -4,7 +4,7 @@
  * チェックを付けた仕訳をまとめて削除でき、取り込みの記録からは1回の取り込みの分をまとめて削除できます（BulkDelete.tsx）。
  */
 import { useEffect, useMemo, useState } from "react";
-import { Download, History, Paperclip, Printer, Search, Trash2, Upload } from "lucide-react";
+import { Download, History, Paperclip, Printer, Replace, Search, Trash2, Upload } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppContext, useYearData } from "../../context/AppContext";
@@ -15,6 +15,7 @@ import { PrintPreview } from "../../components/PrintPreview";
 import { EntryEditModal } from "../entry/EntryEditModal";
 import { JournalImportModal } from "./JournalImportModal";
 import { DeleteReasonDialog, ImportBatchesModal } from "./BulkDelete";
+import { ReplaceDialog } from "./BulkReplace";
 import { FullDateInput } from "../../components/Inputs";
 import { ADJUSTMENT_PERIOD, groupByEntry, inPeriods, periodNote, yearEnd, yearStart, type FlatLine } from "../../lib/accounting";
 import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
@@ -84,6 +85,7 @@ export const JournalListPage = () => {
   const canDelete = can("entry") && !readOnly;
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
 
   const rows = useMemo(() => {
@@ -265,6 +267,7 @@ export const JournalListPage = () => {
       {canDelete && chosen.length > 0 && (
         <div className="bulk-bar" role="region" aria-label="選んだ仕訳">
           <span><b>{chosen.length.toLocaleString()}</b> 件を選んでいます</span>
+          <button className="btn sm ghost" onClick={() => setReplacing(true)}><Replace size={14} /> まとめて置き換え</button>
           <button className="btn sm danger-ghost" onClick={() => setBulkDeleting(true)}><Trash2 size={14} /> 選んだ仕訳を削除</button>
           <button className="btn sm ghost" onClick={() => setSelected(new Set())}>選ぶのをやめる</button>
         </div>
@@ -369,6 +372,9 @@ export const JournalListPage = () => {
           }}
           onClose={() => setBulkDeleting(false)}
         />
+      )}
+      {replacing && (
+        <ReplaceDialog ids={chosen} lines={lines} defaultAccountId={accountId || null} onDone={() => setSelected(new Set())} onClose={() => setReplacing(false)} />
       )}
       {printing && <PrintPreview doc={printDoc} onClose={() => setPrinting(false)} />}
     </div>

@@ -793,6 +793,34 @@ describe("まとめて削除・取り込みの記録（repo）", () => {
   });
 });
 
+describe("仕訳のまとめての置き換え（repo）", () => {
+  test("科目を置き換え（税区分は新しい科目の初期値）、理由を履歴に。作った仕訳は変えず、締めた月が混ざれば1件も変えない", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const buy = (date: string) => repo.createEntry(db, date, [
+      { row_no: 1, side: "debit", account_id: id("消耗品費"), sub_account_id: null, amount: 1100, memo: "文房具" },
+      { row_no: 1, side: "credit", account_id: id("現金"), sub_account_id: null, amount: 1100, memo: "文房具" },
+    ]);
+    const a = await buy("2026-02-10");
+    const b = await buy("2026-06-10");
+    const inv = await repo.saveYearEndRun(db, 2026, "inventory", inventoryLines(0, 1000, { stock: id("棚卸資産"), openingAccount: id("期首商品棚卸高"), closingAccount: id("期末商品棚卸高") }));
+    const spec = { account: { from: { accountId: id("消耗品費") }, to: { accountId: id("雑費"), subId: null } } };
+    await expect(repo.replaceEntries(db, [a], spec, " ")).rejects.toThrow(/理由/);
+    expect(await repo.replaceEntries(db, [a, b, inv!], spec, "科目の付け間違い")).toEqual({ changed: 2, generated: 1, unchanged: 0 });
+    expect((await repo.getEntry(db, a))!.lines.map((l) => l.account_id)).toEqual([id("雑費"), id("現金")]);
+    expect((await repo.getHistory(db, a))[0]).toMatchObject({ action: "update", reason: "科目の付け間違い" });
+    // 同じ置き換えをもう一度：変わらない
+    expect(await repo.replaceEntries(db, [a], spec, "再")).toEqual({ changed: 0, generated: 0, unchanged: 1 });
+    // 締めた月が混ざると1件も変えない
+    await repo.closeThrough(db, 2026, 3);
+    const back = { account: { from: { accountId: id("雑費") }, to: { accountId: id("消耗品費"), subId: null } } };
+    await expect(repo.replaceEntries(db, [b, a], back, "戻す")).rejects.toThrow(/締め/);
+    expect((await repo.getEntry(db, b))!.lines[0].account_id).toBe(id("雑費"));
+    expect((await repo.verifyIntegrity(db)).issues).toEqual([]);
+  });
+});
+
 describe("摘要からの自動入力（repo）", () => {
   test("同じ摘要のいちばん新しい仕訳。帳簿の科目で絞れる。削除したものは使わない", async () => {
     const { db } = strict;

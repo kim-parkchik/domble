@@ -29,6 +29,7 @@ import type { AccountListRow } from "../lib/masterCsv";
 import { columnMapProblem, parseColumnMap, type BankRule, type BankRuleSplit, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import type { MemoEntry, MemoEntryLine } from "../lib/memoFill";
+import { replaceInEntry, replaceSpecProblem, sameSlotRow, type ReplaceSpec } from "../lib/bulkReplace";
 import { checkScanQuality, docClassOf, scanMethodName, toScanInputMethod, type DocClass, type ScanInputMethod } from "../lib/scan";
 import {
   counterpartyOfName, parsePayrollSettings, payrollEntryLines, payrollSettingsProblem, sameName, type AccountRef, type PayrollRow, type PayrollSettings,
@@ -1800,6 +1801,62 @@ const deleteEntries_ = async (db: Database, ids: number[], reason: string) => {
   return n;
 };
 
+/** 決算整理の画面・固定資産台帳で作った仕訳（家事按分・減価償却・棚卸・未払消費税等・貸倒引当金・売却除却）。それぞれの画面で作り直す */
+export const getGeneratedEntryIds = async (db: Database): Promise<Set<number>> => {
+  const rows = await db.select<{ id: number }[]>(
+    `SELECT entry_id AS id FROM home_use_runs UNION SELECT entry_id FROM depreciation_runs UNION SELECT entry_id FROM year_end_runs
+      UNION SELECT entry_id FROM allowance_runs UNION SELECT entry_id FROM asset_disposals`,
+  );
+  return new Set(rows.map((r) => r.id));
+};
+
+/**
+ * 仕訳のまとめての置き換え（lib/bulkReplace.ts）。1件ずつ訂正として扱う（厳密モードは理由が要り、1件ずつ履歴に残る）。
+ * 決算整理の画面・固定資産台帳で作った仕訳は変えない。1つのトランザクションなので、締めた月の仕訳が混ざっていたら1件も変えない
+ */
+const replaceEntries_ = async (db: Database, ids: number[], spec: ReplaceSpec, reason: string) => {
+  if (ids.length === 0) throw new Error("置き換える仕訳を選んでください");
+  const problem = replaceSpecProblem(spec);
+  if (problem) throw new Error(problem);
+  if ((await isStrict(db)) && !reason.trim()) throw new Error("まとめて置き換える理由を入れてください");
+  if (spec.account) {
+    const { accountId, subId } = spec.account.to;
+    const acc = await db.select<{ is_active: number }[]>("SELECT is_active FROM accounts WHERE id = ?", [accountId]);
+    if (!acc[0]?.is_active) throw new Error("置き換えたあとの科目が見つかりません（非表示の科目は使えません）");
+    if (subId != null) {
+      const sub = await db.select<{ account_id: number; is_active: number }[]>("SELECT account_id, is_active FROM sub_accounts WHERE id = ?", [subId]);
+      if (sub[0]?.account_id !== accountId || !sub[0].is_active) throw new Error("置き換えたあとの補助科目が見つかりません");
+    }
+  }
+  if (spec.tax && !isTaxCode(spec.tax.code)) throw new Error("税区分が正しくありません");
+  if (spec.counterparty?.to != null) {
+    const cp = await db.select<{ id: number }[]>("SELECT id FROM counterparties WHERE id = ? AND is_active = 1", [spec.counterparty.to]);
+    if (!cp[0]) throw new Error("置き換えたあとの取引先が見つかりません");
+  }
+  const generated = await getGeneratedEntryIds(db);
+  const out = { changed: 0, generated: 0, unchanged: 0 };
+  await inBatch(async () => {
+    for (const id of new Set(ids)) {
+      if (generated.has(id)) {
+        out.generated++;
+        continue;
+      }
+      const e = await getEntry(db, id);
+      if (!e || e.is_deleted) continue;
+      const r = replaceInEntry(e.lines, e.counterparty_id, spec);
+      if (!r.changed) {
+        out.unchanged++;
+        continue;
+      }
+      const row = sameSlotRow(r.lines);
+      if (row != null) throw new Error(`伝票 No.${id} の ${row}行目で、借方と貸方が同じ科目になります`);
+      await updateEntry_(db, id, e.date, r.lines, reason, r.counterpartyId, e.is_adjustment === 1);
+      out.changed++;
+    }
+  });
+  return out;
+};
+
 // ────────────────────────────────────────────
 // 給与（給与の CSV の取り込み・給与の設定。考え方は lib/payroll.ts）
 // ────────────────────────────────────────────
@@ -3427,6 +3484,7 @@ export const importEntries = inTx(importEntries_, (entries, source) => `仕訳 $
 export const updateEntry = inTx(updateEntry_, (id) => `伝票 No.${id} の訂正`, { perm: "entry" });
 export const deleteEntry = inTx(deleteEntry_, (id) => `伝票 No.${id} の削除`, { perm: "entry" });
 export const deleteEntries = inTx(deleteEntries_, (ids) => `仕訳 ${ids.length} 件のまとめての削除`, { perm: "entry" });
+export const replaceEntries = inTx(replaceEntries_, (ids) => `仕訳 ${ids.length} 件のまとめての置き換え`, { perm: "entry" });
 export const savePayrollSettings = inTx(savePayrollSettings_, () => "給与の設定", { perm: "settings" });
 export const setupPayroll = inTx(setupPayroll_, () => "給与の設定（預り金の補助科目）", { perm: "settings" });
 export const importPayroll = inTx(importPayroll_, (rows, source) => `給与 ${rows.length} 件の取り込み（${source}）`, { perm: "entry" });

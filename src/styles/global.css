@@ -1078,3 +1078,9 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .payroll-preview td, .payroll-preview th { white-space: nowrap; overflow: visible; text-overflow: clip; }
 .payroll-preview .badge { margin-left: 6px; }
 .import-issue-list { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; max-height: 160px; overflow-y: auto; }
+
+/* 仕訳のまとめての置き換え（仕訳日記帳） */
+.replace-part { border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.replace-grid { display: grid; grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr); gap: 6px 8px; align-items: center; }
+.replace-label { font-size: 12px; color: var(--muted); }
+.replace-fixed { font-size: 13px; }
