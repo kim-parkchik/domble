@@ -54,3 +54,55 @@ describe("一覧の CSV", () => {
     ]);
   });
 });
+
+describe("一覧の CSV：ある名前は書き換える（空欄は今のまま）", () => {
+  test("取引先：よみ・登録番号・法人番号・印・メモの前 → 後。変わらなければ飛ばす。おかしな番号は問題", () => {
+    const cps: Counterparty[] = [
+      { id: 1, name: "株式会社A", kana: "", invoice_no: "", corporate_no: "", not_registered: 1, memo: "古い", is_active: 1 },
+      { id: 2, name: "B商店", kana: "びー", invoice_no: "", corporate_no: "", not_registered: 0, memo: "", is_active: 1 },
+    ];
+    const text = toCsv(COUNTERPARTY_LIST_HEADER, [
+      ["株式会社Ａ", "えー", "T1234567890123", "", "", ""], // 全角の名前も同じ。登録番号を入れると印は外れる。メモは空欄なので今のまま
+      ["B商店", "", "", "", "", ""], // 変わらない
+      ["C社", "", "", "8000012050002", "", ""], // 検査用数字が合わない
+    ]);
+    const r = parseCounterpartyCsv(text, cps);
+    expect(r.skipped).toBe(1);
+    expect(r.rows).toEqual([]);
+    expect(r.issues.map((x) => x.message)).toEqual([expect.stringMatching(/C社.*検査用数字/)]);
+    expect(r.updates).toEqual([{
+      row: 2, name: "株式会社A", id: 1,
+      changes: [
+        { label: "よみ", before: "", after: "えー" }, { label: "登録番号", before: "", after: "T1234567890123" },
+        { label: "適格請求書発行事業者ではない", before: "○", after: "" },
+      ],
+      data: { name: "株式会社A", kana: "えー", invoice_no: "T1234567890123", corporate_no: "", not_registered: false, memo: "古い" },
+    }]);
+  });
+  test("科目：よみ・税区分の初期値・決算書の欄（自動・欄の名前）。読めない税区分・選べない欄・締めた年の欄は問題", () => {
+    const text = toCsv(ACCOUNT_LIST_HEADER, [
+      ["", "消耗品費", "", "経費", "課税仕入 8%（軽減）", "雑費"],
+      ["", "通信費", "", "経費", "課税仕入 10%", "自動"], // 今のまま
+      ["", "旅費交通費", "", "経費", "謎の税", ""],
+      ["", "売上高", "", "収益", "", "雑費"], // 売上の科目は欄を選べない
+      ["", "新しい経費", "あたらしい", "経費", "対象外", "追加の欄"],
+    ]);
+    const r = parseAccountListCsv(text, accounts);
+    expect(r.updates).toEqual([{
+      row: 2, name: "消耗品費", id: id("消耗品費"),
+      changes: [{ label: "税区分の初期値", before: "課税仕入 10%", after: "課税仕入 8%（軽減）" }, { label: "決算書の欄", before: "自動", after: "雑費" }],
+      data: { taxCode: "purchase8", statementLine: "雑費" },
+    }]);
+    expect(r.skipped).toBe(1);
+    expect(r.rows).toEqual([{ code: null, name: "新しい経費", kana: "あたらしい", category: "expense", taxCode: "none", statementLine: "extra" }]);
+    expect(r.issues.map((x) => x.row)).toEqual([4, 5]);
+    // 締めた年は決算書の欄を変えられない
+    expect(parseAccountListCsv(text, accounts, true).issues.map((x) => x.message)).toContain("「消耗品費」：表示中の年を締めているので、決算書の欄は変えられません");
+    // 書き出したものをそのまま読むと、何も変わらない
+    expect(parseAccountListCsv(toCsv(ACCOUNT_LIST_HEADER, accountListRows(accounts)), accounts)).toMatchObject({ rows: [], updates: [], issues: [] });
+  });
+  test("補助科目：よみを書き換える", () => {
+    const r = parseSubListCsv(toCsv(SUB_LIST_HEADER, [["普通預金", "みずほ銀行", "みずほ"]]), accounts, subs);
+    expect(r.updates).toEqual([{ row: 2, name: "普通預金／みずほ銀行", id: 1, changes: [{ label: "よみ", before: "", after: "みずほ" }], data: { kana: "みずほ" } }]);
+  });
+});

@@ -1090,3 +1090,9 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .tax-trend-table { table-layout: auto; font-size: 12.5px; }
 .tax-trend-table th, .tax-trend-table td { white-space: nowrap; }
 .tax-trend-table td.trend-total { font-weight: 600; background: var(--accent-tint); }
+
+/* 一覧の CSV 取り込みの確かめ（勘定科目・補助科目・取引先） */
+.list-import-adds { font-size: 13px; line-height: 1.7; max-height: 110px; overflow-y: auto; margin: 0; }
+.list-import-updates { max-height: 320px; }
+.list-import-change { font-size: 12.5px; line-height: 1.6; }
+.sheet-h.small { font-size: 13px; margin: 4px 0 6px; }

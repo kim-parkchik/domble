@@ -25,7 +25,7 @@ import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
 import { isExclusiveOn, taxAmountProblem } from "../lib/taxExclusive";
-import type { AccountListRow } from "../lib/masterCsv";
+import type { AccountListRow, AccountListUpdate } from "../lib/masterCsv";
 import { columnMapProblem, parseColumnMap, type BankRule, type BankRuleSplit, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import type { MemoEntry, MemoEntryLine } from "../lib/memoFill";
@@ -1171,6 +1171,7 @@ const createAccount_ = async (db: Database, data: AccountInputData) => {
     target_type: "account", target_id: Number(res.lastInsertId), action: "create",
     fiscal_year: await currentYear(db), label: data.name.trim(), old_value: "", new_value: `${data.code} ${data.name.trim()}`,
   });
+  return Number(res.lastInsertId);
 };
 
 /**
@@ -1350,11 +1351,18 @@ const createCounterparty_ = async (db: Database, d: CounterpartyInput) => {
   return id;
 };
 
+/** 足した数と書き換えた数 */
+export interface ListImportResult {
+  added: number;
+  updated: number;
+}
+
 /**
- * 一覧の CSV 取り込み（lib/masterCsv.ts で読んだ、無い名前のものだけ）。1つのトランザクションで足し、足した数を返す。
+ * 一覧の CSV 取り込み（lib/masterCsv.ts で読んで、確かめの一覧で選んだもの）。無い名前のものを足し、ある名前のものを書き換える。
+ * 1つのトランザクションなので、途中で失敗したら1件も変えない。
  * 科目のコードは、CSV のコードが使えればそれ、使えなければその区分の空いているコード
  */
-const importAccountList_ = async (db: Database, rows: AccountListRow[]) => {
+const importAccountList_ = async (db: Database, rows: AccountListRow[], updates: { id: number; data: AccountListUpdate }[] = []): Promise<ListImportResult> => {
   let accounts = await getAccounts(db, await currentYear(db));
   for (const r of rows) {
     const asGiven = r.code ? { code: r.code, name: r.name, kana: r.kana, category: r.category } : null;
@@ -1363,25 +1371,42 @@ const importAccountList_ = async (db: Database, rows: AccountListRow[]) => {
     const data = { code, name: r.name, kana: r.kana, category: r.category };
     const p = validateAccount(accounts, data);
     if (p) throw new Error(`科目「${r.name}」：${p}`);
-    await createAccount_(db, data);
+    const id = await createAccount_(db, data);
+    if (r.taxCode) await setAccountTaxCode_(db, id, r.taxCode);
+    if (r.statementLine !== undefined) await setAccountStatementLine_(db, id, r.statementLine);
     accounts = await getAccounts(db, await currentYear(db));
   }
-  return rows.length;
+  for (const u of updates) {
+    const before = accounts.find((a) => a.id === u.id);
+    if (!before) throw new Error("書き換える科目が見つかりません");
+    if (u.data.kana !== undefined) await updateAccount_(db, u.id, { code: before.code, name: before.name, kana: u.data.kana });
+    if (u.data.taxCode) await setAccountTaxCode_(db, u.id, u.data.taxCode);
+    if (u.data.statementLine !== undefined) await setAccountStatementLine_(db, u.id, u.data.statementLine);
+  }
+  return { added: rows.length, updated: updates.length };
 };
-const importSubList_ = async (db: Database, rows: { accountId: number; name: string; kana: string }[]) => {
+const importSubList_ = async (
+  db: Database, rows: { accountId: number; name: string; kana: string }[], updates: { id: number; data: { kana: string } }[] = [],
+): Promise<ListImportResult> => {
   for (const r of rows) {
     if (r.name.length > 30) throw new Error(`補助科目「${r.name}」：30文字までです`);
     await createSub_(db, r.accountId, r.name, r.kana);
   }
-  return rows.length;
+  for (const u of updates) await db.execute("UPDATE sub_accounts SET kana = ? WHERE id = ?", [u.data.kana.trim(), u.id]);
+  return { added: rows.length, updated: updates.length };
 };
-const importCounterpartyList_ = async (db: Database, rows: CounterpartyInput[]) => {
+const importCounterpartyList_ = async (db: Database, rows: CounterpartyInput[], updates: { id: number; data: CounterpartyInput }[] = []): Promise<ListImportResult> => {
   for (const r of rows) {
     const p = validateCounterparty(await getCounterparties(db), r);
     if (p) throw new Error(`取引先「${r.name}」：${p}`);
     await createCounterparty_(db, r);
   }
-  return rows.length;
+  for (const u of updates) {
+    const p = validateCounterparty(await getCounterparties(db), u.data, u.id);
+    if (p) throw new Error(`取引先「${u.data.name}」：${p}`);
+    await updateCounterparty_(db, u.id, u.data);
+  }
+  return { added: rows.length, updated: updates.length };
 };
 
 /** 名前の変更はすべての年度・過去の仕訳の表示に反映される（履歴の写しには記録時点の名前が残る） */

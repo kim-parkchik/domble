@@ -16,6 +16,7 @@ import type { Counterparty } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { CsvExportButton, CsvImportButton, CsvIssues } from "../../components/CsvButtons";
 import { exportCsvFile } from "../../components/csvExport";
+import { ListImportModal } from "./ListImportModal";
 import { COUNTERPARTY_LIST_HEADER, counterpartyListRows, parseCounterpartyCsv, type CsvIssue } from "../../lib/masterCsv";
 
 export const CounterpartiesPage = () => {
@@ -41,20 +42,15 @@ export const CounterpartiesPage = () => {
     await reloadCounterparties();
   };
 
-  // 一覧の CSV（無い名前の取引先だけ足す）
+  // 一覧の CSV（無い名前の取引先は足し、ある名前の取引先は書き換える。取り込む前に確かめの一覧を出す）
   const [csvIssues, setCsvIssues] = useState<CsvIssue[]>([]);
-  const importList = async (text: string) => {
+  const [plan, setPlan] = useState<ReturnType<typeof parseCounterpartyCsv> | null>(null);
+  const importList = (text: string) => {
     const r = parseCounterpartyCsv(text, counterparties);
     setCsvIssues(r.issues);
-    if (r.rows.length === 0) return toast(`足す取引先はありません（${r.skipped} 件はすでにあります）`);
-    if (!(await ask(`取引先を ${r.rows.length} 件足します${r.skipped ? `（${r.skipped} 件は同じ名前があるので飛ばします）` : ""}。`, { title: "取引先の CSV 取り込み", okLabel: "足す", cancelLabel: "やめる" }))) return;
-    try {
-      const n = await repo.importCounterpartyList(db, r.rows);
-      await reloadCounterparties();
-      toast(`取引先を ${n} 件足しました`);
-    } catch (e) {
-      toast(`取り込めませんでした（1件も足していません）：${String(e).replace(/^Error: /, "")}`, "error");
-    }
+    if (r.issues.length) return;
+    if (r.rows.length === 0 && r.updates.length === 0) return toast(`変わるものはありません（${r.skipped} 件は今と同じです）`);
+    setPlan(r);
   };
 
   const remove = async (c: Counterparty) => {
@@ -123,6 +119,16 @@ export const CounterpartiesPage = () => {
       </section>
 
       {editing && <CounterpartyForm target={editing} onClose={() => setEditing(null)} />}
+      {plan && (
+        <ListImportModal
+          what="取引先" plan={plan} nameOf={(r) => r.name} onClose={() => setPlan(null)}
+          onImport={async (rows, ups) => {
+            const r = await repo.importCounterpartyList(db, rows, ups);
+            await reloadCounterparties();
+            return r;
+          }}
+        />
+      )}
     </div>
   );
 };

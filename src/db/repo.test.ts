@@ -2074,4 +2074,27 @@ describe("一覧の CSV 取り込み（repo）", () => {
     await expect(repo.importCounterpartyList(db, [{ name: "株式会社B", kana: "", invoice_no: "", memo: "" }, { name: "", kana: "", invoice_no: "", memo: "" }])).rejects.toThrow(/取引先名/);
     expect((await repo.getCounterparties(db)).some((c) => c.name === "株式会社B")).toBe(false);
   });
+  test("ある名前は書き換える：科目のよみ・税区分の初期値・決算書の欄、補助科目のよみ、取引先。厳密モードでは履歴に残る", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const supplies = accts.find((a) => a.name === "消耗品費")!;
+    expect(await repo.importAccountList(db, [{ code: null, name: "新しい経費", kana: "", category: "expense", taxCode: "none", statementLine: "extra" }], [
+      { id: supplies.id, data: { kana: "しょうもう", taxCode: "purchase8", statementLine: "雑費" } },
+    ])).toEqual({ added: 1, updated: 1 });
+    const after = await repo.getAccounts(db, 2026);
+    expect(after.find((a) => a.id === supplies.id)).toMatchObject({ kana: "しょうもう", default_tax_code: "purchase8", statement_line: "雑費" });
+    expect(after.find((a) => a.name === "新しい経費")).toMatchObject({ default_tax_code: "none", statement_line: "extra" });
+    const bank = after.find((a) => a.code === "103")!;
+    await repo.importSubList(db, [{ accountId: bank.id, name: "A銀行", kana: "" }]);
+    const sub = (await repo.getSubAccounts(db, 2026)).find((x) => x.name === "A銀行")!;
+    expect(await repo.importSubList(db, [], [{ id: sub.id, data: { kana: "えーぎんこう" } }])).toEqual({ added: 0, updated: 1 });
+    expect((await repo.getSubAccounts(db, 2026)).find((x) => x.id === sub.id)!.kana).toBe("えーぎんこう");
+    const cp = await repo.createCounterparty(db, { name: "株式会社C", kana: "", invoice_no: "", not_registered: true, memo: "" });
+    expect(await repo.importCounterpartyList(db, [], [{ id: cp, data: { name: "株式会社C", kana: "しー", invoice_no: "T1234567890123", corporate_no: "", not_registered: false, memo: "" } }]))
+      .toEqual({ added: 0, updated: 1 });
+    expect((await repo.getCounterparties(db)).find((c) => c.id === cp)).toMatchObject({ kana: "しー", invoice_no: "T1234567890123", not_registered: 0 });
+    const h = await repo.getMasterHistory(db);
+    expect(h.some((x) => x.label === "消耗品費" && x.new_value.includes("課税仕入 8%"))).toBe(true);
+    expect(h.some((x) => x.target_type === "counterparty" && x.new_value.includes("登録番号 T1234567890123"))).toBe(true);
+  });
 });

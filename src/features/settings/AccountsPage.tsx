@@ -22,8 +22,10 @@ import { isProfitLoss } from "../../lib/incomeKind";
 import * as repo from "../../db/repo";
 import { CsvExportButton, CsvImportButton, CsvIssues } from "../../components/CsvButtons";
 import { exportCsvFile } from "../../components/csvExport";
+import { ListImportModal } from "./ListImportModal";
 import {
-  ACCOUNT_LIST_HEADER, accountListRows, parseAccountListCsv, parseSubListCsv, SUB_LIST_HEADER, subListRows, type CsvIssue,
+  ACCOUNT_LIST_HEADER, accountListRows, parseAccountListCsv, parseSubListCsv, SUB_LIST_HEADER, subListRows, type AccountListRow, type AccountListUpdate, type CsvIssue,
+  type ListPlan,
 } from "../../lib/masterCsv";
 import { autoLine, EXTRA_LINE, layoutSectionOf, lineOptions, manufacturingOn, sectionOf } from "../../lib/statementLines";
 
@@ -46,25 +48,20 @@ const deletedMessage = (what: string, r: { changed: string[]; deleted: string[] 
 };
 
 export const AccountsPage = () => {
-  const { db, accounts, subAccounts, reloadAccounts, strict, year, dataVersion } = useAppContext();
+  const { db, accounts, subAccounts, reloadAccounts, strict, year, dataVersion, isClosed } = useAppContext();
   const toast = useToast();
   const mfgOn = manufacturingOn(accounts);
-  // 一覧の CSV（無い名前の科目・補助科目だけ足す）
+  // 一覧の CSV（無い名前の科目・補助科目は足し、ある名前のものは書き換える。取り込む前に確かめの一覧を出す）
   const [csvIssues, setCsvIssues] = useState<CsvIssue[]>([]);
-  const importList = async (kind: "account" | "sub", text: string) => {
-    const r = kind === "account" ? parseAccountListCsv(text, accounts) : parseSubListCsv(text, accounts, subAccounts);
+  const [accountPlan, setAccountPlan] = useState<ListPlan<AccountListRow, AccountListUpdate> | null>(null);
+  const [subPlan, setSubPlan] = useState<ReturnType<typeof parseSubListCsv> | null>(null);
+  const importList = (kind: "account" | "sub", text: string) => {
+    const r = kind === "account" ? parseAccountListCsv(text, accounts, isClosed) : parseSubListCsv(text, accounts, subAccounts);
     setCsvIssues(r.issues);
     if (r.issues.length) return;
-    const what = kind === "account" ? "科目" : "補助科目";
-    if (r.rows.length === 0) return toast(`足す${what}はありません（${r.skipped} 件はすでにあります）`);
-    if (!(await ask(`${what}を ${r.rows.length} 件足します${r.skipped ? `（${r.skipped} 件は同じ名前があるので飛ばします）` : ""}。`, { title: `${what}の CSV 取り込み`, okLabel: "足す", cancelLabel: "やめる" }))) return;
-    try {
-      const n = kind === "account" ? await repo.importAccountList(db, r.rows as Parameters<typeof repo.importAccountList>[1]) : await repo.importSubList(db, r.rows as Parameters<typeof repo.importSubList>[1]);
-      await reloadAccounts();
-      toast(`${what}を ${n} 件足しました`);
-    } catch (e) {
-      toast(`取り込めませんでした（1件も足していません）：${String(e).replace(/^Error: /, "")}`, "error");
-    }
+    if (r.rows.length === 0 && r.updates.length === 0) return toast(`変わるものはありません（${r.skipped} 件は今と同じです）`);
+    if (kind === "account") setAccountPlan(r as ListPlan<AccountListRow, AccountListUpdate>);
+    else setSubPlan(r as ReturnType<typeof parseSubListCsv>);
   };
   // 厳密モードでは、より新しい年度がある状態で過去の年度の名前は変えられない（年度単位で管理）
   const [latestYear, setLatestYear] = useState(year);
@@ -282,6 +279,26 @@ export const AccountsPage = () => {
       </section>
 
       {editing && <AccountForm target={editing} onClose={() => setEditing(null)} />}
+      {accountPlan && (
+        <ListImportModal
+          what="科目" plan={accountPlan} nameOf={(r) => r.name} onClose={() => setAccountPlan(null)}
+          onImport={async (rows, ups) => {
+            const r = await repo.importAccountList(db, rows, ups);
+            await reloadAccounts();
+            return r;
+          }}
+        />
+      )}
+      {subPlan && (
+        <ListImportModal
+          what="補助科目" plan={subPlan} nameOf={(r) => `${accounts.find((a) => a.id === r.accountId)?.name ?? ""}／${r.name}`} onClose={() => setSubPlan(null)}
+          onImport={async (rows, ups) => {
+            const r = await repo.importSubList(db, rows, ups);
+            await reloadAccounts();
+            return r;
+          }}
+        />
+      )}
       {subsFor && <SubAccountsModal account={subsFor} renameLocked={renameLocked} onClose={() => setSubsFor(null)} />}
     </div>
   );
