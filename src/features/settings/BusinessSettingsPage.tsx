@@ -3,7 +3,8 @@
  */
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Save, ArrowRightLeft, Lock, LockOpen, FileDown } from "lucide-react";
-import { anchorText, saveAnchorFile } from "../books/IntegrityModal";
+import { saveAnchorFile } from "../books/IntegrityModal";
+import { AnchorSaveModal } from "../books/AnchorSaveModal";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppContext, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
@@ -12,7 +13,7 @@ import { Modal } from "../../components/Modal";
 import { carryForwardWithSubs, closingBalances, subClosingBalances, summarizeIncome } from "../../lib/accounting";
 import { subKey } from "../../lib/types";
 import { longDate, yen } from "../../lib/format";
-import { fileLabel, normalizePostalCode, validateBusinessInfo } from "../../lib/business";
+import { normalizePostalCode, validateBusinessInfo } from "../../lib/business";
 import { cycleMonthsOf, SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
 import { scanStorageRule } from "../../lib/ebook";
 import { HolidaySection } from "./HolidaySection";
@@ -23,7 +24,7 @@ import { CODE } from "../../constants/accounts";
 import type { FilingType, RealEstateScale, Settings } from "../../lib/types";
 import { FILING_LABEL } from "../../lib/filing";
 import * as repo from "../../db/repo";
-import { closedLabel, closedMonthOf } from "../../lib/closing";
+import { ANCHOR_HOW_LABEL, anchorSaveOf, closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
 import { manufacturingOn } from "../../lib/statementLines";
 import { DEFAULT_INPUT_PERIOD_DAYS, MAX_INPUT_PERIOD_DAYS } from "../../constants/appConfig";
@@ -414,12 +415,14 @@ export const BusinessSettingsPage = ({ carryFocus = 0 }: { carryFocus?: number }
  *    厳密モードでは理由が必須で、履歴に残る
  */
 const ClosingSection = () => {
-  const { db, year, strict, closings, dataVersion, bump, settings, filePath, can } = useAppContext();
+  const { db, year, strict, closings, dataVersion, bump, can } = useAppContext();
   const toast = useToast();
   const [years, setYears] = useState<number[]>([]);
   const [target, setTarget] = useState<Record<number, number>>({});
   const [reopening, setReopening] = useState<{ year: number; month: number } | null>(null);
   const [reason, setReason] = useState("");
+  // 確認コードを控える画面（年を締めた直後にも開く）
+  const [anchorYear, setAnchorYear] = useState<number | null>(null);
 
   useEffect(() => {
     repo.getYears(db, year).then(setYears).catch(console.error);
@@ -434,6 +437,7 @@ const ClosingSection = () => {
       await repo.closeThrough(db, y, month, "手動で締め");
       bump();
       toast(month === 12 ? `${y}年を締めました（年の締め）` : `${y}年を${month}月まで締めました`);
+      if (month === 12 && strict) setAnchorYear(y);
     } catch (e) {
       toast(`締められませんでした：${String(e)}`, "error");
     }
@@ -483,16 +487,10 @@ const ClosingSection = () => {
                     {m === 12 && c?.chain_head && (
                       <span className="anchor-cell">
                         <code className="mono">{repo.anchorCode(c.chain_head)}</code>
-                        <button
-                          className="icon-btn"
-                          title="確認コードを書き出す"
-                          aria-label={`${y}年の確認コードを書き出す`}
-                          onClick={async () => {
-                            const head = { row_hash: c.chain_head, recorded_at: c.closed_at };
-                            const text = anchorText({ business: settings.business_name, file: filePath.split(/[\\/]/).pop() ?? "", head, label: `${y}年の締め` });
-                            if (await saveAnchorFile(text, `確認コード_${fileLabel(settings)}_${y}年締め.txt`)) toast("書き出しました");
-                          }}
-                        ><FileDown size={14} /></button>
+                        {anchorSaveOf(c)
+                          ? <span className="badge" title={`${anchorSaveOf(c)!.at}・${ANCHOR_HOW_LABEL[anchorSaveOf(c)!.how]}`}>控え済み</span>
+                          : <span className="badge badge-late">控えていない</span>}
+                        <button className="link-btn" onClick={() => setAnchorYear(y)} aria-label={`${y}年の確認コードを控える`}>控える</button>
                       </span>
                     )}
                   </td>
@@ -558,6 +556,7 @@ const ClosingSection = () => {
           </form>
         </Modal>
       )}
+      {anchorYear !== null && <AnchorSaveModal year={anchorYear} onClose={() => setAnchorYear(null)} />}
     </section>
   );
 };

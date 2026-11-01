@@ -82,3 +82,40 @@ export const openingMismatches = (expected: SubOpeningBalances, actual: SubOpeni
   }
   return out.sort((x, y) => x.key.localeCompare(y.key, "en", { numeric: true }));
 };
+
+// ────────────────────────────────────────────
+// 確認コードの控え（厳密モードの年の締め）
+// ────────────────────────────────────────────
+
+/** 控えた方法：file = ファイルに保存、mail = メールソフトで送った、manual = 書き写した・印刷した */
+export type AnchorSaveHow = "file" | "mail" | "manual";
+export const ANCHOR_HOW_LABEL: Record<AnchorSaveHow, string> = { file: "ファイルに保存", mail: "メールで送った", manual: "書き写した・印刷した" };
+
+/** 確認コードを控えた記録。head = 控えたときの締めの連鎖の先頭（締め直すと先頭が変わるので、控え直しになる） */
+export interface AnchorSave {
+  head: string;
+  at: string;
+  how: AnchorSaveHow;
+}
+
+/** 年の締めの、今の確認コードを控えた記録（控えていない・締め直したあとなら null） */
+export const anchorSaveOf = (c: Pick<FiscalClosing, "chain_head" | "anchor_saved"> | undefined): AnchorSave | null => {
+  if (!c?.chain_head || !c.anchor_saved) return null;
+  try {
+    const x = JSON.parse(c.anchor_saved) as Partial<AnchorSave>;
+    return x.head === c.chain_head && typeof x.at === "string" && x.how && x.how in ANCHOR_HOW_LABEL ? (x as AnchorSave) : null;
+  } catch {
+    return null;
+  }
+};
+
+/** 確認コードを控えていない、年の締めをした年（確認コードのある年。古い順） */
+export const unsavedAnchorYears = (closings: FiscalClosing[]) =>
+  closings.filter((c) => closedMonthOf(c) === 12 && c.chain_head && !anchorSaveOf(c)).map((c) => c.fiscal_year).sort((a, b) => a - b);
+
+/** メールアドレスとして使えるか（空はよい） */
+export const isMailAddress = (s: string) => !s.trim() || /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(s.trim());
+
+/** メールソフトを開くための mailto:（宛先・件名・本文。改行は CRLF） */
+export const mailtoUrl = (to: string, subject: string, body: string) =>
+  `mailto:${encodeURIComponent(to.trim()).replace(/%40/g, "@")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.replace(/\r?\n/g, "\r\n"))}`;

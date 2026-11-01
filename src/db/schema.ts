@@ -846,6 +846,10 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "known_triggers", "TEXT NOT NULL DEFAULT ''"],
   // 締めたときの連鎖の先頭（確認コードのもと）
   ["fiscal_closings", "chain_head", "TEXT NOT NULL DEFAULT ''"],
+  // 年の締めの確認コードを控えた記録（lib/closing.ts の AnchorSave の JSON。締めたときの連鎖の先頭と同じときだけ有効）
+  ["fiscal_closings", "anchor_saved", "TEXT NOT NULL DEFAULT ''"],
+  // 確認コードを送るメールアドレス（自分あて。メールソフトを開くだけで、domble は送らない）
+  ["settings", "anchor_email", "TEXT NOT NULL DEFAULT ''"],
   // 操作したユーザー
   ["entry_history", "user_id", "INTEGER REFERENCES users(id)"],
   ["master_history", "user_id", "INTEGER REFERENCES users(id)"],

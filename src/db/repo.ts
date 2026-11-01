@@ -13,7 +13,9 @@ import type {
 } from "../lib/types";
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
-import { closedLabel, closedMonthOf, inheritingClosedYears, inheritMessage, monthEnd, yearsToAutoClose } from "../lib/closing";
+import {
+  ANCHOR_HOW_LABEL, closedLabel, closedMonthOf, inheritingClosedYears, inheritMessage, isMailAddress, monthEnd, yearsToAutoClose, type AnchorSave, type AnchorSaveHow,
+} from "../lib/closing";
 import { isValidInvoiceNo, normalizeCorporateNo, normalizeInvoiceNo, normName, validateCounterparty, type CounterpartyInput } from "../lib/counterparty";
 import {
   builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isInvoiceKind, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
@@ -156,7 +158,7 @@ export const getSettings = async (db: Database): Promise<Settings> => {
             business_kana, occupation, householder_name, householder_relation, jan1_address, office_phone, refund_mode, bank_name, bank_kind,
             branch_name, branch_kind, deposit_kind, account_no, yucho_symbol, yucho_number,
             office_address, union_name, agent_name, agent_address, agent_phone,
-            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at,
+            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at, anchor_email,
             COALESCE((SELECT r.scale FROM real_estate_years r WHERE r.from_year <= settings.fiscal_year ORDER BY r.from_year DESC LIMIT 1), real_estate) AS real_estate
        FROM settings WHERE id = 1`,
   );
@@ -255,10 +257,10 @@ const closedMonthMessage = (year: number, month: number) =>
   `${year}年は${month}月まで締め済みのため、${month}月以前の仕訳は変更できません。事業者設定で締めを戻してください。`;
 
 export const getClosings = (db: Database) =>
-  db.select<FiscalClosing[]>("SELECT fiscal_year, period_start, period_end, closed_at, chain_head FROM fiscal_closings ORDER BY fiscal_year");
+  db.select<FiscalClosing[]>("SELECT fiscal_year, period_start, period_end, closed_at, chain_head, anchor_saved FROM fiscal_closings ORDER BY fiscal_year");
 
 const closingRow = async (db: Database, year: number) =>
-  (await db.select<FiscalClosing[]>("SELECT fiscal_year, period_start, period_end, closed_at, chain_head FROM fiscal_closings WHERE fiscal_year = ?", [year]))[0];
+  (await db.select<FiscalClosing[]>("SELECT fiscal_year, period_start, period_end, closed_at, chain_head, anchor_saved FROM fiscal_closings WHERE fiscal_year = ?", [year]))[0];
 
 /** 年度が年の締め（12月まで）をしてあれば止める（期首残高・家事按分など、年度ごとのもの） */
 const assertYearOpen = async (db: Database, year: number) => {
@@ -305,6 +307,28 @@ const closeThrough_ = async (db: Database, year: number, month: number, note = "
   });
   const head = await getChainHead(db);
   if (head) await db.execute("UPDATE fiscal_closings SET chain_head = ? WHERE fiscal_year = ?", [head.row_hash, year]);
+};
+
+/**
+ * 年の締めの確認コードを控えたことを記録する（締めたときの連鎖の先頭と一緒に。締め直すと控え直しになる）。
+ * 厳密モードでは履歴に残す
+ */
+const markAnchorSaved_ = async (db: Database, year: number, how: AnchorSaveHow) => {
+  const c = await closingRow(db, year);
+  if (!c || closedMonthOf(c) !== 12 || !c.chain_head) throw new Error(`${year}年は年の締めをしていないか、確認コードがありません`);
+  const at = (await db.select<{ t: string }[]>("SELECT DATETIME('now','localtime') AS t"))[0].t;
+  const saved: AnchorSave = { head: c.chain_head, at, how };
+  await db.execute("UPDATE fiscal_closings SET anchor_saved = ? WHERE fiscal_year = ?", [JSON.stringify(saved), year]);
+  await logMaster(db, {
+    target_type: "closing", target_id: year, action: "change", fiscal_year: year,
+    label: `${year}年`, old_value: "", new_value: `確認コード ${anchorCode(c.chain_head)} を控えた（${ANCHOR_HOW_LABEL[how]}）`,
+  });
+};
+
+/** 確認コードを送るメールアドレス（自分あて） */
+const setAnchorEmail_ = async (db: Database, email: string) => {
+  if (!isMailAddress(email)) throw new Error("メールアドレスの形が正しくありません（例：name@example.com）");
+  await db.execute("UPDATE settings SET anchor_email = ? WHERE id = 1", [email.trim()]);
 };
 
 /** 年の締め（12月まで締める） */
@@ -3528,6 +3552,8 @@ export const deleteImportBatch = inTx(deleteImportBatch_, (id) => `取り込み 
 export const saveHomeUseRate = inTx(saveHomeUseRate_, (year) => `${year}年の家事按分の設定`, { perm: "master" });
 export const setHomeUseRun = inTx(setHomeUseRun_, (year) => `${year}年の家事按分の振替`, { perm: "entry" });
 export const closeYear = inTx(closeYear_, (year) => `${year}年の締め`, { perm: "settings" });
+export const markAnchorSaved = inTx(markAnchorSaved_, (year) => `${year}年の確認コードの控え`, { perm: "settings" });
+export const setAnchorEmail = inTx(setAnchorEmail_, () => "確認コードを送るメールアドレス", { perm: "settings" });
 export const closeThrough = inTx(closeThrough_, (year, month) => `${year}年${month}月までの締め`, { perm: "settings" });
 export const reopenTo = inTx(reopenTo_, (year, month) => `${year}年の締めを${month}月までに戻す`, { perm: "settings" });
 export const reopenYear = inTx(reopenYear_, (year) => `${year}年の締めの解除`, { perm: "settings" });

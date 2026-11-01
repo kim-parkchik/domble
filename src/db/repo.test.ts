@@ -76,6 +76,29 @@ describe("年度の締め（repo）", () => {
     expect(hist.map((h) => h.action)).toEqual(["unlock", "close"]);
   });
 
+  test("年の締めの確認コードを控えた記録は、締めた連鎖の先頭と一緒。締め直すと控え直し。履歴に残る", async () => {
+    const { db } = strict;
+    await repo.initChain(db);
+    await repo.createEntry(db, "2025-12-01", lines);
+    await expect(repo.markAnchorSaved(db, 2025, "file")).rejects.toThrow(/年の締めをしていない/);
+    await repo.closeYear(db, 2025);
+    await repo.markAnchorSaved(db, 2025, "mail");
+    const c = (await repo.getClosings(db))[0];
+    expect(JSON.parse(c.anchor_saved)).toMatchObject({ head: c.chain_head, how: "mail" });
+    expect((await repo.getMasterHistory(db))[0].new_value).toBe(`確認コード ${repo.anchorCode(c.chain_head)} を控えた（メールで送った）`);
+    // 締めを戻して締め直すと、先頭が変わるので控え直し
+    await repo.reopenYear(db, 2025, "直し");
+    await repo.createEntry(db, "2025-12-02", lines);
+    await repo.closeYear(db, 2025);
+    const again = (await repo.getClosings(db))[0];
+    expect(again.chain_head).not.toBe(c.chain_head);
+    expect(JSON.parse(again.anchor_saved || "{}").head === again.chain_head).toBe(false);
+    // 送り先のメールアドレス
+    await expect(repo.setAnchorEmail(db, "me@example")).rejects.toThrow(/メールアドレス/);
+    await repo.setAnchorEmail(db, " me@example.com ");
+    expect((await repo.getSettings(db)).anchor_email).toBe("me@example.com");
+  });
+
   test("既存の帳簿は、繰越済みの年度だけ一度だけ自動で締める", async () => {
     const { db } = strict;
     await repo.createEntry(db, "2025-03-01", lines);

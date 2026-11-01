@@ -12,12 +12,13 @@ import { consumptionTaxDeadline, daysUntil, incomeTaxDeadline } from "../../lib/
 import { useTaxIssues } from "../reports/TaxPage";
 import { periodLabel, useWithholding } from "../payroll/useWithholding";
 import * as repo from "../../db/repo";
+import { unsavedAnchorYears } from "../../lib/closing";
 import type { Page } from "../../App";
 import { fileLabel } from "../../lib/business";
 
 /** 次にやること（件数があるもの・時期が来たものだけ） */
 const useNextTasks = () => {
-  const { db, year, taxYear, isClosed, dataVersion } = useAppContext();
+  const { db, year, taxYear, isClosed, dataVersion, strict, closings } = useAppContext();
   const { issues } = useTaxIssues();
   const withholding = useWithholding(year);
   const [info, setInfo] = useState<{ pendingBank: number; nextOpening: boolean; holidays: Set<string> } | null>(null);
@@ -60,6 +61,10 @@ const useNextTasks = () => {
     if (taxYear.status !== "exempt") tasks.push({ text: `${year}年の${due("消費税の申告", consumptionTaxDeadline(year, info.holidays))}`, page: "tax", tone });
   }
   if (today >= `${year + 1}-01-01` && !info.nextOpening) tasks.push({ text: `${year + 1}年への繰越がまだです（決算整理の画面の最後）`, page: "yearend", tone: "todo" });
+  // 年の締めの確認コードを控えていない年（厳密モード。改ざんの確認に使うので、帳簿ファイルの外に残してもらう）
+  if (strict) {
+    for (const y of unsavedAnchorYears(closings)) tasks.push({ text: `${y}年の確認コードを控えていません（事業者設定の「締め」の「控える」で、メール・ファイルに残します）`, page: "settings", tone: "todo" });
+  }
   return tasks;
 };
 

@@ -248,6 +248,8 @@ export interface Settings {
   strict_from_year: number | null;
   /** 切り替えた日時 */
   strict_switched_at: string | null;
+  /** 確認コードを送るメールアドレス（自分あて。メールソフトを開くだけ） */
+  anchor_email: string;
   /** 不動産所得（none なし ／ small 事業的規模でない ／ business 事業的規模） */
   real_estate?: RealEstateScale;
 }
@@ -369,6 +371,8 @@ export interface FiscalClosing {
   closed_at: string;
   /** 締めたときの記録の連鎖の先頭（確認コードのもと。厳密モードのみ） */
   chain_head: string;
+  /** 確認コードを控えた記録（lib/closing.ts の AnchorSave の JSON。空 = 控えていない） */
+  anchor_saved: string;
 }
 
 /** ユーザー（権限はまだ分けない。誰が操作したかを記録するため） */

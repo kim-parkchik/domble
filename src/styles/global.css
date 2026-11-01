@@ -1096,3 +1096,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .list-import-updates { max-height: 320px; }
 .list-import-change { font-size: 12.5px; line-height: 1.6; }
 .sheet-h.small { font-size: 13px; margin: 4px 0 6px; }
+
+/* 確認コードを控える画面 */
+.anchor-box { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 6px; }
+.anchor-actions { display: flex; gap: 8px; flex-wrap: wrap; }

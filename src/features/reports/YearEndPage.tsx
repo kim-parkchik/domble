@@ -1,6 +1,6 @@
 /**
  * 決算整理（決算でやることを順に並べ、状態を出す。決算・申告の手順の案内も兼ねる）
- *  - 手順：決算の前（未登録の明細・現金・預金の残高のマイナス・消費税の確認・期首残高）→ 決算整理 → 決算書・申告（期限）→ 年の締め（確認コードの控え）→ 翌年への繰越
+ *  - 手順：決算の前（未登録の明細・現金・預金の残高のマイナス・消費税の確認・期首残高）→ 決算整理 → 決算書・申告（期限）→ 年の締め（確認コードを控えたか）→ 翌年への繰越
  *  - 棚卸：期末の棚卸高（棚卸表から）を入れ、期首・期末の振替の決算整理仕訳を作る（lib/yearEnd.ts）
  *  - 未払消費税等：その年の課税区分の申告書の ㉖ から決算整理仕訳を作る（課税事業者の年。任意）
  *  - 家事按分・減価償却・貸倒引当金は、それぞれの画面で作る（ここでは状態と入口だけ）
@@ -24,6 +24,8 @@ import {
 } from "../../lib/yearEnd";
 import type { JournalLine } from "../../lib/types";
 import * as repo from "../../db/repo";
+import { anchorSaveOf } from "../../lib/closing";
+import { AnchorSaveModal } from "../books/AnchorSaveModal";
 import type { Page } from "../../App";
 import { useYearReturn } from "./TaxReturnView";
 import { useTaxIssues } from "./TaxPage";
@@ -40,7 +42,8 @@ const Chip = ({ s }: { s: Status }) => <span className={`yearend-chip ${s.tone}`
 
 /** goCarry：その年から翌年への繰越（事業者設定の「翌年への繰越」）を開く */
 export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (fromYear: number) => void }) => {
-  const { db, year, accounts, taxYear, homeUseRates, isClosed, can, bump, dataVersion, filing, labelOf, subAccounts } = useAppContext();
+  const { db, year, accounts, taxYear, homeUseRates, isClosed, can, bump, dataVersion, filing, labelOf, subAccounts, strict, closings } = useAppContext();
+  const [anchorOpen, setAnchorOpen] = useState(false);
   const { lines, opening, subOpening } = useYearData();
   const toast = useToast();
   const idOf = (code: string) => accounts.find((a) => a.code === code)?.id ?? 0;
@@ -220,9 +223,13 @@ export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (
       page: "incometax", pageLabel: "所得税",
     },
     {
-      title: "年を締める", status: isClosed ? { text: "締め済み", tone: "ok" } : { text: "未", tone: "none" },
-      note: "申告が済んだら、事業者設定の「締め」で年を締めます。締めたときに出る確認コードを、決算書の控えなど帳簿ファイルの外に残します",
+      title: "年を締める",
+      status: !isClosed ? { text: "未", tone: "none" }
+        : !strict ? { text: "締め済み", tone: "ok" }
+          : anchorSaveOf(closings.find((c) => c.fiscal_year === year)) ? { text: "締め済み・確認コード控え済み", tone: "ok" } : { text: "締め済み・確認コードを控えていない", tone: "warn" },
+      note: "申告が済んだら、事業者設定の「締め」で年を締めます。締めたときに出る確認コードを、自分あてのメール・別の場所のファイル・決算書の控えなど帳簿ファイルの外に残します",
       page: "settings", pageLabel: "事業者設定",
+      ...(isClosed && strict ? { action: { label: "確認コードを控える", run: () => setAnchorOpen(true) } } : {}),
     },
     {
       title: `${year + 1}年への繰越`,
@@ -300,6 +307,7 @@ export const YearEndPage = ({ go, goCarry }: { go: (p: Page) => void; goCarry: (
       </section>
 
       {viewing && <EntryEditModal entryId={viewing} onClose={() => setViewing(null)} />}
+      {anchorOpen && <AnchorSaveModal year={year} onClose={() => setAnchorOpen(false)} />}
     </div>
   );
 };

@@ -3,7 +3,9 @@ import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account, FiscalClosing } from "./types";
 import { subKey } from "./types";
 import type { FlatLine } from "./accounting";
-import { closingOf, expectedNextOpening, inheritingClosedYears, inheritMessage, openingMismatches, yearsToAutoClose } from "./closing";
+import {
+  anchorSaveOf, closingOf, expectedNextOpening, inheritingClosedYears, inheritMessage, isMailAddress, mailtoUrl, openingMismatches, unsavedAnchorYears, yearsToAutoClose,
+} from "./closing";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
 const id = (name: string) => accounts.find((a) => a.name === name)!.id;
@@ -85,5 +87,34 @@ describe("「何年から」の設定と年の締め", () => {
   test("知らせ：その年が締め済みか、締めた年が引き継いでいるか", () => {
     expect(inheritMessage("消費税の設定", 2025, [2025])).toMatch(/^2025年は締め済み/);
     expect(inheritMessage("消費税の設定", 2024, [2025, 2026])).toMatch(/2025年・2026年は締め済みで、2024年の消費税の設定を引き継いでいます/);
+  });
+});
+
+describe("確認コードの控え", () => {
+  const closing = (year: number, end: string, head: string, saved: string): FiscalClosing => ({
+    fiscal_year: year, period_start: `${year}-01-01`, period_end: end, closed_at: `${year + 1}-03-10 10:00:00`, chain_head: head, anchor_saved: saved,
+  });
+  const saved = JSON.stringify({ head: "aaa", at: "2027-03-10 10:05:00", how: "mail" });
+  test("締めたときの連鎖の先頭と同じときだけ控え済み（締め直すと控え直し）", () => {
+    expect(anchorSaveOf(closing(2026, "2026-12-31", "aaa", saved))).toEqual({ head: "aaa", at: "2027-03-10 10:05:00", how: "mail" });
+    expect(anchorSaveOf(closing(2026, "2026-12-31", "bbb", saved))).toBeNull();
+    expect(anchorSaveOf(closing(2026, "2026-12-31", "aaa", "壊れた"))).toBeNull();
+    expect(anchorSaveOf(undefined)).toBeNull();
+  });
+  test("控えていない年の締め（月の締め・確認コードの無い年は除く）", () => {
+    const list = [
+      closing(2026, "2026-12-31", "bbb", saved), closing(2025, "2025-12-31", "aaa", saved), closing(2027, "2027-03-31", "ccc", ""), closing(2024, "2024-12-31", "", ""),
+    ];
+    expect(unsavedAnchorYears(list)).toEqual([2026]);
+  });
+  test("メールソフトを開く mailto:（件名・本文はエンコード、改行は CRLF、@ はそのまま）", () => {
+    expect(mailtoUrl(" me@example.com ", "確認 2026年", "コード：ABCD\n次の行")).toBe(
+      `mailto:me@example.com?subject=${encodeURIComponent("確認 2026年")}&body=${encodeURIComponent("コード：ABCD\r\n次の行")}`,
+    );
+    expect(mailtoUrl("", "a", "b")).toBe("mailto:?subject=a&body=b");
+    expect(isMailAddress("me@example.com")).toBe(true);
+    expect(isMailAddress("")).toBe(true);
+    expect(isMailAddress("me@example")).toBe(false);
+    expect(isMailAddress("a@b.c, d@e.f")).toBe(false);
   });
 });

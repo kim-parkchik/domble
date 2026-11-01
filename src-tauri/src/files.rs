@@ -108,9 +108,38 @@ pub fn host_name() -> String {
         .unwrap_or_default()
 }
 
+/// mailto: で、改行などの制御文字を含まないものか（本文の改行は %0D%0A で書く）。ほかのものは開かない
+pub fn is_mailto(url: &str) -> bool {
+    url.starts_with("mailto:") && url.len() <= 8000 && !url.chars().any(|c| c.is_control())
+}
+
+/// mailto: だけを、既定のメールソフトで開く（確認コードを自分あてに送るため。domble からはメールを送らない）。
+/// URL はシェルを通さずに引数で渡す
+pub fn open_mail(url: &str) -> Result<(), String> {
+    if !is_mailto(url) {
+        return Err("メールソフトで開けるのは mailto: だけです".into());
+    }
+    #[cfg(target_os = "macos")]
+    let r = std::process::Command::new("open").arg(url).spawn();
+    #[cfg(target_os = "windows")]
+    let r = std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", url]).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let r = std::process::Command::new("xdg-open").arg(url).spawn();
+    r.map(|_| ()).map_err(|e| format!("メールソフトを開けませんでした：{e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_mailto_without_control_chars() {
+        assert!(is_mailto("mailto:me@example.com?subject=%E7%A2%BA&body=a%0D%0Ab"));
+        assert!(!is_mailto("https://example.com"));
+        assert!(!is_mailto("file:///etc/passwd"));
+        assert!(!is_mailto("mailto:me@example.com\n--flag"));
+        assert!(open_mail("http://example.com").is_err());
+    }
 
     fn tmp_dir(name: &str) -> String {
         let d = std::env::temp_dir().join(format!("domble_files_{}_{}", name, std::process::id()));

@@ -109,6 +109,12 @@ fn host_name() -> String {
     files::host_name()
 }
 
+/// 確認コードを自分あてに送るため、mailto: を既定のメールソフトで開く（mailto: のほかは開かない）
+#[tauri::command(async)]
+fn open_mail(url: String) -> Result<(), String> {
+    files::open_mail(&url)
+}
+
 /// macOS のメニュー。既定の「終了」（⌘Q）はウィンドウに知らせずにすぐ終わってしまい、画面側でログアウトを
 /// 記録できないので、自前の「domble を終了」に差し替える。押すとウィンドウを閉じる（画面側が記録してから閉じる）
 #[cfg(target_os = "macos")]
@@ -172,7 +178,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             db_open, db_close, db_execute, db_select, db_encryption_status, db_encrypt, db_change_password, db_decrypt, db_set_remember, fetch_holidays_csv,
-            db_backup, file_copy, backup_list, files_remove, file_restore, lock_read, lock_write, lock_remove, host_name
+            db_backup, file_copy, backup_list, files_remove, file_restore, lock_read, lock_write, lock_remove, host_name, open_mail
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
