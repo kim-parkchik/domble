@@ -11,7 +11,8 @@ import {
 } from "./accounting";
 import type { Account, AccountCategory, Counterparty, OpeningBalances, SubAccount, SubOpeningBalances, TaxYear } from "./types";
 import { subKey } from "./types";
-import { inputDelayDays, isLateInput } from "./inputPeriod";
+import { inputDelayDays, isLateInput, type InputPeriod } from "./inputPeriod";
+import type { DaysOff } from "./scan";
 import { classLabel, displayClass, displayUse, invoiceCsvLabel, isPurchaseCode, taxLongLabel, taxShortLabel, useLabel } from "./tax";
 import { yen } from "./format";
 import { depreciationFor, methodLabel, type FixedAsset } from "./depreciation";
@@ -84,11 +85,13 @@ export const journalRowsOf = (entryId: number, ls: FlatLine[], o: { counterparty
 };
 
 /** 1年分の仕訳をすべて行にする（まとめての書き出し。入力期間を過ぎて登録したかと、登録したときの理由も付ける） */
-export const journalRowsAll = (lines: FlatLine[], counterparties: Counterparty[], inputDays: number | null, reasons: ReadonlyMap<number, string> = new Map()): JournalRow[] => {
+export const journalRowsAll = (
+  lines: FlatLine[], counterparties: Counterparty[], period: InputPeriod | number | null, reasons: ReadonlyMap<number, string> = new Map(), daysOff?: DaysOff,
+): JournalRow[] => {
   const cp = new Map(counterparties.map((c) => [c.id, c.name]));
   return [...groupByEntry(lines)].flatMap(([id, ls]) => journalRowsOf(id, ls, {
     counterparty: ls[0].counterparty_id ? cp.get(ls[0].counterparty_id) ?? "" : "",
-    late: inputDays != null && isLateInput(ls[0].date, ls[0].created_at, inputDays), reason: reasons.get(id),
+    late: period != null && isLateInput(ls[0].date, ls[0].created_at, period, daysOff), reason: reasons.get(id),
   }));
 };
 

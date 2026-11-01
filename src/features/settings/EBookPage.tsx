@@ -23,16 +23,17 @@ import { MODE_LABEL } from "../start/SetupScreen";
 import type { Page } from "../../App";
 import * as repo from "../../db/repo";
 import { isBlue } from "../../lib/filing";
+import { DEFAULT_INPUT_PERIOD, inputPeriodText, type InputPeriod } from "../../lib/inputPeriod";
 import pkg from "../../../package.json";
 
 /** 国税庁の電子帳簿等保存制度の案内 */
 const NTA_URL = "https://www.nta.go.jp/law/joho-zeikaishaku/sonota/jirei/index.htm";
 
 export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, settings, filePath, dataVersion, isClosed, can, readOnly, filingTypeOf } = useAppContext();
+  const { db, year, settings, filePath, dataVersion, isClosed, can, readOnly, filingTypeOf, daysOff } = useAppContext();
   const toast = useToast();
   const [holidays, setHolidays] = useState<Set<string>>(new Set());
-  const [inputDays, setInputDays] = useState(70);
+  const [inputPeriod, setInputPeriod] = useState<InputPeriod>(DEFAULT_INPUT_PERIOD);
   const [hasAssets, setHasAssets] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [imported, setImported] = useState(0);
@@ -40,7 +41,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
 
   useEffect(() => {
     repo.getHolidayData(db).then((h) => setHolidays(new Set(h.holidays.map((x) => x.date)))).catch(console.error);
-    repo.getInputPeriodDays(db).then(setInputDays).catch(console.error);
+    repo.getInputPeriod(db).then(setInputPeriod).catch(console.error);
     repo.getAssets(db).then((a) => setHasAssets(a.length > 0)).catch(console.error);
     repo.getStatementNotes(db, year).then(setNotes).catch(console.error);
     repo.countImportedEntries(db, year).then(setImported).catch(console.error);
@@ -48,7 +49,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
 
   const compliant = isYearCompliant(settings, year);
   // 入力の時期（年末や年が明けてからまとめて入れた年か）
-  const timing = useMemo(() => inputTimeliness(rawLines, inputDays, year), [rawLines, inputDays, year]);
+  const timing = useMemo(() => inputTimeliness(rawLines, inputPeriod, year, daysOff), [rawLines, inputPeriod, year, daysOff]);
   const caution = compliant && timing.caution;
   const blue = isBlue(filingTypeOf(year));
   const deadline = filingDeadline(year, holidays);
@@ -84,7 +85,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
 
   const auto: { label: string; detail: string; page?: Page }[] = [
     { label: "訂正・削除の履歴が残る", detail: "仕訳・勘定科目・期首残高などの訂正前／訂正後と、削除した内容を「訂正・削除履歴」に残します（削除した仕訳も消えません）", page: "history" },
-    { label: "通常の業務処理期間を過ぎた入力の履歴が残る", detail: `取引日から ${inputDays} 日を過ぎて登録した仕訳を「遅れて登録」として記録し、仕訳日記帳で絞り込めます（日数は事業者設定で変更）`, page: "journal" },
+    { label: "通常の業務処理期間を過ぎた入力の履歴が残る", detail: `入力期間（${inputPeriodText(inputPeriod)}）を過ぎて登録した仕訳を「遅れて登録」として記録し、仕訳日記帳で絞り込めます（日数は事業者設定で変更）`, page: "journal" },
     { label: "帳簿間の相互関連性", detail: "仕訳帳（仕訳日記帳）と総勘定元帳・補助簿は、同じ伝票番号でつながっています", page: "ledger" },
     { label: "検索機能", detail: "取引年月日・取引金額・取引先で検索でき、日付と金額は範囲で、条件は組み合わせて指定できます", page: "journal" },
     { label: "画面と書面に整然と出力できる", detail: "仕訳日記帳・総勘定元帳（補助元帳）・出納帳・残高試算表・固定資産台帳・訂正削除履歴を、ページ番号と見出しつきの A4 で印刷できます（印刷の画面から PDF にも保存できます）", page: "ledger" },
@@ -111,7 +112,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
           </h2>
           <p className="prose">
             {caution
-              ? `${timelinessCaution(timing, inputDays, year)}。`
+              ? `${timelinessCaution(timing, inputPeriod, year)}。`
               : compliant
                 ? `${year}年の初めから、優良な電子帳簿の要件を満たす保存方式で記録しています。下のチェックリストと届出を済ませると、優遇措置を受けられます。`
                 : settings.e_book_mode === "strict" && settings.strict_from_year
@@ -125,7 +126,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
               <dt>遅れて登録</dt>
               <dd>
                 {timing.late.toLocaleString()} 件（{percentOf(timing.late, timing.total)}）
-                <span className="hint">取引日から {inputDays} 日を過ぎて登録したもの</span>
+                <span className="hint">入力期間（{inputPeriodText(inputPeriod)}）を過ぎて登録したもの</span>
                 {timing.late > 0 && <button className="link-btn" onClick={() => go("journal")}>仕訳日記帳を開く</button>}
               </dd>
               <dt>年が明けてから登録</dt>
@@ -231,7 +232,7 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
         <button
           className="btn ghost"
           onClick={async () => {
-            const text = processingManual({ businessName: settings.business_name, ownerName: settings.owner_name, year, inputDays, fileName });
+            const text = processingManual({ businessName: settings.business_name, ownerName: settings.owner_name, year, inputPeriod, fileName });
             try {
               if (await saveAnchorFile(text, `事務処理マニュアル_${year}年.txt`)) toast("保存しました");
             } catch (e) {

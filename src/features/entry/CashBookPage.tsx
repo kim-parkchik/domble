@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CornerDownLeft, FileStack, FileUp, Landmark, Printer, Settings2 } from "lucide-react";
 import type { Page } from "../../App";
-import { useAppContext, useInputDays, useYearData } from "../../context/AppContext";
+import { useAppContext, useInputPeriod, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { ADJUSTMENT_PERIOD, MonthTabs, periodLabel } from "../../components/MonthRange";
 import { AccountWithSub, AmountInput, CounterpartyField, DateInput, MemoInput, TaxSelect } from "../../components/Inputs";
@@ -18,7 +18,7 @@ import { EntryEditModal } from "./EntryEditModal";
 import { buildLedger, monthEnd, monthStart, yearEnd } from "../../lib/accounting";
 import { enterToNext } from "../../lib/keyboard";
 import { defaultDateInYear, shortDate, todayIso, yen } from "../../lib/format";
-import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
+import { inputDelayDays, inputPeriodText, isLateInput } from "../../lib/inputPeriod";
 import { ledgerSection } from "../../lib/printBooks";
 import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE } from "../../constants/accounts";
@@ -45,7 +45,7 @@ const columnLabels = (code: string, normal: "debit" | "credit") => {
 };
 
 export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion, settings, strict, subAccounts } = useAppContext();
+  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion, settings, strict, subAccounts, daysOff } = useAppContext();
   const { lines, opening, subOpening, loading } = useYearData();
   const toast = useToast();
 
@@ -193,10 +193,10 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
   }, [rows.length, accountId, from, to]);
 
   // 入力期間を過ぎた日付で登録するとき（厳密モード）は、遅れた理由を履歴に残せる（続けて入れるときのために、登録しても残す）
-  const inputDays = useInputDays();
+  const inputPeriod = useInputPeriod();
   const [lateReason, setLateReason] = useState("");
   const inputDate = adjustmentOnly ? yearEnd(year) : date;
-  const late = strict && inputDays != null && !dateBad && isLateInput(inputDate, todayIso(), inputDays);
+  const late = strict && inputPeriod != null && !dateBad && isLateInput(inputDate, todayIso(), inputPeriod, daysOff);
 
   // 定型仕訳の呼び出し（この帳簿の科目と相手科目1つのものだけ。ほかは振替伝票で）
   const [picking, setPicking] = useState(false);
@@ -467,7 +467,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
             </span>
             {late && (
               <label className="reason-field late-reason">
-                <span>取引日から {inputDelayDays(inputDate, todayIso())} 日後（入力期間 {inputDays} 日を過ぎています）。遅れた理由（任意・履歴に残ります）</span>
+                <span>取引日から {inputDelayDays(inputDate, todayIso())} 日後（入力期間 {inputPeriod && inputPeriodText(inputPeriod)} を過ぎています）。遅れた理由（任意・履歴に残ります）</span>
                 <input className="input" value={lateReason} onChange={(e) => setLateReason(e.target.value)} placeholder="例：領収書をあとから見つけた" maxLength={100} />
               </label>
             )}

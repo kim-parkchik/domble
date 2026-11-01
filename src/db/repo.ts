@@ -29,6 +29,7 @@ import type { AccountListRow } from "../lib/masterCsv";
 import { columnMapProblem, parseColumnMap, type BankRule, type BankRuleSplit, type ColumnMap, type StatementLine } from "../lib/bankImport";
 import { removeFromTemplate, templateRows, validateTemplateName, type JournalTemplate } from "../lib/templates";
 import type { MemoEntry, MemoEntryLine } from "../lib/memoFill";
+import { inputPeriodProblem, inputPeriodText, parseInputPeriod, type InputPeriod } from "../lib/inputPeriod";
 import { replaceInEntry, replaceSpecProblem, sameSlotRow, type ReplaceSpec } from "../lib/bulkReplace";
 import { checkScanQuality, docClassOf, scanMethodName, toScanInputMethod, type DocClass, type ScanInputMethod } from "../lib/scan";
 import {
@@ -49,7 +50,7 @@ import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefun
 import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
 import type { InventoryAdjust } from "../lib/taxReturn";
 import {
-  DEFAULT_BACKUP_GENERATIONS, DEFAULT_INPUT_PERIOD_DAYS, MAX_BACKUP_GENERATIONS, MAX_INPUT_PERIOD_DAYS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
+  DEFAULT_BACKUP_GENERATIONS, MAX_BACKUP_GENERATIONS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
 } from "../constants/appConfig";
 
 // ────────────────────────────────────────────
@@ -952,21 +953,28 @@ const setCashbookAccounts_ = async (db: Database, ids: number[]) => {
   await db.execute("UPDATE settings SET cashbook_accounts = ? WHERE id = 1", [JSON.stringify(unique)]);
 };
 
-/** 入力期間（日）。これを過ぎて登録した仕訳を「遅れて登録」として抽出する */
-export const getInputPeriodDays = async (db: Database) => {
-  const r = await db.select<{ input_period_days: number | null }[]>("SELECT input_period_days FROM settings WHERE id = 1");
-  return r[0]?.input_period_days || DEFAULT_INPUT_PERIOD_DAYS;
+/** 入力期間（日数・営業日・月末。lib/inputPeriod.ts）。これを過ぎて登録した仕訳を「遅れて登録」として抽出する */
+export const getInputPeriod = async (db: Database): Promise<InputPeriod> => {
+  const r = await db.select<{ input_period_days: number | null; input_period_rule: string | null }[]>(
+    "SELECT input_period_days, input_period_rule FROM settings WHERE id = 1",
+  );
+  return parseInputPeriod(r[0]?.input_period_rule, r[0]?.input_period_days);
 };
 
-/** 入力期間の変更。どの仕訳が「遅れて登録」に当たるかが変わるので、厳密モードでは履歴に残す */
-const setInputPeriodDays_ = async (db: Database, n: number) => {
-  if (!Number.isInteger(n) || n < 1 || n > MAX_INPUT_PERIOD_DAYS) throw new Error(`入力期間は 1〜${MAX_INPUT_PERIOD_DAYS} 日の整数で入れてください`);
-  const before = await getInputPeriodDays(db);
-  if (before === n) return;
-  await db.execute("UPDATE settings SET input_period_days = ? WHERE id = 1", [n]);
+/**
+ * 入力期間の変更。どの仕訳が「遅れて登録」に当たるかが変わるので、厳密モードでは履歴に残す。
+ * 日数のときは input_period_days に入れ、決め方（input_period_rule）は空にする
+ */
+const setInputPeriod_ = async (db: Database, p: InputPeriod) => {
+  const problem = inputPeriodProblem(p);
+  if (problem) throw new Error(problem);
+  const before = await getInputPeriod(db);
+  if (inputPeriodText(before) === inputPeriodText(p)) return;
+  if (p.kind === "days") await db.execute("UPDATE settings SET input_period_days = ?, input_period_rule = '' WHERE id = 1", [p.days]);
+  else await db.execute("UPDATE settings SET input_period_rule = ? WHERE id = 1", [JSON.stringify(p)]);
   await logMaster(db, {
     target_type: "setting", target_id: 0, action: "change", fiscal_year: await currentYear(db),
-    label: "入力期間", old_value: `${before}日`, new_value: `${n}日`,
+    label: "入力期間", old_value: inputPeriodText(before), new_value: inputPeriodText(p),
   });
 };
 
@@ -3449,7 +3457,7 @@ export const saveEtaxInfo = inTx(saveEtaxInfo_, () => "e-Tax の申告者の情�
 export const fillTaxCodes = inTx(fillTaxCodes_, (year) => `${year}年の仕訳の税区分の一括設定`, { perm: "entry" });
 export const setFiscalYear = inTx(setFiscalYear_, (year) => `${year}年への切り替え`, { allowReadOnly: true });
 export const setBackupGenerations = inTx(setBackupGenerations_, () => "バックアップ世代数の保存", { perm: "settings" });
-export const setInputPeriodDays = inTx(setInputPeriodDays_, () => "入力期間の保存", { perm: "settings" });
+export const setInputPeriod = inTx(setInputPeriod_, () => "入力期間の保存", { perm: "settings" });
 export const setScanInputMethod = inTx(setScanInputMethod_, () => "スキャナ保存の入力期間の方式", { perm: "settings" });
 export const saveFetchedHolidays = inTx(saveFetchedHolidays_, () => "祝日の取得", { perm: "settings" });
 export const addCustomHoliday = inTx(addCustomHoliday_, (date) => `休業日（${date}）の追加`, { perm: "settings" });

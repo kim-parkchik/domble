@@ -835,6 +835,8 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["settings", "backup_generations", "INTEGER NOT NULL DEFAULT 100"],
   // 入力期間（日）。既定値は constants/appConfig.ts の DEFAULT_INPUT_PERIOD_DAYS と揃える
   ["settings", "input_period_days", "INTEGER NOT NULL DEFAULT 70"],
+  // 入力期間の決め方（lib/inputPeriod.ts の InputPeriod の JSON。営業日・月末で決めるとき。空 = input_period_days の日数）
+  ["settings", "input_period_rule", "TEXT NOT NULL DEFAULT ''"],
   // 帳簿入力のタブに出す科目（科目IDの JSON 配列。並び順もこの順。空 = 既定の科目）
   ["settings", "cashbook_accounts", "TEXT NOT NULL DEFAULT ''"],
   // 改ざんの検知：記録の連鎖を始めたか（既存の履歴を一度だけ連鎖に取り込む）、前回開いたときにあったトリガー

@@ -5,12 +5,12 @@
 import { useState, type KeyboardEvent } from "react";
 import { Plus, Trash2, Save, X, Lock, FileStack, BookmarkPlus } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { useAppContext, useInputDays } from "../../context/AppContext";
+import { useAppContext, useInputPeriod } from "../../context/AppContext";
 import { CounterpartyField, AccountWithSub, AmountInput, DateInput, MemoInput, TaxAmountField, TaxSelect } from "../../components/Inputs";
 import { checkVoucher, emptyRow, rowsToLines, yearEnd } from "../../lib/accounting";
 import { enterToNext, isComposing } from "../../lib/keyboard";
 import { shortDate, todayIso, yen } from "../../lib/format";
-import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
+import { inputDelayDays, inputPeriodText, isLateInput } from "../../lib/inputPeriod";
 import type { VoucherRow } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { useToast } from "../../components/Toast";
@@ -40,7 +40,7 @@ const padRows = (rows: VoucherRow[]) => {
 };
 
 export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterpartyId = null, initialAdjustment = false, onSaved, onDeleted, onCancel }: Props) => {
-  const { db, year, bump, strict, isDateClosed, accounts, subAccounts, counterparties, homeUseRates, labelOf } = useAppContext();
+  const { db, year, bump, strict, isDateClosed, accounts, subAccounts, counterparties, homeUseRates, labelOf, daysOff } = useAppContext();
   const toast = useToast();
   const [date, setDate] = useState(initialDate);
   const [rows, setRows] = useState<VoucherRow[]>(padRows(initialRows ?? []));
@@ -74,8 +74,8 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
   // 締めた月（年の締めならその年度全体）の仕訳は、登録・訂正・削除できない（訂正で締めた月へ動かすのも不可）
   const locked = isDateClosed(date) || (!!entryId && isDateClosed(initialDate));
   // 入力期間を過ぎた日付の仕訳を新しく登録するとき（厳密モード）は、遅れた理由を履歴に残せる
-  const inputDays = useInputDays();
-  const late = strict && !entryId && inputDays != null && isLateInput(date, todayIso(), inputDays);
+  const inputPeriod = useInputPeriod();
+  const late = strict && !entryId && inputPeriod != null && isLateInput(date, todayIso(), inputPeriod, daysOff);
 
   // 家事按分（入力のたびに分ける科目）：新しく入力するときだけ、登録時に事業分と事業主貸に分ける。
   // 訂正のときは分けない（帳簿入力などで分け済みの仕訳を、もう一度分けてしまわないため）
@@ -330,7 +330,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
       )}
       {late && (
         <label className="reason-field">
-          <span>取引日から {inputDelayDays(date, todayIso())} 日後の登録で、入力期間（{inputDays} 日）を過ぎています。遅れた理由（任意・履歴に残ります）</span>
+          <span>取引日から {inputDelayDays(date, todayIso())} 日後の登録で、入力期間（{inputPeriod && inputPeriodText(inputPeriod)}）を過ぎています。遅れた理由（任意・履歴に残ります）</span>
           <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="例：領収書をあとから見つけた" maxLength={100} />
         </label>
       )}

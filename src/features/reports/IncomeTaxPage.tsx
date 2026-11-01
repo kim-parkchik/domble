@@ -47,7 +47,7 @@ const SOCIAL_WORDS = /国民健康保険|国保|国民年金|介護保険|後期
 const SMALL_WORDS = /小規模企業共済|iDeCo|イデコ|確定拠出年金|心身障害者扶養共済/i;
 
 export const IncomeTaxPage = () => {
-  const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump, filingTypeOf, taxYears } = useAppContext();
+  const { db, year, accounts, settings, subMap, counterparties, homeUseRates, isClosed, can, dataVersion, bump, filingTypeOf, taxYears, daysOff } = useAppContext();
   const filingType = filingTypeOf(year);
   const white = filingType === "white";
   const { lines, rawLines, opening } = useYearData();
@@ -151,8 +151,8 @@ export const IncomeTaxPage = () => {
   const [ebookNote, setEbookNote] = useState("");
   const prepareExport = async () => {
     try {
-      const [notes, assets, homeRun, depRun, inputDays, payrollSettings, bonusEntryIds] = await Promise.all([
-        repo.getStatementNotes(db, year), repo.getAssets(db), repo.getHomeUseRun(db, year), repo.getDepreciationRun(db, year), repo.getInputPeriodDays(db),
+      const [notes, assets, homeRun, depRun, inputPeriod, payrollSettings, bonusEntryIds] = await Promise.all([
+        repo.getStatementNotes(db, year), repo.getAssets(db), repo.getHomeUseRun(db, year), repo.getDepreciationRun(db, year), repo.getInputPeriod(db),
         repo.getPayrollSettings(db), repo.getPayrollBonusIds(db),
       ]);
       const books = {
@@ -167,8 +167,8 @@ export const IncomeTaxPage = () => {
       const realEstate = biz.realEstate ? buildRealEstateBook({ ...books, white, scale: reScale, filingType }) : undefined;
       const whiteSt = white ? buildWhiteStatement({ ...books, family: familyMembers(x), periodMonths: businessMonths(x.businessTax, year) }) : undefined;
       const bookKeeping = isYearCompliant(settings, year) && notes["ebook:filed"] ? 1 : 2;
-      const timing = inputTimeliness(rawLines, inputDays, year);
-      setEbookNote(bookKeeping === 1 && timing.caution ? `第一表の事業の区分を「優良な電子帳簿」で書き出します。${timelinessCaution(timing, inputDays, year)}。` : "");
+      const timing = inputTimeliness(rawLines, inputPeriod, year, daysOff);
+      setEbookNote(bookKeeping === 1 && timing.caution ? `第一表の事業の区分を「優良な電子帳簿」で書き出します。${timelinessCaution(timing, inputPeriod, year)}。` : "");
       setExportSrc({
         year, filer, input: x, result, biz, statement, white: whiteSt, realEstate, settings, numbers: {}, createdOn: todayIso(), bookKeeping,
       });

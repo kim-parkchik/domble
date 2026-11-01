@@ -7,7 +7,8 @@
  */
 import type { Settings } from "./types";
 import type { FlatLine } from "./accounting";
-import { isLateInput } from "./inputPeriod";
+import { inputPeriodDuty, inputPeriodText, isLateInput, type InputPeriod } from "./inputPeriod";
+import type { DaysOff } from "./scan";
 import { cycleMonthsOf, scanMethodName, type ScanInputMethod } from "./scan";
 import { incomeTaxDeadline } from "./deadlines";
 
@@ -60,8 +61,8 @@ export interface InputTimeliness {
   caution: boolean;
 }
 
-/** その年の仕訳の明細から、入力の時期をまとめる（created_at = 登録日時、厳密モードでは登録時の履歴の日時） */
-export const inputTimeliness = (lines: FlatLine[], inputDays: number, year: number): InputTimeliness => {
+/** その年の仕訳の明細から、入力の時期をまとめる（created_at = 登録日時、厳密モードでは登録時の履歴の日時。daysOff は営業日で数えるときの休み） */
+export const inputTimeliness = (lines: FlatLine[], period: InputPeriod | number, year: number, daysOff?: DaysOff): InputTimeliness => {
   const entries = new Map<number, FlatLine>();
   for (const l of lines) if (!l.is_deleted && !entries.has(l.entry_id)) entries.set(l.entry_id, l);
   let late = 0;
@@ -69,7 +70,7 @@ export const inputTimeliness = (lines: FlatLine[], inputDays: number, year: numb
   let firstRecorded: string | null = null;
   for (const e of entries.values()) {
     const at = e.created_at ?? "";
-    if (isLateInput(e.date, at, inputDays)) late++;
+    if (isLateInput(e.date, at, period, daysOff)) late++;
     if (!at) continue;
     const day = at.slice(0, 10);
     if (!e.is_adjustment && day > `${year}-12-31`) afterYearEnd++;
@@ -83,8 +84,8 @@ export const inputTimeliness = (lines: FlatLine[], inputDays: number, year: numb
 export const percentOf = (n: number, total: number) => (total ? `${((n / total) * 100).toFixed(1)}%` : "");
 
 /** 注意の文（電子帳簿保存法の画面・e-Tax の書き出し） */
-export const timelinessCaution = (t: InputTimeliness, inputDays: number, year: number) =>
-  `${year}年の仕訳 ${t.total} 件のうち ${t.late} 件（${percentOf(t.late, t.total)}）が、取引日から入力期間（${inputDays} 日）を過ぎてからの登録です。` +
+export const timelinessCaution = (t: InputTimeliness, period: InputPeriod | number, year: number) =>
+  `${year}年の仕訳 ${t.total} 件のうち ${t.late} 件（${percentOf(t.late, t.total)}）が、入力期間（${inputPeriodText(typeof period === "number" ? { kind: "days", days: period } : period)}）を過ぎてからの登録です。` +
   "優良な電子帳簿は、年の初めから備え付けて順次記録していくことが前提です。年末や年が明けてからまとめて入力した年は、" +
   "年の初めから優良な電子帳簿で備え付けていたことにならず、優遇措置を受けられないおそれがあります（国税庁「電子帳簿保存法一問一答〔帳簿〕」問29・問42）";
 
@@ -116,7 +117,7 @@ export const MANUAL_ITEMS: { key: string; label: string; note: string }[] = [
 ];
 
 /** 事務処理マニュアルのひな形（自分の運用に合わせて直してもらう前提の文面） */
-export const processingManual = (o: { businessName: string; ownerName: string; year: number; inputDays: number; fileName: string }) =>
+export const processingManual = (o: { businessName: string; ownerName: string; year: number; inputPeriod: InputPeriod; fileName: string }) =>
   `電子計算機を使用して作成する国税関係帳簿の事務処理マニュアル（ひな形）
 
 事業者：${o.businessName}　${o.ownerName}
@@ -134,7 +135,7 @@ export const processingManual = (o: { businessName: string; ownerName: string; y
   仕訳帳（仕訳日記帳）、総勘定元帳、現金出納帳・預金出納帳（帳簿入力）、固定資産台帳、その他の補助簿。
 
 4. 入力の手順
-  (1) 取引は、取引の日から${o.inputDays}日以内に入力する（これを過ぎて入力したものは「遅れて登録」として記録される）。
+  (1) 取引は、${inputPeriodDuty(o.inputPeriod)}（これを過ぎて入力したものは「遅れて登録」として記録される）。
   (2) 証憑（請求書・領収書など）は、仕訳とひも付けて保存する。
   (3) 入力は、登録したユーザーの名前で行う（操作した人が記録される）。
   (4) 紙で受け取った書類は、読み取って domble に取り込んだ場合も、紙の原本を保存する（domble はタイムスタンプを付けないため、スキャナ保存の要件を満たさない）。

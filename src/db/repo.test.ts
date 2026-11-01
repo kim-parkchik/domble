@@ -219,16 +219,25 @@ describe("入力期間（repo）", () => {
     expect((await repo.getLines(db, "2026-01-01", "2026-12-31"))[0].created_at).toBe("2026-04-01 09:00:00");
   });
 
-  test("入力期間は既定 70 日。変更は範囲を確かめ、厳密モードでは履歴に残す", async () => {
+  test("入力期間は既定 70 日。日数・営業日・月末に変えられ、範囲を確かめ、厳密モードでは履歴に残す", async () => {
     const { db } = strict;
-    expect(await repo.getInputPeriodDays(db)).toBe(70);
-    await expect(repo.setInputPeriodDays(db, 0)).rejects.toThrow(/1〜365/);
-    await expect(repo.setInputPeriodDays(db, 1.5)).rejects.toThrow(/整数/);
-    await repo.setInputPeriodDays(db, 40);
-    await repo.setInputPeriodDays(db, 40); // 同じ値なら記録しない
-    expect(await repo.getInputPeriodDays(db)).toBe(40);
+    expect(await repo.getInputPeriod(db)).toEqual({ kind: "days", days: 70 });
+    await expect(repo.setInputPeriod(db, { kind: "days", days: 0 })).rejects.toThrow(/1〜365/);
+    await expect(repo.setInputPeriod(db, { kind: "days", days: 1.5 })).rejects.toThrow(/整数/);
+    await repo.setInputPeriod(db, { kind: "days", days: 40 });
+    await repo.setInputPeriod(db, { kind: "days", days: 40 }); // 同じ値なら記録しない
+    expect(await repo.getInputPeriod(db)).toEqual({ kind: "days", days: 40 });
+    await repo.setInputPeriod(db, { kind: "monthEnd", months: 1, extra: 7 });
+    expect(await repo.getInputPeriod(db)).toEqual({ kind: "monthEnd", months: 1, extra: 7 });
+    // 日数に戻すと、決め方は空に（日数は input_period_days）
+    await repo.setInputPeriod(db, { kind: "days", days: 70 });
+    expect(await repo.getInputPeriod(db)).toEqual({ kind: "days", days: 70 });
     const h = await repo.getMasterHistory(db);
-    expect(h.map((x) => [x.target_type, x.old_value, x.new_value])).toEqual([["setting", "70日", "40日"]]);
+    expect(h.map((x) => [x.target_type, x.old_value, x.new_value]).reverse()).toEqual([
+      ["setting", "取引日から 70 日", "取引日から 40 日"],
+      ["setting", "取引日から 40 日", "取引の月の翌月末から 7 営業日"],
+      ["setting", "取引の月の翌月末から 7 営業日", "取引日から 70 日"],
+    ]);
   });
 });
 
@@ -1274,7 +1283,7 @@ describe("読み取り専用（repo）", () => {
     repo.setReadOnly(true);
     try {
       await expect(repo.createEntry(db, "2026-01-05", lines)).rejects.toThrow(/読み取り専用/);
-      await expect(repo.setInputPeriodDays(db, 30)).rejects.toThrow(/読み取り専用/);
+      await expect(repo.setInputPeriod(db, { kind: "days", days: 30 })).rejects.toThrow(/読み取り専用/);
       await expect(repo.logAccess(db, 1, "login")).rejects.toThrow(/読み取り専用/);
       await repo.setFiscalYear(db, 2025);
       expect((await repo.getSettings(db)).fiscal_year).toBe(2025);
@@ -1374,7 +1383,7 @@ describe("権限（repo）", () => {
     repo.setActor(editor, "editor");
     await repo.createEntry(db, "2026-01-05", lines);
     await repo.createCounterparty(db, { name: "株式会社A", kana: "", invoice_no: "", memo: "" });
-    await expect(repo.setInputPeriodDays(db, 30)).rejects.toThrow(/入力担当/);
+    await expect(repo.setInputPeriod(db, { kind: "days", days: 30 })).rejects.toThrow(/入力担当/);
     await expect(repo.saveOpening(db, 2026, { "1:0": 100 })).rejects.toThrow(/入力担当/);
     await expect(repo.createUser(db, "田中")).rejects.toThrow(/入力担当/);
     await expect(repo.closeYear(db, 2025)).rejects.toThrow(/入力担当/);

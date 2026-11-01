@@ -25,9 +25,10 @@ describe("届出", () => {
     expect(filingFormName(true, 2026)).toContain("65万円の青色申告特別控除");
     expect(filingFormName(true, 2027)).toContain("75万円の青色申告特別控除");
     expect(filingFormName(false, 2027)).not.toContain("万円");
-    const m = processingManual({ businessName: "テスト商店", ownerName: "山田 太郎", year: 2027, inputDays: 70, fileName: "a.dmbl" });
+    const m = processingManual({ businessName: "テスト商店", ownerName: "山田 太郎", year: 2027, inputPeriod: { kind: "days", days: 70 }, fileName: "a.dmbl" });
     expect(m).toContain("テスト商店");
-    expect(m).toContain("70日以内");
+    expect(m).toContain("取引日から 70 日以内に入力する");
+    expect(processingManual({ businessName: "", ownerName: "", year: 2027, inputPeriod: { kind: "monthEnd", months: 1, extra: 0 }, fileName: "" })).toContain("取引の月の翌月末までに入力する");
     expect(m).toContain("2027年1月1日");
     // タイムスタンプを付けないので、読み取った書類も紙の原本を保存する
     expect(m).toContain("紙の原本を保存する");

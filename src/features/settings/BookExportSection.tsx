@@ -57,8 +57,8 @@ export const BookExportSection = () => {
     try {
       setBusy("書き出しています…");
       await mkdir(dir, { recursive: true });
-      const [counterparties, taxYears, assets, inputDays] = await Promise.all([
-        repo.getCounterparties(db), repo.getTaxYears(db), repo.getAssets(db), repo.getInputPeriodDays(db),
+      const [counterparties, taxYears, assets, inputPeriod] = await Promise.all([
+        repo.getCounterparties(db), repo.getTaxYears(db), repo.getAssets(db), repo.getInputPeriod(db),
       ]);
       for (let y = from; y <= to; y++) {
         setBusy(`${y}年を書き出しています…`);
@@ -71,7 +71,7 @@ export const BookExportSection = () => {
           lines: bookLines(raw, taxYears, exclusiveAccountsOf(accounts)),
         };
         // 仕訳日記帳は入れたとおり（税込）に。元帳・試算表は帳簿の明細（税抜経理の年は税抜）
-        await put(`${y}年_仕訳日記帳.csv`, JOURNAL_CSV_HEADER, journalCsvRows(journalRowsAll(raw, counterparties, inputDays, reasons), accounts, subs, counterparties));
+        await put(`${y}年_仕訳日記帳.csv`, JOURNAL_CSV_HEADER, journalCsvRows(journalRowsAll(raw, counterparties, inputPeriod, reasons, daysOff), accounts, subs, counterparties));
         await put(`${y}年_総勘定元帳.csv`, LEDGER_CSV_HEADER, ledgerCsvAll(book, 1, ADJUSTMENT_PERIOD));
         const opts = { showSubs: true, hideZero: true };
         await put(`${y}年_残高試算表.csv`, TRIAL_CSV_HEADER, (["bs", "pl"] as const).flatMap((v) => trialCsvRows(v, trialLines(v, book, 1, ADJUSTMENT_PERIOD, opts))));

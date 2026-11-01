@@ -10,6 +10,7 @@ import { bookLines, exclusiveAccountsOf } from "../lib/taxExclusive";
 import { filingOf, type FilingOfYear } from "../lib/filing";
 import { baseSalesInfo, type BaseSalesInfo } from "../lib/baseSales";
 import { interimPlan, prevTaxInfo, type InterimPlan, type PrevTaxInfo } from "../lib/taxInterim";
+import type { InputPeriod } from "../lib/inputPeriod";
 
 interface AppContextValue {
   db: Database;
@@ -262,14 +263,14 @@ export const useYearData = () => {
   return { lines, rawLines, opening, subOpening, loading };
 };
 
-/** 入力期間（日。事業者設定）。読み込むまでは null。遅れて登録かどうかの判定に使う */
-export const useInputDays = () => {
+/** 入力期間（事業者設定。日数・営業日・月末。lib/inputPeriod.ts）。読み込むまでは null。遅れて登録かどうかの判定に使う（営業日は daysOff で数える） */
+export const useInputPeriod = () => {
   const { db, dataVersion } = useAppContext();
-  const [days, setDays] = useState<number | null>(null);
+  const [period, setPeriod] = useState<InputPeriod | null>(null);
   useEffect(() => {
-    repo.getInputPeriodDays(db).then(setDays).catch(console.error);
+    repo.getInputPeriod(db).then(setPeriod).catch(console.error);
   }, [db, dataVersion]);
-  return days;
+  return period;
 };
 
 /**

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Download, History, Paperclip, Printer, Replace, Search, Trash2, Upload } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { useAppContext, useYearData } from "../../context/AppContext";
+import { useAppContext, useInputPeriod, useYearData } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { PeriodTabs } from "../../components/MonthRange";
 import { useToast } from "../../components/Toast";
@@ -19,7 +19,7 @@ import { ReplaceDialog } from "./BulkReplace";
 import { FullDateInput } from "../../components/Inputs";
 import { ADJUSTMENT_PERIOD, groupByEntry, inPeriods, periodNote, yearEnd, yearStart, type FlatLine } from "../../lib/accounting";
 import { parseAmount, shortDate, todayIso, yen } from "../../lib/format";
-import { inputDelayDays, isLateInput } from "../../lib/inputPeriod";
+import { inputDelayDays, inputPeriodText, isLateInput } from "../../lib/inputPeriod";
 import { toCsv } from "../../lib/csv";
 import { journalSection, type JournalPrintEntry, type JournalSide } from "../../lib/printBooks";
 import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
@@ -35,7 +35,7 @@ type DisplayRow = JournalRow;
 export const JournalListPage = () => {
   const {
     db, year, accounts, accountMap, activeAccounts, subAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear, taxYears, can, readOnly,
-    closedMonth,
+    closedMonth, daysOff,
   } = useAppContext();
   /** 税区分での絞り込み："" = すべて、unset = 未設定（課税事業者の期間で税区分が無い）、transitional / nodeduct = インボイス区分、それ以外は税区分 */
   const [taxFilter, setTaxFilter] = useState("");
@@ -50,12 +50,9 @@ export const JournalListPage = () => {
   const [dateTo, setDateTo] = useState("");
   const [minAmt, setMinAmt] = useState("");
   const [maxAmt, setMaxAmt] = useState("");
-  // 入力期間（日）と、遅れて登録した仕訳だけを出すか
-  const [inputDays, setInputDays] = useState<number | null>(null);
+  // 入力期間（日数・営業日・月末）と、遅れて登録した仕訳だけを出すか
+  const inputPeriod = useInputPeriod();
   const [lateOnly, setLateOnly] = useState(false);
-  useEffect(() => {
-    repo.getInputPeriodDays(db).then(setInputDays).catch(console.error);
-  }, [db, dataVersion]);
   // 登録したときの理由（厳密モード。遅れて登録した理由など）
   const [reasons, setReasons] = useState<Map<number, string>>(new Map());
   useEffect(() => {
@@ -106,7 +103,7 @@ export const JournalListPage = () => {
               : l.tax_code === taxFilter)) continue;
       const counterparty = ls[0].counterparty_id ? cpMap.get(ls[0].counterparty_id)?.name ?? "" : "";
       const createdAt = ls[0].created_at ?? "";
-      const late = inputDays != null && isLateInput(ls[0].date, createdAt, inputDays);
+      const late = inputPeriod != null && isLateInput(ls[0].date, createdAt, inputPeriod, daysOff);
       if (lateOnly && !late) continue;
       if (query) {
         const hay = ls
@@ -122,7 +119,7 @@ export const JournalListPage = () => {
       out.push(...journalRowsOf(entryId, ls, { counterparty, late, reason: reasons.get(entryId) }));
     }
     return out;
-  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputDays, lateOnly, taxFilter, isTaxActive, reasons]);
+  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputPeriod, daysOff, lateOnly, taxFilter, isTaxActive, reasons]);
 
   // 選べる仕訳（削除済み・締めた月のものは選べない）と、表示中で選んでいるもの
   const selectable = (r: DisplayRow) => !r.deleted && Number(r.date.slice(5, 7)) > closedMonth;
@@ -253,7 +250,7 @@ export const JournalListPage = () => {
           <span>〜</span>
           <input className="input" value={maxAmt} onChange={(e) => setMaxAmt(e.target.value)} placeholder="上限" inputMode="numeric" aria-label="金額の上限" />
         </div>
-        <label className="check" title={inputDays != null ? `取引日から ${inputDays} 日を過ぎて登録した仕訳（入力期間は事業者設定で変えられます）` : undefined}>
+        <label className="check" title={inputPeriod ? `入力期間（${inputPeriodText(inputPeriod)}）を過ぎて登録した仕訳（入力期間は事業者設定で変えられます）` : undefined}>
           <input type="checkbox" checked={lateOnly} onChange={(e) => setLateOnly(e.target.checked)} /> 入力期間を過ぎて登録したもの
         </label>
         {strict && (
@@ -330,7 +327,7 @@ export const JournalListPage = () => {
                     {r.first && !r.deleted && (r.dr?.revision ?? r.cr?.revision ?? 1) > 1 && <span className="badge badge-update">訂正あり</span>}
                     {r.first && r.adjustment && <span className="badge badge-adjust">決算整理</span>}
                     {r.first && r.late && (
-                      <span className="badge badge-late" title={`登録 ${r.createdAt}（取引日から ${inputDelayDays(r.date, r.createdAt)} 日後。入力期間 ${inputDays} 日）${r.reason ? `\n理由：${r.reason}` : ""}`}>
+                      <span className="badge badge-late" title={`登録 ${r.createdAt}（取引日から ${inputDelayDays(r.date, r.createdAt)} 日後。入力期間 ${inputPeriod ? inputPeriodText(inputPeriod) : ""}）${r.reason ? `\n理由：${r.reason}` : ""}`}>
                         遅れて登録{r.reason && "・理由あり"}
                       </span>
                     )}

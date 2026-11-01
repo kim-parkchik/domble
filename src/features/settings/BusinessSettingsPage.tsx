@@ -11,7 +11,7 @@ import { useToast } from "../../components/Toast";
 import { Modal } from "../../components/Modal";
 import { carryForwardWithSubs, closingBalances, subClosingBalances, summarizeIncome } from "../../lib/accounting";
 import { subKey } from "../../lib/types";
-import { yen } from "../../lib/format";
+import { longDate, yen } from "../../lib/format";
 import { fileLabel, normalizePostalCode, validateBusinessInfo } from "../../lib/business";
 import { cycleMonthsOf, SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
 import { scanStorageRule } from "../../lib/ebook";
@@ -27,6 +27,7 @@ import { closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
 import { manufacturingOn } from "../../lib/statementLines";
 import { DEFAULT_INPUT_PERIOD_DAYS, MAX_INPUT_PERIOD_DAYS } from "../../constants/appConfig";
+import { inputDeadline, inputPeriodProblem, inputPeriodText, MAX_INPUT_BUSINESS_DAYS, MAX_MONTH_END_EXTRA, type InputPeriod } from "../../lib/inputPeriod";
 import { TaxSection } from "./TaxSection";
 import { EtaxSection } from "./EtaxSection";
 
@@ -561,24 +562,36 @@ const ClosingSection = () => {
   );
 };
 
-/** 入力期間：取引日からこの日数を過ぎて登録した仕訳を、仕訳日記帳で「遅れて登録」として確認・抽出できる */
+/** 入力期間（日数・営業日・月末）：これを過ぎて登録した仕訳を、仕訳日記帳で「遅れて登録」として確認・抽出できる */
 const InputPeriodSection = () => {
-  const { db, strict, bump } = useAppContext();
+  const { db, strict, bump, year, daysOff } = useAppContext();
   const toast = useToast();
-  const [value, setValue] = useState("");
-  const [saved, setSaved] = useState<number | null>(null);
+  const [saved, setSaved] = useState<InputPeriod | null>(null);
+  const [kind, setKind] = useState<InputPeriod["kind"]>("days");
+  const [days, setDays] = useState(String(DEFAULT_INPUT_PERIOD_DAYS));
+  const [months, setMonths] = useState(1);
+  const [extra, setExtra] = useState("7");
 
   useEffect(() => {
-    repo.getInputPeriodDays(db).then((n) => {
-      setSaved(n);
-      setValue(String(n));
+    repo.getInputPeriod(db).then((p) => {
+      setSaved(p);
+      setKind(p.kind);
+      if (p.kind === "monthEnd") {
+        setMonths(p.months);
+        setExtra(String(p.extra));
+      } else setDays(String(p.days));
     }).catch(console.error);
   }, [db]);
 
+  const period: InputPeriod = kind === "monthEnd" ? { kind, months, extra: Number(extra) } : { kind, days: Number(days) };
+  const problem = inputPeriodProblem(period);
+  const changed = !!saved && inputPeriodText(saved) !== inputPeriodText(period);
+  const example = `${year}-01-15`;
+
   const save = async () => {
     try {
-      await repo.setInputPeriodDays(db, Number(value));
-      setSaved(Number(value));
+      await repo.setInputPeriod(db, period);
+      setSaved(period);
       bump();
       toast("入力期間を保存しました");
     } catch (e) {
@@ -590,21 +603,49 @@ const InputPeriodSection = () => {
     <section className="sheet">
       <h2 className="sheet-h">入力期間</h2>
       <p className="prose">
-        取引日からこの日数を過ぎて登録した仕訳は、仕訳日記帳で「遅れて登録」と表示され、絞り込みや CSV で確認できます。
-        既定の {DEFAULT_INPUT_PERIOD_DAYS} 日は「最長2か月 + おおむね7営業日」の目安です。事務処理規程などで決めた期間に合わせてください。
+        入力期間を過ぎて登録した仕訳は、仕訳日記帳で「遅れて登録」と表示され、絞り込みや CSV で確認できます。事務処理規程などで決めた期間に合わせてください。
+        既定の「取引日から {DEFAULT_INPUT_PERIOD_DAYS} 日」は「最長2か月 + おおむね7営業日」の目安です。月末締めで翌月に入れるなら「月末」、
+        営業日で決めているなら「営業日」を選びます（営業日は、土日と下の「祝日・休業日」を除いて数えます）。
         {strict && "変更は「訂正・削除履歴」に記録されます。登録日時は登録時の履歴（記録の連鎖に入っている）から取るので、直接書き換えると改ざんの確認で見つかります。"}
       </p>
       <form className="field-row" onSubmit={(e) => { e.preventDefault(); save(); }}>
         <label className="field">
-          <span>入力期間（1〜{MAX_INPUT_PERIOD_DAYS} 日）</span>
-          <input className="input" type="number" min={1} max={MAX_INPUT_PERIOD_DAYS} value={value} onChange={(e) => setValue(e.target.value)} />
+          <span>決め方</span>
+          <select className="input" value={kind} onChange={(e) => setKind(e.target.value as InputPeriod["kind"])}>
+            <option value="days">取引日から○日</option>
+            <option value="business">取引日から○営業日</option>
+            <option value="monthEnd">取引の月の翌月末・翌々月末</option>
+          </select>
         </label>
+        {kind === "monthEnd" ? (
+          <>
+            <label className="field">
+              <span>月末</span>
+              <select className="input" value={months} onChange={(e) => setMonths(Number(e.target.value))}>
+                <option value={1}>翌月末</option>
+                <option value={2}>翌々月末</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>さらに（0〜{MAX_MONTH_END_EXTRA} 営業日）</span>
+              <input className="input" type="number" min={0} max={MAX_MONTH_END_EXTRA} value={extra} onChange={(e) => setExtra(e.target.value)} />
+            </label>
+          </>
+        ) : (
+          <label className="field">
+            <span>{kind === "days" ? `日数（1〜${MAX_INPUT_PERIOD_DAYS} 日）` : `営業日（1〜${MAX_INPUT_BUSINESS_DAYS} 営業日）`}</span>
+            <input className="input" type="number" min={1} max={kind === "days" ? MAX_INPUT_PERIOD_DAYS : MAX_INPUT_BUSINESS_DAYS} value={days} onChange={(e) => setDays(e.target.value)} />
+          </label>
+        )}
         <div style={{ alignSelf: "flex-end" }}>
-          <button className="btn primary" type="submit" disabled={saved === null || String(saved) === value}>
+          <button className="btn primary" type="submit" disabled={!changed || !!problem}>
             <Save size={16} /> 保存する
           </button>
         </div>
       </form>
+      <p className="field-note">
+        {problem ?? `${inputPeriodText(period)}。例：${longDate(example)}の取引は、${longDate(inputDeadline(example, period, daysOff))}までに登録すれば期間内です。`}
+      </p>
     </section>
   );
 };
