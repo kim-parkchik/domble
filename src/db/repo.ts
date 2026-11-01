@@ -14,7 +14,7 @@ import type {
 import { subKey } from "../lib/types";
 import { yearEnd, yearStart, type FlatLine } from "../lib/accounting";
 import { closedLabel, closedMonthOf, inheritingClosedYears, inheritMessage, monthEnd, yearsToAutoClose } from "../lib/closing";
-import { isValidInvoiceNo, normalizeInvoiceNo, normName, validateCounterparty, type CounterpartyInput } from "../lib/counterparty";
+import { isValidInvoiceNo, normalizeCorporateNo, normalizeInvoiceNo, normName, validateCounterparty, type CounterpartyInput } from "../lib/counterparty";
 import {
   builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isInvoiceKind, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
   useLabel, validateTaxYear,
@@ -1316,7 +1316,7 @@ const deleteSub_ = async (db: Database, id: number) => {
 //  厳密モードでは追加・変更・非表示・削除を master_history に残す
 // ────────────────────────────────────────────
 export const getCounterparties = (db: Database) =>
-  db.select<Counterparty[]>("SELECT id, name, kana, invoice_no, not_registered, memo, is_active FROM counterparties ORDER BY kana = '', kana, name");
+  db.select<Counterparty[]>("SELECT id, name, kana, invoice_no, corporate_no, not_registered, memo, is_active FROM counterparties ORDER BY kana = '', kana, name");
 
 const counterpartyName = async (db: Database, id: number | null | undefined) => {
   if (!id) return "";
@@ -1324,21 +1324,24 @@ const counterpartyName = async (db: Database, id: number | null | undefined) => 
   return r[0]?.name ?? `#${id}`;
 };
 
-const cpText = (c: { name: string; invoice_no: string; not_registered: number; memo: string }) =>
-  [c.name, c.invoice_no && `登録番号 ${c.invoice_no}`, c.not_registered ? "適格請求書発行事業者ではない" : "", c.memo && `メモ：${c.memo}`]
+const cpText = (c: { name: string; invoice_no: string; corporate_no: string; not_registered: number; memo: string }) =>
+  [c.name, c.invoice_no && `登録番号 ${c.invoice_no}`, c.corporate_no && `法人番号 ${c.corporate_no}`, c.not_registered ? "適格請求書発行事業者ではない" : "", c.memo && `メモ：${c.memo}`]
     .filter(Boolean).join("　");
 
 const cpRow = (d: CounterpartyInput) => {
   const invoice_no = normalizeInvoiceNo(d.invoice_no);
   // 登録番号がある取引先は「適格請求書発行事業者ではない」にしない
-  return { name: d.name.trim(), kana: d.kana.trim(), invoice_no, not_registered: d.not_registered && !invoice_no ? 1 : 0, memo: d.memo.trim() };
+  return {
+    name: d.name.trim(), kana: d.kana.trim(), invoice_no, corporate_no: normalizeCorporateNo(d.corporate_no ?? ""),
+    not_registered: d.not_registered && !invoice_no ? 1 : 0, memo: d.memo.trim(),
+  };
 };
 
 const createCounterparty_ = async (db: Database, d: CounterpartyInput) => {
   const c = cpRow(d);
   const res = await db.execute(
-    "INSERT INTO counterparties (name, kana, invoice_no, not_registered, memo) VALUES (?, ?, ?, ?, ?)",
-    [c.name, c.kana, c.invoice_no, c.not_registered, c.memo],
+    "INSERT INTO counterparties (name, kana, invoice_no, corporate_no, not_registered, memo) VALUES (?, ?, ?, ?, ?, ?)",
+    [c.name, c.kana, c.invoice_no, c.corporate_no, c.not_registered, c.memo],
   );
   const id = Number(res.lastInsertId);
   await logMaster(db, {
@@ -1386,14 +1389,14 @@ const updateCounterparty_ = async (db: Database, id: number, d: CounterpartyInpu
   const before = (await getCounterparties(db)).find((c) => c.id === id);
   if (!before) return;
   const c = cpRow(d);
-  await db.execute("UPDATE counterparties SET name = ?, kana = ?, invoice_no = ?, not_registered = ?, memo = ? WHERE id = ?", [
-    c.name, c.kana, c.invoice_no, c.not_registered, c.memo, id,
+  await db.execute("UPDATE counterparties SET name = ?, kana = ?, invoice_no = ?, corporate_no = ?, not_registered = ?, memo = ? WHERE id = ?", [
+    c.name, c.kana, c.invoice_no, c.corporate_no, c.not_registered, c.memo, id,
   ]);
   const year = await currentYear(db);
   if (c.name !== before.name) {
     await logMaster(db, { target_type: "counterparty", target_id: id, action: "rename", fiscal_year: year, label: c.name, old_value: before.name, new_value: c.name });
   }
-  if (c.invoice_no !== before.invoice_no || c.not_registered !== before.not_registered || c.memo !== before.memo) {
+  if (c.invoice_no !== before.invoice_no || c.corporate_no !== before.corporate_no || c.not_registered !== before.not_registered || c.memo !== before.memo) {
     await logMaster(db, { target_type: "counterparty", target_id: id, action: "change", fiscal_year: year, label: c.name, old_value: cpText(before), new_value: cpText(c) });
   }
 };

@@ -353,6 +353,8 @@ export interface Counterparty {
   kana: string;
   /** 適格請求書発行事業者の登録番号（T + 13桁。無ければ空） */
   invoice_no: string;
+  /** 法人番号（13桁。無ければ空） */
+  corporate_no: string;
   /** 1 = 適格請求書発行事業者ではない（免税事業者など）。この取引先からの課税仕入は初期値が「経過措置」になる */
   not_registered: number;
   memo: string;

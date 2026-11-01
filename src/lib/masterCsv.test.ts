@@ -43,13 +43,14 @@ describe("一覧の CSV", () => {
     const subText = toCsv(SUB_LIST_HEADER, [...subListRows(accounts, subs), ["普通預金", "ゆうちょ銀行", ""], ["無い科目", "x", ""]]);
     const r = parseSubListCsv(subText, accounts, subs);
     expect([r.skipped, r.rows, r.issues.length]).toEqual([1, [{ accountId: id("普通預金"), name: "ゆうちょ銀行", kana: "" }], 1]);
-    const cps: Counterparty[] = [{ id: 1, name: "株式会社A", kana: "", invoice_no: "", not_registered: 0, memo: "", is_active: 1 }];
-    const cpText = toCsv(COUNTERPARTY_LIST_HEADER, [...counterpartyListRows(cps), ["個人の外注", "", "", "○", "メモ"], ["株式会社B", "びー", "T1234567890123", "", ""]]);
+    const cps: Counterparty[] = [{ id: 1, name: "株式会社A", kana: "", invoice_no: "", corporate_no: "", not_registered: 0, memo: "", is_active: 1 }];
+    const cpText = toCsv(COUNTERPARTY_LIST_HEADER, [...counterpartyListRows(cps), ["個人の外注", "", "", "", "○", "メモ"], ["株式会社B", "びー", "T1234567890123", "", "", ""], ["国税庁", "", "", "7000012050002", "", ""]]);
     const c = parseCounterpartyCsv(cpText, cps);
     expect(c.skipped).toBe(1);
     expect(c.rows).toEqual([
-      { name: "個人の外注", kana: "", invoice_no: "", not_registered: true, memo: "メモ" },
-      { name: "株式会社B", kana: "びー", invoice_no: "T1234567890123", not_registered: false, memo: "" },
+      { name: "個人の外注", kana: "", invoice_no: "", corporate_no: "", not_registered: true, memo: "メモ" },
+      { name: "株式会社B", kana: "びー", invoice_no: "T1234567890123", corporate_no: "", not_registered: false, memo: "" },
+      { name: "国税庁", kana: "", invoice_no: "", corporate_no: "7000012050002", not_registered: false, memo: "" },
     ]);
   });
 });

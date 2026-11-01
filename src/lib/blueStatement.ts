@@ -33,6 +33,8 @@ export interface BlueStatementSource {
   payeeName: (r: Pick<PayeeRow, "counterpartyId" | "subId">) => string;
   /** 取引先の登録番号（無ければ空） */
   invoiceNoOf?: (counterpartyId: number) => string;
+  /** 取引先の法人番号（無ければ空。売上先・仕入先の明細で、登録番号が無いときに書く） */
+  corporateNoOf?: (counterpartyId: number) => string;
   /** 青色申告特別控除の上限（申告の種類から） */
   deductionLimit: number;
   /** 不動産所得の青色申告特別控除前の所得金額（不動産所得用の決算書の ㉑。無ければ帳簿の不動産所得の科目から） */
@@ -100,6 +102,8 @@ export interface PartnerLine {
   address: string;
   /** 登録番号（取引先の。T を除いた13桁） */
   invoiceNo: string;
+  /** 法人番号（取引先の。登録番号が無いときに書く） */
+  corporateNo: string;
   amount: number;
 }
 
@@ -121,11 +125,12 @@ export { purchaseAccountIds };
 /** 売上先・仕入先ごとの行（多い順。所在地は書き込み sales:<相手>:address ／ purchase:<相手>:address） */
 export const partnerLines = (
   kind: "sales" | "purchase", accounts: Account[], lines: FlatLine[], notes: Record<string, string>,
-  payeeName: BlueStatementSource["payeeName"], invoiceNoOf?: BlueStatementSource["invoiceNoOf"],
+  payeeName: BlueStatementSource["payeeName"], invoiceNoOf?: BlueStatementSource["invoiceNoOf"], corporateNoOf?: BlueStatementSource["corporateNoOf"],
 ): PartnerLine[] =>
   partnerTotals(kind === "sales" ? salesAccountIds(accounts) : purchaseAccountIds(accounts), lines, kind === "sales" ? "credit" : "debit").map((r) => ({
     key: r.key, name: payeeName(r), address: notes[`${kind}:${r.key}:address`] ?? "",
-    invoiceNo: r.counterpartyId ? (invoiceNoOf?.(r.counterpartyId) ?? "").replace(/^T/, "") : "", amount: r.amount,
+    invoiceNo: r.counterpartyId ? (invoiceNoOf?.(r.counterpartyId) ?? "").replace(/^T/, "") : "",
+    corporateNo: r.counterpartyId ? corporateNoOf?.(r.counterpartyId) ?? "" : "", amount: r.amount,
   }));
 
 /** 明細の計を total にした表（上記以外 = total − 載せた行） */
@@ -244,8 +249,8 @@ export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {
   const depreciation = depreciationLinesOf(s.assets.filter((a) => a.income_kind !== "realestate"), s.year, notes);
 
   // 売上先・仕入先の明細（計は 1ページの売上（収入）金額・仕入金額。家事消費等・雑収入は上記以外に入る）
-  const salesPartners = partnerLines("sales", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf);
-  const purchasePartners = partnerLines("purchase", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf);
+  const salesPartners = partnerLines("sales", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf, s.corporateNoOf);
+  const purchasePartners = partnerLines("purchase", accounts, s.lines, notes, s.payeeName, s.invoiceNoOf, s.corporateNoOf);
   // 仕入金額の明細の計は、2ページの月別の仕入金額の計（仕入高と原材料仕入高。製造原価の計算が無ければ 1ページの ③ と同じ）
   const monthly = monthlySales(accounts, s.lines);
   const purchaseTotal = monthly.purchases.reduce((t, x) => t + x, 0);

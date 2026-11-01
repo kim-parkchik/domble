@@ -222,7 +222,7 @@ export interface BalanceRow {
   closing: number;
 }
 
-export interface RealEstateBookSource extends Omit<BlueStatementSource, "deductionLimit" | "invoiceNoOf"> {
+export interface RealEstateBookSource extends Omit<BlueStatementSource, "deductionLimit" | "invoiceNoOf" | "corporateNoOf"> {
   white: boolean;
   scale: RealEstateScale;
   filingType: FilingType;

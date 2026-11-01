@@ -353,15 +353,22 @@ const LIABILITY_TAGS: Record<string, [string | null, string]> = {
   元入金: ["AMG00600", "AMG00740"],
 };
 
-/** 売上先・仕入先の明細（4行・上記以外・計）。tags = [行, 名前, 所在地, 登録番号, 金額, 上記以外, 計] */
-const partnerValues = (t: PartnerTable, tags: [string, string, string, string, string, string, string]): Record<string, EtaxValue | undefined> => {
+/**
+ * 売上先・仕入先の明細（4行・上記以外・計）。tags = [行, 名前, 所在地, 登録番号, 法人番号, 金額, 上記以外, 計]。
+ * 「登録番号（法人番号）」は登録番号を先に、無ければ法人番号
+ */
+const partnerValues = (t: PartnerTable, tags: [string, string, string, string, string, string, string, string]): Record<string, EtaxValue | undefined> => {
   if (!t.total && !t.rows.length) return {};
-  const [rowTag, nameTag, addressTag, invoiceTag, amountTag, otherTag, totalTag] = tags;
+  const [rowTag, nameTag, addressTag, invoiceTag, corporateTag, amountTag, otherTag, totalTag] = tags;
   return {
     [rowTag]: t.rows.length ? {
-      rows: t.rows.map((r) => clean({
-        [nameTag]: text(r.name, 30), [addressTag]: text(r.address, 100), [invoiceTag]: /^\d{13}$/.test(r.invoiceNo) ? { text: r.invoiceNo } : undefined, [amountTag]: r.amount,
-      })),
+      rows: t.rows.map((r) => {
+        const invoice = /^\d{13}$/.test(r.invoiceNo);
+        return clean({
+          [nameTag]: text(r.name, 30), [addressTag]: text(r.address, 100), [invoiceTag]: invoice ? { text: r.invoiceNo } : undefined,
+          [corporateTag]: !invoice && /^\d{13}$/.test(r.corporateNo) ? { hojinbango: r.corporateNo } : undefined, [amountTag]: r.amount,
+        });
+      }),
     } : undefined,
     [otherTag]: amount(t.other), [totalTag]: t.total,
   };
@@ -492,8 +499,8 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
   else Object.assign(v, { AMF01540: st.realEstateDeduction, AMF01550: st.deduction });
 
   // 3ページ：売上（収入）金額・仕入金額の明細（4件まで。残りは上記以外）
-  Object.assign(v, partnerValues(st.sales, ["AMF02230", "AMF02240", "AMF02250", "AMF02270", "AMF02290", "AMF02300", "AMF02310"]));
-  Object.assign(v, partnerValues(st.purchases, ["AMF02330", "AMF02340", "AMF02350", "AMF02370", "AMF02390", "AMF02400", "AMF02410"]));
+  Object.assign(v, partnerValues(st.sales, ["AMF02230", "AMF02240", "AMF02250", "AMF02270", "AMF02280", "AMF02290", "AMF02300", "AMF02310"]));
+  Object.assign(v, partnerValues(st.purchases, ["AMF02330", "AMF02340", "AMF02350", "AMF02370", "AMF02380", "AMF02390", "AMF02400", "AMF02410"]));
   // 減価償却費の計算（7件まで。残りは次葉合計）
   const dep = st.depreciation;
   if (dep.length) {
@@ -641,8 +648,8 @@ const whiteValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => 
   }
 
   // 2ページ：売上（収入）金額・仕入金額の明細（4件まで。残りは上記以外）
-  Object.assign(v, partnerValues(w.sales, ["AIK00010", "AIK00020", "AIK00030", "AIK00080", "AIK00040", "AIK00050", "AIK00060"]));
-  Object.assign(v, partnerValues(w.purchases, ["AIL00010", "AIL00020", "AIL00030", "AIL00080", "AIL00040", "AIL00050", "AIL00060"]));
+  Object.assign(v, partnerValues(w.sales, ["AIK00010", "AIK00020", "AIK00030", "AIK00080", "AIK00090", "AIK00040", "AIK00050", "AIK00060"]));
+  Object.assign(v, partnerValues(w.purchases, ["AIL00010", "AIL00020", "AIL00030", "AIL00080", "AIL00090", "AIL00040", "AIL00050", "AIL00060"]));
   // 減価償却費の計算（6件まで。残りは次葉合計）
   const dep = d.depreciation;
   if (dep.length) {

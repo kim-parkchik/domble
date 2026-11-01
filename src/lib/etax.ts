@@ -68,6 +68,7 @@ export type EtaxValue =
   | { nen: number } // 年（西暦 → 元号・年）
   | { tel: string } // 電話番号（03-1234-5678）
   | { bango: string } // 個人番号（12桁）
+  | { hojinbango: string } // 法人番号（13桁）
   | { rows: EtaxValues[] }; // くり返せる欄（明細の行。1行ずつ欄の値）
 
 export interface EtaxValues {
@@ -363,6 +364,7 @@ const valueXml = (tag: string, v: EtaxValue) => {
   if ("yymm" in v) return `<${tag}>${eraOf(`${v.yymm}-01`)}<gen:mm>${Number(v.yymm.slice(5, 7))}</gen:mm></${tag}>`;
   if ("mmdd" in v) return `<${tag}><gen:mm>${Number(v.mmdd.slice(0, 2))}</gen:mm><gen:dd>${Number(v.mmdd.slice(3, 5))}</gen:dd></${tag}>`;
   if ("bango" in v) return `<${tag}><gen:kojinbango>${v.bango}</gen:kojinbango></${tag}>`;
+  if ("hojinbango" in v) return `<${tag}><gen:hojinbango>${v.hojinbango}</gen:hojinbango></${tag}>`;
   if ("nen" in v) return `<${tag}>${eraOf(`${v.nen}-12-31`)}</${tag}>`;
   if ("tel" in v) {
     const t = splitPhone(v.tel);

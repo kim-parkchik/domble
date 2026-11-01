@@ -1,7 +1,7 @@
 /**
  * 取引先の管理（任意で使う）
  *  - 仕訳1件に1つ、証憑にも付けられる。補助科目とは別（同じ相手が複数の科目に出てくるため）
- *  - 適格請求書発行事業者の登録番号（T + 13桁）を持てる
+ *  - 適格請求書発行事業者の登録番号（T + 13桁）と法人番号（13桁）を持てる
  *  - 使った取引先は削除できない（非表示にはできる）。厳密モードでは変更を履歴に残す
  */
 import { useEffect, useMemo, useState } from "react";
@@ -33,7 +33,7 @@ export const CounterpartiesPage = () => {
 
   const shown = useMemo(() => {
     const n = normName(q);
-    return n ? counterparties.filter((c) => normName(`${c.name}${c.kana}${c.invoice_no}`).includes(n)) : counterparties;
+    return n ? counterparties.filter((c) => normName(`${c.name}${c.kana}${c.invoice_no}${c.corporate_no}`).includes(n)) : counterparties;
   }, [counterparties, q]);
 
   const toggle = async (c: Counterparty, active: boolean) => {
@@ -83,7 +83,7 @@ export const CounterpartiesPage = () => {
       <div className="filters">
         <label className="search">
           <Search size={15} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="名前・よみ・登録番号で探す" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="名前・よみ・登録番号・法人番号で探す" />
         </label>
         <span className="filter-count">{counterparties.length} 件</span>
       </div>
@@ -95,11 +95,11 @@ export const CounterpartiesPage = () => {
           ) : (
             <table className="ledger">
               <colgroup>
-                <col style={{ width: 56 }} /><col /><col style={{ width: "18%" }} /><col style={{ width: 160 }} />
-                <col style={{ width: "20%" }} /><col style={{ width: 70 }} /><col style={{ width: 150 }} />
+                <col style={{ width: 52 }} /><col /><col style={{ width: "14%" }} /><col style={{ width: 150 }} />
+                <col style={{ width: "16%" }} /><col style={{ width: 56 }} /><col style={{ width: 128 }} />
               </colgroup>
               <thead>
-                <tr><th>使う</th><th>取引先名</th><th>よみ</th><th>登録番号</th><th>メモ</th><th className="num">使用</th><th /></tr>
+                <tr><th>使う</th><th>取引先名</th><th>よみ</th><th>登録番号・法人番号</th><th>メモ</th><th className="num">使用</th><th /></tr>
               </thead>
               <tbody>
                 {shown.map((c) => (
@@ -107,7 +107,7 @@ export const CounterpartiesPage = () => {
                     <td><input type="checkbox" checked={!!c.is_active} onChange={(e) => toggle(c, e.target.checked)} aria-label={`${c.name}を使う`} /></td>
                     <td>{c.name}</td>
                     <td className="muted">{c.kana}</td>
-                    <td className="mono">{c.invoice_no || (c.not_registered ? <span className="muted" title="適格請求書発行事業者ではない（課税仕入の初期値は経過措置）">登録なし</span> : "")}</td>
+                    <td className="mono">{c.invoice_no || (c.corporate_no ? <span title="法人番号">{c.corporate_no}</span> : null) || (c.not_registered ? <span className="muted" title="適格請求書発行事業者ではない（課税仕入の初期値は経過措置）">登録なし</span> : "")}</td>
                     <td className="muted ellipsis" title={c.memo}>{c.memo}</td>
                     <td className="num muted">{usage.get(c.id) ?? ""}</td>
                     <td className="row-actions">
@@ -133,8 +133,8 @@ const CounterpartyForm = ({ target, onClose }: { target: Counterparty | "new"; o
   const isNew = target === "new";
   const [d, setD] = useState<CounterpartyInput>(
     isNew
-      ? { name: "", kana: "", invoice_no: "", not_registered: false, memo: "" }
-      : { name: target.name, kana: target.kana, invoice_no: target.invoice_no, not_registered: !!target.not_registered, memo: target.memo },
+      ? { name: "", kana: "", invoice_no: "", corporate_no: "", not_registered: false, memo: "" }
+      : { name: target.name, kana: target.kana, invoice_no: target.invoice_no, corporate_no: target.corporate_no, not_registered: !!target.not_registered, memo: target.memo },
   );
   const [error, setError] = useState("");
   const set = <K extends keyof CounterpartyInput>(k: K, v: CounterpartyInput[K]) => setD((x) => ({ ...x, [k]: v }));
@@ -170,6 +170,11 @@ const CounterpartyForm = ({ target, onClose }: { target: Counterparty | "new"; o
           <span>適格請求書発行事業者の登録番号（任意）</span>
           <input className="input mono" value={d.invoice_no} onChange={(e) => set("invoice_no", e.target.value)} placeholder="T1234567890123" maxLength={20} />
         </label>
+        <label className="field">
+          <span>法人番号（任意。13桁）</span>
+          <input className="input mono" value={d.corporate_no ?? ""} onChange={(e) => set("corporate_no", e.target.value)} placeholder="1234567890123" maxLength={20} />
+        </label>
+        <p className="field-note">決算書の売上先・仕入先の明細の「登録番号（法人番号）」に、登録番号が無いときに書きます（登録番号か法人番号を書けば、所在地は省略できます）。法人の登録番号は「T＋法人番号」です。</p>
         <label className="check">
           <input type="checkbox" checked={!!d.not_registered} disabled={!!d.invoice_no.trim()} onChange={(e) => set("not_registered", e.target.checked)} />
           適格請求書発行事業者ではない（免税事業者・個人など）

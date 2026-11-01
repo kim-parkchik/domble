@@ -56,7 +56,13 @@ const statement = (o: Partial<BlueStatement> = {}): BlueStatement => ({
   deduction: 650_000, realEstateIncome: 0, realEstateDeduction: 0, totalIncome: 4_000_000,
   monthly: { sales: Array(12).fill(0).map((_, i) => (i === 11 ? 5_000_000 - 11 * 400_000 : 400_000)), purchases: Array(12).fill(0), householdUse: 0, miscIncome: 0 },
   salaries: [], family: [], interest: [], fees: [], rent: [], depreciation: [], special: "",
-  sales: { rows: [{ key: "cp:1", name: "株式会社エー", address: "", invoiceNo: "1234567890123", amount: 3_000_000 }], other: 2_000_000, total: 5_000_000 },
+  sales: {
+    rows: [
+      { key: "cp:1", name: "株式会社エー", address: "", invoiceNo: "1234567890123", corporateNo: "7000012050002", amount: 2_000_000 },
+      { key: "cp:2", name: "法人ビー", address: "", invoiceNo: "", corporateNo: "1180301018771", amount: 1_000_000 },
+    ],
+    other: 2_000_000, total: 5_000_000,
+  },
   purchases: { rows: [], other: 0, total: 0 }, salesPartners: [], purchasePartners: [],
   allowance: { receivables: [], adjust: 0, base: 0, finance: false, limit: 0, bulk: 0, individual: 0, total: 0, reversal: 0, problems: [] },
   ...o,
@@ -107,8 +113,9 @@ describe("令和7年分の所得税の xtx（申告書＋青色申告決算書�
     expect(val(xml, "AMG00440")).toBe("5100000");
     expect(val(xml, "AMG00760")).toBe(String(1_100_000 + 4_000_000));
   });
-  test("3ページ：売上先の明細（登録番号は T を除いた13桁）と上記以外の計。仕入の無い明細は書かない", () => {
-    expect(xml).toContain("<AMF02240>株式会社エー</AMF02240><AMF02260><AMF02270>1234567890123</AMF02270></AMF02260><AMF02290>3000000</AMF02290>");
+  test("3ページ：売上先の明細（登録番号は T を除いた13桁。無ければ法人番号）と上記以外の計。仕入の無い明細は書かない", () => {
+    expect(xml).toContain("<AMF02240>株式会社エー</AMF02240><AMF02260><AMF02270>1234567890123</AMF02270></AMF02260><AMF02290>2000000</AMF02290>");
+    expect(xml).toContain("<AMF02240>法人ビー</AMF02240><AMF02260><AMF02280><gen:hojinbango>1180301018771</gen:hojinbango></AMF02280></AMF02260><AMF02290>1000000</AMF02290>");
     expect(val(xml, "AMF02300")).toBe("2000000");
     expect(val(xml, "AMF02310")).toBe("5000000");
     expect(xml).not.toContain("AMF02320");

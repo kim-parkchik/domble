@@ -879,6 +879,8 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["journal_lines", "invoice_kind", "TEXT"],
   ["accounts", "default_tax_code", "TEXT"],
   ["counterparties", "not_registered", "INTEGER NOT NULL DEFAULT 0"],
+  // 取引先の法人番号（13桁。決算書の売上先・仕入先の明細の「登録番号（法人番号）」に、登録番号が無いときに書く）
+  ["counterparties", "corporate_no", "TEXT NOT NULL DEFAULT ''"],
   // 簡易課税の事業区分（1〜6）：明細（課税売上だけ。NULL = 年度の「主な事業区分」）と科目の初期値
   ["journal_lines", "business_class", "INTEGER CHECK (business_class BETWEEN 1 AND 6)"],
   ["accounts", "default_business_class", "INTEGER CHECK (default_business_class BETWEEN 1 AND 6)"],

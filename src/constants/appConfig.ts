@@ -25,8 +25,9 @@ export const FILE_FILTER_NAME = "domble 帳簿ファイル";
  *  6 = 2026-10-31（取り込みの記録）
  *  7 = 2026-10-31（給与の取り込み・給与の設定）
  *  8 = 2026-11-01（入力期間の決め方：営業日・月末）
+ *  9 = 2026-11-01（取引先の法人番号）
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

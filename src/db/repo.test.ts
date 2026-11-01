@@ -89,6 +89,14 @@ describe("年度の締め（repo）", () => {
 });
 
 describe("取引先（repo）", () => {
+  test("法人番号はそろえて持ち、変更は履歴に残る", async () => {
+    const { db } = strict;
+    const id = await repo.createCounterparty(db, { name: "法人ビー", kana: "", invoice_no: "", corporate_no: "１１８０３０１０１８７７１", memo: "" });
+    expect((await repo.getCounterparties(db)).find((c) => c.id === id)?.corporate_no).toBe("1180301018771");
+    await repo.updateCounterparty(db, id, { name: "法人ビー", kana: "", invoice_no: "", corporate_no: "7000012050002", memo: "" });
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "counterparty");
+    expect(h[0]).toMatchObject({ action: "change", old_value: "法人ビー　法人番号 1180301018771", new_value: "法人ビー　法人番号 7000012050002" });
+  });
   test("仕訳に付けた取引先は履歴の写しに名前が残り、訂正で省けばそのまま", async () => {
     const { db } = strict;
     const cp = await repo.createCounterparty(db, { name: "株式会社A", kana: "えー", invoice_no: "ｔ1234567890123", memo: "" });

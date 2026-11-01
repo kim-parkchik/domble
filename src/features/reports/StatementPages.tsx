@@ -406,14 +406,14 @@ export const PartnerSection = ({ kind, table, otherLabel, notes, onSaved }: Note
     {table.total === 0 && table.rows.length === 0 ? <p className="muted">該当する取引はありません。</p> : (
       <table className="ledger st-detail">
         <thead>
-          <tr><th>{kind === "sales" ? "売上先名" : "仕入先名"}</th><th>所在地</th><th>登録番号</th><th className="num">{kind === "sales" ? "売上（収入）金額" : "仕入金額"}</th></tr>
+          <tr><th>{kind === "sales" ? "売上先名" : "仕入先名"}</th><th>所在地</th><th>登録番号（法人番号）</th><th className="num">{kind === "sales" ? "売上（収入）金額" : "仕入金額"}</th></tr>
         </thead>
         <tbody>
           {table.rows.map((r) => (
             <tr key={r.key}>
               <td>{r.name}</td>
-              <td><Note k={`${kind}:${r.key}:address`} notes={notes} onSaved={onSaved} placeholder={r.invoiceNo ? "（登録番号があれば省略可）" : "所在地"} wide /></td>
-              <td>{r.invoiceNo ? `T${r.invoiceNo}` : ""}</td>
+              <td><Note k={`${kind}:${r.key}:address`} notes={notes} onSaved={onSaved} placeholder={r.invoiceNo || r.corporateNo ? "（番号があれば省略可）" : "所在地"} wide /></td>
+              <td>{r.invoiceNo ? `T${r.invoiceNo}` : r.corporateNo}</td>
               <td className="num">{yen(r.amount)}</td>
             </tr>
           ))}
@@ -432,8 +432,9 @@ export const PartnerSections = ({ lines, salesTotal, purchaseTotal, salesOther, 
   const { accounts, counterparties } = useAppContext();
   const payeeName = usePayeeName();
   const invoiceNoOf = (id: number) => counterparties.find((c) => c.id === id)?.invoice_no ?? "";
-  const sales = partnerTable(partnerLines("sales", accounts, lines, notes, payeeName, invoiceNoOf), salesTotal);
-  const purchases = partnerTable(partnerLines("purchase", accounts, lines, notes, payeeName, invoiceNoOf), purchaseTotal);
+  const corporateNoOf = (id: number) => counterparties.find((c) => c.id === id)?.corporate_no ?? "";
+  const sales = partnerTable(partnerLines("sales", accounts, lines, notes, payeeName, invoiceNoOf, corporateNoOf), salesTotal);
+  const purchases = partnerTable(partnerLines("purchase", accounts, lines, notes, payeeName, invoiceNoOf, corporateNoOf), purchaseTotal);
   return (
     <>
       <PartnerSection kind="sales" table={sales} otherLabel={salesOther} notes={notes} onSaved={onSaved} />

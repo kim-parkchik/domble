@@ -161,6 +161,7 @@ export const IncomeTaxPage = () => {
         payeeName: (r: { counterpartyId: number | null; subId: number | null }) =>
           r.counterpartyId ? counterparties.find((c) => c.id === r.counterpartyId)?.name ?? "（取引先）" : r.subId ? subMap.get(r.subId)?.name ?? "（補助科目）" : "（支払先の指定なし）",
         invoiceNoOf: (id: number) => counterparties.find((c) => c.id === id)?.invoice_no ?? "",
+        corporateNoOf: (id: number) => counterparties.find((c) => c.id === id)?.corporate_no ?? "",
       };
       const statement = buildBlueStatement({ ...books, deductionLimit: BLUE_DEDUCTION_LIMIT[filingType], realEstateIncome: biz.realEstate?.incomeBeforeBlue });
       // 不動産所得用の決算書（不動産所得がある年）

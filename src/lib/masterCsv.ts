@@ -89,13 +89,13 @@ export const parseOpeningCsv = (text: string, accounts: Account[], subs: SubAcco
 // ────────────────────────────────────────────
 export const ACCOUNT_LIST_HEADER = ["コード", "科目", "よみ", "区分"];
 export const SUB_LIST_HEADER = ["科目", "補助科目", "よみ"];
-export const COUNTERPARTY_LIST_HEADER = ["取引先", "よみ", "登録番号", "適格請求書発行事業者ではない", "メモ"];
+export const COUNTERPARTY_LIST_HEADER = ["取引先", "よみ", "登録番号", "法人番号", "適格請求書発行事業者ではない", "メモ"];
 
 export const accountListRows = (accounts: Account[]): CsvValue[][] => accounts.map((a) => [a.code, a.name, a.kana, CATEGORY_LABEL[a.category]]);
 export const subListRows = (accounts: Account[], subs: SubAccount[]): CsvValue[][] =>
   subs.map((s) => [accounts.find((a) => a.id === s.account_id)?.name ?? "", s.name, s.kana]);
 export const counterpartyListRows = (list: Counterparty[]): CsvValue[][] =>
-  list.map((c) => [c.name, c.kana, c.invoice_no, c.not_registered ? "○" : "", c.memo]);
+  list.map((c) => [c.name, c.kana, c.invoice_no, c.corporate_no, c.not_registered ? "○" : "", c.memo]);
 
 const categoryOf = (raw: string): AccountCategory | null => {
   const n = normName(raw);
@@ -188,10 +188,11 @@ export const parseCounterpartyCsv = (text: string, list: Counterparty[]): { rows
   const cName = colOf("取引先", "取引先名", "名称", "名前");
   const cKana = colOf("よみ", "読み", "フリガナ", "カナ");
   const cNo = colOf("登録番号", "インボイス登録番号", "適格請求書発行事業者登録番号");
+  const cCorp = colOf("法人番号");
   const cNot = colOf("適格請求書発行事業者ではない");
   const cMemo = colOf("メモ", "備考");
   if (headerAt < 0) return { rows: [], skipped: 0, issues: [{ row: 1, message: "中身がありません" }] };
-  if (cName < 0) return { rows: [], skipped: 0, issues: [{ row: headerAt + 1, message: "見出しに「取引先」の列が要ります（よみ・登録番号・メモは任意）" }] };
+  if (cName < 0) return { rows: [], skipped: 0, issues: [{ row: headerAt + 1, message: "見出しに「取引先」の列が要ります（よみ・登録番号・法人番号・メモは任意）" }] };
   const rows: CounterpartyInput[] = [];
   let skipped = 0;
   const known = new Set(list.map((c) => normName(c.name)));
@@ -204,7 +205,9 @@ export const parseCounterpartyCsv = (text: string, list: Counterparty[]): { rows
     }
     known.add(normName(name));
     const not = cell(cells, cNot);
-    rows.push({ name, kana: cell(cells, cKana), invoice_no: cell(cells, cNo), not_registered: !!not && !/^(0|×|いいえ|false)$/i.test(not), memo: cell(cells, cMemo) });
+    rows.push({
+      name, kana: cell(cells, cKana), invoice_no: cell(cells, cNo), corporate_no: cell(cells, cCorp), not_registered: !!not && !/^(0|×|いいえ|false)$/i.test(not), memo: cell(cells, cMemo),
+    });
   }
   return { rows, skipped, issues: [] };
 };
