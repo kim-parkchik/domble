@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account, Counterparty, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
-import { buildTaxSummary, codeMismatch, includedTax, regimeIssues, taxChecks, taxKindOf } from "./taxSummary";
+import { buildTaxSummary, buildTaxTrend, codeMismatch, includedTax, regimeIssues, taxChecks, taxKindOf } from "./taxSummary";
 import { privateTaxSplit } from "./homeUse";
 import { taxLongLabel, taxShortLabel } from "./tax";
 import { interimPlan } from "./taxInterim";
@@ -389,5 +389,28 @@ describe("帳簿の記載事項（本則課税）", () => {
     expect(summary.rows[0]).toMatchObject({ invoice: "book_transport", transitional: null });
     expect(taxLongLabel("purchase10", "book_transport", "2026-05-03")).toBe("課税仕入 10%（帳簿のみ保存の特例（3万円未満の公共交通機関の運賃））");
     expect(taxShortLabel("purchase10", "book_transport", "2026-05-03")).toBe("課仕10% 帳簿のみ交通");
+  });
+});
+
+describe("月次推移（税区分 × 期間）", () => {
+  test("行は期間全体の集計表と同じ。月ごとの税込金額と消費税等、決算整理は 13。合計は集計表の行", () => {
+    const lines = [
+      line("2026-04-10", "credit", "売上高", 110000, "sales10"),
+      line("2026-05-15", "credit", "売上高", 55000, "sales10"),
+      line("2026-05-20", "debit", "消耗品費", 1100, "purchase10", "qualified"),
+      line("2026-12-31", "debit", "消耗品費", 2200, "purchase10", "qualified", { is_adjustment: 1 }),
+    ];
+    const t = buildTaxTrend(lines, accounts, twenty, 4, 13);
+    expect(t.periods).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    const sales = t.rows.find((r) => r.row.kind === "sales")!;
+    expect(sales.amounts.slice(0, 2)).toEqual([110000, 55000]);
+    expect(sales.taxes.slice(0, 2)).toEqual([10000, 5000]);
+    expect(sales.row.amount).toBe(165000);
+    const buy = t.rows.find((r) => r.row.kind === "purchase")!;
+    expect(buy.amounts).toEqual([0, 1100, 0, 0, 0, 0, 0, 0, 0, 2200]);
+    // 期間で絞ると、その期間の明細だけ（決算整理を除く 4〜12月）
+    expect(buildTaxTrend(lines, accounts, twenty, 4, 12).rows.find((r) => r.row.kind === "purchase")!.row.amount).toBe(1100);
+    // 集計表と同じ行
+    expect(t.rows.map((r) => r.row)).toEqual(buildTaxSummary(lines, accounts, twenty).rows);
   });
 });

@@ -1084,3 +1084,9 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .replace-grid { display: grid; grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr); gap: 6px 8px; align-items: center; }
 .replace-label { font-size: 12px; color: var(--muted); }
 .replace-fixed { font-size: 13px; }
+
+/* 消費税：集計表の出し方の切り替えと月次推移（税区分 × 月。列が多いので横に流れる） */
+.tax-mode-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.tax-trend-table { table-layout: auto; font-size: 12.5px; }
+.tax-trend-table th, .tax-trend-table td { white-space: nowrap; }
+.tax-trend-table td.trend-total { font-weight: 600; background: var(--accent-tint); }

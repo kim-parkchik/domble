@@ -7,9 +7,10 @@
  *      仕入の区分：借方 = 仕入、貸方 = 仕入の返還（家事按分の年末の振替もここ）
  *  - 対象外は、損益の科目のものだけ出す（現金・預金などの相手側まで並べると読めないため）
  *  - 消費税等の額は「参考」：税込の金額 × 税率 /（100 + 税率）の 1 円未満切り捨て。申告の計算（端数処理・国税と地方税の分け方）は別
+ *  - 期間（月）で絞った集計表と、月次推移（税区分 × 期間）も出す。確認の一覧は年で判定するものが多いので、年度全体のまま
  */
 import type { Account, Counterparty, InvoiceKind, PurchaseUse, TaxCode, TaxStatus, TaxYear } from "./types";
-import type { FlatLine } from "./accounting";
+import { periodOfLine, type FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
 import { deductionProblem, isImportCode, isPurchaseCode, isSalesCode, statusProblem, takesPurchaseUse, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
@@ -79,7 +80,8 @@ const invoiceOrder = (i: InvoiceKind | null) => (i ? INVOICE_KINDS.findIndex((k)
 /** 集計の対象：課税事業者の期間の、削除済みでない明細 */
 const inScope = (lines: FlatLine[], taxYears: TaxYear[]) => lines.filter((l) => !l.is_deleted && taxActiveOn(taxYears, l.date));
 
-export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears: TaxYear[]): TaxSummary => {
+/** 明細を税区分の行に集めて並べる（用途区分はまとめる前） */
+const collectRows = (lines: FlatLine[], accounts: Account[], taxYears: TaxYear[]): TaxSummaryRow[] => {
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
   const scoped = inScope(lines, taxYears);
   const rows = new Map<string, TaxSummaryRow>();
@@ -103,12 +105,17 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
     } else r.accounts.push({ account_id: l.account_id, amount: l.amount, lines: 1 });
     rows.set(key, r);
   }
-  let list = [...rows.values()];
-  list.sort((x, y) =>
+  return [...rows.values()].sort((x, y) =>
     KIND_ORDER.indexOf(x.kind) - KIND_ORDER.indexOf(y.kind) || codeOrder(x.code) - codeOrder(y.code)
     || invoiceOrder(x.invoice) - invoiceOrder(y.invoice) || (y.transitional ?? 0) - (x.transitional ?? 0) || (x.businessClass ?? 0) - (y.businessClass ?? 0)
     || useOrder(x.purchaseUse) - useOrder(y.purchaseUse));
+};
 
+/** 用途区分は個別対応方式でだけ使うので、課税売上割合が 95% 未満のときだけ分けて出す */
+const splitsUses = (ratio: number | null) => ratio !== null && ratio < 0.95;
+
+export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears: TaxYear[]): TaxSummary => {
+  let list = collectRows(lines, accounts, taxYears);
   // 課税売上割合（税抜。売上の返還を差し引く）
   const net = (code: TaxCode) =>
     list.filter((r) => r.code === code && (r.kind === "sales" || r.kind === "salesReturn"))
@@ -118,11 +125,38 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
   const nontax = net("sales_nontax");
   const denom = taxable + exportSales + nontax;
   const value = denom > 0 ? (taxable + exportSales) / denom : null;
-  // 用途区分は個別対応方式でだけ使うので、課税売上割合が 95% 未満のときだけ分けて出す
-  if (value === null || value >= 0.95) list = mergeUses(list);
+  if (!splitsUses(value)) list = mergeUses(list);
   return {
     rows: list.map((r) => ({ ...r, tax: rowTax(r.code, r.amount), accounts: r.accounts.sort((x, y) => y.amount - x.amount) })),
     ratio: { taxable, exportSales, nontax, value },
+  };
+};
+
+/** 月次推移の1行：集計表の行と、期間ごとの税込金額・消費税等（参考） */
+export interface TaxTrendRow {
+  row: TaxSummaryRow;
+  amounts: number[];
+  taxes: number[];
+}
+
+/**
+ * 月次推移（税区分 × 期間。from〜to、13 = 決算整理）。行は期間全体の集計表と同じ（用途区分を分けるかも期間全体の課税売上割合で決める）。
+ * 合計の列は行の amount・tax（集計表と同じ。消費税等は月ごとに切り捨てるので、月の和と1円ずれることがある）
+ */
+export const buildTaxTrend = (lines: FlatLine[], accounts: Account[], taxYears: TaxYear[], from: number, to: number): { periods: number[]; rows: TaxTrendRow[] } => {
+  const periods = Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  const total = buildTaxSummary(lines.filter((l) => periods.includes(periodOfLine(l))), accounts, taxYears);
+  const split = splitsUses(total.ratio.value);
+  const byPeriod = periods.map((p) => {
+    const list = collectRows(lines.filter((l) => periodOfLine(l) === p), accounts, taxYears);
+    return new Map((split ? list : mergeUses(list)).map((r) => [rowKeyOf(r), r.amount]));
+  });
+  return {
+    periods,
+    rows: total.rows.map((row) => {
+      const amounts = byPeriod.map((m) => m.get(rowKeyOf(row)) ?? 0);
+      return { row, amounts, taxes: amounts.map((a) => rowTax(row.code, a)) };
+    }),
   };
 };
 
