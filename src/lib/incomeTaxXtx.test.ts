@@ -36,7 +36,7 @@ const filer: EtaxFiler = {
 };
 
 const row = (label: string, amount: number, extra = false, opening = 0): StatementRow => ({ label, extra, opening, amount, accountIds: [] });
-const pay = (name: string, total: number, o: Partial<PayLine> = {}): PayLine => ({ name, relation: "", age: 30, months: 12, work: "", salary: total, bonus: 0, total, tax: 0, ...o });
+const pay = (name: string, total: number, o: Partial<PayLine> = {}): PayLine => ({ name, relation: "", age: 30, months: 12, available: null, work: "", salary: total, bonus: 0, total, tax: 0, ...o });
 const dep = (name: string, d: number): DepreciationLine => ({
   name, quantity: "1台", acquired: "2025-04", cost: d * 4, base: d * 4, method: "定額法", life: 4, rate: 0.25, months: 9, depreciation: d, businessRate: 100, business: d, closing: d * 3, memo: "",
 });
@@ -261,7 +261,7 @@ describe("白色申告（申告書＋収支内訳書）", () => {
   const white = buildWhiteStatement({
     year: 2025, accounts: seeds, opening: {}, lines, notes: { "sales:cp:2:address": "大阪府大阪市1-1" }, assets: [], homeUseRates: [], excludeEntryIds: [],
     payeeName: (r) => `取引先${r.counterpartyId}`, invoiceNoOf: (c) => (c === 1 ? "T1234567890123" : ""),
-    family: familyMembers({ spouse, dependents: [] }), periodMonths: 12,
+    family: familyMembers({ spouse, dependents: [] }),
   });
   const wbiz: BusinessFigures = { revenue: white.revenue.total, incomeBeforeBlue: white.income, filingType: "white", familySalary: white.familyDeduction };
   const src = source({ spouse }, { biz: wbiz, white, numbers: { self: "123456789018", family0: "123456789018" } });
@@ -418,7 +418,7 @@ describe("不動産所得（青色申告決算書・収支内訳書の不動産�
     const realEstate = buildRealEstateBook({ ...books, white, scale: "business", filingType: white ? "white" : "blue65" });
     const end = closingBalances(seeds, opening, lines);
     const figures = businessFigures(seeds, end, white ? "white" : "blue65", EMPTY_INCOME_TAX_INPUT, 2025, { scale: "business", landInterest: 0 }).biz;
-    const whiteSt = white ? buildWhiteStatement({ ...books, family: [], periodMonths: 12 }) : undefined;
+    const whiteSt = white ? buildWhiteStatement({ ...books, family: [] }) : undefined;
     const statement = buildBlueStatement({ ...books, deductionLimit: 650_000, realEstateIncome: figures.realEstate?.incomeBeforeBlue });
     return { ...source({}, { biz: figures, white: whiteSt, realEstate, statement }), result: computeIncomeTax({ ...EMPTY_INCOME_TAX_INPUT, birthday: "1985-06-01" }, figures, 2025) };
   };

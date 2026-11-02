@@ -21,7 +21,7 @@ import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings } from "../../lib/etax";
 import { inputTimeliness, isYearCompliant, timelinessCaution } from "../../lib/ebook";
 import { buildBlueStatement } from "../../lib/blueStatement";
-import { buildWhiteStatement, businessMonths, familyMembers, type FamilyLine } from "../../lib/whiteStatement";
+import { buildWhiteStatement, familyMembers, type FamilyLine } from "../../lib/whiteStatement";
 import { businessFigures } from "../../lib/incomeTaxBooks";
 import { buildRealEstateBook } from "../../lib/realEstateStatement";
 import { buildIncomeTaxXtx, incomeXtxNotices, incomeXtxProblems, myNumberPersons, type IncomeTaxXtxSource } from "../../lib/incomeTaxXtx";
@@ -166,7 +166,7 @@ export const IncomeTaxPage = () => {
       const statement = buildBlueStatement({ ...books, deductionLimit: BLUE_DEDUCTION_LIMIT[filingType], realEstateIncome: biz.realEstate?.incomeBeforeBlue });
       // 不動産所得用の決算書（不動産所得がある年）
       const realEstate = biz.realEstate ? buildRealEstateBook({ ...books, white, scale: reScale, filingType }) : undefined;
-      const whiteSt = white ? buildWhiteStatement({ ...books, family: familyMembers(x), periodMonths: businessMonths(x.businessTax, year) }) : undefined;
+      const whiteSt = white ? buildWhiteStatement({ ...books, family: familyMembers(x) }) : undefined;
       const bookKeeping = isYearCompliant(settings, year) && notes["ebook:filed"] ? 1 : 2;
       const timing = inputTimeliness(rawLines, inputPeriod, year, daysOff);
       setEbookNote(bookKeeping === 1 && timing.caution ? `第一表の事業の区分を「優良な電子帳簿」で書き出します。${timelinessCaution(timing, inputPeriod, year)}。` : "");
@@ -452,7 +452,7 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, whi
     {white && (
       <Section
         title="事業専従者（白色申告）"
-        note="配偶者・扶養親族で「専従者」に印を付けた人です。控除額は1人につき、86万円（配偶者以外は50万円）と、収支内訳書の専従者控除前の所得金額 ÷（事業専従者の数＋1）の少ない方です。12月31日に15歳以上で、その年に6か月を超えて（年の中途に開業・廃業したときは事業の期間の2分の1を超えて）事業に専ら従事した人が対象です。従事の程度・仕事の内容は第二表に書きます（例：毎日・経理）。"
+        note="配偶者・扶養親族で「専従者」に印を付けた人です。控除額は1人につき、86万円（配偶者以外は50万円）と、収支内訳書の専従者控除前の所得金額 ÷（事業専従者の数＋1）の少ない方です。12月31日に15歳以上で、その年に6か月を超えて事業に専ら従事した人が対象です（白色申告では、年の中途に開業・廃業した年や、婚姻などで従事できた期間が短い年も、6か月を超えることが要ります）。学生だった期間・ほかに仕事を持っていた期間・心身の障害などで従事する能力が著しく妨げられていた期間は、従事月数に入れません。従事の程度・仕事の内容は第二表に書きます（例：毎日・経理）。"
       >
         <FamilyEditor x={x} setX={setX} lines={familyLines} disabled={disabled} />
       </Section>

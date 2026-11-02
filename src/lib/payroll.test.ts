@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FlatLine } from "./accounting";
 import { toCsv } from "./csv";
-import { payLinesOf } from "./blueStatement";
+import { familyMonthsProblem, payLinesOf } from "./blueStatement";
 import {
   fiscalYearCode, parsePayrollCsv, parsePayrollSettings, PAYROLL_CSV_HEADER, payrollDuplicate, payrollEntryLines, payrollFigures, payrollSettingsProblem,
   withholdingPeriods, type PayrollSettings,
@@ -119,6 +119,31 @@ describe("決算書の内訳：書き込みが無ければ帳簿から", () => {
     expect(payLinesOf(rows, "salary", { "salary:cp:1:tax": "15,000", "salary:cp:1:months": "12", "salary:cp:1:bonus": " " }, () => "佐藤", figures)[0])
       .toMatchObject({ bonus: 200_000, tax: 15_000, months: 12 });
     expect(payLinesOf(rows, "salary", {}, () => "佐藤")[0]).toMatchObject({ bonus: 0, tax: 0, months: null });
+  });
+  test("専従者の従事できた期間は書き込み（1〜12。読めなければ null）", () => {
+    const rows = [{ key: "cp:1", counterpartyId: 1, subId: null, gross: 500_000, business: 500_000 }];
+    expect(payLinesOf(rows, "family", { "family:cp:1:available": "８か月" }, () => "山田")[0].available).toBe(8);
+    expect(payLinesOf(rows, "family", { "family:cp:1:available": "13" }, () => "山田")[0].available).toBeNull();
+    expect(payLinesOf(rows, "family", {}, () => "山田")[0].available).toBeNull();
+  });
+});
+
+describe("青色事業専従者の従事月数（所得税法施行令165条）", () => {
+  test("通年なら6か月を超えて従事していること", () => {
+    expect(familyMonthsProblem(7, 12)).toBe("");
+    expect(familyMonthsProblem(6, 12)).toContain("6か月以下");
+    expect(familyMonthsProblem(null, 12)).toContain("従事月数を入れて");
+  });
+  test("事業の期間や本人の事情で従事できた期間が短いときは、その2分の1を超えていればよい", () => {
+    // 7月に開業（事業の期間 6か月）：4か月なら足りる、3か月は 2分の1 以下
+    expect(familyMonthsProblem(4, 6)).toBe("");
+    expect(familyMonthsProblem(3, 6)).toContain("6か月）の2分の1以下");
+    // 9月に婚姻（従事できた期間 4か月）：3か月なら足りる
+    expect(familyMonthsProblem(3, 4)).toBe("");
+    expect(familyMonthsProblem(2, 4)).toContain("2分の1以下");
+  });
+  test("従事月数が従事できた期間より長いのは入れ違い", () => {
+    expect(familyMonthsProblem(8, 6)).toContain("より長く");
   });
 });
 

@@ -7,7 +7,7 @@ import type { Account } from "./types";
 import type { FlatLine } from "./accounting";
 import type { FixedAsset } from "./depreciation";
 import { emptyRelative, EMPTY_INCOME_TAX_INPUT } from "./incomeTax";
-import { buildWhiteStatement, businessMonths, familyDeductions, familyMembers, whiteSummary, type FamilyMember } from "./whiteStatement";
+import { buildWhiteStatement, familyDeductions, familyMembers, whiteSummary, type FamilyMember } from "./whiteStatement";
 
 const seeds: Account[] = ACCOUNT_SEEDS.map((s, i) => ({
   ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1, default_tax_code: null, default_business_class: null, default_purchase_use: null, statement_line: null,
@@ -62,13 +62,10 @@ describe("事業専従者控除", () => {
   test("1月1日生まれは前の年の12月31日に年齢が上がる（2010年1月1日生まれは 2025年に15歳）", () => {
     expect(familyDeductions(3_000_000, [member({ birthday: "2010-01-01", spouse: false })], 2025)[0].problem).toBe("");
   });
-  test("年の中途の開業：事業の期間の2分の1を超えて従事していればよい", () => {
-    const months = businessMonths({ otherPrefecture: false, change: "open", changeDate: "2025-07-10" }, 2025);
-    expect(months).toBe(6);
-    expect(familyDeductions(1_000_000, [member({ months: 4 })], 2025, months)[0].problem).toBe("");
-    expect(familyDeductions(1_000_000, [member({ months: 3 })], 2025, months)[0].problem).toContain("2分の1");
-    expect(businessMonths({ otherPrefecture: false, change: "close", changeDate: "2025-03-31" }, 2025)).toBe(3);
-    expect(businessMonths({ otherPrefecture: false, change: "open", changeDate: "2024-07-10" }, 2025)).toBe(12);
+  test("白色は年の中途に開業・廃業した年も6か月を超えて従事していることが要る（2分の1の緩和は青色だけ。所得税法施行令165条①ただし書）", () => {
+    expect(familyDeductions(1_000_000, [member({ months: 6 })], 2025)[0].problem).toContain("6か月以下");
+    expect(familyDeductions(1_000_000, [member({ months: 6 })], 2025)[0].problem).toContain("開業・廃業");
+    expect(familyDeductions(1_000_000, [member({ months: 7 })], 2025)[0].problem).toBe("");
   });
   test("所得税の入力のうち「専従者」に印のある人。配偶者の続柄が無ければ「配偶者」", () => {
     const x = {
@@ -101,7 +98,7 @@ describe("収支内訳書の1ページ", () => {
   const s = buildWhiteStatement({
     year: 2025, accounts: seeds, opening: {}, lines, notes: { "sales:cp:1:address": "東京都渋谷区" }, assets: [], homeUseRates: [], excludeEntryIds: [],
     payeeName: (r) => (r.counterpartyId ? `取引先${r.counterpartyId}` : `補助${r.subId}`), invoiceNoOf: (id) => (id === 1 ? "T1234567890123" : ""),
-    family: [member()], periodMonths: 12,
+    family: [member()],
   });
 
   test("収入金額は①売上・②家事消費・③その他の収入に分ける", () => {
@@ -139,7 +136,7 @@ describe("収支内訳書の1ページ", () => {
       business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
     };
     const at = (year: number) => buildWhiteStatement({
-      year, accounts: seeds, opening: {}, lines: [], notes: {}, assets: [shop], homeUseRates: [], excludeEntryIds: [], payeeName: () => "", family: [], periodMonths: 12,
+      year, accounts: seeds, opening: {}, lines: [], notes: {}, assets: [shop], homeUseRates: [], excludeEntryIds: [], payeeName: () => "", family: [],
     }).detail.depreciation[0];
     expect(at(2022)).toMatchObject({ method: "旧定額法", base: 9_000_000, rate: 0.046, depreciation: 414_000, memo: "" });
     expect(at(2025)).toMatchObject({ method: "旧定額法", base: 500_000, rate: 0.2, depreciation: 100_000, closing: 300_000, memo: "均等償却" });

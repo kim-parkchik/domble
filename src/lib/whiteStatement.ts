@@ -9,8 +9,10 @@
  * 代わりに事業専従者控除を差し引く。事業専従者は、所得税の入力の配偶者・親族のうち「専従者」に印を付けた人
  * 事業専従者控除（所得税法57条③、令和7年分 収支内訳書（一般用）の書き方）：事業専従者1人につき、次の少ない方
  *  ⑴ 86万円（配偶者以外の親族は 50万円） ⑵ ⑲ ÷（事業専従者の数＋1）
- * 事業専従者の要件：生計を一にする配偶者・親族で、その年12月31日に15歳以上、その年に6か月を超えて事業に専ら従事
- * （年の中途の開業・廃業で事業の期間が1年に満たないときは、その期間の2分の1を超えて。所得税法施行令165条①）
+ * 事業専従者の要件：生計を一にする配偶者・親族で、その年12月31日に15歳以上、その年に6か月を超えて事業に専ら従事（所得税法施行令165条①）
+ *  - 従事できた期間の2分の1を超えればよいとする緩和（年の中途の開業・廃業、婚姻・死亡など）は、同項ただし書で青色事業専従者（法57条①）だけ。
+ *    白色は年の中途に開業・廃業した年も 6か月を超えて従事していることが要る（青色の判定は lib/blueStatement.ts の familyMonthsProblem）
+ *  - 学生・ほかに職業を持つ・老衰や心身の障害で従事する能力が著しく妨げられている期間は、従事した期間に入れない（同条②。入力の注意だけ）
  */
 import { closingBalances, summarizeIncome, type IncomeSummary } from "./accounting";
 import { buildBlueStatement, partnerTable, type BlueStatement, type BlueStatementSource, type PartnerTable } from "./blueStatement";
@@ -57,18 +59,11 @@ export const familyMembers = (x: Pick<IncomeTaxInput, "spouse" | "dependents">):
 ];
 const pick = (r: NonNullable<IncomeTaxInput["spouse"]>) => ({ name: r.name, relation: r.relation, birthday: r.birthday, months: r.months, work: r.work });
 
-/** 事業の期間の月数（その年の中途に開業・廃業したときは、その月を含めた月数） */
-export const businessMonths = (b: IncomeTaxInput["businessTax"], year: number) => {
-  if (!b.change || !/^\d{4}-\d{2}-\d{2}$/.test(b.changeDate) || Number(b.changeDate.slice(0, 4)) !== year) return 12;
-  const m = Number(b.changeDate.slice(5, 7));
-  return b.change === "open" ? 13 - m : m;
-};
-
 /**
- * 事業専従者ごとの控除額。beforeDeduction = ⑲専従者控除前の所得金額、periodMonths = 事業の期間の月数
+ * 事業専従者ごとの控除額。beforeDeduction = ⑲専従者控除前の所得金額
  * 要件を満たさない人は数に入れず、理由を返す（⑵の「事業専従者の数」も、対象になる人だけで数える）
  */
-export const familyDeductions = (beforeDeduction: number, members: FamilyMember[], year: number, periodMonths = 12): FamilyLine[] => {
+export const familyDeductions = (beforeDeduction: number, members: FamilyMember[], year: number): FamilyLine[] => {
   const lines = members.map((m): FamilyLine => {
     const age = ageAt(m.birthday, year);
     const limit = m.spouse ? FAMILY_DEDUCTION_LIMIT.spouse : FAMILY_DEDUCTION_LIMIT.other;
@@ -77,7 +72,7 @@ export const familyDeductions = (beforeDeduction: number, members: FamilyMember[
       : age === null ? "生年月日を入れてください（12月31日に15歳以上か確かめます）"
       : age < 15 ? `12月31日に15歳未満（${age}歳）のため、事業専従者になりません`
       : m.months === null ? "従事月数を入れてください"
-      : m.months * 2 <= periodMonths ? `従事月数が${periodMonths === 12 ? "6か月" : `事業の期間（${periodMonths}か月）の2分の1`}以下のため、事業専従者になりません`
+      : m.months <= 6 ? "従事月数が6か月以下のため、事業専従者になりません（白色申告では、年の中途に開業・廃業した年も、6か月を超えて従事していることが要ります）"
       : "";
     return { ...m, age, limit, deduction: 0, problem };
   });
@@ -190,8 +185,6 @@ export const whiteSummary = (allAccounts: Account[], amount: (a: Account) => num
 export interface WhiteStatementSource extends Omit<BlueStatementSource, "deductionLimit"> {
   /** 事業専従者（familyMembers） */
   family: FamilyMember[];
-  /** 事業の期間の月数（businessMonths） */
-  periodMonths: number;
 }
 
 export interface WhiteStatement extends WhiteSummary {
@@ -214,7 +207,7 @@ export const buildWhiteStatement = (s: WhiteStatementSource): WhiteStatement => 
   const amount = (a: Account) => end.get(a.id) ?? 0;
   const sum = whiteSummary(s.accounts, amount);
   const blue = buildBlueStatement({ ...s, deductionLimit: 0 });
-  const family = familyDeductions(sum.beforeDeduction, s.family, s.year, s.periodMonths);
+  const family = familyDeductions(sum.beforeDeduction, s.family, s.year);
   const familyDeduction = family.reduce((t, l) => t + l.deduction, 0);
   return {
     ...sum,

@@ -15,7 +15,7 @@ import { BLUE_DEDUCTION_LIMIT } from "../../lib/incomeTax";
 import { statementLayout, type StatementLayout } from "../../lib/statementLines";
 import { incomeStatementForm, manufacturingForm, type FormRow } from "../../lib/statementForm";
 import { monthlySales } from "../../lib/statements";
-import { businessPeriod } from "../../lib/incomeTax";
+import { businessMonths, businessPeriod } from "../../lib/incomeTax";
 import { BalanceSheetView, BusinessHead, StatementPage2, StatementPage3 } from "./StatementPages";
 import { WhiteStatements } from "./WhiteStatementPages";
 import { RealEstateStatements } from "./RealEstateStatementPages";
@@ -59,8 +59,12 @@ const BlueStatements = () => {
   const [tab, setTab] = useState<Tab>("pl");
   // 事業期間（年の中途の開業・廃業。所得税の入力の「事業税に関する事項」から）
   const [period, setPeriod] = useState<{ from: string; to: string }>({ from: "1月1日", to: "12月31日" });
+  const [periodMonths, setPeriodMonths] = useState(12);
   useEffect(() => {
-    repo.getIncomeTaxInput(db, year).then((x) => setPeriod(businessPeriod(x.businessTax, year))).catch(console.error);
+    repo.getIncomeTaxInput(db, year).then((x) => {
+      setPeriod(businessPeriod(x.businessTax, year));
+      setPeriodMonths(businessMonths(x.businessTax, year));
+    }).catch(console.error);
   }, [db, year]);
 
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
@@ -145,7 +149,7 @@ const BlueStatements = () => {
               </p>
             </>
           ) : t === "p2" ? (
-            <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} realEstateIncome={realEstateIncome} end={end} opening={opening} />
+            <StatementPage2 lines={lines} income={pl.income} deductionLimit={limit} realEstateIncome={realEstateIncome} end={end} opening={opening} periodMonths={periodMonths} />
           ) : t === "p3" ? (
             <StatementPage3 lines={lines} salesTotal={pl.revenue} purchaseTotal={monthlyPurchases} />
           ) : (

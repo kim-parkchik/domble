@@ -12,7 +12,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { closingBalances } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import { EMPTY_INCOME_TAX_INPUT, type IncomeTaxInput } from "../../lib/incomeTax";
-import { businessMonths, familyDeductions, familyMembers, whiteSummary } from "../../lib/whiteStatement";
+import { familyDeductions, familyMembers, whiteSummary } from "../../lib/whiteStatement";
 import { isYearCompliant } from "../../lib/ebook";
 import * as repo from "../../db/repo";
 import {
@@ -57,8 +57,7 @@ export const WhiteStatements = () => {
 
   const end = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
   const w = useMemo(() => whiteSummary(accounts, (a) => end.get(a.id) ?? 0), [accounts, end]);
-  const periodMonths = businessMonths(input.businessTax, year);
-  const family = familyDeductions(w.beforeDeduction, familyMembers(input), year, periodMonths);
+  const family = familyDeductions(w.beforeDeduction, familyMembers(input), year);
   const familyDeduction = family.reduce((s, l) => s + l.deduction, 0);
 
   const change = input.businessTax;
@@ -170,7 +169,7 @@ export const WhiteStatements = () => {
                 <p className="field-note screen-only">
                   事業専従者は、所得税の画面の配偶者・扶養親族で「専従者」に印を付けた人です（生年月日・従事月数・仕事の内容もそこで入れます）。
                   控除額は1人につき、86万円（配偶者以外は50万円）と ⑲÷（事業専従者の数＋1）の少ない方です。
-                  12月31日に15歳以上で、その年に6か月を超えて（年の中途に開業・廃業したときは事業の期間の2分の1を超えて）事業に専ら従事した人が対象です。
+                  12月31日に15歳以上で、その年に6か月を超えて事業に専ら従事した人が対象です（白色申告では、年の中途に開業・廃業した年も同じです）。
                   事業専従者は、配偶者控除・扶養控除の対象になりません。
                 </p>
               </section>

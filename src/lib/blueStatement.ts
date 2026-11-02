@@ -53,6 +53,8 @@ export interface PayLine {
   /** 年齢・従事月数（書き込みが読めなければ null） */
   age: number | null;
   months: number | null;
+  /** 専従者：従事できた期間の月数（書き込み。無ければ null ＝ 事業の期間。familyMonthsProblem） */
+  available: number | null;
   /** 従事の程度・仕事の内容（専従者） */
   work: string;
   salary: number;
@@ -194,9 +196,24 @@ export const payLinesOf = (rows: PayeeRow[], prefix: string, notes: Record<strin
     return {
       name: payeeName(r), relation: k("relation") ?? "", work: k("work") ?? "",
       age: int(k("age"), 1, 999), months: written(k("months")) ? int(k("months"), 1, 12) : f?.months ? Math.min(12, f.months) : null,
+      available: int(k("available"), 1, 12),
       salary: r.gross - bonus, bonus, total: r.gross, tax: written(k("tax")) ? num(k("tax")) : f?.tax ?? 0,
     };
   });
+
+/**
+ * 青色事業専従者の従事月数の判定（所得税法施行令165条）。満たさなければ理由（満たせば空）
+ *  - その年に6か月を超えて専ら従事していること。事業が年の中途の開業・廃業・休業などで通年でなかったときや、
+ *    本人の死亡・長期の病気・婚姻などで通年で従事できなかったときは、従事できた期間の2分の1を超えていればよい（①ただし書。青色だけ）
+ *  - possible = 従事できた期間の月数（書き込みが無ければ事業の期間。businessMonths）
+ *  - 学生・ほかに職業を持つ・心身の障害などの期間を従事月数に入れないこと（②）は、画面の注意だけ
+ */
+export const familyMonthsProblem = (months: number | null, possible: number): string =>
+  months === null ? "従事月数を入れてください（6か月を超えて従事したかを確かめます）"
+  : months > possible ? `従事月数が、従事できた期間（${possible}か月）より長くなっています`
+  : months * 2 > possible ? ""
+  : possible === 12 ? "従事月数が6か月以下です。青色事業専従者にならず、専従者給与は必要経費になりません（従事できた期間が1年より短いときは、その月数を入れてください）"
+  : `従事月数が、従事できた期間（${possible}か月）の2分の1以下です。青色事業専従者にならず、専従者給与は必要経費になりません`;
 
 /** 給料賃金・専従者給与の科目の、人ごとの賞与・源泉徴収税額・給与を払った月の数（帳簿から。給与の設定が無ければ undefined） */
 export const payFiguresOf = (s: Pick<BlueStatementSource, "lines" | "payroll" | "excludeEntryIds">, accountId: number) =>

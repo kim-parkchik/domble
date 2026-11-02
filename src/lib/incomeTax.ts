@@ -221,6 +221,13 @@ export const businessPeriod = (b: IncomeTaxInput["businessTax"], year: number) =
   return { from: inYear && b.change === "open" ? md(b.changeDate) : "1月1日", to: inYear && b.change === "close" ? md(b.changeDate) : "12月31日" };
 };
 
+/** 事業の期間の月数（その年の中途に開業・廃業したときは、その月を含めた月数。青色事業専従者の従事月数の判定に使う） */
+export const businessMonths = (b: IncomeTaxInput["businessTax"], year: number) => {
+  if (!b.change || !isIsoDate(b.changeDate) || Number(b.changeDate.slice(0, 4)) !== year) return 12;
+  const m = Number(b.changeDate.slice(5, 7));
+  return b.change === "open" ? 13 - m : m;
+};
+
 /** 保存する前に形を整え、おかしければ理由を返す（文字列の前後の空白は落とす。金額は 0 以上の整数） */
 export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string => {
   const x = (raw ?? {}) as Partial<IncomeTaxInput>;

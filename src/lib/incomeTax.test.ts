@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import {
   ageAt, basicDeduction, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, fieldNo, incomeTaxOn, lifeInsuranceDeduction,
   medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, rulesFor, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
-  type PastIncomeTax, businessPeriod, incomeAdjustment } from "./incomeTax";
+  type PastIncomeTax, businessMonths, businessPeriod, incomeAdjustment } from "./incomeTax";
 
 const cell = (r: IncomeTaxResult, no: string) => r.rows.find((x) => x.no === no)!.value;
 
@@ -405,6 +405,13 @@ describe("決算書の事業期間", () => {
     expect(businessPeriod(b("open", "2026-04-15"), 2026)).toEqual({ from: "4月15日", to: "12月31日" });
     expect(businessPeriod(b("close", "2026-09-30"), 2026)).toEqual({ from: "1月1日", to: "9月30日" });
     expect(businessPeriod(b("open", "2025-04-15"), 2026)).toEqual({ from: "1月1日", to: "12月31日" });
+  });
+  test("事業の期間の月数は、開業・廃業の月を含めて数える。ほかの年の日付は 12", () => {
+    const b = (change: "" | "open" | "close", changeDate: string) => ({ otherPrefecture: false, change, changeDate });
+    expect(businessMonths(b("open", "2025-07-10"), 2025)).toBe(6);
+    expect(businessMonths(b("close", "2025-03-31"), 2025)).toBe(3);
+    expect(businessMonths(b("open", "2024-07-10"), 2025)).toBe(12);
+    expect(businessMonths(b("", ""), 2025)).toBe(12);
   });
 });
 

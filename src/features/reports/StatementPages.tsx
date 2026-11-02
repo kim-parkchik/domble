@@ -13,7 +13,7 @@ import { useToast } from "../../components/Toast";
 import { yen } from "../../lib/format";
 import { CODE } from "../../constants/accounts";
 import { monthlySales, payeeBreakdown, type PayeeRow } from "../../lib/statements";
-import { partnerLines, partnerTable, payFiguresOf, type PartnerTable } from "../../lib/blueStatement";
+import { familyMonthsProblem, partnerLines, partnerTable, payFiguresOf, payLinesOf, type PartnerTable } from "../../lib/blueStatement";
 import type { AccountRef, PayFigure } from "../../lib/payroll";
 import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
 import { summarizeBalanceSheet, type FlatLine } from "../../lib/accounting";
@@ -215,11 +215,56 @@ export const PayTable = ({ rows, prefix, withRelation, notes, onSaved, figures }
   );
 };
 
+/**
+ * 専従者給与の内訳の下に出す、青色事業専従者の従事月数の確かめ（画面だけ。判定は lib/blueStatement.ts の familyMonthsProblem）
+ * 従事できた期間（書き込み prefix:key:available）は、空欄なら periodMonths（一般用は所得税の入力の開業・廃業からの事業の期間）
+ */
+export const FamilyMonthsCheck = ({ rows, prefix, notes, onSaved, figures, periodMonths, periodNote }: NoteProps & {
+  rows: PayeeRow[]; prefix: string; figures?: Map<string, PayFigure>; periodMonths: number; periodNote: string;
+}) => {
+  const payeeName = usePayeeName();
+  if (rows.length === 0) return null;
+  const lines = payLinesOf(rows, prefix, notes, payeeName, figures);
+  return (
+    <div className="screen-only family-check">
+      <h4 className="family-check-h">従事月数の確かめ（青色事業専従者）</h4>
+      <table className="ledger st-detail">
+        <thead><tr><th>氏名</th><th className="num" style={{ width: 80 }}>従事月数</th><th className="num" style={{ width: 160 }}>従事できた期間（月数）</th><th>確かめ</th></tr></thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const l = lines[i];
+            const possible = l.available ?? periodMonths;
+            const problem = familyMonthsProblem(l.months, possible);
+            return (
+              <tr key={r.key}>
+                <td>{l.name}</td>
+                <td className="num">{l.months === null ? "—" : `${l.months}か月`}</td>
+                <td><Note k={`${prefix}:${r.key}:available`} notes={notes} onSaved={onSaved} placeholder={String(periodMonths)} label="従事できた期間（月数）" align="right" short /></td>
+                <td>
+                  {problem ? <span className="balance-ng">{problem}</span>
+                    : <span className="muted">{possible === 12 ? "6か月を超えて従事しています" : `従事できた期間（${possible}か月）の2分の1を超えて従事しています`}</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="field-note">
+        青色事業専従者は、その年に6か月を超えて専ら事業に従事した人です。年の中途の開業・廃業・休業などで事業の期間が短いときや、本人の婚姻・死亡・長期の病気などで従事できた期間が短いときは、
+        その期間の2分の1を超えていれば構いません（所得税法施行令165条）。当てはまらない人の専従者給与は必要経費になりません。
+        従事できた期間は月数で入れます（その月を含めて数える。{periodNote}）。学生だった期間・ほかに仕事を持っていた期間・心身の障害などで従事する能力が著しく妨げられていた期間は、従事月数に入れません。
+      </p>
+    </div>
+  );
+};
+
 // ────────────────────────────────────────────
 // 2ページ
 // ────────────────────────────────────────────
-export const StatementPage2 = ({ lines, income, deductionLimit, realEstateIncome, end, opening }: {
+export const StatementPage2 = ({ lines, income, deductionLimit, realEstateIncome, end, opening, periodMonths }: {
   lines: FlatLine[]; income: number; deductionLimit: number; realEstateIncome: number; end: Map<number, number>; opening: OpeningBalances;
+  /** 事業の期間の月数（年の中途の開業・廃業。青色事業専従者の従事月数の確かめ） */
+  periodMonths: number;
 }) => {
   const { accounts } = useAppContext();
   const { notes, set } = useNotes();
@@ -254,6 +299,10 @@ export const StatementPage2 = ({ lines, income, deductionLimit, realEstateIncome
         <PayTable rows={salaries} prefix="salary" withRelation={false} notes={notes} onSaved={set} figures={payFigures(CODE.SALARIES)} />
         <h3 className="st-h">専従者給与の内訳</h3>
         <PayTable rows={family} prefix="family" withRelation notes={notes} onSaved={set} figures={payFigures(CODE.FAMILY_SALARY)} />
+        <FamilyMonthsCheck
+          rows={family} prefix="family" notes={notes} onSaved={set} figures={payFigures(CODE.FAMILY_SALARY)} periodMonths={periodMonths}
+          periodNote={periodMonths === 12 ? "空欄なら1年（12か月）" : `空欄なら事業の期間の${periodMonths}か月。所得税の入力の「事業税：開業・廃業」から`}
+        />
         <p className="field-note screen-only">
           氏名は、仕訳の取引先か補助科目から出します（人ごとに補助科目を作っておくと分かれます）。賞与を入れると、合計のうち残りを給料にします。
           従事月数・賞与・源泉徴収税額は、空欄なら帳簿から出します（欄に薄く出ている値。従事月数は給与を払った月の数、源泉徴収税額は給与の設定の源泉所得税の科目、賞与は給与の CSV で賞与として取り込んだ分。入れればそちらを使います）。

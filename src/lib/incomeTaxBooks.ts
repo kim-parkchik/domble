@@ -8,7 +8,7 @@
 import { summarizeIncome } from "./accounting";
 import { accountsOfKind, hasRealEstate } from "./incomeKind";
 import { realEstateStatement } from "./realEstateStatement";
-import { businessMonths, familyDeductions, familyMembers, whiteSummary, type FamilyLine } from "./whiteStatement";
+import { familyDeductions, familyMembers, whiteSummary, type FamilyLine } from "./whiteStatement";
 import type { BusinessFigures, IncomeTaxInput, RealEstateFigures } from "./incomeTax";
 import type { Account, FilingType, RealEstateScale } from "./types";
 import { CODE } from "../constants/accounts";
@@ -34,7 +34,7 @@ export const businessFigures = (
   const realEstate = re ? realEstateFigures(accounts, end, filingType, re) : undefined;
   if (filingType === "white") {
     const w = whiteSummary(accounts, (a) => end.get(a.id) ?? 0);
-    const familyLines = familyDeductions(w.beforeDeduction, familyMembers(input), year, businessMonths(input.businessTax, year));
+    const familyLines = familyDeductions(w.beforeDeduction, familyMembers(input), year);
     const deduction = familyLines.reduce((t, l) => t + l.deduction, 0);
     return { biz: { revenue: w.revenue.total, incomeBeforeBlue: w.beforeDeduction - deduction, filingType, familySalary: deduction, realEstate }, familyLines };
   }
