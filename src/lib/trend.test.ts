@@ -6,7 +6,7 @@ import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { FlatLine } from "./accounting";
 import type { Account, SubAccount } from "./types";
 import { subKey } from "./types";
-import { changeRate, compareLines, trendHeads, trendLines, type BookData, type MultiLine } from "./trend";
+import { changeRate, compareLines, counterpartyHeads, counterpartyLines, trendHeads, trendLines, type BookData, type MultiLine } from "./trend";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({
   ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1, income_kind: s.income_kind ?? "business", default_tax_code: null, default_business_class: null,
@@ -87,5 +87,39 @@ describe("前年比較", () => {
     expect(changeRate(-50, -100)).toBe("50.0%");
     expect(changeRate(0, 3_500)).toBe("▲100.0%");
     expect(changeRate(1, 0)).toBe("");
+  });
+});
+
+describe("取引先別", () => {
+  let n = 1000;
+  const cpLine = (date: string, dr: string, cr: string, amount: number, cp: number | null, adj = false): FlatLine[] => {
+    n++;
+    const base = { entry_id: n, date, description: "", memo: "", row_no: 1, amount, counterparty_id: cp, is_adjustment: adj ? 1 : 0 };
+    return [{ ...base, side: "debit", account_id: id(dr), sub_account_id: null }, { ...base, side: "credit", account_id: id(cr), sub_account_id: null }];
+  };
+  const cps = [{ id: 1, name: "A社" }, { id: 2, name: "B社" }];
+  const lines = [
+    ...cpLine("2026-01-10", "売掛金", "売上高", 300_000, 1),
+    ...cpLine("2026-02-10", "売掛金", "売上高", 500_000, 2),
+    ...cpLine("2026-02-20", "現金", "売上高", 20_000, null),
+    ...cpLine("2026-02-28", "普通預金", "売掛金", 300_000, 1),
+    ...cpLine("2026-03-10", "売上高", "売掛金", 10_000, 2), // 値引き
+  ];
+  const acc = (name: string) => accounts.find((a) => a.name === name)!;
+  test("損益の科目：取引先ごとの期間の発生額（大きい順、取引先なしは最後）と合計", () => {
+    const out = counterpartyLines(acc("売上高"), lines, 1, 13, cps, false);
+    expect(counterpartyHeads(acc("売上高"), false, 1, 13)).toEqual(["金額"]);
+    expect(out.map((l) => [l.label, l.values])).toEqual([["B社", [490_000]], ["A社", [300_000]], ["取引先なし", [20_000]], ["合計", [810_000]]]);
+  });
+  test("貸借の科目：増えた額・減った額・差引（期首残高は取引先ごとに持たない）", () => {
+    const out = counterpartyLines(acc("売掛金"), lines, 1, 13, cps, false);
+    expect(counterpartyHeads(acc("売掛金"), false, 1, 13)).toEqual(["増えた額", "減った額", "差引"]);
+    expect(out.map((l) => [l.label, l.values])).toEqual([["B社", [500_000, 10_000, 490_000]], ["A社", [300_000, 300_000, 0]], ["合計", [800_000, 310_000, 490_000]]]);
+  });
+  test("月ごと：期間ごとの発生額と合計", () => {
+    const out = counterpartyLines(acc("売上高"), lines, 1, 3, cps, true);
+    expect(counterpartyHeads(acc("売上高"), true, 1, 3)).toEqual(["1月", "2月", "3月", "合計"]);
+    expect(out.find((l) => l.label === "B社")!.values).toEqual([0, 500_000, -10_000, 490_000]);
+    expect(out[out.length - 1].values).toEqual([300_000, 520_000, -10_000, 810_000]);
   });
 });

@@ -21,16 +21,17 @@ import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
 import { ownerText, periodsText, type PrintDoc } from "../../lib/printLayout";
 import { fileLabel } from "../../lib/business";
 import { trialCsvRows, trialLines, VIEW_LABEL, type StatementView } from "../../lib/bookExport";
-import { departmentHeads, departmentLines } from "../../lib/trend";
+import { counterpartyHeads, counterpartyLines, departmentHeads, departmentLines } from "../../lib/trend";
 import { COMMON_LABEL, departmentName, matchesDepartment, type DepartmentFilter } from "../../lib/departments";
+import { isBalanceSheet } from "../../constants/accounts";
 
 type View = StatementView;
-/** 表の種類：残高試算表・月次推移表・前年比較・部門別（部門ごとの損益。部門を作ってあるときだけ） */
-type Mode = "tb" | "trend" | "compare" | "dept";
-const MODE_LABEL: Record<Mode, string> = { tb: "残高試算表", trend: "月次推移表", compare: "前年比較", dept: "部門別" };
+/** 表の種類：残高試算表・月次推移表・前年比較・部門別（部門ごとの損益。部門を作ってあるときだけ）・取引先別（科目を選んで取引先ごと。取引先があるときだけ） */
+type Mode = "tb" | "trend" | "compare" | "dept" | "cp";
+const MODE_LABEL: Record<Mode, string> = { tb: "残高試算表", trend: "月次推移表", compare: "前年比較", dept: "部門別", cp: "取引先別" };
 
 export const TrialBalancePage = () => {
-  const { db, year, accounts, subAccounts, settings, dataVersion, taxYears, departments } = useAppContext();
+  const { db, year, accounts, subAccounts, settings, dataVersion, taxYears, departments, counterparties, accountMap } = useAppContext();
   const { lines: allLines, opening: allOpening, subOpening: allSubOpening } = useYearData();
   // 部門で絞り込むときは、その部門の明細だけ。期首残高は部門ごとに持たないので 0、損益計算書だけを出す
   const [deptFilter, setDeptFilter] = useState<DepartmentFilter>("all");
@@ -48,8 +49,13 @@ export const TrialBalancePage = () => {
   const [from, setFrom] = useState(1);
   const [to, setTo] = useState(ADJUSTMENT_PERIOD);
   const [hideZero, setHideZero] = useState(true);
-  /** 損益計算書だけ（部門で絞り込んでいる・部門別） */
-  const plOnly = filtered || mode === "dept";
+  // 取引先別：選んだ科目（初めは売上高。その年に使っている科目から選ぶ）と、期間の合計か月ごとか
+  const usedAccounts = useMemo(() => accounts.filter((a) => allLines.some((l) => l.account_id === a.id)), [accounts, allLines]);
+  const [cpAccountId, setCpAccountId] = useState<number | null>(null);
+  const cpAccount = accountMap.get(cpAccountId ?? 0) ?? accounts.find((a) => a.name === "売上高") ?? usedAccounts[0] ?? accounts[0];
+  const [cpMonthly, setCpMonthly] = useState(false);
+  /** 損益計算書だけ（部門で絞り込んでいる・部門別・取引先別） */
+  const plOnly = filtered || mode === "dept" || mode === "cp";
   const shownView: View = plOnly ? "pl" : view;
   const views: View[] = plOnly ? ["pl"] : ["bs", "pl"];
 
@@ -78,9 +84,14 @@ export const TrialBalancePage = () => {
   const multiOf = (v: View): MultiLine[] =>
     mode === "trend" ? trendLines(v, accounts, subAccounts, book, from, to, opts)
       : mode === "compare" && prev ? compareLines(v, accounts, subAccounts, book, prev, from, to, opts)
-        : mode === "dept" ? departmentLines(accounts, subAccounts, allLines, from, to, deptCols, opts) : [];
-  const headsOf = (v: View) => (mode === "trend" ? trendHeads(v, from, to) : mode === "dept" ? departmentHeads(deptCols) : [`${year}年`, `${year - 1}年`, "差額"]);
-  const multi = useMemo(() => (mode === "tb" ? [] : multiOf(shownView)), [mode, shownView, accounts, subAccounts, book, prev, from, to, showSubs, hideZero, deptCols, allLines]); // eslint-disable-line react-hooks/exhaustive-deps
+        : mode === "dept" ? departmentLines(accounts, subAccounts, allLines, from, to, deptCols, opts)
+          : mode === "cp" ? counterpartyLines(cpAccount, lines, from, to, counterparties, cpMonthly) : [];
+  const headsOf = (v: View) => (mode === "trend" ? trendHeads(v, from, to) : mode === "dept" ? departmentHeads(deptCols)
+    : mode === "cp" ? counterpartyHeads(cpAccount, cpMonthly, from, to) : [`${year}年`, `${year - 1}年`, "差額"]);
+  const multi = useMemo(
+    () => (mode === "tb" ? [] : multiOf(shownView)),
+    [mode, shownView, accounts, subAccounts, book, prev, from, to, showSubs, hideZero, deptCols, allLines, lines, cpAccount, cpMonthly, counterparties], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   /** 画面と印刷の行（区分の見出し・科目・補助科目・小計、最後に所得金額。lib/bookExport.ts） */
   const linesOf = (v: View): TrialPrintLine[] => trialLines(v, { accounts, subs: subAccounts, opening, subOpening, lines }, from, to, { showSubs, hideZero });
@@ -101,6 +112,12 @@ export const TrialBalancePage = () => {
         sections: [multiSection(VIEW_LABEL.pl, multiOf("pl"), headsOf("pl"))],
       };
     }
+    if (mode === "cp") {
+      return {
+        ...head, title: "取引先別集計表", period: periodsText(year, from, to), landscape: cpMonthly, conditions: [`科目：${cpAccount.name}`, deptText].filter(Boolean).join("・"),
+        sections: [multiSection(cpAccount.name, multiOf("pl"), headsOf("pl"), false, "取引先")],
+      };
+    }
     if (mode === "trend") {
       return {
         ...head, title: "月次推移表", period: periodsText(year, from, to), landscape: true,
@@ -118,12 +135,16 @@ export const TrialBalancePage = () => {
       ...head, title: "残高試算表", period: periodsText(year, from, to),
       sections: views.map((v) => trialSection(VIEW_LABEL[v], linesOf(v), carriedHead, balanceHead)),
     };
-  }, [printing, mode, rows, prev, hideZero, showSubs, settings, deptFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [printing, mode, rows, prev, hideZero, showSubs, settings, deptFilter, cpAccount, cpMonthly]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const exportCsv = () => {
     const name = `${fileLabel(settings)}_${year}_${periodLabel(from)}-${periodLabel(to)}${filtered ? `_${departmentName(departments, deptFilter || null)}` : ""}`;
     if (mode === "dept") {
       exportCsvFile(`部門別損益_${name}.csv`, ["区分", "勘定科目", "補助科目", ...headsOf("pl")], multiCsvRows(VIEW_LABEL.pl, multi), toast);
+      return;
+    }
+    if (mode === "cp") {
+      exportCsvFile(`取引先別_${cpAccount.name}_${name}.csv`, ["科目", "取引先", ...headsOf("pl")], multi.map((l) => [cpAccount.name, l.label, ...l.values]), toast);
       return;
     }
     if (mode === "trend") {
@@ -156,7 +177,7 @@ export const TrialBalancePage = () => {
 
       <div className="filters">
         <div className="seg" role="tablist" aria-label="表の種類">
-          {(["tb", "trend", "compare", ...(departments.length ? ["dept"] : [])] as Mode[]).map((m) => (
+          {(["tb", "trend", "compare", ...(departments.length ? ["dept"] : []), ...(counterparties.length ? ["cp"] : [])] as Mode[]).map((m) => (
             <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? "on" : ""} onClick={() => setMode(m)}>{MODE_LABEL[m]}</button>
           ))}
         </div>
@@ -173,20 +194,38 @@ export const TrialBalancePage = () => {
             {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         )}
-        <label className="check">
-          <input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> 金額のない科目を隠す
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={showSubs} onChange={(e) => setShowSubs(e.target.checked)} /> 補助科目の内訳も表示
-        </label>
+        {mode === "cp" ? (
+          <>
+            <select value={cpAccount.id} onChange={(e) => setCpAccountId(Number(e.target.value))} aria-label="取引先別に見る科目">
+              {(usedAccounts.length ? usedAccounts : accounts).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <div className="seg" role="tablist" aria-label="期間の合計・月ごと">
+              <button role="tab" aria-selected={!cpMonthly} className={cpMonthly ? "" : "on"} onClick={() => setCpMonthly(false)}>期間の合計</button>
+              <button role="tab" aria-selected={cpMonthly} className={cpMonthly ? "on" : ""} onClick={() => setCpMonthly(true)}>月ごと</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="check">
+              <input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> 金額のない科目を隠す
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={showSubs} onChange={(e) => setShowSubs(e.target.checked)} /> 補助科目の内訳も表示
+            </label>
+          </>
+        )}
       </div>
 
-      {filtered && mode !== "dept" && (
+      {filtered && mode !== "dept" && mode !== "cp" && (
         <p className="field-note">「{departmentName(departments, deptFilter || null)}」の明細だけの損益です。期首残高は部門ごとに持たないので、貸借対照表は出しません。</p>
       )}
       {mode !== "tb" && (
         <p className="field-note">
-          {mode === "dept"
+          {mode === "cp"
+            ? isBalanceSheet(cpAccount.category)
+              ? `${cpAccount.name}の取引先ごとの${cpMonthly ? "月ごとの増減（増えた額 − 減った額）" : "増えた額・減った額"}です。期首残高は取引先ごとに持たないので、期間の動きだけです（取引先ごとの残高は、補助科目を取引先ごとに作ると見られます）。取引先は仕訳1件に1つです。${filtered ? `部門「${departmentName(departments, deptFilter || null)}」の明細だけです。` : ""}`
+              : `${cpAccount.name}の取引先ごとの${cpMonthly ? "月ごとの" : "期間の"}発生額です（科目の残高の側を＋）。取引先の無い仕訳は「取引先なし」にまとめます。${filtered ? `部門「${departmentName(departments, deptFilter || null)}」の明細だけです。` : ""}`
+            : mode === "dept"
             ? "部門ごとの損益（期間の発生額）です。部門の無い明細（家賃など共通の経費）は「共通」の列に出し、部門に割り振りはしません。"
             : mode === "trend"
               ? shownView === "pl" ? "損益の科目は、期間ごとの発生額（科目の残高の側を＋）と合計です。" : "貸借の科目は、期首（前月末）と期間ごとの末の残高です。"
@@ -196,7 +235,10 @@ export const TrialBalancePage = () => {
       {mode === "compare" && prevEmpty && <p className="notice">{year - 1}年の帳簿（仕訳・期首残高）がないので、前年の欄は 0 です。</p>}
 
       {mode !== "tb" ? (
-        <MultiTable lines={multi} heads={headsOf(shownView)} rate={mode === "compare"} loading={mode === "compare" && !prev} narrow={mode === "dept"} />
+        <MultiTable
+          lines={multi} heads={headsOf(shownView)} rate={mode === "compare"} loading={mode === "compare" && !prev} narrow={mode === "dept" || (mode === "cp" && !cpMonthly)}
+          firstHead={mode === "cp" ? "取引先" : undefined}
+        />
       ) : (
       <section className="sheet sheet-fill">
         <div className="table-wrap scroll-y">
@@ -252,7 +294,9 @@ export const TrialBalancePage = () => {
 };
 
 /** 月次推移表・前年比較・部門別の表（rate = 増減率の列を足す。narrow = 列が少ないので、表の最小の幅を列の数で決める（部門別）） */
-const MultiTable = ({ lines, heads, rate, loading, narrow }: { lines: MultiLine[]; heads: string[]; rate: boolean; loading: boolean; narrow?: boolean }) => {
+const MultiTable = ({ lines, heads, rate, loading, narrow, firstHead = "勘定科目" }: {
+  lines: MultiLine[]; heads: string[]; rate: boolean; loading: boolean; narrow?: boolean; firstHead?: string;
+}) => {
   const cols = heads.length + (rate ? 1 : 0) + 1;
   const total = lines.find((l) => l.kind === "total");
   const amount = (v: number, i: number, kind: MultiLine["kind"]) => (
@@ -261,10 +305,13 @@ const MultiTable = ({ lines, heads, rate, loading, narrow }: { lines: MultiLine[
   return (
     <section className="sheet sheet-fill">
       <div className="table-wrap scroll-y">
-        <table className={`ledger tb-table multi-table${rate ? "" : " trend-table"}`} style={narrow ? { minWidth: 170 + heads.length * 120 } : undefined}>
+        <table
+          className={`ledger tb-table multi-table${rate ? "" : " trend-table"}`}
+          style={narrow ? { minWidth: 170 + heads.length * 120, maxWidth: 320 + heads.length * 180 } : undefined}
+        >
           <thead>
             <tr>
-              <th>勘定科目</th>
+              <th style={firstHead === "取引先" ? { width: 240 } : undefined}>{firstHead}</th>
               {heads.map((h) => <th key={h} className="num">{h}</th>)}
               {rate && <th className="num">増減率</th>}
             </tr>

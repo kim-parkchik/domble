@@ -7,7 +7,8 @@
  *    （損益は期間ごとの所得、貸借は期間の末までの所得＝当期の利益）
  */
 import type { Account, AccountCategory, OpeningBalances, SubAccount, SubOpeningBalances } from "./types";
-import { ADJUSTMENT_PERIOD, buildTrialBalance, subTrialRow, summarizeIncome, type FlatLine, type TrialBalanceRow } from "./accounting";
+import { ADJUSTMENT_PERIOD, buildTrialBalance, inPeriods, periodOfLine, signedAmount, subTrialRow, summarizeIncome, type FlatLine, type TrialBalanceRow } from "./accounting";
+import { isBalanceSheet } from "../constants/accounts";
 import { BS_CATEGORIES, CATEGORY_LABEL, PL_CATEGORIES } from "../constants/accounts";
 
 export type StatementView = "bs" | "pl";
@@ -125,6 +126,43 @@ export const departmentLines = (
     withTotal(subId === undefined ? tbs.map((m) => moved(m.get(a.id)!)) : groups.map((g) => moved(subTrialRow(a, subId, {}, linesOf.get(g)!, from, to))));
   const income = withTotal(tbs.map((m) => summarizeIncome(accounts, new Map([...m].map(([id, r]) => [id, moved(r)]))).income));
   return statementLines("pl", accounts, subs, opts, valuesOf, income, INCOME_LABEL.pl);
+};
+
+/**
+ * 取引先別（科目を1つ選び、取引先ごとに並べる。取引先は仕訳1件に1つ。取引先の無い仕訳は「取引先なし」の1行）
+ *  - 期間の合計：損益の科目は期間の発生額（科目の残高の側を＋）。貸借の科目（売掛金・買掛金など）は、増えた額・減った額・差引（期首残高は取引先ごとに持たないので、期間の増減）
+ *  - 月ごと：期間ごとの発生額（貸借の科目は差引の増減）と合計
+ * 行は金額の大きい順（取引先なしは最後）、最後に合計
+ */
+export const counterpartyHeads = (account: Pick<Account, "category">, monthly: boolean, from: number, to: number) =>
+  monthly ? [...trendHeads("pl", from, to).slice(0, -1), "合計"] : isBalanceSheet(account.category) ? ["増えた額", "減った額", "差引"] : ["金額"];
+export const counterpartyLines = (
+  account: Account, lines: FlatLine[], from: number, to: number, counterparties: { id: number; name: string }[], monthly: boolean,
+): MultiLine[] => {
+  const periods = periodsOf(from, to);
+  const bs = isBalanceSheet(account.category);
+  const groups = new Map<number, number[]>();
+  for (const l of lines) {
+    if (l.account_id !== account.id || l.taxPart || !inPeriods(l, from, to)) continue;
+    const key = l.counterparty_id ?? 0;
+    const v = groups.get(key) ?? Array<number>(monthly ? periods.length : bs ? 2 : 1).fill(0);
+    const signed = signedAmount(account, l.side, l.amount);
+    if (monthly) v[periods.indexOf(periodOfLine(l))] += signed;
+    else if (bs) v[signed >= 0 ? 0 : 1] += Math.abs(signed);
+    else v[0] += signed;
+    groups.set(key, v);
+  }
+  const withTotal = (v: number[]) => (monthly ? [...v, v.reduce((t, x) => t + x, 0)] : bs ? [...v, v[0] - v[1]] : v);
+  const name = (id: number) => (id ? counterparties.find((c) => c.id === id)?.name ?? `#${id}` : "取引先なし");
+  const rows = [...groups].map(([id, v]) => ({ id, values: withTotal(v) }))
+    .sort((a, b) => (a.id === 0 ? 1 : 0) - (b.id === 0 ? 1 : 0) || Math.abs(b.values[b.values.length - 1]) - Math.abs(a.values[a.values.length - 1]) || name(a.id).localeCompare(name(b.id), "ja"));
+  const width = rows[0]?.values.length ?? (monthly ? periods.length + 1 : bs ? 3 : 1);
+  const total = Array<number>(width).fill(0);
+  for (const r of rows) r.values.forEach((x, i) => (total[i] += x));
+  return [
+    ...rows.map((r): MultiLine => ({ kind: "account", label: name(r.id), values: r.values })),
+    { kind: "total", label: "合計", values: total },
+  ];
 };
 
 /** 増減率（前年が 0 なら出さない）。前年がマイナスでも増えたら＋、減ったら ▲（金額と同じ書き方） */

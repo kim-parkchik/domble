@@ -225,9 +225,9 @@ export const TRIAL_CSV_HEADER = ["区分", "勘定科目", "補助科目", "繰�
  * 月次推移表・前年比較の区分（lib/trend.ts の行）。heads は金額の列の見出し。
  * rate = 前年比較（values = [今年, 前年, 差額]）で、最後に増減率の列を足す
  */
-export const multiSection = (heading: string, lines: MultiLine[], heads: string[], rate = false): PrintSection => {
+export const multiSection = (heading: string, lines: MultiLine[], heads: string[], rate = false, firstLabel = "勘定科目"): PrintSection => {
   const columns: PrintColumn[] = [
-    { label: "勘定科目", width: rate ? 34 : 14 },
+    { label: firstLabel, width: rate ? 34 : 14 },
     ...heads.map((label): PrintColumn => ({ label, width: rate ? 17 : 9, align: "right" })),
     ...(rate ? [{ label: "増減率", width: 11, align: "right" as const }] : []),
   ];
