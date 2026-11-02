@@ -5,7 +5,7 @@
  *  - 編集するには「締めの解除」を明示的に行う（厳密モードでは理由つきで履歴に残す）
  *  - 前の年度を直したら、翌年の期首残高が繰越額とずれるので、それを見つけて知らせる
  */
-import type { Account, FiscalClosing, OpeningBalances, SubOpeningBalances } from "./types";
+import type { Account, Evidence, FiscalClosing, OpeningBalances, SubOpeningBalances } from "./types";
 import { carryForwardWithSubs, closingBalances, subClosingBalances, type FlatLine } from "./accounting";
 
 /** 何月まで締めたか（締めていなければ 0、年の締めなら 12） */
@@ -112,6 +112,25 @@ export const anchorSaveOf = (c: Pick<FiscalClosing, "chain_head" | "anchor_saved
 /** 確認コードを控えていない、年の締めをした年（確認コードのある年。古い順） */
 export const unsavedAnchorYears = (closings: FiscalClosing[]) =>
   closings.filter((c) => closedMonthOf(c) === 12 && c.chain_head && !anchorSaveOf(c)).map((c) => c.fiscal_year).sort((a, b) => a - b);
+
+/**
+ * 締めた年の証憑を、その年を締めたあとに登録・変更したか（証憑の一覧の「締めたあと」の印・CSV）。
+ * 証憑の登録・訂正・ひも付けは締めたあとも止めない（電子取引のデータや、あとから見つかった領収書を残す義務は締めと関係なく続くため）
+ *  - 取引年月日の年が年の締めをしてあり、登録した日時（registered_at）か、最後に変えた日時（updated_at：訂正・無効・ひも付け・解除）が締めた日時より後
+ *  - 締めを戻して締め直したときは、最後に締めた日時で見る
+ */
+export type AfterClosing = "create" | "change";
+export const AFTER_CLOSING_LABEL: Record<AfterClosing, string> = { create: "締めたあとに登録", change: "締めたあとに変更" };
+export const afterClosingOf = (e: Pick<Evidence, "txn_date" | "registered_at" | "updated_at">, closings: FiscalClosing[]): AfterClosing | null => {
+  const c = closings.find((x) => x.fiscal_year === Number(e.txn_date.slice(0, 4)));
+  if (!c || closedMonthOf(c) !== 12) return null;
+  return e.registered_at > c.closed_at ? "create" : e.updated_at > c.closed_at ? "change" : null;
+};
+/** 印の説明（一覧の title） */
+export const afterClosingTitle = (a: AfterClosing, c: Pick<FiscalClosing, "fiscal_year" | "closed_at">) =>
+  a === "create"
+    ? `${c.fiscal_year}年を締めたあと（${c.closed_at}）に登録しました。帳簿の数字は変わりません`
+    : `${c.fiscal_year}年を締めたあと（${c.closed_at}）に、訂正・無効・仕訳とのひも付けなどをしました。中身は証憑の履歴で確かめられます。帳簿の数字は変わりません`;
 
 /** メールアドレスとして使えるか（空はよい） */
 export const isMailAddress = (s: string) => !s.trim() || /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(s.trim());

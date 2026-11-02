@@ -22,9 +22,10 @@ import type { Evidence } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { DOC_CLASS_LABEL, scanStatusOf, type DocClass, type ScanInputMethod } from "../../lib/scan";
 import { fileLabel } from "../../lib/business";
+import { AFTER_CLOSING_LABEL, afterClosingOf, afterClosingTitle } from "../../lib/closing";
 
 export const EvidencePage = () => {
-  const { db, year, settings, dataVersion, counterparties, daysOff } = useAppContext();
+  const { db, year, settings, dataVersion, counterparties, daysOff, closings } = useAppContext();
   const toast = useToast();
   const [all, setAll] = useState<Evidence[]>([]);
   const [dateFrom, setDateFrom] = useState(yearStart(year));
@@ -37,6 +38,8 @@ export const EvidencePage = () => {
   const [scanMethod, setScanMethod] = useState<ScanInputMethod>("early");
   const [unlinkedOnly, setUnlinkedOnly] = useState(false);
   const [includeVoid, setIncludeVoid] = useState(false);
+  /** 締めた年の証憑を、締めたあとに登録・変更したものだけ（lib/closing.ts の afterClosingOf） */
+  const [afterClosingOnly, setAfterClosingOnly] = useState(false);
   const [adding, setAdding] = useState(false);
   /** 画面にドラッグ＆ドロップしたファイル（取り込みの画面に入れて開く） */
   const [droppedFile, setDroppedFile] = useState<File | undefined>(undefined);
@@ -66,8 +69,8 @@ export const EvidencePage = () => {
       dateFrom: dateFrom || undefined, dateTo: dateTo || undefined,
       amountMin: parseAmount(minAmt), amountMax: parseAmount(maxAmt),
       counterparty, docType, unlinkedOnly, includeVoid, kind,
-    }),
-    [all, dateFrom, dateTo, minAmt, maxAmt, counterparty, docType, unlinkedOnly, includeVoid, kind],
+    }).filter((e) => !afterClosingOnly || afterClosingOf(e, closings)),
+    [all, dateFrom, dateTo, minAmt, maxAmt, counterparty, docType, unlinkedOnly, includeVoid, kind, afterClosingOnly, closings],
   );
   const total = list.filter((e) => !e.is_void).reduce((t, e) => t + e.amount, 0);
 
@@ -75,7 +78,7 @@ export const EvidencePage = () => {
     const path = await save({ defaultPath: `証憑一覧_${fileLabel(settings)}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
     if (!path) return;
     try {
-      await writeTextFile(path, evidenceCsv(list, counterparties, scanMethod, daysOff));
+      await writeTextFile(path, evidenceCsv(list, counterparties, scanMethod, daysOff, closings));
       toast("CSV を書き出しました");
     } catch (e) {
       toast(`書き出せませんでした：${String(e)}`, "error");
@@ -84,7 +87,7 @@ export const EvidencePage = () => {
 
   const exportFiles = async () => {
     try {
-      const n = await exportAll(db, list, counterparties, scanMethod, daysOff);
+      const n = await exportAll(db, list, counterparties, scanMethod, daysOff, closings);
       if (n !== null) toast(`${n}件のファイルと一覧（CSV）を書き出しました`);
     } catch (e) {
       toast(`書き出せませんでした：${String(e)}`, "error");
@@ -161,6 +164,11 @@ export const EvidencePage = () => {
         </select>
         <label className="check"><input type="checkbox" checked={unlinkedOnly} onChange={(e) => setUnlinkedOnly(e.target.checked)} /> 仕訳にひも付いていないもの</label>
         <label className="check"><input type="checkbox" checked={includeVoid} onChange={(e) => setIncludeVoid(e.target.checked)} /> 無効も表示</label>
+        {closings.length > 0 && (
+          <label className="check" title="締めた年の証憑を、その年を締めたあとに登録・訂正・ひも付けしたもの">
+            <input type="checkbox" checked={afterClosingOnly} onChange={(e) => setAfterClosingOnly(e.target.checked)} /> 締めたあとのもの
+          </label>
+        )}
       </div>
 
       <section className="sheet sheet-fill">
@@ -170,8 +178,8 @@ export const EvidencePage = () => {
           ) : (
             <table className="ledger">
               <colgroup>
-                <col style={{ width: 48 }} /><col style={{ width: 112 }} /><col style={{ width: 112 }} /><col style={{ width: 64 }} /><col />
-                <col style={{ width: 110 }} /><col style={{ width: "18%" }} /><col style={{ width: 80 }} />
+                <col style={{ width: 44 }} /><col style={{ width: 108 }} /><col style={{ width: 108 }} /><col style={{ width: 64 }} /><col />
+                <col style={{ width: 96 }} /><col style={{ width: "14%" }} /><col style={{ width: 64 }} />
               </colgroup>
               <thead>
                 <tr><th>No</th><th>取引年月日</th><th>受領日</th><th>書類</th><th>取引先</th><th className="num">取引金額</th><th>ファイル</th><th>伝票No</th></tr>
@@ -183,8 +191,13 @@ export const EvidencePage = () => {
                     <td>{e.txn_date.replace(/-/g, "/")}</td>
                     <td className="muted">{e.received_date ? e.received_date.replace(/-/g, "/") : ""}</td>
                     <td>{e.doc_type}</td>
-                    <td>
+                    <td className="evidence-cp">
                       {e.is_void ? <span className="badge badge-delete">無効</span> : null}
+                      {(() => {
+                        const after = afterClosingOf(e, closings);
+                        const c = closings.find((x) => x.fiscal_year === Number(e.txn_date.slice(0, 4)));
+                        return after && c ? <span className="badge badge-update" title={`${AFTER_CLOSING_LABEL[after]}：${afterClosingTitle(after, c)}`}>締めたあと</span> : null;
+                      })()}
                       {(() => {
                         const st = scanStatusOf(e, scanMethod, daysOff);
                         if (!st) return null;

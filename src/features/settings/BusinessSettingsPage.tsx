@@ -176,7 +176,7 @@ const RealEstateSection = () => {
  * 使わないに戻せるのは、締めていない年にそれらの科目の仕訳が無いとき（repo.setManufacturing）
  */
 const ManufacturingSection = () => {
-  const { db, accounts, reloadAccounts, readOnly, can, bump } = useAppContext();
+  const { db, year, accounts, reloadAccounts, readOnly, isClosed, can, bump } = useAppContext();
   const toast = useToast();
   const on = manufacturingOn(accounts);
   const [busy, setBusy] = useState(false);
@@ -204,10 +204,11 @@ const ManufacturingSection = () => {
       </p>
       <div className="field-row wrap" style={{ alignItems: "center" }}>
         <span className="mode-current">{on ? "使う" : "使わない"}</span>
-        <button className="btn ghost" onClick={toggle} disabled={busy || readOnly || !can("master")}>
+        <button className="btn ghost" onClick={toggle} disabled={busy || readOnly || isClosed || !can("master")}>
           {on ? "使わないにする" : "使うにする"}
         </button>
       </div>
+      {isClosed && <p className="field-note">{year}年は締め済みのため切り替えられません（勘定科目と同じく、締めていない年に切り替えてから）。</p>}
     </>
   );
 };

@@ -4,7 +4,7 @@ import type { Account, FiscalClosing } from "./types";
 import { subKey } from "./types";
 import type { FlatLine } from "./accounting";
 import {
-  anchorSaveOf, closingOf, expectedNextOpening, inheritingClosedYears, inheritMessage, isMailAddress, mailtoUrl, openingMismatches, unsavedAnchorYears, yearsToAutoClose,
+  afterClosingOf, anchorSaveOf, closingOf, expectedNextOpening, inheritingClosedYears, inheritMessage, isMailAddress, mailtoUrl, openingMismatches, unsavedAnchorYears, yearsToAutoClose,
 } from "./closing";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1 }));
@@ -116,5 +116,23 @@ describe("確認コードの控え", () => {
     expect(isMailAddress("")).toBe(true);
     expect(isMailAddress("me@example")).toBe(false);
     expect(isMailAddress("a@b.c, d@e.f")).toBe(false);
+  });
+});
+
+describe("締めたあとの証憑", () => {
+  const closings: FiscalClosing[] = [
+    { fiscal_year: 2025, period_start: "2025-01-01", period_end: "2025-12-31", closed_at: "2026-03-10 10:00:00", chain_head: "", anchor_saved: "" },
+    { fiscal_year: 2026, period_start: "2026-01-01", period_end: "2026-09-30", closed_at: "2026-10-05 09:00:00", chain_head: "", anchor_saved: "" },
+  ];
+  const ev = (txn_date: string, registered_at: string, updated_at = registered_at) => ({ txn_date, registered_at, updated_at });
+  test("年の締めをした年の証憑を、締めた日時より後に登録・変更したもの", () => {
+    expect(afterClosingOf(ev("2025-12-20", "2026-01-15 12:00:00"), closings)).toBeNull();
+    expect(afterClosingOf(ev("2025-12-20", "2026-04-01 12:00:00"), closings)).toBe("create");
+    // 締める前に登録して、締めたあとに訂正・ひも付け
+    expect(afterClosingOf(ev("2025-12-20", "2026-01-15 12:00:00", "2026-03-10 10:00:01"), closings)).toBe("change");
+  });
+  test("年の締めをしていない年（月の締めだけ・締めなし）は印を付けない", () => {
+    expect(afterClosingOf(ev("2026-05-01", "2026-11-01 12:00:00"), closings)).toBeNull();
+    expect(afterClosingOf(ev("2027-01-05", "2027-02-01 12:00:00"), closings)).toBeNull();
   });
 });

@@ -31,7 +31,7 @@ const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 const inYears = (date: string, from: number, to: number) => date.slice(0, 10) >= yearStart(from) && date.slice(0, 10) <= yearEnd(to);
 
 export const BookExportSection = () => {
-  const { db, year, settings, strict, daysOff } = useAppContext();
+  const { db, year, settings, strict, daysOff, closings } = useAppContext();
   const toast = useToast();
   const [years, setYears] = useState<number[]>([year]);
   const [from, setFrom] = useState(year);
@@ -97,7 +97,7 @@ export const BookExportSection = () => {
         setBusy(`証憑 ${evidences.length} 件を書き出しています…`);
         const evDir = await join(dir, "証憑");
         await mkdir(evDir, { recursive: true });
-        await writeEvidenceFolder(db, evDir, evidences, counterparties, await repo.getScanInputMethod(db), daysOff);
+        await writeEvidenceFolder(db, evDir, evidences, counterparties, await repo.getScanInputMethod(db), daysOff, closings);
         written.push(`証憑（ファイル ${evidences.length} 件と 証憑一覧.csv）`);
       }
       await writeTextFile(await join(dir, "書き出しの内容.txt"), [

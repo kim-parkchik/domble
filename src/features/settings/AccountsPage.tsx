@@ -5,6 +5,8 @@
  *  - 現金・事業主貸・事業主借・元入金（LOCKED_CODES）は仕組みで使うので非表示にもできない。名前は変えられる（例：現金 → 現金預金）
  *  - 追加した科目でも、仕訳や期首残高で使ったものは削除できない（非表示にはできる）
  *  - 補助科目は1科目あたり上限あり
+ *  - 締めた年を表示中は読むだけ（科目はすべての年で共通なので、締めていない年に切り替えて変える。repo の masterOpen でも止める）
+ *  - 厳密モードでは、締めた年に金額がある科目のコードは変えられない（名前と同じく、締めた年の帳簿を変えない）
  */
 import { Fragment, useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, ListTree, Lock } from "lucide-react";
@@ -69,6 +71,8 @@ export const AccountsPage = () => {
     repo.getYears(db, year).then((ys) => setLatestYear(Math.max(...ys))).catch(console.error);
   }, [db, year, dataVersion]);
   const renameLocked = strict && year < latestYear;
+  // 締めた年を表示中は読むだけ
+  const frozen = isClosed;
   const [editing, setEditing] = useState<Account | "new" | null>(null);
   const [subsFor, setSubsFor] = useState<Account | null>(null);
   const [cat, setCat] = useState<AccountCategory | "all">("all");
@@ -143,19 +147,23 @@ export const AccountsPage = () => {
             : "チェックを外した科目は入力候補に出なくなります（過去の仕訳と集計には残ります）。名前の変更はすべての年度に反映されます。"
         }
       >
-        <button className="btn primary" onClick={() => setEditing("new")}><Plus size={16} /> 科目を追加</button>
+        <button className="btn primary" onClick={() => setEditing("new")} disabled={frozen}><Plus size={16} /> 科目を追加</button>
       </PageHeader>
 
       <div className="filters csv-tools">
         <span className="muted small">一覧の CSV（乗り換えのとき。無い名前のものだけ足します）</span>
         <CsvExportButton label="科目を書き出し" onClick={() => exportCsvFile("勘定科目.csv", ACCOUNT_LIST_HEADER, accountListRows(accounts), toast)} />
-        <CsvImportButton label="科目を取り込み" onText={(t) => importList("account", t)} />
+        {!frozen && <CsvImportButton label="科目を取り込み" onText={(t) => importList("account", t)} />}
         <CsvExportButton label="補助科目を書き出し" onClick={() => exportCsvFile("補助科目.csv", SUB_LIST_HEADER, subListRows(accounts, subAccounts), toast)} />
-        <CsvImportButton label="補助科目を取り込み" onText={(t) => importList("sub", t)} />
+        {!frozen && <CsvImportButton label="補助科目を取り込み" onText={(t) => importList("sub", t)} />}
       </div>
       <CsvIssues issues={csvIssues} onClose={() => setCsvIssues([])} />
 
-      {renameLocked && (
+      {frozen ? (
+        <p className="warn-box">
+          {year}年は締め済みのため、勘定科目・補助科目は見るだけです。科目はすべての年で共通なので、追加・変更は締めていない年に切り替えて行ってください。
+        </p>
+      ) : renameLocked && (
         <p className="warn-box">
           {year}年より新しい年度（{latestYear}年）があるため、この年度では科目名・補助科目名を変更できません。{latestYear}年に切り替えてから変更してください。
         </p>
@@ -203,7 +211,7 @@ export const AccountsPage = () => {
                     return (
                       <tr key={a.id} className={a.is_active ? "" : "inactive"}>
                         <td>
-                          <input type="checkbox" checked={!!a.is_active} disabled={locked} onChange={(e) => toggle(a, e.target.checked)} aria-label={`${a.name}を使う`} />
+                          <input type="checkbox" checked={!!a.is_active} disabled={locked || frozen} onChange={(e) => toggle(a, e.target.checked)} aria-label={`${a.name}を使う`} />
                         </td>
                         <td className="muted">{a.code}</td>
                         <td>
@@ -219,7 +227,7 @@ export const AccountsPage = () => {
                         <td>
                           <select
                             className={`input tax-select${a.default_tax_code ? "" : " is-default"}`} value={accountTaxCode(a)}
-                            onChange={(e) => setTax(a, e.target.value as TaxCode)} aria-label={`${a.name}の税区分の初期値`}
+                            onChange={(e) => setTax(a, e.target.value as TaxCode)} aria-label={`${a.name}の税区分の初期値`} disabled={frozen}
                             title={a.default_tax_code ? `変更済み（決まった初期値は「${TAX_CODES.find((t) => t.code === builtinTaxCode(a))!.label}」）` : "決まった初期値"}
                           >
                             {TAX_CODES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
@@ -229,7 +237,7 @@ export const AccountsPage = () => {
                           {a.category === "revenue" ? (
                             <select
                               className={`input tax-select${a.default_business_class ? "" : " is-default"}`} value={a.default_business_class ?? ""}
-                              onChange={(e) => setClass(a, e.target.value ? Number(e.target.value) : null)} aria-label={`${a.name}の事業区分の初期値`}
+                              onChange={(e) => setClass(a, e.target.value ? Number(e.target.value) : null)} aria-label={`${a.name}の事業区分の初期値`} disabled={frozen}
                             >
                               <option value="">主な事業区分</option>
                               {BUSINESS_CLASSES.map((b) => <option key={b.value} value={b.value}>{classLabel(b.value)}（{b.rate}%）</option>)}
@@ -237,7 +245,7 @@ export const AccountsPage = () => {
                           ) : isPurchaseCode(accountTaxCode(a)) ? (
                             <select
                               className={`input tax-select${a.default_purchase_use ? "" : " is-default"}`} value={a.default_purchase_use ?? ""}
-                              onChange={(e) => setUse(a, (e.target.value || null) as PurchaseUse | null)} aria-label={`${a.name}の用途区分の初期値`}
+                              onChange={(e) => setUse(a, (e.target.value || null) as PurchaseUse | null)} aria-label={`${a.name}の用途区分の初期値`} disabled={frozen}
                               title={`本則課税の個別対応方式で使う用途区分${FIXED_ASSET_CODES.includes(a.code) ? "（取得したとき。売却は簡易課税の第四種）" : ""}`}
                             >
                               <option value="">{useLabel("common")}（初期値）</option>
@@ -253,7 +261,7 @@ export const AccountsPage = () => {
                             return (
                               <select
                                 className={`input tax-select${a.statement_line ? "" : " is-default"}`} value={a.statement_line ?? ""}
-                                onChange={(e) => setLine(a, e.target.value || null)} aria-label={`${a.name}の決算書の欄`}
+                                onChange={(e) => setLine(a, e.target.value || null)} aria-label={`${a.name}の決算書の欄`} disabled={frozen}
                               >
                                 <option value="">自動（{auto === EXTRA_LINE ? "追加の欄" : layoutSectionOf({ ...a, statement_line: null }) === "mfg" ? `製造原価：${auto}` : auto}）</option>
                                 {/* 製造原価の欄は、製造原価を使っているか、この科目が製造原価の欄のときだけ出す */}
@@ -265,8 +273,8 @@ export const AccountsPage = () => {
                         <td className="muted">{subs.length ? subs.map((s) => s.name).join("、") : ""}</td>
                         <td className="row-actions">
                           <button className="link-btn" onClick={() => setSubsFor(a)}><ListTree size={14} /> 補助科目</button>
-                          {!renameLocked && <button className="link-btn" onClick={() => setEditing(a)}><Pencil size={14} /> 編集</button>}
-                          {!a.is_system && <button className="link-btn danger" onClick={() => remove(a)}><Trash2 size={14} /> 削除</button>}
+                          {!renameLocked && !frozen && <button className="link-btn" onClick={() => setEditing(a)}><Pencil size={14} /> 編集</button>}
+                          {!a.is_system && !frozen && <button className="link-btn danger" onClick={() => remove(a)}><Trash2 size={14} /> 削除</button>}
                         </td>
                       </tr>
                     );
@@ -299,7 +307,7 @@ export const AccountsPage = () => {
           }}
         />
       )}
-      {subsFor && <SubAccountsModal account={subsFor} renameLocked={renameLocked} onClose={() => setSubsFor(null)} />}
+      {subsFor && <SubAccountsModal account={subsFor} renameLocked={renameLocked} frozen={frozen} onClose={() => setSubsFor(null)} />}
     </div>
   );
 };
@@ -318,7 +326,12 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
   const [side, setSide] = useState<Side>(isNew ? "debit" : target.normal_side);
   const [kind, setKind] = useState<IncomeKind>(isNew ? "business" : target.income_kind ?? "business");
   const [error, setError] = useState("");
-  const codeLocked = !isNew && target.is_system === 1;
+  // 厳密モード：締めた年に金額がある科目のコードは変えない（repo.closedYearsWithAmount）
+  const [closedUse, setClosedUse] = useState<number[]>([]);
+  useEffect(() => {
+    if (!isNew && strict && !target.is_system) repo.closedYearsWithAmount(db, target.id).then(setClosedUse).catch(console.error);
+  }, [db, isNew, strict, target]);
+  const codeLocked = !isNew && (target.is_system === 1 || closedUse.length > 0);
 
   const changeCategory = (c: AccountCategory) => {
     setCategory(c);
@@ -381,6 +394,7 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="例：サブスク費" autoFocus maxLength={20} />
           </label>
         </div>
+        {!isNew && !target.is_system && closedUse.length > 0 && <p className="field-note">{repo.codeLockedMessage(closedUse)}。</p>}
         {!isNew && LOCKED_CODES.includes(target.code) && (
           <p className="field-note">この科目は仕組み（繰越・家事按分・帳簿入力など）で使うため、非表示とコードの変更はできません。名前は変えられます（例：現金 → 現金預金）。</p>
         )}
@@ -405,7 +419,7 @@ const AccountForm = ({ target, onClose }: { target: Account | "new"; onClose: ()
 // ────────────────────────────────────────────
 // 補助科目
 // ────────────────────────────────────────────
-const SubAccountsModal = ({ account, renameLocked, onClose }: { account: Account; renameLocked: boolean; onClose: () => void }) => {
+const SubAccountsModal = ({ account, renameLocked, frozen, onClose }: { account: Account; renameLocked: boolean; frozen: boolean; onClose: () => void }) => {
   const { db, subAccounts, reloadAccounts } = useAppContext();
   const toast = useToast();
   const subs = subAccounts.filter((s) => s.account_id === account.id);
@@ -464,7 +478,7 @@ const SubAccountsModal = ({ account, renameLocked, onClose }: { account: Account
           {subs.map((s) => (
             <tr key={s.id} className={s.is_active ? "" : "inactive"}>
               <td>
-                <input type="checkbox" checked={!!s.is_active} onChange={async (e) => { await repo.setSubActive(db, s.id, e.target.checked); await reloadAccounts(); }} aria-label={`${s.name}を使う`} />
+                <input type="checkbox" checked={!!s.is_active} disabled={frozen} onChange={async (e) => { await repo.setSubActive(db, s.id, e.target.checked); await reloadAccounts(); }} aria-label={`${s.name}を使う`} />
               </td>
               <td>
                 {renaming?.id === s.id ? (
@@ -475,21 +489,23 @@ const SubAccountsModal = ({ account, renameLocked, onClose }: { account: Account
               <td className="row-actions">
                 {renaming?.id === s.id ? (
                   <button className="link-btn" onClick={saveRename}>保存</button>
-                ) : !renameLocked && (
+                ) : !renameLocked && !frozen && (
                   <button className="link-btn" onClick={() => setRenaming({ id: s.id, name: s.name })}><Pencil size={14} /> 名前</button>
                 )}
-                <button className="link-btn danger" onClick={() => remove(s.id, s.name)}><Trash2 size={14} /> 削除</button>
+                {!frozen && <button className="link-btn danger" onClick={() => remove(s.id, s.name)}><Trash2 size={14} /> 削除</button>}
               </td>
             </tr>
           ))}
           {subs.length === 0 && <tr className="empty-row"><td colSpan={3}>補助科目はまだありません。</td></tr>}
         </tbody>
       </table>
-      <div className="sub-add">
-        <input className="input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="新しい補助科目名" maxLength={30}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) add(); }} />
-        <button className="btn primary" onClick={add} disabled={subs.length >= MAX_SUB_ACCOUNTS_PER_ACCOUNT}><Plus size={16} /> 追加</button>
-      </div>
+      {!frozen && (
+        <div className="sub-add">
+          <input className="input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="新しい補助科目名" maxLength={30}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) add(); }} />
+          <button className="btn primary" onClick={add} disabled={subs.length >= MAX_SUB_ACCOUNTS_PER_ACCOUNT}><Plus size={16} /> 追加</button>
+        </div>
+      )}
       {error && <p className="form-error-inline" role="alert">{error}</p>}
     </Modal>
   );

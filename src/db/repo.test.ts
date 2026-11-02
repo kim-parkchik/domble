@@ -99,6 +99,51 @@ describe("年度の締め（repo）", () => {
     expect((await repo.getSettings(db)).anchor_email).toBe("me@example.com");
   });
 
+  test("締めた年を表示中は、勘定科目・補助科目を変えられない（締めていない年に切り替えれば変えられる）", async () => {
+    const { db } = strict;
+    const accts = await repo.getAccounts(db, 2026);
+    const id = await repo.createAccount(db, { code: repo.nextAccountCode(accts, "expense")!, name: "サブスク費", kana: "", category: "expense" });
+    await repo.closeYear(db, 2025);
+    await repo.setFiscalYear(db, 2025);
+    const closed = /2025年は締め済みのため、勘定科目・補助科目は変更できません/;
+    const next = repo.nextAccountCode(await repo.getAccounts(db, 2025), "expense")!;
+    await expect(repo.createAccount(db, { code: next, name: "研修費", kana: "", category: "expense" })).rejects.toThrow(closed);
+    await expect(repo.setAccountActive(db, id, false)).rejects.toThrow(closed);
+    await expect(repo.setAccountTaxCode(db, id, "out")).rejects.toThrow(closed);
+    await expect(repo.updateAccount(db, id, { code: next, name: "サブスク費", kana: "さぶすく" })).rejects.toThrow(closed);
+    await expect(repo.deleteAccount(db, id)).rejects.toThrow(closed);
+    await expect(repo.createSub(db, id, "A社")).rejects.toThrow(closed);
+    await expect(repo.importAccountList(db, [{ name: "研修費", kana: "", category: "expense" }])).rejects.toThrow(closed);
+    await expect(repo.setManufacturing(db, true)).rejects.toThrow(closed);
+    // 締めていない年に切り替えれば変えられる（科目はすべての年で共通）
+    await repo.setFiscalYear(db, 2026);
+    await repo.createSub(db, id, "A社");
+    await repo.setAccountActive(db, id, false);
+    expect((await repo.getAccounts(db, 2025)).find((a) => a.id === id)!.is_active).toBe(0);
+  });
+
+  test("厳密モードでは、締めた年に金額（仕訳・期首残高）がある科目のコードを変えられない。通常モードは変えられる", async () => {
+    for (const mode of ["strict", "standard"] as const) {
+      const { db } = mode === "strict" ? strict : makeDb("standard");
+      const accts = await repo.getAccounts(db, 2026);
+      const used = await repo.createAccount(db, { code: repo.nextAccountCode(accts, "expense")!, name: "サブスク費", kana: "", category: "expense" });
+      const unused = await repo.createAccount(db, { code: repo.nextAccountCode(await repo.getAccounts(db, 2026), "expense")!, name: "研修費", kana: "", category: "expense" });
+      await repo.createEntry(db, "2025-06-01", [{ ...lines[0], account_id: used }, lines[1]]);
+      await repo.closeYear(db, 2025);
+      const free = repo.nextAccountCode(await repo.getAccounts(db, 2026), "expense")!;
+      expect(await repo.closedYearsWithAmount(db, used)).toEqual([2025]);
+      expect(await repo.closedYearsWithAmount(db, unused)).toEqual([]);
+      if (mode === "strict") {
+        await expect(repo.updateAccount(db, used, { code: free, name: "サブスク費", kana: "" })).rejects.toThrow(/締めた年（2025年）に金額がある科目は、コードを変えられません/);
+        // コードを変えなければ、よみなどは変えられる
+        await repo.updateAccount(db, used, { code: (await repo.getAccounts(db, 2026)).find((a) => a.id === used)!.code, name: "サブスク費", kana: "さぶすく" });
+      } else {
+        await repo.updateAccount(db, used, { code: free, name: "サブスク費", kana: "" });
+      }
+      await repo.updateAccount(db, unused, { code: repo.nextAccountCode(await repo.getAccounts(db, 2026), "expense")!, name: "研修費", kana: "" });
+    }
+  });
+
   test("既存の帳簿は、繰越済みの年度だけ一度だけ自動で締める", async () => {
     const { db } = strict;
     await repo.createEntry(db, "2025-03-01", lines);

@@ -16,6 +16,7 @@ import {
   businessDaysBetween, checkScanQuality, DOC_CLASS_LABEL, docClassOf, scanDeadline, SCAN_KEEP_PAPER, scanMethodName, type DocClass, type ScanInputMethod,
 } from "../../lib/scan";
 import { todayIso } from "../../lib/format";
+import { AFTER_CLOSING_LABEL, closedMonthOf } from "../../lib/closing";
 import * as repo from "../../db/repo";
 
 export interface PickedFile {
@@ -39,7 +40,7 @@ interface Props {
 }
 
 export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initialKind = "electronic", submitLabel, onSubmit, onCancel }: Props) => {
-  const { db, year, counterparties, strict, daysOff } = useAppContext();
+  const { db, year, counterparties, strict, daysOff, closings } = useAppContext();
   const [m, setM] = useState<EvidenceMeta>(initial);
   // スキャナ保存
   const [kind, setKind] = useState<EvidenceKind>(initialKind);
@@ -217,6 +218,16 @@ export const EvidenceForm = ({ initial, initialFile, withFile, askReason, initia
           入力期限を過ぎています。登録はできますが「入力期間外」の印がつきます。
         </p>
       )}
+      {(() => {
+        // 締めた年の証憑も登録・訂正できる（帳簿の数字は変わらない）。一覧に「締めたあと」の印が付く（lib/closing.ts の afterClosingOf）
+        const y = Number(m.txn_date.slice(0, 4));
+        if (closedMonthOf(closings.find((c) => c.fiscal_year === y)) !== 12) return null;
+        return (
+          <p className="field-note warn-text">
+            {y}年は締め済みです。{withFile ? "登録" : "訂正"}はできますが、証憑の一覧に「{AFTER_CLOSING_LABEL[withFile ? "create" : "change"]}」の印が付きます（帳簿の数字は変わりません）。
+          </p>
+        );
+      })()}
       <label className="field">
         <span>取引先</span>
         <input className="input" list={listId} value={m.counterparty} onChange={(e) => set("counterparty", e.target.value)} placeholder="例：株式会社〇〇" maxLength={60} />

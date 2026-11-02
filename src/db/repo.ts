@@ -267,6 +267,19 @@ const assertYearOpen = async (db: Database, year: number) => {
   if (closedMonthOf(await closingRow(db, year)) === 12) throw new Error(closedMessage(year));
 };
 
+export const MASTER_CLOSED = (year: number) =>
+  `${year}年は締め済みのため、勘定科目・補助科目は変更できません。科目はすべての年で共通なので、締めていない年に切り替えてから変更してください`;
+/**
+ * 勘定科目・補助科目の画面の変更（追加・非表示・コード・初期値・削除・CSV 取り込み・製造原価）は、
+ * 締めた年を表示中は止める（締めた年は読むだけ。科目はすべての年で共通なので、締めていない年に切り替えて変える）
+ */
+const masterOpen = <F extends (db: Database, ...a: any[]) => Promise<any>>(f: F) =>
+  (async (db: Database, ...a: Rest<F>) => {
+    const year = await currentYear(db);
+    if (closedMonthOf(await closingRow(db, year)) === 12) throw new Error(MASTER_CLOSED(year));
+    return f(db, ...a);
+  }) as F;
+
 /**
  * 「何年から」で持つ設定の year 年の行を変えるとき、設定が変わってしまう年の締めをした年（lib/closing.ts。トリガーでも拒否）
  *  changed = false（値は変わらない）なら止めずに、締めた年を返す（そのときは行を足さない：足すと締めた年の引き継ぎ元が変わる）
@@ -1216,6 +1229,10 @@ const updateAccount_ = async (db: Database, id: number, data: Omit<AccountInputD
       const ys = await db.select<{ y: number }[]>("SELECT from_year AS y FROM master_names WHERE target_type = 'account' AND target_id = ?", [id]);
       await inheritCheck(db, ys.map((r) => r.y), year, "科目名", true);
     }
+    if (data.code !== before.code) {
+      const years = await closedYearsWithAmount(db, id);
+      if (years.length) throw new Error(codeLockedMessage(years));
+    }
     await db.execute("UPDATE accounts SET code = ?, kana = ?, sort_order = ? WHERE id = ?", [
       data.code, data.kana.trim(), Number(data.code) * 10, id,
     ]);
@@ -1235,6 +1252,24 @@ const updateAccount_ = async (db: Database, id: number, data: Omit<AccountInputD
     ]);
   }
 };
+
+/**
+ * 年の締めをした年のうち、その科目に金額（仕訳・期首残高）がある年。
+ * 厳密モードでは、そういう科目のコードを変えない（名前と同じく、締めた年の帳簿の並び・コードを変えないため）
+ */
+export const closedYearsWithAmount = async (db: Database, id: number) => {
+  const closed = await yearClosedYears(db);
+  if (!closed.length) return [];
+  const rows = await db.select<{ y: number }[]>(
+    `SELECT DISTINCT CAST(substr(e.date, 1, 4) AS INTEGER) AS y FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
+      WHERE l.account_id = ? AND e.is_deleted = 0
+     UNION SELECT DISTINCT fiscal_year AS y FROM opening_balances WHERE account_id = ? AND amount <> 0`,
+    [id, id],
+  );
+  return rows.map((r) => Number(r.y)).filter((y) => closed.includes(y)).sort((a, b) => a - b);
+};
+export const codeLockedMessage = (years: number[]) =>
+  `締めた年（${years.map((y) => `${y}年`).join("・")}）に金額がある科目は、コードを変えられません（締めた年の帳簿の並びとコードが変わるため）`;
 
 /** 追加した科目で、一度も使っていないものだけ削除できる（使ったものは非表示にする） */
 const deleteAccount_ = async (db: Database, id: number) => {
@@ -3492,7 +3527,7 @@ export const setBankLinesStatus = inTx(setBankLinesStatus_, (ids, status) => `�
 export const registerBankLines = inTx(registerBankLines_, (items, source) => `明細 ${items.length} 件の仕訳への登録（${source}）`, { perm: "entry" });
 export const saveBankRule = inTx(saveBankRule_, (r) => `明細のルール「${r.keyword}」`, { perm: "entry" });
 export const deleteBankRule = inTx(deleteBankRule_, (id) => `明細のルール #${id} の削除`, { perm: "entry" });
-export const setAccountStatementLine = inTx(setAccountStatementLine_, (id) => `勘定科目 #${id} の決算書の欄`, { perm: "master" });
+export const setAccountStatementLine = inTx(masterOpen(setAccountStatementLine_), (id) => `勘定科目 #${id} の決算書の欄`, { perm: "master" });
 export const saveFilingYear = inTx(saveFilingYear_, (year) => `${year}年の申告の種類`, { perm: "settings" });
 export const saveRealEstate = inTx(saveRealEstate_, () => "不動産所得", { perm: "settings" });
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
@@ -3515,21 +3550,21 @@ export const saveFetchedHolidays = inTx(saveFetchedHolidays_, () => "祝日の�
 export const addCustomHoliday = inTx(addCustomHoliday_, (date) => `休業日（${date}）の追加`, { perm: "settings" });
 export const deleteCustomHoliday = inTx(deleteCustomHoliday_, (date) => `休業日（${date}）の削除`, { perm: "settings" });
 export const setCashbookAccounts = inTx(setCashbookAccounts_, () => "帳簿入力のタブの保存", { perm: "entry" });
-export const setAccountActive = inTx(setAccountActive_, (id) => `勘定科目 #${id} の表示切り替え`, { perm: "master" });
-export const setManufacturing = inTx(setManufacturing_, (on) => `製造原価を${on ? "使う" : "使わない"}`, { perm: "master" });
-export const createAccount = inTx(createAccount_, (d) => `勘定科目「${d.name}」の追加`, { perm: "master" });
-export const importAccountList = inTx(importAccountList_, (rows) => `勘定科目 ${rows.length} 件の CSV 取り込み`, { perm: "master" });
-export const importSubList = inTx(importSubList_, (rows) => `補助科目 ${rows.length} 件の CSV 取り込み`, { perm: "master" });
+export const setAccountActive = inTx(masterOpen(setAccountActive_), (id) => `勘定科目 #${id} の表示切り替え`, { perm: "master" });
+export const setManufacturing = inTx(masterOpen(setManufacturing_), (on) => `製造原価を${on ? "使う" : "使わない"}`, { perm: "master" });
+export const createAccount = inTx(masterOpen(createAccount_), (d) => `勘定科目「${d.name}」の追加`, { perm: "master" });
+export const importAccountList = inTx(masterOpen(importAccountList_), (rows) => `勘定科目 ${rows.length} 件の CSV 取り込み`, { perm: "master" });
+export const importSubList = inTx(masterOpen(importSubList_), (rows) => `補助科目 ${rows.length} 件の CSV 取り込み`, { perm: "master" });
 export const importCounterpartyList = inTx(importCounterpartyList_, (rows) => `取引先 ${rows.length} 件の CSV 取り込み`, { perm: "entry" });
-export const updateAccount = inTx(updateAccount_, (id) => `勘定科目 #${id} の変更`, { perm: "master" });
-export const deleteAccount = inTx(deleteAccount_, (id) => `勘定科目 #${id} の削除`, { perm: "master" });
-export const setAccountBusinessClass = inTx(setAccountBusinessClass_, (id) => `勘定科目 #${id} の事業区分の初期値`, { perm: "master" });
-export const setAccountPurchaseUse = inTx(setAccountPurchaseUse_, (id) => `勘定科目 #${id} の用途区分の初期値`, { perm: "master" });
-export const setAccountTaxCode = inTx(setAccountTaxCode_, (id) => `勘定科目 #${id} の税区分の初期値`, { perm: "master" });
-export const createSub = inTx(createSub_, (_a, name) => `補助科目「${name}」の追加`, { perm: "master" });
-export const renameSub = inTx(renameSub_, (id) => `補助科目 #${id} の名前変更`, { perm: "master" });
-export const setSubActive = inTx(setSubActive_, (id) => `補助科目 #${id} の表示切り替え`, { perm: "master" });
-export const deleteSub = inTx(deleteSub_, (id) => `補助科目 #${id} の削除`, { perm: "master" });
+export const updateAccount = inTx(masterOpen(updateAccount_), (id) => `勘定科目 #${id} の変更`, { perm: "master" });
+export const deleteAccount = inTx(masterOpen(deleteAccount_), (id) => `勘定科目 #${id} の削除`, { perm: "master" });
+export const setAccountBusinessClass = inTx(masterOpen(setAccountBusinessClass_), (id) => `勘定科目 #${id} の事業区分の初期値`, { perm: "master" });
+export const setAccountPurchaseUse = inTx(masterOpen(setAccountPurchaseUse_), (id) => `勘定科目 #${id} の用途区分の初期値`, { perm: "master" });
+export const setAccountTaxCode = inTx(masterOpen(setAccountTaxCode_), (id) => `勘定科目 #${id} の税区分の初期値`, { perm: "master" });
+export const createSub = inTx(masterOpen(createSub_), (_a, name) => `補助科目「${name}」の追加`, { perm: "master" });
+export const renameSub = inTx(masterOpen(renameSub_), (id) => `補助科目 #${id} の名前変更`, { perm: "master" });
+export const setSubActive = inTx(masterOpen(setSubActive_), (id) => `補助科目 #${id} の表示切り替え`, { perm: "master" });
+export const deleteSub = inTx(masterOpen(deleteSub_), (id) => `補助科目 #${id} の削除`, { perm: "master" });
 export const createCounterparty = inTx(createCounterparty_, (d) => `取引先「${d.name}」の追加`, { perm: "entry" });
 export const updateCounterparty = inTx(updateCounterparty_, (id) => `取引先 #${id} の変更`, { perm: "entry" });
 export const setCounterpartyActive = inTx(setCounterpartyActive_, (id) => `取引先 #${id} の表示切り替え`, { perm: "entry" });
