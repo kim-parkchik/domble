@@ -1,8 +1,9 @@
 /**
  * 銀行・カードの明細（CSV）の取り込み（純粋関数）
  *
- *  - 形は銀行・カードごとに違うので、列（日付・摘要・入金と出金、または金額1列・残高）を選んでもらい、口座（科目・補助科目）ごとに覚える
- *    見出しの名前から列を推測する（日付・お取引日・ご利用日、摘要・お取引内容・ご利用店名、入金・お預入、出金・お引出、金額・ご利用金額、残高）
+ *  - 形は銀行・カードごとに違うので、列（日付・摘要・入金と出金、金額1列、または入払区分と金額・残高）を選んでもらい、口座（科目・補助科目）ごとに覚える
+ *    銀行が公式に公開している形式（ゆうちょダイレクト・ゆうちょBizダイレクト・三菱UFJ銀行 BizSTATION・全銀協の固定長）は見出しで見分ける（lib/bankFormats.ts）。
+ *    ほかは見出しの名前から列を推測する（日付・お取引日・ご利用日、摘要・お取引内容・ご利用店名、入金・お預入、出金・お引出、金額・ご利用金額、入払区分、残高）
  *  - 「増える側・減る側」で読む：普通預金なら入金が増える側、未払金（カード）ならご利用が増える側。増える側は科目の残高の側（資産は借方）
  *  - 同じ明細を2回読んでも重ならないよう、行ごとに指紋（日付・増減・金額・摘要と、同じ組み合わせの何個目か）を作る
  *  - 相手科目などの推測：ルール（摘要に含む言葉）→ 前に同じ摘要の明細から作った仕訳 → 帳簿で同じ摘要の仕訳 の順
@@ -11,6 +12,7 @@
 import type { Account, InvoiceKind, JournalLine, TaxCode } from "./types";
 import type { FlatLine } from "./accounting";
 import { parseCsv } from "./csv";
+import { statementTable, warekiYymmdd, type BankFormatId } from "./bankFormats";
 
 // ────────────────────────────────────────────
 // 列の対応
@@ -22,14 +24,26 @@ export interface ColumnMap {
   date: number;
   /** 摘要（複数の列をつなげてもよい） */
   description: number[];
-  /** split = 増える側・減る側の2列、signed = 金額1列（＋が増える側。invert で逆） */
-  mode: "split" | "signed";
+  /** split = 増える側・減る側の2列、signed = 金額1列（＋が増える側。invert で逆）、kind = 入払区分の列と金額の列（金額は符号なし） */
+  mode: "split" | "signed" | "kind";
   increase: number | null;
   decrease: number | null;
   amount: number | null;
   invert: boolean;
   balance: number | null;
+  /** kind：入払区分の列と、増える側（入金）・減る側（出金）を表す値 */
+  kind?: number | null;
+  kindIncrease?: string[];
+  kindDecrease?: string[];
+  /** 日付の書き方：auto（いろいろ読む）・wareki6（和暦の YYMMDD） */
+  dateStyle?: "auto" | "wareki6";
+  /** 公式の形式で読んだときの形式（lib/bankFormats.ts。手で選んだ列なら無し） */
+  format?: BankFormatId;
 }
+
+/** 入払区分の値の初期値（入金・出金を表す値） */
+export const KIND_INCREASE = ["1", "入金", "受入", "預入", "入"];
+export const KIND_DECREASE = ["2", "出金", "払出", "支払", "出"];
 
 const HEADER_WORDS = {
   date: /^(日付|年月日|取引日|お取引日|お取引日付|取引年月日|利用日|ご利用日|ご利用年月日|利用年月日|入出金日|日時|date)$/i,
@@ -37,6 +51,8 @@ const HEADER_WORDS = {
   increase: /(入金|預入|預け入れ|預入れ|お預り|お預かり|預かり|預り|受入|受け入れ|credit)/i,
   decrease: /(出金|引出|引き出し|引出し|支払金額|支払い金額|支払額|払戻|払出|払い出し|引落|引き落とし|debit)/i,
   amount: /(金額|お支払額|取引額|amount)/i,
+  /** 入金か出金かを表す区分の列（値は 1・2、入金・出金など） */
+  kind: /^(入払区分|入出金区分|入出区分|受払区分|入出金種別)$/,
   /** 入金と出金を1列で持つ見出し（＋が入金） */
   signed: /(入出金|入払|出入金)/,
   /** カードの利用の金額（「○月支払金額」などより先に使う） */
@@ -60,6 +76,12 @@ export const guessColumns = (rows: string[][]): ColumnMap | null => {
       const d = find(HEADER_WORDS.description, skip);
       return d >= 0 ? [d] : [];
     };
+    // 入払区分の列と、符号の無い金額の列
+    const kind = find(HEADER_WORDS.kind, used);
+    const kindAmount = kind >= 0 ? find(HEADER_WORDS.amount, [...used, kind]) : -1;
+    if (kindAmount >= 0) {
+      return { ...base, description: desc([...used, kind, kindAmount]), mode: "kind", amount: kindAmount, kind, kindIncrease: KIND_INCREASE, kindDecrease: KIND_DECREASE };
+    }
     // 「入出金」のような1列、カードの「利用金額」は金額1列（＋が増える側）として読む
     const signed = find(HEADER_WORDS.signed, used);
     const usage = signed < 0 ? find(HEADER_WORDS.usage, used) : -1;
@@ -83,10 +105,15 @@ export const parseColumnMap = (json: string | null): ColumnMap | null => {
   if (!json) return null;
   try {
     const m = JSON.parse(json) as ColumnMap;
-    const idx = (v: unknown) => v === null || (Number.isInteger(v) && (v as number) >= 0);
-    if (!Number.isInteger(m.headerRow) || !Number.isInteger(m.date) || !Array.isArray(m.description) || !["split", "signed"].includes(m.mode)) return null;
-    if (![m.increase, m.decrease, m.amount, m.balance].every(idx)) return null;
-    return { ...m, invert: !!m.invert };
+    const idx = (v: unknown) => v === null || v === undefined || (Number.isInteger(v) && (v as number) >= 0);
+    if (!Number.isInteger(m.headerRow) || !Number.isInteger(m.date) || !Array.isArray(m.description) || !["split", "signed", "kind"].includes(m.mode)) return null;
+    if (![m.increase, m.decrease, m.amount, m.balance, m.kind].every(idx)) return null;
+    const words = (v: unknown, d: string[]) => (Array.isArray(v) && v.every((x) => typeof x === "string") ? v : d);
+    const { dateStyle, ...rest } = m;
+    return {
+      ...rest, invert: !!m.invert, ...(dateStyle === "wareki6" ? { dateStyle } : {}),
+      ...(m.mode === "kind" ? { kindIncrease: words(m.kindIncrease, KIND_INCREASE), kindDecrease: words(m.kindDecrease, KIND_DECREASE) } : {}),
+    };
   } catch {
     return null;
   }
@@ -97,6 +124,9 @@ export const columnMapProblem = (m: ColumnMap): string | null => {
   if (m.date < 0) return "日付の列を選んでください";
   if (m.mode === "split" && m.increase === null && m.decrease === null) return "入金（増える側）か出金（減る側）の列を選んでください";
   if (m.mode === "signed" && m.amount === null) return "金額の列を選んでください";
+  if (m.mode === "kind" && (m.kind === null || m.kind === undefined)) return "入払区分の列を選んでください";
+  if (m.mode === "kind" && m.amount === null) return "金額の列を選んでください";
+  if (m.mode === "kind" && !(m.kindIncrease ?? []).length && !(m.kindDecrease ?? []).length) return "入金・出金を表す値を入れてください";
   return null;
 };
 
@@ -197,7 +227,12 @@ export const normDescription = (s: string) => s.normalize("NFKC").replace(/\s/g,
 
 /** CSV を明細にする。account = 取り込む先の科目（増える側を決める） */
 export const parseStatement = (text: string, map: ColumnMap, account: Pick<Account, "normal_side">, defaultYear?: number): ParsedStatement => {
-  const rows = parseCsv(text);
+  // 全銀協の固定長なら表に直す（lib/bankFormats.ts）
+  const rows = statementTable(text, parseCsv);
+  const thisYear = defaultYear ?? new Date().getFullYear();
+  const word = (s: string) => s.normalize("NFKC").trim();
+  const incWords = new Set((map.kindIncrease ?? KIND_INCREASE).map(word));
+  const decWords = new Set((map.kindDecrease ?? KIND_DECREASE).map(word));
   const lines: StatementLine[] = [];
   const problems: ParsedStatement["problems"] = [];
   let skipped = 0;
@@ -207,7 +242,7 @@ export const parseStatement = (text: string, map: ColumnMap, account: Pick<Accou
     const r = rows[i];
     if (r.every((c) => !c.trim())) continue;
     const rawDate = cell(r, map.date);
-    const date = parseStatementDate(rawDate, defaultYear);
+    const date = map.dateStyle === "wareki6" ? warekiYymmdd(rawDate, thisYear) : parseStatementDate(rawDate, defaultYear);
     // 合計の行など、日付の無い行（数字の無い行）は飛ばす
     if (!/\d/.test(rawDate)) { skipped++; continue; }
     if (!date) { problems.push({ row: i + 1, message: `日付を読めません：${rawDate}` }); continue; }
@@ -217,6 +252,13 @@ export const parseStatement = (text: string, map: ColumnMap, account: Pick<Accou
       const down = parseStatementAmount(cell(r, map.decrease));
       if (Number.isNaN(up) || Number.isNaN(down)) { problems.push({ row: i + 1, message: "金額を読めません" }); continue; }
       signed = (up ?? 0) - (down ?? 0);
+    } else if (map.mode === "kind") {
+      const a = parseStatementAmount(cell(r, map.amount));
+      if (Number.isNaN(a)) { problems.push({ row: i + 1, message: `金額を読めません：${cell(r, map.amount)}` }); continue; }
+      const k = word(cell(r, map.kind ?? null));
+      const dir = incWords.has(k) ? 1 : decWords.has(k) ? -1 : 0;
+      if (!dir && (a ?? 0) !== 0) { problems.push({ row: i + 1, message: `入払区分を読めません：${k || "（空）"}` }); continue; }
+      signed = Math.abs(a ?? 0) * dir;
     } else {
       const a = parseStatementAmount(cell(r, map.amount));
       if (Number.isNaN(a)) { problems.push({ row: i + 1, message: `金額を読めません：${cell(r, map.amount)}` }); continue; }

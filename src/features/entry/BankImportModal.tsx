@@ -16,9 +16,10 @@ import { decodeText } from "../../lib/evidence";
 import { parseCsv } from "../../lib/csv";
 import { shortDate, yen } from "../../lib/format";
 import {
-  bankEntryLines, columnMapProblem, findBookDuplicate, guessColumns, guessLine, learnFromBooks, parseStatement, type BankRule, type BankRuleSplit, type ColumnMap,
-  type HistoryHit,
+  bankEntryLines, columnMapProblem, findBookDuplicate, guessColumns, guessLine, KIND_DECREASE, KIND_INCREASE, learnFromBooks, parseStatement, type BankRule, type BankRuleSplit,
+  type ColumnMap, type HistoryHit,
 } from "../../lib/bankImport";
+import { BANK_FORMATS, detectFormat, formatOf, mapForFormat, statementTable, zenginToTable } from "../../lib/bankFormats";
 import { entryRateOf, splitLinesByHomeUse } from "../../lib/homeUse";
 import { CODE } from "../../constants/accounts";
 import type { FlatLine } from "../../lib/accounting";
@@ -425,7 +426,10 @@ const ReadView = ({ account, subId, accountName, disabled, onRead }: {
   const [text, setText] = useState("");
   const [map, setMap] = useState<ColumnMap>(EMPTY_MAP);
   const [busy, setBusy] = useState(false);
-  const table = useMemo(() => (text ? parseCsv(text) : []), [text]);
+  // 全銀協の固定長なら表に直す（lib/bankFormats.ts）
+  const table = useMemo(() => (text ? statementTable(text, parseCsv) : []), [text]);
+  const zenginAccounts = useMemo(() => (text ? zenginToTable(text)?.accounts ?? 0 : 0), [text]);
+  const format = formatOf(map.format);
   const width = Math.max(0, ...table.slice(0, 30).map((r) => r.length));
   const head = map.headerRow >= 0 ? table[map.headerRow] ?? [] : [];
   const colName = (i: number) => `${i + 1}列目${head[i]?.trim() ? `：${head[i].trim()}` : ""}`;
@@ -439,9 +443,20 @@ const ReadView = ({ account, subId, accountName, disabled, onRead }: {
     const t = decodeText(new Uint8Array(await f.arrayBuffer()));
     setFileName(f.name);
     setText(t);
+    // 公式の形式に合えばその形式、合わなければ前に覚えた対応、無ければ見出しから推測
+    const rows = statementTable(t, parseCsv);
     const saved = await repo.getBankFormat(db, account.id, subId);
-    setMap(saved ?? guessColumns(parseCsv(t)) ?? EMPTY_MAP);
+    setMap(detectFormat(rows) ?? (saved && !saved.format ? saved : null) ?? guessColumns(rows) ?? EMPTY_MAP);
   };
+  /** 形式を選び直す（"" = 見出しから推測して列を選ぶ） */
+  const chooseFormat = (id: string) => {
+    const f = formatOf(id);
+    if (!f) return setMap({ ...(guessColumns(table) ?? EMPTY_MAP), format: undefined });
+    const m = mapForFormat(f, table);
+    if (!m) return toast(`このファイルに「${f.name}」の見出し（${f.required.join("・")}）が見つかりません`, "error");
+    setMap(m);
+  };
+  const words = (v: string) => v.split(/[,、，]/).map((x) => x.trim()).filter(Boolean);
   const read = async () => {
     if (!parsed || parsed.problems.length) return;
     setBusy(true);
@@ -469,17 +484,34 @@ const ReadView = ({ account, subId, accountName, disabled, onRead }: {
   return (
     <div className="settings-form bank-read">
       <p className="prose">
-        銀行・カードのサイトから書き出した明細の CSV を、{accountName} の明細として読み込みます（UTF-8・Shift_JIS）。列の対応は見出しから推測し、口座ごとに覚えます。
+        銀行・カードのサイトから書き出した明細の CSV（全銀協の固定長のファイルも）を、{accountName} の明細として読み込みます（UTF-8・Shift_JIS）。
+        銀行が公式に公開している形式（ゆうちょダイレクト・ゆうちょBizダイレクト・三菱UFJ銀行 BizSTATION・全銀協の入出金取引明細）は見分けて読みます。
+        ほかは列の対応を見出しから推測し、口座ごとに覚えます。
         前に読んだ明細（日付・金額・摘要が同じもの）は、もう一度は読み込みません。
       </p>
       <label className="field">
         <span>CSV ファイル</span>
-        <input className="input file-input" type="file" accept=".csv,text/csv,text/plain" onChange={(e) => pick(e.target.files?.[0])} disabled={disabled} />
+        <input className="input file-input" type="file" accept=".csv,.txt,.dat,text/csv,text/plain" onChange={(e) => pick(e.target.files?.[0])} disabled={disabled} />
         {fileName && <span className="field-note"><FileUp size={13} /> {fileName}</span>}
       </label>
       {text && (
         <>
           <div className="field-row wrap bank-map">
+            <label className="field bank-format">
+              <span>形式</span>
+              <select className="input" value={map.format ?? ""} onChange={(e) => chooseFormat(e.target.value)} disabled={disabled}>
+                <option value="">見出しから推測（列を選ぶ）</option>
+                {BANK_FORMATS.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </label>
+          </div>
+          {format && (
+            <p className="field-note">
+              「{format.name}」の形式として読みました（{format.source}のとおり）。違うときは、形式で「見出しから推測」を選んで列を選び直せます。
+            </p>
+          )}
+          {zenginAccounts > 1 && <p className="notice">このファイルには {zenginAccounts} つの口座の明細が入っています。{accountName} の明細だけのファイルにしてから読み込んでください。</p>}
+          {!format && <div className="field-row wrap bank-map">
             <label className="field" style={{ maxWidth: 120 }}>
               <span>見出しの行</span>
               <select className="input" value={map.headerRow} onChange={(e) => setMap({ ...map, headerRow: Number(e.target.value) })} disabled={disabled}>
@@ -492,12 +524,32 @@ const ReadView = ({ account, subId, accountName, disabled, onRead }: {
             {col(map.description[1] ?? null, (v) => setMap({ ...map, description: [map.description[0], v].filter((x): x is number => x !== null && x !== undefined) }), "摘要（2つ目）")}
             <label className="field" style={{ maxWidth: 200 }}>
               <span>金額の形</span>
-              <select className="input" value={map.mode} onChange={(e) => setMap({ ...map, mode: e.target.value as ColumnMap["mode"] })} disabled={disabled}>
+              <select
+                className="input" value={map.mode} disabled={disabled}
+                onChange={(e) => {
+                  const mode = e.target.value as ColumnMap["mode"];
+                  setMap(mode === "kind" ? { ...map, mode, kindIncrease: map.kindIncrease ?? KIND_INCREASE, kindDecrease: map.kindDecrease ?? KIND_DECREASE } : { ...map, mode });
+                }}
+              >
                 <option value="split">{labels.inc}と{labels.dec}が別の列</option>
                 <option value="signed">金額が1列（＋−）</option>
+                <option value="kind">入払区分の列と金額</option>
               </select>
             </label>
-            {map.mode === "split" ? (
+            {map.mode === "kind" ? (
+              <>
+                {col(map.kind ?? null, (v) => setMap({ ...map, kind: v }), "入払区分")}
+                {col(map.amount, (v) => setMap({ ...map, amount: v }), "金額")}
+                <label className="field" style={{ maxWidth: 170 }}>
+                  <span>{labels.inc}を表す値</span>
+                  <input className="input" value={(map.kindIncrease ?? []).join("、")} onChange={(e) => setMap({ ...map, kindIncrease: words(e.target.value) })} disabled={disabled} placeholder="例：1、入金" />
+                </label>
+                <label className="field" style={{ maxWidth: 170 }}>
+                  <span>{labels.dec}を表す値</span>
+                  <input className="input" value={(map.kindDecrease ?? []).join("、")} onChange={(e) => setMap({ ...map, kindDecrease: words(e.target.value) })} disabled={disabled} placeholder="例：2、出金" />
+                </label>
+              </>
+            ) : map.mode === "split" ? (
               <>
                 {col(map.increase, (v) => setMap({ ...map, increase: v }), labels.inc)}
                 {col(map.decrease, (v) => setMap({ ...map, decrease: v }), labels.dec)}
@@ -512,7 +564,14 @@ const ReadView = ({ account, subId, accountName, disabled, onRead }: {
               </>
             )}
             {col(map.balance, (v) => setMap({ ...map, balance: v }), "残高")}
-          </div>
+            <label className="field" style={{ maxWidth: 200 }}>
+              <span>日付の書き方</span>
+              <select className="input" value={map.dateStyle ?? "auto"} onChange={(e) => setMap({ ...map, dateStyle: e.target.value as ColumnMap["dateStyle"] })} disabled={disabled}>
+                <option value="auto">西暦・和暦など（自動）</option>
+                <option value="wareki6">和暦の6桁（080105）</option>
+              </select>
+            </label>
+          </div>}
           {columnMapProblem(map) && <p className="notice">{columnMapProblem(map)}</p>}
           {parsed && (
             <>
