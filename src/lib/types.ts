@@ -66,6 +66,8 @@ export interface JournalLine {
   invoice_kind?: InvoiceKind | null;
   /** 簡易課税の事業区分（1〜6。課税売上の明細だけ。null = 年度の「主な事業区分」） */
   business_class?: number | null;
+  /** 部門（任意。null = 共通・部門なし。部門ごとの損益を見るためだけのもの） */
+  department_id?: number | null;
   /** 課税仕入の用途区分（本則課税の個別対応方式。課税仕入の明細だけ。null = 分からない＝共通対応として計算） */
   purchase_use?: PurchaseUse | null;
   /** 税抜経理の年の消費税額を手で直した額（null = 自動。lib/taxExclusive.ts） */
@@ -107,6 +109,8 @@ export interface SnapshotLine {
   use?: PurchaseUse;
   /** 税抜経理の消費税額を手で直した額（入っているときだけ） */
   taxAmount?: number;
+  /** 部門の名前（記録時点。部門が付いているときだけ） */
+  dept?: string;
 }
 
 /** 履歴に残す仕訳の写し。科目名は記録時点の名前で保存する */
@@ -154,6 +158,12 @@ export interface VoucherRow {
   /** 税抜経理の年に手で直した消費税額。null = 自動 */
   debitTaxAmount?: number | null;
   creditTaxAmount?: number | null;
+  /**
+   * 部門（null = 共通・部門なし）。画面では行に1つ選び、借方・貸方の両方に付ける。
+   * 借方と貸方で違う部門の明細（CSV で取り込んだものなど）は、そのまま持つ（lib/departments.ts の rowDepartment）
+   */
+  debitDept?: number | null;
+  creditDept?: number | null;
 }
 
 export type FilingType = "blue65" | "blue55" | "blue10" | "white";
@@ -264,7 +274,7 @@ export const subKey = (accountId: number, subId: number | null) => `${accountId}
 /** 科目・補助科目・期首残高の変更履歴 */
 export interface MasterHistoryRecord {
   id: number;
-  target_type: "account" | "sub" | "opening" | "homeuse" | "closing" | "counterparty" | "user" | "setting" | "asset";
+  target_type: "account" | "sub" | "opening" | "homeuse" | "closing" | "counterparty" | "department" | "user" | "setting" | "asset";
   target_id: number;
   /** close / unlock は年度の締め（target_type = closing、target_id = 年度） */
   action: "create" | "rename" | "hide" | "show" | "delete" | "change" | "close" | "unlock";
@@ -359,6 +369,16 @@ export interface Counterparty {
   corporate_no: string;
   /** 1 = 適格請求書発行事業者ではない（免税事業者など）。この取引先からの課税仕入は初期値が「経過措置」になる */
   not_registered: number;
+  memo: string;
+  is_active: number;
+}
+
+/** 部門（任意。店舗・事業の種類など。code は並び順） */
+export interface Department {
+  id: number;
+  code: string;
+  name: string;
+  kana: string;
   memo: string;
   is_active: number;
 }

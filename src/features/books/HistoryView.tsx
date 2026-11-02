@@ -7,7 +7,7 @@ import { taxLongLabel, taxShortLabel } from "../../lib/tax";
 
 export const ACTION_LABEL: Record<HistoryAction, string> = { create: "登録", update: "訂正", delete: "削除" };
 
-const lineLabel = (l: EntrySnapshot["lines"][number]) => (l.sub ? `${l.account}（${l.sub}）` : l.account);
+const lineLabel = (l: EntrySnapshot["lines"][number]) => (l.sub ? `${l.account}（${l.sub}）` : l.account) + (l.dept ? `［${l.dept}］` : "");
 
 /** 仕訳の写しを「借方 / 貸方」の小さな表で表示する */
 export const SnapshotTable = ({ snap, compare }: { snap: EntrySnapshot; compare?: EntrySnapshot }) => {

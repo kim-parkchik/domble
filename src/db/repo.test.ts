@@ -524,6 +524,45 @@ describe("固定資産台帳と年の締め・年ごとの事業専用割合（r
   });
 });
 
+describe("部門（repo）", () => {
+  test("追加・変更・非表示は履歴に残り（厳密モード）、使った部門は削除できない", async () => {
+    const { db } = strict;
+    const a = await repo.createDepartment(db, { code: "02", name: "本店", kana: "", memo: "" });
+    const b = await repo.createDepartment(db, { code: "01", name: "キッチンカー", kana: "", memo: "" });
+    await expect(repo.createDepartment(db, { code: "", name: "ほんてん", kana: "", memo: "" })).resolves.toBeGreaterThan(0);
+    await expect(repo.createDepartment(db, { code: "", name: "本店", kana: "", memo: "" })).rejects.toThrow(/同じ名前/);
+    // コードの順
+    expect((await repo.getDepartments(db)).map((d) => d.name).slice(0, 2)).toEqual(["キッチンカー", "本店"]);
+    await repo.updateDepartment(db, a, { code: "02", name: "本店（駅前）", kana: "", memo: "" });
+    await repo.setDepartmentActive(db, b, false);
+    const hist = (await repo.getMasterHistory(db)).filter((h) => h.target_type === "department");
+    expect(hist.map((h) => h.action)).toEqual(expect.arrayContaining(["create", "rename", "hide"]));
+    // 使った部門は削除できない（非表示にはできる）
+    await repo.createEntry(db, "2026-02-01", lines.map((l) => ({ ...l, department_id: a })));
+    expect(await repo.departmentUsage(db, a)).toBe(2);
+    await expect(repo.deleteDepartment(db, a)).rejects.toThrow(/削除できません/);
+    await repo.deleteDepartment(db, b);
+    expect((await repo.getDepartments(db)).some((d) => d.id === b)).toBe(false);
+  });
+
+  test("明細に部門を持ち、履歴の写しに部門の名前を残す。部門の無い仕訳の改ざんの照合は今までどおり", async () => {
+    const { db } = strict;
+    await repo.initChain(db);
+    const plain = await repo.createEntry(db, "2026-02-01", lines);
+    const d = await repo.createDepartment(db, { code: "", name: "本店", kana: "", memo: "" });
+    const e = await repo.createEntry(db, "2026-02-02", [{ ...lines[0], department_id: d }, lines[1]]);
+    expect((await repo.getEntry(db, e))!.lines.map((l) => l.department_id ?? null)).toEqual([d, null]);
+    expect((await repo.getLines(db, "2026-01-01", "2026-12-31")).filter((l) => l.entry_id === e).map((l) => l.department_id ?? null)).toEqual([d, null]);
+    const snap = (await repo.getHistory(db, e))[0].snapshot;
+    expect(snap.lines.map((l) => l.dept ?? "")).toEqual(["本店", ""]);
+    expect((await repo.getHistory(db, plain))[0].snapshot.lines.every((l) => l.dept === undefined)).toBe(true);
+    // 部門を変える訂正
+    await repo.updateEntry(db, e, "2026-02-02", lines.map((l) => ({ ...l, department_id: d })), "部門の付け忘れ");
+    const errors = (await repo.verifyIntegrity(db)).issues.filter((i) => i.level === "error");
+    expect(errors).toEqual([]);
+  });
+});
+
 describe("貸倒引当金（repo）", () => {
   test("初期科目に貸倒引当金・繰入・戻入がある。戻入は貸方（繰戻額等）。同じ名前の科目を自分で足していれば、開いたときに足さない", async () => {
     const { db, raw } = strict;
@@ -1851,7 +1890,7 @@ describe("銀行・カードの明細（repo）", () => {
     await expect(repo.saveBankRule(db, { ...rule, keyword: " " })).rejects.toThrow(/言葉/);
     await expect(repo.saveBankRule(db, { ...rule, tax_code: "x" as never })).rejects.toThrow(/税区分/);
     // 分け方：保存し直すと置き換わる。分ける行に使った科目は消せない
-    const split = { account_id: id("支払手数料"), sub_account_id: null, tax_code: null, invoice_kind: null, amount: 330, memo: "手数料" };
+    const split = { account_id: id("支払手数料"), sub_account_id: null, tax_code: null, invoice_kind: null, amount: 330, memo: "手数料", department_id: null };
     await repo.saveBankRule(db, { ...rule, id: ruleId, splits: [split, { ...split, amount: 110, memo: "" }] });
     expect((await repo.getBankRules(db))[0].splits).toEqual([split, { ...split, amount: 110, memo: "" }]);
     await repo.saveBankRule(db, { ...rule, id: ruleId, splits: [split] });

@@ -102,20 +102,20 @@ export const ledgerSection = (s: LedgerPrintSource): PrintSection => {
 };
 
 /** 元帳の CSV の見出し */
-export const LEDGER_CSV_HEADER = ["科目", "補助科目", "日付", "伝票No", "相手科目", "税区分", "摘要", "取引先", "借方", "貸方", "残高", "決算整理"];
+export const LEDGER_CSV_HEADER = ["科目", "補助科目", "日付", "伝票No", "相手科目", "税区分", "摘要", "取引先", "借方", "貸方", "残高", "決算整理", "部門"];
 
 /** 元帳の CSV の行（科目ごと。最初に繰越の行） */
 export const ledgerCsvRows = (
   account: string, s: Pick<LedgerPrintSource, "rows" | "opening" | "from" | "to" | "counterOf" | "taxOf">,
-  subOf: (r: LedgerRow) => string, counterpartyOf: (r: LedgerRow) => string,
+  subOf: (r: LedgerRow) => string, counterpartyOf: (r: LedgerRow) => string, departmentOf: (r: LedgerRow) => string = () => "",
 ): CsvValue[][] => {
   const before = s.rows.filter((r) => periodOf(r) < s.from);
   const carried = before.length ? before[before.length - 1].balance : s.opening;
   return [
-    [account, "", "", "", "", "", carriedLabel(s.from), "", "", "", carried, ""],
+    [account, "", "", "", "", "", carriedLabel(s.from), "", "", "", carried, "", ""],
     ...s.rows.filter((r) => periodOf(r) >= s.from && periodOf(r) <= s.to).map((r) => [
       account, subOf(r), r.date, r.entry_id, s.counterOf(r), s.taxOf(r), r.memo, counterpartyOf(r),
-      r.debit || "", r.credit || "", r.balance, r.isAdjustment ? "決算整理" : "",
+      r.debit || "", r.credit || "", r.balance, r.isAdjustment ? "決算整理" : "", departmentOf(r),
     ]),
   ];
 };

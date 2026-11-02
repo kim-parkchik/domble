@@ -28,6 +28,8 @@ import { BankImportModal } from "./BankImportModal";
 import { TemplatePickModal } from "./TemplateModals";
 import { applyTemplate, templateForBook, type JournalTemplate } from "../../lib/templates";
 import { bookFill, usableSide } from "../../lib/memoFill";
+import { DepartmentSelect } from "../../components/DepartmentSelect";
+import { departmentName } from "../../lib/departments";
 import * as repo from "../../db/repo";
 import { subKey, type InvoiceKind, type JournalLine, type PurchaseUse, type TaxCode } from "../../lib/types";
 import { splitByRate } from "../../lib/homeUse";
@@ -45,7 +47,7 @@ const columnLabels = (code: string, normal: "debit" | "credit") => {
 };
 
 export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
-  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, isTaxActive, taxYears, dataVersion, settings, strict, subAccounts, daysOff } = useAppContext();
+  const { db, year, accounts, accountMap, bump, activeSubsOf, labelOf, subMap, homeUseOf, isDateClosed, counterparties, departments, isTaxActive, taxYears, dataVersion, settings, strict, subAccounts, daysOff } = useAppContext();
   const { lines, opening, subOpening, loading } = useYearData();
   const toast = useToast();
 
@@ -83,6 +85,10 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
 
   const account = accountMap.get(accountId)!;
   const labels = columnLabels(account.code, account.normal_side);
+  // 部門の欄は、部門を作ってあるときだけ出す
+  const useDept = departments.length > 0;
+  /** 非表示・削除した部門は入れない */
+  const activeDept = (id: number | null | undefined) => (id && departments.some((x) => x.id === id && x.is_active) ? id : null);
 
   // ── 表示する行 ──
   const { carried, rows } = useMemo(() => {
@@ -172,6 +178,8 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
   const [dr, setDr] = useState<number | null>(null);
   const [cr, setCr] = useState<number | null>(null);
   const [counterpartyId, setCounterpartyId] = useState<number | null>(null);
+  /** 部門（借方・貸方の両方に付ける。null = 共通） */
+  const [dept, setDept] = useState<number | null>(null);
   const [cpUnknown, setCpUnknown] = useState(false);
   /** 登録のたびに取引先の欄を空に戻すためのキー */
   const [cpKey, setCpKey] = useState(0);
@@ -207,6 +215,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     setCounterId(x.counterId);
     setCounterSubId(x.counterSubId);
     setCounterTax(x.tax);
+    setDept(activeDept(x.dept));
     setMemo(x.memo);
     setDr(x.bookDebit ? x.amount : null);
     setCr(x.bookDebit ? null : x.amount);
@@ -229,6 +238,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       setCounterId(f.accountId);
       setCounterSubId(f.subId);
       setCounterTax({ code: f.tax, invoice: f.invoice, cls: f.cls, use: f.use });
+      if (!dept && activeDept(f.dept)) setDept(activeDept(f.dept));
       filled.push("相手科目");
     }
     const cp = !counterpartyId && e.counterparty_id ? counterparties.find((c) => c.id === e.counterparty_id && c.is_active) : null;
@@ -265,14 +275,16 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       ...(counterTax.code ? { tax_code: counterTax.code } : {}), ...(counterTax.invoice ? { invoice_kind: counterTax.invoice } : {}),
       ...(counterTax.cls ? { business_class: counterTax.cls } : {}), ...(counterTax.use ? { purchase_use: counterTax.use } : {}),
     };
+    // 部門は借方・貸方の両方に付ける
+    const d = dept ? { department_id: dept } : {};
     const lines: JournalLine[] = [
-      { row_no: 1, side: "debit", account_id: isDebit ? accountId : counterId, sub_account_id: isDebit ? ownSub : counterSubId, amount, memo: m, ...(isDebit ? {} : tax) },
-      { row_no: 1, side: "credit", account_id: isDebit ? counterId : accountId, sub_account_id: isDebit ? counterSubId : ownSub, amount, memo: m, ...(isDebit ? tax : {}) },
+      { row_no: 1, side: "debit", account_id: isDebit ? accountId : counterId, sub_account_id: isDebit ? ownSub : counterSubId, amount, memo: m, ...(isDebit ? {} : tax), ...d },
+      { row_no: 1, side: "credit", account_id: isDebit ? counterId : accountId, sub_account_id: isDebit ? counterSubId : ownSub, amount, memo: m, ...(isDebit ? tax : {}), ...d },
     ];
     // 家事按分（入力のたびに）：支払った経費を、事業分と事業主貸に分ける
     if (split) {
       lines[0] = { ...lines[0], amount: split.business };
-      lines.push({ row_no: 2, side: "debit", account_id: drawId, sub_account_id: null, amount: split.private, memo: m ? `${m}（家事分）` : "家事分" });
+      lines.push({ row_no: 2, side: "debit", account_id: drawId, sub_account_id: null, amount: split.private, memo: m ? `${m}（家事分）` : "家事分", ...d });
     }
     try {
       await repo.createEntry(db, entryDate, lines, counterpartyId, late ? lateReason : "", adjustmentOnly);
@@ -283,6 +295,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
       setCounterpartyId(null);
       setCpKey((k) => k + 1);
       setCounterSubId(null);
+      setDept(null);
       setMemo("");
       setDr(null);
       setCr(null);
@@ -358,12 +371,13 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
           </p>
         )}
         <div className="table-wrap scroll-y" ref={scrollRef}>
-          <table className="ledger book-table">
+          <table className={`ledger book-table${useDept ? " with-dept" : ""}`}>
             <colgroup>
               <col className="cb-date" />
               <col className="cb-no" />
               <col className="cb-acct" />
               <col className="cb-tax" />
+              {useDept && <col className="cb-dept" />}
               <col />
               <col className="cb-amt" />
               <col className="cb-amt" />
@@ -375,6 +389,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                 <th className="num" title="伝票番号（仕訳日記帳の No. と同じ）">No.</th>
                 <th>相手科目</th>
                 <th className="tax-th">税区分</th>
+                {useDept && <th>部門</th>}
                 <th>摘要</th>
                 <th className="num dr">{labels.dr}</th>
                 <th className="num cr">{labels.cr}</th>
@@ -384,7 +399,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
             <tbody>
               <tr className="carried">
                 <td colSpan={2} />
-                <td colSpan={5}>{from === 1 ? "前期より繰越" : adjustmentOnly ? "12月より繰越" : "前月より繰越"}</td>
+                <td colSpan={useDept ? 6 : 5}>{from === 1 ? "前期より繰越" : adjustmentOnly ? "12月より繰越" : "前月より繰越"}</td>
                 <td className="num">{yen(carried)}</td>
               </tr>
               {rows.map((r, i) => (
@@ -393,6 +408,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                   <td className="num muted">{r.entry_id}</td>
                   <td>{r.counterAccountId ? labelOf(r.counterAccountId, r.counterSubId) : r.counter}</td>
                   <td className={`tax-cell${taxOfRow(r).text === "未設定" || taxOfRow(r).text.endsWith("区分不明") ? " tax-missing" : ""}`} title={taxOfRow(r).title}>{taxOfRow(r).text}</td>
+                  {useDept && <td className="muted ellipsis">{r.departmentId ? departmentName(departments, r.departmentId) : ""}</td>}
                   <td className="memo">
                     {r.isAdjustment && <span className="badge badge-adjust">決算整理</span>}
                     {bookSub === undefined && r.subId && <span className="sub-tag">{subMap.get(r.subId)?.name}</span>}
@@ -405,19 +421,20 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                 </tr>
               ))}
               {!loading && rows.length === 0 && (
-                <tr className="empty-row"><td colSpan={8}>まだ取引がありません。下の行から入力を始めてください。</td></tr>
+                <tr className="empty-row"><td colSpan={useDept ? 9 : 8}>まだ取引がありません。下の行から入力を始めてください。</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         <div className="table-wrap input-dock" data-navgroup>
-          <table className="ledger book-table">
+          <table className={`ledger book-table${useDept ? " with-dept" : ""}`}>
             <colgroup>
               <col className="cb-date" />
               <col className="cb-no" />
               <col className="cb-acct" />
               <col className="cb-tax" />
+              {useDept && <col className="cb-dept" />}
               <col />
               <col className="cb-amt" />
               <col className="cb-amt" />
@@ -439,6 +456,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
                     date={adjustmentOnly ? yearEnd(year) : date} counterpartyId={counterpartyId} onChange={(code, invoice, cls, use) => setCounterTax({ code, invoice, cls, use })}
                   />
                 </td>
+                {useDept && <td><DepartmentSelect value={dept} onChange={setDept} onKeyDown={nav} label="部門" /></td>}
                 <td>
                   <div className="memo-cp">
                     <MemoInput value={memo} onChange={setMemo} onCommit={fillFromMemo} onKeyDown={nav} aria-label="摘要" />

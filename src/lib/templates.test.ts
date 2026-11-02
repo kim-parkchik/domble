@@ -80,8 +80,10 @@ test("帳簿入力に入れる形：この帳簿の科目と相手科目1つの�
   const bank = id("普通預金");
   const electric = row({ debitAccountId: id("水道光熱費"), debitTax: "purchase10", creditAccountId: bank, creditSubId: 1, memo: "電気代" });
   expect(templateForBook([electric], bank, "普通預金")).toEqual({
-    bookDebit: false, counterId: id("水道光熱費"), counterSubId: null, amount: null, memo: "電気代", tax: { code: "purchase10", invoice: null, cls: null, use: null },
+    bookDebit: false, counterId: id("水道光熱費"), counterSubId: null, amount: null, memo: "電気代", tax: { code: "purchase10", invoice: null, cls: null, use: null }, dept: null,
   });
+  // 部門は相手科目の側から
+  expect(templateForBook([{ ...electric, debitDept: 3, creditDept: 3 }], bank, "普通預金")).toMatchObject({ dept: 3 });
   // 入金（この帳簿が借方）。金額は相手の側、なければこの帳簿の側
   expect(templateForBook([row({ debitAccountId: bank, debitAmount: 5_000, creditAccountId: id("売上高") })], bank, "普通預金")).toMatchObject({ bookDebit: true, counterId: id("売上高"), amount: 5_000 });
   expect(templateForBook([electric, electric], bank, "普通預金")).toEqual({ error: expect.stringMatching(/何行も/) });

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type Database from "../db/connection";
-import type { Account, Counterparty, User, FilingType, FilingYear, FiscalClosing, HomeUseRate, OpeningBalances, Settings, SubAccount, SubOpeningBalances, TaxYear } from "../lib/types";
+import type { Account, Counterparty, Department, User, FilingType, FilingYear, FiscalClosing, HomeUseRate, OpeningBalances, Settings, SubAccount, SubOpeningBalances, TaxYear } from "../lib/types";
 import { toAccountMap, yearEnd, yearStart, type AccountMap, type FlatLine } from "../lib/accounting";
 import { closedMonthOf, closingOf, expectedNextOpening, openingMismatches, type OpeningMismatch } from "../lib/closing";
 import * as repo from "../db/repo";
@@ -45,6 +45,9 @@ interface AppContextValue {
   /** 取引先（全件。非表示のものも含む） */
   counterparties: Counterparty[];
   reloadCounterparties: () => Promise<void>;
+  /** 部門（全件。非表示のものも含む。コード → 名前の順）。1つも無ければ、帳簿入力などに部門の欄を出さない */
+  departments: Department[];
+  reloadDepartments: () => Promise<void>;
   /** 消費税の設定（年度ごと。from_year の順） */
   taxYears: TaxYear[];
   /** 表示中の年度に効いている消費税の設定（inherited = 前の年から引き継ぎ） */
@@ -147,6 +150,12 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
     reloadCounterparties().catch(console.error);
   }, [reloadCounterparties]);
 
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const reloadDepartments = useCallback(async () => setDepartments(await repo.getDepartments(db)), [db]);
+  useEffect(() => {
+    reloadDepartments().catch(console.error);
+  }, [reloadDepartments]);
+
   const [taxYears, setTaxYears] = useState<TaxYear[]>([]);
   const reloadTaxYears = useCallback(async () => setTaxYears(await repo.getTaxYears(db)), [db]);
   useEffect(() => {
@@ -207,6 +216,8 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       reloadUsers,
       counterparties,
       reloadCounterparties,
+      departments,
+      reloadDepartments,
       taxYears,
       taxYear: taxYearOf(taxYears, settings.fiscal_year),
       isTaxActive: (date) => taxActiveOn(taxYears, date),
@@ -225,7 +236,7 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       reloadSettings,
       reloadAccounts,
     };
-  }, [db, filePath, readOnly, restoreBackup, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, taxYears, reloadTaxYears, filingYears, reloadFilingYears, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
+  }, [db, filePath, readOnly, restoreBackup, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, departments, reloadDepartments, taxYears, reloadTaxYears, filingYears, reloadFilingYears, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

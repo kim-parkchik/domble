@@ -3,7 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
-  House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Users, UserRound, Repeat,
+  House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Network, Users, UserRound, Repeat,
   ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked, ClipboardCheck, Wallet,
 } from "lucide-react";
 import { Popover } from "./components/Popover";
@@ -45,6 +45,7 @@ import { IncomeTaxPage } from "./features/reports/IncomeTaxPage";
 import { OpeningBalancesPage } from "./features/settings/OpeningBalancesPage";
 import { AccountsPage } from "./features/settings/AccountsPage";
 import { CounterpartiesPage } from "./features/settings/CounterpartiesPage";
+import { DepartmentsPage } from "./features/settings/DepartmentsPage";
 import { BusinessSettingsPage } from "./features/settings/BusinessSettingsPage";
 import { SetupScreen } from "./features/start/SetupScreen";
 import { LoginScreen } from "./features/start/LoginScreen";
@@ -59,7 +60,7 @@ import { displayName } from "./lib/business";
 
 export type Page =
   | "home" | "cashbook" | "voucher" | "payroll" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening"
-  | "accounts" | "counterparties" | "users" | "settings" | "ebook" | "manual" | "yearend";
+  | "accounts" | "counterparties" | "departments" | "users" | "settings" | "ebook" | "manual" | "yearend";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
   { group: "", items: [{ id: "home", label: "ホーム", icon: <House size={17} /> }] },
@@ -98,6 +99,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
       { id: "opening", label: "期首残高", icon: <Landmark size={17} /> },
       { id: "accounts", label: "勘定科目", icon: <Tags size={17} /> },
       { id: "counterparties", label: "取引先", icon: <Building2 size={17} /> },
+      { id: "departments", label: "部門", icon: <Network size={17} /> },
       { id: "users", label: "ユーザー", icon: <Users size={17} /> },
       { id: "settings", label: "事業者設定", icon: <SettingsIcon size={17} /> },
       { id: "ebook", label: "電子帳簿保存法", icon: <ShieldCheck size={17} /> },
@@ -620,6 +622,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
           {page === "opening" && <OpeningBalancesPage />}
           {page === "accounts" && <AccountsPage />}
           {page === "counterparties" && <CounterpartiesPage />}
+          {page === "departments" && <DepartmentsPage />}
           {page === "users" && <UsersPage />}
           {page === "settings" && <BusinessSettingsPage carryFocus={carryFocus} />}
           {page === "ebook" && <EBookPage go={go} />}

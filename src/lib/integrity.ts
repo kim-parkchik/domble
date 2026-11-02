@@ -50,11 +50,14 @@ export interface LineStateInput {
   purchase_use?: string | null;
   /** 税抜経理の消費税額を手で直した額。同じく入っているときだけ */
   tax_amount?: number | null;
+  /** 部門。同じく入っているときだけ */
+  department_id?: number | null;
 }
 const lineKey = (l: LineStateInput) => [
   l.row_no, l.side === "debit" ? 0 : 1, l.account_id, l.sub_account_id ?? 0, l.amount, l.memo,
   ...(l.tax_code ? [["tax", l.tax_code, l.invoice_kind ?? "", ...(l.business_class ? [l.business_class] : []), ...(l.purchase_use ? [l.purchase_use] : [])]] : []),
   ...(l.tax_amount != null ? [["taxAmount", l.tax_amount]] : []),
+  ...(l.department_id ? [["dept", l.department_id]] : []),
 ];
 const cmp = (a: unknown[], b: unknown[]) => {
   for (let i = 0; i < a.length; i++) {

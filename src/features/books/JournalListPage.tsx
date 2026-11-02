@@ -28,6 +28,7 @@ import { JOURNAL_CSV_HEADER, journalCsvRows, journalRowsOf, type JournalRow } fr
 import { lineTaxAmount } from "../../lib/taxExclusive";
 import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
+import { COMMON_LABEL, departmentName, matchesDepartment, type DepartmentFilter } from "../../lib/departments";
 import { fileLabel } from "../../lib/business";
 
 type DisplayRow = JournalRow;
@@ -35,8 +36,10 @@ type DisplayRow = JournalRow;
 export const JournalListPage = () => {
   const {
     db, year, accounts, accountMap, activeAccounts, subAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear, taxYears, can, readOnly,
-    closedMonth, daysOff,
+    closedMonth, daysOff, departments,
   } = useAppContext();
+  /** 部門での絞り込み（"all" = すべて、0 = 共通（部門なし）の明細がある仕訳、それ以外はその部門の明細がある仕訳） */
+  const [deptFilter, setDeptFilter] = useState<DepartmentFilter>("all");
   /** 税区分での絞り込み："" = すべて、unset = 未設定（課税事業者の期間で税区分が無い）、transitional / nodeduct = インボイス区分、それ以外は税区分 */
   const [taxFilter, setTaxFilter] = useState("");
   const cpMap = useMemo(() => new Map(counterparties.map((c) => [c.id, c])), [counterparties]);
@@ -96,6 +99,7 @@ export const JournalListPage = () => {
       if (dateTo && ls[0].date > dateTo) continue;
       if (accountId && !ls.some((l) => l.account_id === accountId)) continue;
       if (cpId && ls[0].counterparty_id !== cpId) continue;
+      if (deptFilter !== "all" && !ls.some((l) => matchesDepartment(l, deptFilter))) continue;
       if (taxFilter && !ls.some((l) =>
         taxFilter === "unset" ? !l.tax_code && isTaxActive(l.date)
           : taxFilter === "transitional" ? l.invoice_kind === "transitional"
@@ -119,7 +123,7 @@ export const JournalListPage = () => {
       out.push(...journalRowsOf(entryId, ls, { counterparty, late, reason: reasons.get(entryId) }));
     }
     return out;
-  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, inputPeriod, daysOff, lateOnly, taxFilter, isTaxActive, reasons]);
+  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, deptFilter, inputPeriod, daysOff, lateOnly, taxFilter, isTaxActive, reasons]);
 
   // 選べる仕訳（削除済み・締めた月のものは選べない）と、表示中で選んでいるもの
   const selectable = (r: DisplayRow) => !r.deleted && Number(r.date.slice(5, 7)) > closedMonth;
@@ -136,6 +140,7 @@ export const JournalListPage = () => {
   const total = rows.filter((r) => !r.deleted).reduce((s, r) => s + (r.dr?.amount ?? 0), 0);
   const entryCount = rows.filter((r) => r.first && !r.deleted).length;
   const name = (l?: FlatLine) => (l ? labelOf(l.account_id, l.sub_account_id) : "");
+  const dept = (l?: FlatLine) => (l?.department_id ? <span className="dept-tag">{departmentName(departments, l.department_id)}</span> : null);
   // 税区分（対象外のものは出さない）。税抜経理の年は消費税額も（手で直した額は「直」）
   const taxAmountText = (l: FlatLine) => {
     const t = lineTaxAmount(l, taxYears);
@@ -147,7 +152,7 @@ export const JournalListPage = () => {
       : null;
 
   const exportCsv = async () => {
-    const body = journalCsvRows(rows, accounts, subAccounts, counterparties);
+    const body = journalCsvRows(rows, accounts, subAccounts, counterparties, departments);
     const path = await save({
       defaultPath: `仕訳日記帳_${fileLabel(settings)}_${year}.csv`,
       filters: [{ name: "CSV", extensions: ["csv"] }],
@@ -166,7 +171,9 @@ export const JournalListPage = () => {
     if (!printing) return null;
     const side = (l?: FlatLine): JournalSide | undefined =>
       l && {
-        account: accountMap.get(l.account_id)?.name ?? "", sub: l.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "",
+        account: accountMap.get(l.account_id)?.name ?? "",
+        // 補助科目と部門は科目の下に小さく（部門は［］）
+        sub: [l.sub_account_id ? subMap.get(l.sub_account_id)?.name ?? "" : "", l.department_id ? `［${departmentName(departments, l.department_id)}］` : ""].filter(Boolean).join(" "),
         tax: l.tax_code && l.tax_code !== "none" ? `${taxShortLabel(l.tax_code, l.invoice_kind, l.date, displayClass(taxYears, l), displayUse(taxYears, l))}${taxAmountText(l)}` : "",
         amount: l.amount,
       };
@@ -185,6 +192,7 @@ export const JournalListPage = () => {
       dateFrom || dateTo ? `日付 ${dateFrom.replace(/-/g, "/")}〜${dateTo.replace(/-/g, "/")}` : "",
       accountId ? `科目 ${accountMap.get(accountId)?.name ?? ""}` : "",
       cpId ? `取引先 ${cpMap.get(cpId)?.name ?? ""}` : "",
+      deptFilter !== "all" ? `部門 ${departmentName(departments, deptFilter || null)}` : "",
       taxFilter ? `税区分 ${taxFilter === "unset" ? "未設定" : taxFilter === "transitional" ? "経過措置の仕入れ" : taxFilter === "nodeduct" ? "控除しない仕入れ" : TAX_CODES.find((t) => t.code === taxFilter)?.label ?? ""}` : "",
       q.trim() ? `「${q.trim()}」を含む` : "",
       minAmt || maxAmt ? `金額 ${minAmt || ""}〜${maxAmt || ""}` : "",
@@ -230,6 +238,13 @@ export const JournalListPage = () => {
           <select value={cpId} onChange={(e) => setCpId(Number(e.target.value))} aria-label="取引先で絞り込み">
             <option value={0}>すべての取引先</option>
             {counterparties.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+        {departments.length > 0 && (
+          <select value={String(deptFilter)} onChange={(e) => setDeptFilter(e.target.value === "all" ? "all" : Number(e.target.value))} aria-label="部門で絞り込み">
+            <option value="all">すべての部門</option>
+            <option value="0">{COMMON_LABEL}</option>
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         )}
         {(taxYear.status !== "exempt" || taxFilter) && (
@@ -318,9 +333,9 @@ export const JournalListPage = () => {
                   )}
                   <td>{r.first ? shortDate(r.date) : ""}</td>
                   <td className="num muted">{r.first ? r.entryId : ""}</td>
-                  <td>{name(r.dr)}{tax(r.dr)}</td>
+                  <td>{name(r.dr)}{tax(r.dr)}{dept(r.dr)}</td>
                   <td className="num">{r.dr ? yen(r.dr.amount) : ""}</td>
-                  <td>{name(r.cr)}{tax(r.cr)}</td>
+                  <td>{name(r.cr)}{tax(r.cr)}{dept(r.cr)}</td>
                   <td className="num">{r.cr ? yen(r.cr.amount) : ""}</td>
                   <td className="memo">
                     {r.first && r.deleted && <span className="badge badge-delete">削除済み</span>}

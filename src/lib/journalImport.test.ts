@@ -188,3 +188,20 @@ describe("税区分の列", () => {
     ]);
   });
 });
+
+describe("部門", () => {
+  const departments = [{ id: 3, code: "", name: "本店", kana: "", memo: "", is_active: 1 }];
+  const H = ["日付", "借方科目", "借方金額", "貸方科目", "貸方金額", "借方部門", "貸方部門"];
+  test("借方部門・貸方部門の列（空・「共通」は部門なし）。無ければ「部門」の列を両側に", () => {
+    const r = importJournalCsv(toCsv(H, [["2026-01-05", "消耗品費", 1100, "現金", 1100, "本店", "共通"]]), { ...ctx, departments });
+    expect(r.issues).toEqual([]);
+    expect(r.entries[0].lines.map((l) => l.department_id ?? null)).toEqual([3, null]);
+    const both = importJournalCsv(toCsv(["日付", "借方科目", "借方金額", "貸方科目", "貸方金額", "部門"], [["2026-01-05", "消耗品費", 1100, "現金", 1100, "本 店"]]), { ...ctx, departments });
+    expect(both.entries[0].lines.map((l) => l.department_id)).toEqual([3, 3]);
+  });
+  test("一覧に無い部門は問題（作らない）", () => {
+    const bad = importJournalCsv(toCsv(H, [["2026-01-05", "消耗品費", 1100, "現金", 1100, "支店", ""]]), { ...ctx, departments });
+    expect(bad.entries).toEqual([]);
+    expect(bad.issues[0].message).toMatch(/借方部門「支店」が部門の一覧にありません/);
+  });
+});

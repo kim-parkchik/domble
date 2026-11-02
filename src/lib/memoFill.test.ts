@@ -17,11 +17,12 @@ const entry = (lines: MemoEntryLine[], counterparty_id: number | null = null): M
 describe("帳簿入力", () => {
   test("この帳簿の科目の相手の側（家事按分の事業主貸の行は使わない）。インボイス区分は今の取引先に任せる", () => {
     const e = entry([
-      line({ row_no: 1, side: "debit", account_id: RENT, memo: "家賃", tax_code: "purchase10", invoice_kind: "qualified" }),
+      line({ row_no: 1, side: "debit", account_id: RENT, memo: "家賃", tax_code: "purchase10", invoice_kind: "qualified", department_id: 2 }),
       line({ row_no: 1, side: "credit", account_id: BANK, sub_account_id: 1, memo: "家賃" }),
       line({ row_no: 2, side: "debit", account_id: DRAW, memo: "家賃（家事分）" }),
     ], 7);
-    expect(bookFill(e, BANK, " 家賃 ")).toEqual({ accountId: RENT, subId: null, tax: "purchase10", invoice: null, cls: null, use: null });
+    // 部門も引き継ぐ（非表示の部門は入れる側で外す）
+    expect(bookFill(e, BANK, " 家賃 ")).toEqual({ accountId: RENT, subId: null, tax: "purchase10", invoice: null, cls: null, use: null, dept: 2 });
   });
   test("帳簿のみ保存の特例は引き継ぐ。この帳簿の科目が無い・口座の間の振替は入れない", () => {
     const train = entry([
@@ -48,7 +49,7 @@ describe("振替伝票", () => {
 });
 
 test("今も使える科目だけ入れる（補助科目だけ使えなければ外す）", () => {
-  const f: SideFill = { accountId: BANK, subId: 1, tax: null, invoice: null, cls: null, use: null };
+  const f: SideFill = { accountId: BANK, subId: 1, tax: null, invoice: null, cls: null, use: null, dept: null };
   const accounts = [{ id: BANK, is_active: 1 }, { id: RENT, is_active: 0 }];
   expect(usableSide(f, accounts, [{ id: 1, account_id: BANK, is_active: 1 }])).toEqual(f);
   expect(usableSide(f, accounts, [{ id: 1, account_id: BANK, is_active: 0 }])).toEqual({ ...f, subId: null });

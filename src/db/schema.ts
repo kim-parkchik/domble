@@ -474,6 +474,20 @@ export const SCHEMA: string[] = [
   );`,
 
   /**
+   * 部門（任意で使う。店舗・事業の種類など）。仕訳の明細ごとに1つ（journal_lines.department_id。NULL = 共通・部門なし）。
+   * 部門ごとの損益を見るためだけのもの（決算書・申告書は全部まとめて1枚）。code は並び順（任意）
+   */
+  `CREATE TABLE IF NOT EXISTS departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL UNIQUE,
+    kana TEXT NOT NULL DEFAULT '',
+    memo TEXT NOT NULL DEFAULT '',
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
+  );`,
+
+  /**
    * 年度の締め。行がある年度は「締め済み」。解除すると行を消す（厳密モードでは master_history に記録）
    * 期間の開始日・終了日を持つのは、法人の任意の会計期間にも同じ仕組みで対応するため
    */
@@ -935,4 +949,8 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],
   // 給与の設定（預かる科目・支払う口座・通勤手当の科目・専従者・源泉所得税の納期の特例。JSON。lib/payroll.ts の PayrollSettings）
   ["settings", "payroll_settings", "TEXT NOT NULL DEFAULT ''"],
+  // 部門（任意。NULL = 共通・部門なし）：仕訳の明細、明細のルールとその分け方
+  ["journal_lines", "department_id", "INTEGER REFERENCES departments(id)"],
+  ["bank_rules", "department_id", "INTEGER"],
+  ["bank_rule_splits", "department_id", "INTEGER"],
 ];

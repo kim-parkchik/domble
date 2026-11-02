@@ -26,7 +26,7 @@ const PREVIEW_ENTRIES = 100;
 const PREVIEW_ISSUES = 200;
 
 export const JournalImportModal = ({ onClose }: { onClose: () => void }) => {
-  const { db, accounts, subAccounts, counterparties, isDateClosed, labelOf, bump, strict } = useAppContext();
+  const { db, accounts, subAccounts, counterparties, departments, isDateClosed, labelOf, bump, strict } = useAppContext();
   const toast = useToast();
   const [fileName, setFileName] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -42,7 +42,7 @@ export const JournalImportModal = ({ onClose }: { onClose: () => void }) => {
   const [showMap, setShowMap] = useState(false);
 
   const load = async (t: string, map?: JournalColumnMap) => {
-    const r = importJournalCsv(t, { accounts, subs: subAccounts, counterparties, isDateClosed }, map);
+    const r = importJournalCsv(t, { accounts, subs: subAccounts, counterparties, departments, isDateClosed }, map);
     const years = [...new Set(r.entries.map((e) => Number(e.date.slice(0, 4))))];
     setRates(new Map(await Promise.all(years.map(async (y) => [y, await repo.getHomeUseRates(db, y)] as const))));
     const ds = r.entries.map((e) => e.date).sort();

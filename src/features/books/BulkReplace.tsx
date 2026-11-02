@@ -1,6 +1,6 @@
 /**
  * 仕訳のまとめての置き換え（仕訳日記帳で選んだ仕訳。考え方は lib/bulkReplace.ts、保存は repo.replaceEntries）
- *  - 科目（と補助科目）・税区分・取引先を、それぞれ置き換えるかを選ぶ
+ *  - 科目（と補助科目）・税区分・取引先・部門を、それぞれ置き換えるかを選ぶ
  *  - 置き換える前に、変わる仕訳の数と、外す仕訳（決算整理の画面・固定資産台帳で作ったもの）の数を出す
  *  - 1つのトランザクションなので、締めた月の仕訳が混ざっていたら1件も変えない。厳密モードは理由が要り、1件ずつ訂正の履歴に残る
  */
@@ -30,7 +30,7 @@ export const ReplaceDialog = ({ ids, lines, defaultAccountId, onDone, onClose }:
   onDone: () => void;
   onClose: () => void;
 }) => {
-  const { db, strict, bump, accounts, activeSubsOf, counterparties, subMap } = useAppContext();
+  const { db, strict, bump, accounts, activeSubsOf, counterparties, departments, subMap } = useAppContext();
   const toast = useToast();
   const [useAccount, setUseAccount] = useState(true);
   const [fromAcc, setFromAcc] = useState<number | null>(defaultAccountId);
@@ -42,6 +42,9 @@ export const ReplaceDialog = ({ ids, lines, defaultAccountId, onDone, onClose }:
   const [useCp, setUseCp] = useState(false);
   const [fromCp, setFromCp] = useState<Choice>("all");
   const [toCp, setToCp] = useState<number | null>(null);
+  const [useDept, setUseDept] = useState(false);
+  const [fromDept, setFromDept] = useState<Choice>("all");
+  const [toDept, setToDept] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [generated, setGenerated] = useState<Set<number>>(new Set());
@@ -59,6 +62,7 @@ export const ReplaceDialog = ({ ids, lines, defaultAccountId, onDone, onClose }:
     ...(useAccount && fromAcc && toAcc ? { account: { from: { accountId: fromAcc, subId: pickValue(fromSub) }, to: { accountId: toAcc, subId: toSub } } } : {}),
     ...(useTax && taxAcc && tax.code ? { tax: { accountId: taxAcc, ...tax, code: tax.code } } : {}),
     ...(useCp ? { counterparty: { from: pickValue(fromCp), to: toCp } } : {}),
+    ...(useDept ? { department: { from: pickValue(fromDept), to: toDept } } : {}),
   };
   const incomplete = (useAccount && (!fromAcc || !toAcc)) ? "科目の置き換える前と後を選んでください"
     : useTax && (!taxAcc || !tax.code) ? "税区分を変える科目と税区分を選んでください" : null;
@@ -166,6 +170,30 @@ export const ReplaceDialog = ({ ids, lines, defaultAccountId, onDone, onClose }:
             </div>
           )}
         </fieldset>
+
+        {(departments.length > 0 || useDept) && (
+          <fieldset className="replace-part">
+            <label className="check"><input type="checkbox" checked={useDept} onChange={(e) => setUseDept(e.target.checked)} /> 部門を置き換える</label>
+            {useDept && (
+              <div className="replace-grid">
+                <span className="replace-label">前</span>
+                <select className="input" value={String(fromDept)} onChange={(e) => setFromDept(toPick(e.target.value))} aria-label="置き換える前の部門">
+                  <option value="all">どの部門も（共通も）</option>
+                  <option value="none">共通（部門なし）だけ</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}だけ</option>)}
+                </select>
+                <span />
+                <span className="replace-label">後</span>
+                <select className="input" value={toDept ?? ""} onChange={(e) => setToDept(e.target.value ? Number(e.target.value) : null)} aria-label="置き換えたあとの部門">
+                  <option value="">共通（部門を外す）</option>
+                  {departments.filter((d) => d.is_active).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                <span />
+              </div>
+            )}
+            {useDept && <p className="field-note">選んだ仕訳の明細（借方・貸方とも）の部門を変えます。</p>}
+          </fieldset>
+        )}
 
         <label className="field">
           <span>置き換えの理由{strict ? "（必須）" : "（任意）"}</span>

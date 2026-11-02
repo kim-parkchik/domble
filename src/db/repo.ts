@@ -7,7 +7,7 @@
 import type Database from "./connection";
 import { RETIRED_TRIGGERS } from "./schema";
 import type {
-  AccessLogRecord, Account, AccountCategory, Counterparty, User, EBookMode, EntrySnapshot, Evidence, EvidenceAction, EvidenceHistoryRecord, EvidenceKind, EvidenceMeta,
+  AccessLogRecord, Account, AccountCategory, Counterparty, Department, User, EBookMode, EntrySnapshot, Evidence, EvidenceAction, EvidenceHistoryRecord, EvidenceKind, EvidenceMeta,
   EvidenceSnapshot, FilingType, FilingYear, FiscalClosing, HistoryAction, HistoryRecord, JournalEntry, JournalLine,
   HomeUseRate, IncomeKind, MasterHistoryRecord, OpeningBalances, PurchaseUse, RealEstateScale, Settings, Side, SubAccount, SubOpeningBalances, TaxCode, TaxYear, VoucherRow,
 } from "../lib/types";
@@ -17,6 +17,7 @@ import {
   ANCHOR_HOW_LABEL, closedLabel, closedMonthOf, inheritingClosedYears, inheritMessage, isMailAddress, monthEnd, yearsToAutoClose, type AnchorSave, type AnchorSaveHow,
 } from "../lib/closing";
 import { isValidInvoiceNo, normalizeCorporateNo, normalizeInvoiceNo, normName, validateCounterparty, type CounterpartyInput } from "../lib/counterparty";
+import { sortDepartments, validateDepartment, type DepartmentInput } from "../lib/departments";
 import {
   builtinTaxCode, classLabel, deductionProblem, isBusinessClass, isInvoiceKind, isPurchaseUse, isTaxCode, resolveLineTax, taxActiveOn, taxCodeDef, taxYearOf, taxYearText,
   useLabel, validateTaxYear,
@@ -726,11 +727,11 @@ const registerBankLines_ = async (
 
 export const getBankRules = async (db: Database): Promise<BankRule[]> => {
   const rules = await db.select<Omit<BankRule, "splits">[]>(
-    `SELECT id, keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, sort_order
+    `SELECT id, keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, department_id, sort_order
        FROM bank_rules ORDER BY sort_order, id`,
   );
   const splits = await db.select<(BankRuleSplit & { rule_id: number })[]>(
-    "SELECT rule_id, account_id, sub_account_id, tax_code, invoice_kind, amount, memo FROM bank_rule_splits ORDER BY rule_id, row_no",
+    "SELECT rule_id, account_id, sub_account_id, tax_code, invoice_kind, amount, memo, department_id FROM bank_rule_splits ORDER BY rule_id, row_no",
   );
   return rules.map((r) => ({ ...r, splits: splits.filter((x) => x.rule_id === r.id).map(({ rule_id: _, ...x }) => x) }));
 };
@@ -753,19 +754,19 @@ const saveBankRule_ = async (db: Database, r: Omit<BankRule, "sort_order" | "spl
     if (x.invoice_kind !== null && !isInvoiceKind(x.invoice_kind)) throw new Error("分ける行のインボイス区分が正しくありません");
   }
   const memo = r.memo.trim().slice(0, 200);
-  const vals = [keyword, r.direction, r.target_account_id, r.account_id, r.sub_account_id, r.tax_code, r.invoice_kind, r.counterparty_id, memo];
+  const vals = [keyword, r.direction, r.target_account_id, r.account_id, r.sub_account_id, r.tax_code, r.invoice_kind, r.counterparty_id, memo, r.department_id || null];
   let id = r.id;
   if (id) {
     await db.execute(
       `UPDATE bank_rules SET keyword = ?, direction = ?, target_account_id = ?, account_id = ?, sub_account_id = ?, tax_code = ?, invoice_kind = ?,
-              counterparty_id = ?, memo = ? WHERE id = ?`,
+              counterparty_id = ?, memo = ?, department_id = ? WHERE id = ?`,
       [...vals, id],
     );
   } else {
     const next = await db.select<{ n: number }[]>("SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM bank_rules");
     const res = await db.execute(
-      `INSERT INTO bank_rules (keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bank_rules (keyword, direction, target_account_id, account_id, sub_account_id, tax_code, invoice_kind, counterparty_id, memo, department_id, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [...vals, r.sort_order ?? next[0].n],
     );
     id = Number(res.lastInsertId);
@@ -773,8 +774,8 @@ const saveBankRule_ = async (db: Database, r: Omit<BankRule, "sort_order" | "spl
   await db.execute("DELETE FROM bank_rule_splits WHERE rule_id = ?", [id]);
   for (const [i, x] of splits.entries()) {
     await db.execute(
-      "INSERT INTO bank_rule_splits (rule_id, row_no, account_id, sub_account_id, tax_code, invoice_kind, amount, memo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [id, i + 1, x.account_id, x.sub_account_id, x.tax_code, x.invoice_kind, x.amount, x.memo.trim().slice(0, 200)],
+      "INSERT INTO bank_rule_splits (rule_id, row_no, account_id, sub_account_id, tax_code, invoice_kind, amount, memo, department_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [id, i + 1, x.account_id, x.sub_account_id, x.tax_code, x.invoice_kind, x.amount, x.memo.trim().slice(0, 200), x.department_id || null],
     );
   }
   return id;
@@ -1515,6 +1516,70 @@ const deleteCounterparty_ = async (db: Database, id: number) => {
 };
 
 // ────────────────────────────────────────────
+// 部門（任意で使う。lib/departments.ts）
+//  厳密モードでは追加・変更・非表示・削除を master_history に残す
+// ────────────────────────────────────────────
+export const getDepartments = async (db: Database) =>
+  sortDepartments(await db.select<Department[]>("SELECT id, code, name, kana, memo, is_active FROM departments"));
+
+const deptText = (d: { code: string; name: string; memo: string }) => [d.code && `コード ${d.code}`, d.name, d.memo && `メモ：${d.memo}`].filter(Boolean).join("　");
+const deptRow = (d: DepartmentInput) => ({ code: d.code.normalize("NFKC").trim(), name: d.name.trim(), kana: d.kana.trim(), memo: d.memo.trim() });
+
+const createDepartment_ = async (db: Database, d: DepartmentInput) => {
+  const err = validateDepartment(await getDepartments(db), d);
+  if (err) throw new Error(err);
+  const r = deptRow(d);
+  const res = await db.execute("INSERT INTO departments (code, name, kana, memo) VALUES (?, ?, ?, ?)", [r.code, r.name, r.kana, r.memo]);
+  const id = Number(res.lastInsertId);
+  await logMaster(db, { target_type: "department", target_id: id, action: "create", fiscal_year: await currentYear(db), label: r.name, old_value: "", new_value: deptText(r) });
+  return id;
+};
+
+/** 名前を変えると、過去の仕訳の部門の表示も新しい名前になる（履歴の写しには記録した時点の名前が残る） */
+const updateDepartment_ = async (db: Database, id: number, d: DepartmentInput) => {
+  const list = await getDepartments(db);
+  const before = list.find((x) => x.id === id);
+  if (!before) return;
+  const err = validateDepartment(list, d, id);
+  if (err) throw new Error(err);
+  const r = deptRow(d);
+  await db.execute("UPDATE departments SET code = ?, name = ?, kana = ?, memo = ? WHERE id = ?", [r.code, r.name, r.kana, r.memo, id]);
+  const year = await currentYear(db);
+  if (r.name !== before.name) {
+    await logMaster(db, { target_type: "department", target_id: id, action: "rename", fiscal_year: year, label: r.name, old_value: before.name, new_value: r.name });
+  }
+  if (r.code !== before.code || r.memo !== before.memo) {
+    await logMaster(db, { target_type: "department", target_id: id, action: "change", fiscal_year: year, label: r.name, old_value: deptText(before), new_value: deptText(r) });
+  }
+};
+
+const setDepartmentActive_ = async (db: Database, id: number, active: boolean) => {
+  await db.execute("UPDATE departments SET is_active = ? WHERE id = ?", [active ? 1 : 0, id]);
+  const name = (await getDepartments(db)).find((x) => x.id === id)?.name ?? `#${id}`;
+  await logMaster(db, { target_type: "department", target_id: id, action: active ? "show" : "hide", fiscal_year: await currentYear(db), label: name, old_value: "", new_value: "" });
+};
+
+/** 部門の使用件数（仕訳の明細・明細のルールとその分け方・定型仕訳） */
+export const departmentUsage = async (db: Database, id: number) => {
+  const r = await db.select<{ n: number }[]>(
+    `SELECT (SELECT COUNT(*) FROM journal_lines WHERE department_id = ?)
+          + (SELECT COUNT(*) FROM bank_rules WHERE department_id = ?)
+          + (SELECT COUNT(*) FROM bank_rule_splits WHERE department_id = ?) AS n`,
+    [id, id, id],
+  );
+  const templates = (await getTemplates(db)).filter((t) => t.rows.some((x) => x.debitDept === id || x.creditDept === id)).length;
+  return r[0].n + templates;
+};
+
+/** 一度も使っていない部門だけ削除できる（使ったものは非表示にする） */
+const deleteDepartment_ = async (db: Database, id: number) => {
+  if ((await departmentUsage(db, id)) > 0) throw new Error("この部門は仕訳・定型仕訳・明細のルールで使われているので削除できません。非表示にしてください");
+  const name = (await getDepartments(db)).find((x) => x.id === id)?.name ?? `#${id}`;
+  await db.execute("DELETE FROM departments WHERE id = ?", [id]);
+  await logMaster(db, { target_type: "department", target_id: id, action: "delete", fiscal_year: await currentYear(db), label: name, old_value: name, new_value: "" });
+};
+
+// ────────────────────────────────────────────
 // 定型仕訳（帳簿そのものではないので履歴には残さない）
 // ────────────────────────────────────────────
 export const getTemplates = async (db: Database): Promise<JournalTemplate[]> =>
@@ -1660,7 +1725,7 @@ const saveOpening_ = async (db: Database, year: number, bySub: SubOpeningBalance
 export const getLines = (db: Database, from: string, to: string, includeDeleted = false) =>
   db.select<FlatLine[]>(
     `SELECT l.entry_id, e.date, e.description, e.is_deleted, e.revision, e.counterparty_id, e.is_adjustment, l.row_no, l.side,
-            l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code, l.invoice_kind, l.business_class, l.purchase_use, l.tax_amount,
+            l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code, l.invoice_kind, l.business_class, l.purchase_use, l.tax_amount, l.department_id,
             COALESCE((SELECT h.recorded_at FROM entry_history h WHERE h.entry_id = e.id AND h.action = 'create'), e.created_at) AS created_at
        FROM journal_lines l
        JOIN journal_entries e ON e.id = l.entry_id
@@ -1697,7 +1762,7 @@ export const findMemoEntry = async (db: Database, memo: string, bookAccountId?: 
   );
   if (!hit[0]) return null;
   const lines = await db.select<MemoEntryLine[]>(
-    `SELECT row_no, side, account_id, sub_account_id, memo, tax_code, invoice_kind, business_class, purchase_use
+    `SELECT row_no, side, account_id, sub_account_id, memo, tax_code, invoice_kind, business_class, purchase_use, department_id
        FROM journal_lines WHERE entry_id = ? ORDER BY row_no, CASE side WHEN 'debit' THEN 0 ELSE 1 END`,
     [hit[0].id],
   );
@@ -1714,7 +1779,7 @@ export const getEntry = async (db: Database, id: number): Promise<JournalEntry |
   );
   if (e.length === 0) return null;
   const lines = await db.select<JournalLine[]>(
-    `SELECT id, entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount
+    `SELECT id, entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount, department_id
        FROM journal_lines WHERE entry_id = ? ORDER BY row_no, CASE side WHEN 'debit' THEN 0 ELSE 1 END`,
     [id],
   );
@@ -1723,13 +1788,13 @@ export const getEntry = async (db: Database, id: number): Promise<JournalEntry |
 
 const insertLines = async (db: Database, entryId: number, lines: JournalLine[]) => {
   // 1文でまとめて INSERT（途中で失敗しても半端な明細が残らない）
-  const placeholders = lines.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+  const placeholders = lines.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
   const params = lines.flatMap((l) => [
     entryId, l.row_no, l.side, l.account_id, l.sub_account_id, l.amount, l.memo, l.tax_code ?? null, l.invoice_kind ?? null, l.business_class ?? null,
-    l.purchase_use ?? null, l.tax_amount ?? null,
+    l.purchase_use ?? null, l.tax_amount ?? null, l.department_id || null,
   ]);
   await db.execute(
-    `INSERT INTO journal_lines (entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount)
+    `INSERT INTO journal_lines (entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount, department_id)
      VALUES ${placeholders}`,
     params,
   );
@@ -1775,6 +1840,7 @@ const makeSnapshot = async (
   const an = new Map(accounts.map((a) => [a.id, a.name]));
   const sn = new Map(subs.map((s) => [s.id, s.name]));
   const counterparty = await batchRead(`cp:${counterpartyId ?? 0}`, () => counterpartyName(db, counterpartyId));
+  const dn = lines.some((l) => l.department_id) ? new Map((await batchRead("departments", () => getDepartments(db))).map((d) => [d.id, d.name])) : null;
   return {
     date,
     ...(counterparty ? { counterparty } : {}),
@@ -1790,6 +1856,7 @@ const makeSnapshot = async (
       ...(l.business_class ? { cls: l.business_class } : {}),
       ...(l.purchase_use ? { use: l.purchase_use } : {}),
       ...(l.tax_amount != null ? { taxAmount: l.tax_amount } : {}),
+      ...(l.department_id ? { dept: dn?.get(l.department_id) ?? `#${l.department_id}` } : {}),
     })),
   };
 };
@@ -1927,6 +1994,10 @@ const replaceEntries_ = async (db: Database, ids: number[], spec: ReplaceSpec, r
   if (spec.counterparty?.to != null) {
     const cp = await db.select<{ id: number }[]>("SELECT id FROM counterparties WHERE id = ? AND is_active = 1", [spec.counterparty.to]);
     if (!cp[0]) throw new Error("置き換えたあとの取引先が見つかりません");
+  }
+  if (spec.department?.to != null) {
+    const d = await db.select<{ id: number }[]>("SELECT id FROM departments WHERE id = ? AND is_active = 1", [spec.department.to]);
+    if (!d[0]) throw new Error("置き換えたあとの部門が見つかりません（非表示の部門は使えません）");
   }
   const generated = await getGeneratedEntryIds(db);
   const out = { changed: 0, generated: 0, unchanged: 0 };
@@ -3047,7 +3118,7 @@ const currentState = async (db: Database, key: string): Promise<string> => {
     );
     if (!e[0]) return "null";
     const lines = await db.select<Parameters<typeof entryState>[1]>(
-      "SELECT row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount FROM journal_lines WHERE entry_id = ?", [id],
+      "SELECT row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount, department_id FROM journal_lines WHERE entry_id = ?", [id],
     );
     return entryState(e[0], lines);
   }
@@ -3107,7 +3178,7 @@ const currentStates = async (db: Database, keys: Iterable<string>): Promise<Map<
         "SELECT id, date, counterparty_id, is_deleted, revision, is_adjustment FROM journal_entries",
       )).map((e) => [e.id, e]));
       const lines = group(await db.select<({ entry_id: number } & Parameters<typeof entryState>[1][number])[]>(
-        "SELECT entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount FROM journal_lines",
+        "SELECT entry_id, row_no, side, account_id, sub_account_id, amount, memo, tax_code, invoice_kind, business_class, purchase_use, tax_amount, department_id FROM journal_lines",
       ), "entry_id");
       for (const id of ids) {
         const e = es.get(id);
@@ -3569,6 +3640,10 @@ export const createCounterparty = inTx(createCounterparty_, (d) => `取引先「
 export const updateCounterparty = inTx(updateCounterparty_, (id) => `取引先 #${id} の変更`, { perm: "entry" });
 export const setCounterpartyActive = inTx(setCounterpartyActive_, (id) => `取引先 #${id} の表示切り替え`, { perm: "entry" });
 export const deleteCounterparty = inTx(deleteCounterparty_, (id) => `取引先 #${id} の削除`, { perm: "entry" });
+export const createDepartment = inTx(createDepartment_, (d) => `部門「${d.name}」の追加`, { perm: "master" });
+export const updateDepartment = inTx(updateDepartment_, (id) => `部門 #${id} の変更`, { perm: "master" });
+export const setDepartmentActive = inTx(setDepartmentActive_, (id) => `部門 #${id} の表示切り替え`, { perm: "master" });
+export const deleteDepartment = inTx(deleteDepartment_, (id) => `部門 #${id} の削除`, { perm: "master" });
 export const createTemplate = inTx(createTemplate_, (name) => `定型仕訳「${name}」の登録`, { perm: "entry" });
 export const overwriteTemplate = inTx(overwriteTemplate_, (id) => `定型仕訳 #${id} の置き換え`, { perm: "entry" });
 export const renameTemplate = inTx(renameTemplate_, (id) => `定型仕訳 #${id} の名前変更`, { perm: "entry" });

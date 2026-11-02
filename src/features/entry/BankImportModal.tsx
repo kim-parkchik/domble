@@ -25,6 +25,8 @@ import type { FlatLine } from "../../lib/accounting";
 import { subKey, type Account, type HomeUseRate, type InvoiceKind, type JournalLine, type PurchaseUse, type TaxCode } from "../../lib/types";
 import * as repo from "../../db/repo";
 import { taxCodeDef } from "../../lib/tax";
+import { DepartmentSelect } from "../../components/DepartmentSelect";
+import { departmentName } from "../../lib/departments";
 
 type View = "pending" | "read" | "skipped" | "rules";
 
@@ -38,6 +40,8 @@ interface SplitDraft {
   tax: TaxDraft;
   amount: number | null;
   memo: string;
+  /** 部門（null = 共通） */
+  dept: number | null;
 }
 
 /** 行ごとに決める中身 */
@@ -48,13 +52,15 @@ interface Draft {
   tax: TaxDraft;
   memo: string;
   counterpartyId: number | null;
+  /** 部門（null = 共通。この口座の行と相手科目の行に付ける） */
+  dept: number | null;
   source: "rule" | "history" | null;
   dupEntry: number | null;
   splits: SplitDraft[];
 }
 
 const splitsFromRule = (splits: BankRuleSplit[]): SplitDraft[] =>
-  splits.map((x) => ({ counterId: x.account_id, counterSubId: x.sub_account_id, tax: { ...NO_TAX, code: x.tax_code, invoice: x.invoice_kind }, amount: x.amount, memo: x.memo }));
+  splits.map((x) => ({ counterId: x.account_id, counterSubId: x.sub_account_id, tax: { ...NO_TAX, code: x.tax_code, invoice: x.invoice_kind }, amount: x.amount, memo: x.memo, dept: x.department_id ?? null }));
 const taxOf = (t: TaxDraft) => ({ tax_code: t.code, invoice_kind: t.invoice, business_class: t.cls, purchase_use: t.use });
 
 const EMPTY_MAP: ColumnMap = { headerRow: 0, date: 0, description: [], mode: "split", increase: null, decrease: null, amount: null, invert: false, balance: null };
@@ -66,7 +72,11 @@ const sideLabels = (a: Account) =>
       : { inc: "ご利用（増加）", dec: "返金・支払（減少）" };
 
 export const BankImportModal = ({ account, initialSub, onClose }: { account: Account; initialSub: number | null | undefined; onClose: () => void }) => {
-  const { db, accounts, activeSubsOf, subMap, labelOf, isDateClosed, bump, dataVersion, year, can } = useAppContext();
+  const { db, accounts, activeSubsOf, subMap, labelOf, isDateClosed, bump, dataVersion, year, can, departments } = useAppContext();
+  // 部門の欄は、部門を作ってあるときだけ出す（相手科目の下）
+  const useDept = departments.length > 0;
+  /** 非表示・削除した部門は入れない */
+  const activeDept = (id: number | null | undefined) => (id && departments.some((x) => x.id === id && x.is_active) ? id : null);
   const toast = useToast();
   const { opening, subOpening } = useYearData();
   const subs = activeSubsOf(account.id);
@@ -119,7 +129,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
         if (dup) used.add(dup);
         next.set(r.id, {
           checked: !!g.counterId && !dup, counterId: g.counterId, counterSubId: g.counterSubId,
-          tax: { ...NO_TAX, code: g.taxCode, invoice: g.invoice }, memo: g.memo, counterpartyId: g.counterpartyId, source: g.source, dupEntry: dup,
+          tax: { ...NO_TAX, code: g.taxCode, invoice: g.invoice }, memo: g.memo, counterpartyId: g.counterpartyId, dept: activeDept(g.dept), source: g.source, dupEntry: dup,
           splits: splitsFromRule(g.splits),
         });
       }
@@ -135,7 +145,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
     });
   const addSplit = (id: number) => {
     const d = drafts.get(id)!;
-    patch(id, { splits: [...d.splits, { counterId: null, counterSubId: null, tax: NO_TAX, amount: null, memo: "" }] });
+    patch(id, { splits: [...d.splits, { counterId: null, counterSubId: null, tax: NO_TAX, amount: null, memo: "", dept: d.dept }] });
   };
   const removeSplit = (id: number, i: number) => patch(id, { splits: drafts.get(id)!.splits.filter((_, j) => j !== i) });
 
@@ -149,7 +159,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
       if (g.source !== "rule" || !d) continue;
       next.set(r.id, {
         ...d, counterId: g.counterId, counterSubId: g.counterSubId, tax: { ...NO_TAX, code: g.taxCode, invoice: g.invoice }, memo: g.memo, counterpartyId: g.counterpartyId,
-        source: "rule", checked: !d.dupEntry, splits: splitsFromRule(g.splits),
+        dept: activeDept(g.dept), source: "rule", checked: !d.dupEntry, splits: splitsFromRule(g.splits),
       });
       n++;
     }
@@ -170,8 +180,8 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
       const d = drafts.get(r.id)!;
       const where = `${shortDate(r.date)} ${r.description}`;
       if (isDateClosed(r.date)) { problems.push(`${where}：締めた月の明細です`); continue; }
-      const built = bankEntryLines(r, account.id, subId, { accountId: d.counterId, subId: d.counterSubId, tax: taxOf(d.tax), memo: d.memo },
-        d.splits.map((x) => ({ accountId: x.counterId, subId: x.counterSubId, tax: taxOf(x.tax), memo: x.memo, amount: x.amount })));
+      const built = bankEntryLines(r, account.id, subId, { accountId: d.counterId, subId: d.counterSubId, tax: taxOf(d.tax), memo: d.memo, dept: d.dept },
+        d.splits.map((x) => ({ accountId: x.counterId, subId: x.counterSubId, tax: taxOf(x.tax), memo: x.memo, amount: x.amount, dept: x.dept })));
       if (typeof built === "string") { problems.push(`${where}：${built}`); continue; }
       let lines: JournalLine[] = built;
       if (drawId) lines = splitLinesByHomeUse(lines, entryRateOf(rates.get(Number(r.date.slice(0, 4))) ?? [], accounts), drawId).lines;
@@ -229,9 +239,10 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
     setRuleDraft({
       id: 0, keyword: r.description.slice(0, 50), direction: r.side === account.normal_side ? "increase" : "decrease", target_account_id: account.id,
       account_id: d.counterId ?? 0, sub_account_id: d.counterSubId, tax_code: d.tax.code, invoice_kind: d.tax.invoice, counterparty_id: d.counterpartyId,
-      memo: d.memo === r.description ? "" : d.memo, sort_order: 0,
+      memo: d.memo === r.description ? "" : d.memo, department_id: d.dept, sort_order: 0,
       splits: d.splits.filter((x) => x.counterId && x.amount && x.amount > 0).map((x) => ({
         account_id: x.counterId!, sub_account_id: x.counterSubId, tax_code: x.tax.code, invoice_kind: x.tax.invoice, amount: x.amount!, memo: x.memo === d.memo ? "" : x.memo,
+        department_id: x.dept,
       })),
     });
     setView("rules");
@@ -305,6 +316,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
                             <AccountWithSub accountId={d.counterId} subId={d.counterSubId} label="相手科目"
                               onAccount={(v) => patch(r.id, { counterId: v, counterSubId: null, tax: NO_TAX, checked: !!v || d.checked })}
                               onSub={(v) => patch(r.id, { counterSubId: v })} />
+                            {useDept && <DepartmentSelect value={d.dept} onChange={(v) => patch(r.id, { dept: v })} label="部門" className="input dept-select bank-dept" />}
                             {d.splits.length > 0 && <div className={`bank-rest${rest > 0 ? "" : " bad"}`}>残り {yen(rest)}円</div>}
                           </td>
                           <td>
@@ -340,6 +352,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
                               <td>
                                 <AccountWithSub accountId={x.counterId} subId={x.counterSubId} label={`分けた行 ${i + 1} の相手科目`}
                                   onAccount={(v) => patchSplit(r.id, i, { counterId: v, counterSubId: null, tax: NO_TAX })} onSub={(v) => patchSplit(r.id, i, { counterSubId: v })} />
+                                {useDept && <DepartmentSelect value={x.dept} onChange={(v) => patchSplit(r.id, i, { dept: v })} label={`分けた行 ${i + 1} の部門`} className="input dept-select bank-dept" />}
                               </td>
                               <td>
                                 <TaxSelect label={`分けた行 ${i + 1} の税区分`} value={x.tax.code} invoice={x.tax.invoice} businessClass={x.tax.cls} purchaseUse={x.tax.use} accountId={x.counterId}
@@ -562,9 +575,10 @@ const RulesView = ({ rules, account, draft, setDraft, labelOf, disabled, onChang
   rules: BankRule[]; account: Account; draft: BankRule | null; setDraft: (r: BankRule | null) => void;
   labelOf: (id: number, sub?: number | null) => string; disabled: boolean; onChanged: () => void;
 }) => {
-  const { db, accountMap, counterparties } = useAppContext();
+  const { db, accountMap, counterparties, departments } = useAppContext();
   const toast = useToast();
   const labels = sideLabels(account);
+  const useDept = departments.length > 0;
   const save = async () => {
     if (!draft) return;
     try {
@@ -632,6 +646,12 @@ const RulesView = ({ rules, account, draft, setDraft, labelOf, disabled, onChang
               <span>取引先</span>
               <CounterpartyField value={draft.counterparty_id} onChange={(v) => setDraft({ ...draft, counterparty_id: v })} aria-label="取引先" />
             </div>
+            {useDept && (
+              <div className="field" style={{ maxWidth: 160 }}>
+                <span>部門</span>
+                <DepartmentSelect value={draft.department_id ?? null} onChange={(v) => setDraft({ ...draft, department_id: v })} label="部門" disabled={disabled} />
+              </div>
+            )}
             <label className="field">
               <span>仕訳の摘要（空なら明細の摘要）</span>
               <input className="input" value={draft.memo} maxLength={200} onChange={(e) => setDraft({ ...draft, memo: e.target.value })} disabled={disabled} />
@@ -650,6 +670,12 @@ const RulesView = ({ rules, account, draft, setDraft, labelOf, disabled, onChang
                   <span>金額</span>
                   <AmountInput value={x.amount || null} onChange={(v) => setSplit(i, { amount: v ?? 0 })} aria-label={`分ける金額 ${i + 1}`} disabled={disabled} />
                 </div>
+                {useDept && (
+                  <div className="field" style={{ maxWidth: 160 }}>
+                    <span>部門</span>
+                    <DepartmentSelect value={x.department_id ?? null} onChange={(v) => setSplit(i, { department_id: v })} label={`分ける部門 ${i + 1}`} disabled={disabled} />
+                  </div>
+                )}
                 <div className="field" style={{ maxWidth: 200 }}>
                   <span>税区分</span>
                   <TaxSelect label={`分ける税区分 ${i + 1}`} value={x.tax_code} invoice={x.invoice_kind} accountId={x.account_id || null} side={counterSide}
@@ -663,7 +689,7 @@ const RulesView = ({ rules, account, draft, setDraft, labelOf, disabled, onChang
               </div>
             ))}
             <button className="btn ghost sm" disabled={disabled || draft.splits.length >= 10}
-              onClick={() => setDraft({ ...draft, splits: [...draft.splits, { account_id: 0, sub_account_id: null, tax_code: null, invoice_kind: null, amount: 0, memo: "" }] })}>
+              onClick={() => setDraft({ ...draft, splits: [...draft.splits, { account_id: 0, sub_account_id: null, tax_code: null, invoice_kind: null, amount: 0, memo: "", department_id: draft.department_id ?? null }] })}>
               <Split size={14} /> 分ける行を足す
             </button>
           </div>
@@ -687,8 +713,11 @@ const RulesView = ({ rules, account, draft, setDraft, labelOf, disabled, onChang
                   <td>{r.target_account_id === null ? "どの口座にも" : accountMap.get(r.target_account_id)?.name ?? "（消した科目）"}</td>
                   <td>
                     {accountMap.get(r.account_id) ? labelOf(r.account_id, r.sub_account_id) : "（消した科目）"}
+                    {r.department_id ? <span className="cp-tag">{departmentName(departments, r.department_id)}</span> : null}
                     {r.splits.map((x, i) => (
-                      <div key={i} className="muted small">＋{accountMap.get(x.account_id) ? labelOf(x.account_id, x.sub_account_id) : "（消した科目）"} {yen(x.amount)}円</div>
+                      <div key={i} className="muted small">
+                        ＋{accountMap.get(x.account_id) ? labelOf(x.account_id, x.sub_account_id) : "（消した科目）"} {yen(x.amount)}円{x.department_id ? `［${departmentName(departments, x.department_id)}］` : ""}
+                      </div>
                     ))}
                   </td>
                   <td>{r.tax_code ? taxCodeDef(r.tax_code).label : "初期値"}</td>

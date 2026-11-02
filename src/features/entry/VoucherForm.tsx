@@ -19,6 +19,8 @@ import { usableSide, voucherFill } from "../../lib/memoFill";
 import { TemplatePickModal, TemplateSaveModal } from "./TemplateModals";
 import { entryRateOf, splitLinesByHomeUse } from "../../lib/homeUse";
 import { CODE } from "../../constants/accounts";
+import { DepartmentSelect } from "../../components/DepartmentSelect";
+import { rowDepartment, withRowDepartment } from "../../lib/departments";
 
 interface Props {
   entryId?: number;
@@ -40,10 +42,12 @@ const padRows = (rows: VoucherRow[]) => {
 };
 
 export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterpartyId = null, initialAdjustment = false, onSaved, onDeleted, onCancel }: Props) => {
-  const { db, year, bump, strict, isDateClosed, accounts, subAccounts, counterparties, homeUseRates, labelOf, daysOff } = useAppContext();
+  const { db, year, bump, strict, isDateClosed, accounts, subAccounts, counterparties, departments, homeUseRates, labelOf, daysOff } = useAppContext();
   const toast = useToast();
   const [date, setDate] = useState(initialDate);
   const [rows, setRows] = useState<VoucherRow[]>(padRows(initialRows ?? []));
+  // 部門の欄は、部門を作ってあるか、この仕訳に部門が付いているときだけ出す（行に1つ。借方・貸方の両方に付ける）
+  const useDept = departments.length > 0 || rows.some((r) => r.debitDept || r.creditDept);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [reason, setReason] = useState("");
@@ -86,6 +90,8 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
   const check = checkVoucher(rows);
   const diff = check.debitTotal - check.creditTotal;
 
+  /** 非表示・削除した部門は入れない */
+  const activeDept = (id: number | null | undefined) => (id && departments.some((x) => x.id === id && x.is_active) ? id : null);
   // 摘要からの自動入力：科目が両側とも空の行に、同じ摘要のいちばん新しい仕訳の同じ行の科目（補助科目・税区分）と、空なら取引先を入れる。金額は入れない
   const fillFromMemo = async (i: number, m: string) => {
     if (!m.trim() || rows[i]?.debitAccountId || rows[i]?.creditAccountId) return;
@@ -95,8 +101,8 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
     const d = usableSide(f.debit, accounts, subAccounts);
     const c = usableSide(f.credit, accounts, subAccounts);
     const patch: Partial<VoucherRow> = {
-      ...(d ? { debitAccountId: d.accountId, debitSubId: d.subId, debitTax: d.tax, debitInvoice: d.invoice, debitClass: d.cls, debitUse: d.use } : {}),
-      ...(c ? { creditAccountId: c.accountId, creditSubId: c.subId, creditTax: c.tax, creditInvoice: c.invoice, creditClass: c.cls, creditUse: c.use } : {}),
+      ...(d ? { debitAccountId: d.accountId, debitSubId: d.subId, debitTax: d.tax, debitInvoice: d.invoice, debitClass: d.cls, debitUse: d.use, debitDept: activeDept(d.dept) } : {}),
+      ...(c ? { creditAccountId: c.accountId, creditSubId: c.subId, creditTax: c.tax, creditInvoice: c.invoice, creditClass: c.cls, creditUse: c.use, creditDept: activeDept(c.dept) } : {}),
     };
     const filled: string[] = [];
     if (d || c) {
@@ -227,7 +233,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
       </div>
 
       <div className="table-wrap">
-        <table className="ledger voucher-table">
+        <table className={`ledger voucher-table${useDept ? " with-dept" : ""}`}>
           <colgroup>
             <col className="vc-no" />
             <col className="vc-acct" />
@@ -236,6 +242,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
             <col className="vc-acct" />
             <col className="vc-amt" />
             <col className="vc-tax" />
+            {useDept && <col className="vc-dept" />}
             <col />
             <col className="vc-del" />
           </colgroup>
@@ -248,6 +255,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
               <th className="cr">貸方科目</th>
               <th className="cr num">貸方金額</th>
               <th className="tax-th">税区分</th>
+              {useDept && <th title="行の借方・貸方の両方に付きます。空は共通（部門なし）">部門</th>}
               <th>摘要</th>
               <th />
             </tr>
@@ -280,6 +288,9 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
                     date={date} counterpartyId={counterpartyId} value={r.creditTaxAmount} onChange={(v) => update(i, { creditTaxAmount: v })}
                   />
                 </td>
+                {useDept && (
+                  <td><DepartmentSelect value={rowDepartment(r)} onChange={(v) => setRows((rs) => rs.map((x, j) => (j === i ? withRowDepartment(x, v) : x)))} onKeyDown={nav} label={`${i + 1}行目 部門`} /></td>
+                )}
                 <td><MemoInput value={r.memo} onChange={(v) => update(i, { memo: v })} onCommit={(v) => fillFromMemo(i, v)} onKeyDown={nav} aria-label={`${i + 1}行目 摘要`} /></td>
                 <td>
                   <button className="icon-btn subtle" tabIndex={-1} onClick={() => removeRow(i)} aria-label={`${i + 1}行目を消す`}>
@@ -298,6 +309,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
               <td className="total-label">貸方合計</td>
               <td className="num">{yen(check.creditTotal)}</td>
               <td />
+              {useDept && <td />}
               <td className={diff === 0 ? "balance-ok" : "balance-ng"}>
                 {diff === 0 ? (check.debitTotal > 0 ? "貸借一致" : "") : `差額 ${yen(Math.abs(diff))}`}
               </td>

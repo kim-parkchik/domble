@@ -109,6 +109,24 @@ export const compareLines = (
   return statementLines(view, accounts, subs, opts, valuesOf, pair(incomeOf(cur), incomeOf(prev)), INCOME_LABEL[view]);
 };
 
+/**
+ * 部門別の損益（列 = 部門ごと・共通（部門なし）・合計。期間 from〜to の発生額。lib/departments.ts）
+ * 共通の経費（家賃など）は割り振らず「共通」の列に出す。期首残高は部門ごとに持たないので、損益の科目だけ
+ */
+export const departmentHeads = (departments: { name: string }[]) => [...departments.map((d) => d.name), "共通", "合計"];
+export const departmentLines = (
+  accounts: Account[], subs: SubAccount[], lines: FlatLine[], from: number, to: number, departments: { id: number }[], opts: StatementOptions,
+): MultiLine[] => {
+  const groups = [...departments.map((d) => d.id), 0];
+  const linesOf = new Map(groups.map((g) => [g, lines.filter((l) => (l.department_id ?? 0) === g)]));
+  const tbs = groups.map((g) => new Map(buildTrialBalance(accounts, {}, linesOf.get(g)!, from, to).map((r) => [r.account.id, r])));
+  const withTotal = (v: number[]) => [...v, v.reduce((t, x) => t + x, 0)];
+  const valuesOf = (a: Account, subId?: number | null) =>
+    withTotal(subId === undefined ? tbs.map((m) => moved(m.get(a.id)!)) : groups.map((g) => moved(subTrialRow(a, subId, {}, linesOf.get(g)!, from, to))));
+  const income = withTotal(tbs.map((m) => summarizeIncome(accounts, new Map([...m].map(([id, r]) => [id, moved(r)]))).income));
+  return statementLines("pl", accounts, subs, opts, valuesOf, income, INCOME_LABEL.pl);
+};
+
 /** 増減率（前年が 0 なら出さない）。前年がマイナスでも増えたら＋、減ったら ▲（金額と同じ書き方） */
 export const changeRate = (current: number, previous: number): string => {
   if (previous === 0) return "";

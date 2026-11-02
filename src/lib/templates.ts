@@ -113,6 +113,8 @@ export interface BookTemplateLine {
   amount: number | null;
   memo: string;
   tax: { code: TaxCode | null; invoice: InvoiceKind | null; cls: number | null; use: PurchaseUse | null };
+  /** 部門（相手科目の側。無ければこの帳簿の科目の側） */
+  dept: number | null;
 }
 
 /**
@@ -132,5 +134,6 @@ export const templateForBook = (rows: VoucherRow[], bookAccountId: number, bookN
   return {
     bookDebit, counterId, counterSubId: r[`${side}SubId`] ?? null, amount: r[`${side}Amount`] ?? r[`${bookDebit ? "debit" : "credit"}Amount`] ?? null, memo: r.memo,
     tax: { code: r[`${side}Tax`] ?? null, invoice: r[`${side}Invoice`] ?? null, cls: r[`${side}Class`] ?? null, use: r[`${side}Use`] ?? null },
+    dept: r[`${side}Dept`] ?? r[`${bookDebit ? "debit" : "credit"}Dept`] ?? null,
   };
 };

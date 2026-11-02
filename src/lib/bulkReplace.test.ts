@@ -49,6 +49,22 @@ describe("税区分・取引先", () => {
   });
 });
 
+describe("部門", () => {
+  const withDept = [{ ...entry[0], department_id: 1 }, { ...entry[1], department_id: 1 }];
+  test("前を決めなければすべての明細、決めればその部門の明細だけ。後を空にすると共通", () => {
+    expect(replaceInEntry(entry, null, { department: { to: 2 } }).lines.map((l) => l.department_id)).toEqual([2, 2]);
+    expect(replaceInEntry(withDept, null, { department: { from: 3, to: 2 } }).changed).toBe(false);
+    expect(replaceInEntry(withDept, null, { department: { from: 1, to: null } }).lines.map((l) => l.department_id)).toEqual([null, null]);
+    // 共通（部門なし）の明細だけ
+    const mixed = [withDept[0], entry[1]];
+    expect(replaceInEntry(mixed, null, { department: { from: null, to: 2 } }).lines.map((l) => l.department_id ?? null)).toEqual([1, 2]);
+  });
+  test("同じ部門への置き換えは問題", () => {
+    expect(replaceSpecProblem({ department: { from: 2, to: 2 } })).toMatch(/部門の置き換える前と後が同じ/);
+    expect(replaceSpecProblem({ department: { to: null } })).toBeNull();
+  });
+});
+
 test("指定の問題と、借方・貸方が同じ科目になる行", () => {
   expect(replaceSpecProblem({})).toMatch(/選んでください/);
   expect(replaceSpecProblem({ account: { from: { accountId: BANK, subId: 1 }, to: { accountId: BANK, subId: 1 } } })).toMatch(/同じ/);

@@ -1,8 +1,8 @@
 /**
  * 摘要からの自動入力（純粋関数）
  * 摘要を確定したとき、同じ摘要で登録したいちばん新しい仕訳（repo.findMemoEntry）から、空いている欄を埋める。
- *  - 帳簿入力：その帳簿の科目を使った仕訳の、相手の側（相手科目・補助科目・税区分）と取引先
- *  - 振替伝票：摘要が同じ行の借方・貸方（科目・補助科目・税区分）と取引先
+ *  - 帳簿入力：その帳簿の科目を使った仕訳の、相手の側（相手科目・補助科目・税区分・部門）と取引先
+ *  - 振替伝票：摘要が同じ行の借方・貸方（科目・補助科目・税区分・部門）と取引先
  *  - 金額は入れない（電気代など毎回変わる額を、前回のまま登録してしまわないため。決まった額は定型仕訳で）
  *  - インボイス区分は、帳簿のみ保存の特例（交通機関など。取引の種類で決まる）だけ引き継ぐ。
  *    適格・経過措置は取引先と日付で決まるので、今の取引先・日付の初期値に任せる
@@ -19,6 +19,8 @@ export interface MemoEntryLine {
   invoice_kind: InvoiceKind | null;
   business_class: number | null;
   purchase_use: PurchaseUse | null;
+  /** 部門（無い列の古い呼び出しもあるので任意） */
+  department_id?: number | null;
 }
 
 /** 同じ摘要で登録したいちばん新しい仕訳 */
@@ -37,11 +39,13 @@ export interface SideFill {
   invoice: InvoiceKind | null;
   cls: number | null;
   use: PurchaseUse | null;
+  /** 部門（非表示の部門は入れる側で外す） */
+  dept: number | null;
 }
 
 const sideOf = (l: MemoEntryLine): SideFill => ({
   accountId: l.account_id, subId: l.sub_account_id, tax: l.tax_code,
-  invoice: l.invoice_kind?.startsWith("book_") ? l.invoice_kind : null, cls: l.business_class, use: l.purchase_use,
+  invoice: l.invoice_kind?.startsWith("book_") ? l.invoice_kind : null, cls: l.business_class, use: l.purchase_use, dept: l.department_id ?? null,
 });
 
 /**

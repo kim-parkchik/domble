@@ -66,12 +66,13 @@ export const BookExportSection = () => {
           repo.getAccounts(db, y), repo.getSubAccounts(db, y), repo.getLines(db, yearStart(y), yearEnd(y)), repo.getOpening(db, y),
           repo.getCreateReasons(db, yearStart(y), yearEnd(y)),
         ]);
+        const departments = await repo.getDepartments(db);
         const book: BookSource = {
-          accounts, subs, counterparties, taxYears, opening: op.byAccount, subOpening: op.bySub,
+          accounts, subs, counterparties, departments, taxYears, opening: op.byAccount, subOpening: op.bySub,
           lines: bookLines(raw, taxYears, exclusiveAccountsOf(accounts)),
         };
         // 仕訳日記帳は入れたとおり（税込）に。元帳・試算表は帳簿の明細（税抜経理の年は税抜）
-        await put(`${y}年_仕訳日記帳.csv`, JOURNAL_CSV_HEADER, journalCsvRows(journalRowsAll(raw, counterparties, inputPeriod, reasons, daysOff), accounts, subs, counterparties));
+        await put(`${y}年_仕訳日記帳.csv`, JOURNAL_CSV_HEADER, journalCsvRows(journalRowsAll(raw, counterparties, inputPeriod, reasons, daysOff), accounts, subs, counterparties, departments));
         await put(`${y}年_総勘定元帳.csv`, LEDGER_CSV_HEADER, ledgerCsvAll(book, 1, ADJUSTMENT_PERIOD));
         const opts = { showSubs: true, hideZero: true };
         await put(`${y}年_残高試算表.csv`, TRIAL_CSV_HEADER, (["bs", "pl"] as const).flatMap((v) => trialCsvRows(v, trialLines(v, book, 1, ADJUSTMENT_PERIOD, opts))));

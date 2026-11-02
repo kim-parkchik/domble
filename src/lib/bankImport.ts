@@ -254,6 +254,8 @@ export interface BankRule {
   counterparty_id: number | null;
   /** 仕訳の摘要（空なら明細の摘要のまま） */
   memo: string;
+  /** 部門（null = 共通。仕訳の行すべてに付ける） */
+  department_id?: number | null;
   sort_order: number;
   /** 分け方（決まった額を別の相手科目に。相手科目 account_id には残りの額が入る） */
   splits: BankRuleSplit[];
@@ -268,6 +270,8 @@ export interface BankRuleSplit {
   amount: number;
   /** 仕訳の摘要（空なら相手科目の行と同じ） */
   memo: string;
+  /** 部門（null = 共通） */
+  department_id?: number | null;
 }
 
 export interface Guess {
@@ -277,6 +281,8 @@ export interface Guess {
   invoice: InvoiceKind | null;
   counterpartyId: number | null;
   memo: string;
+  /** 部門（null = 共通） */
+  dept: number | null;
   /** rule = ルール、history = 前の明細・仕訳、null = 推測なし */
   source: "rule" | "history" | null;
   ruleId?: number;
@@ -292,6 +298,7 @@ export interface HistoryHit {
   invoice: InvoiceKind | null;
   counterpartyId: number | null;
   memo: string;
+  dept: number | null;
 }
 
 /**
@@ -313,7 +320,7 @@ export const learnFromBooks = (
     const o = others[0];
     const hit: HistoryHit = {
       counterId: o.account_id, counterSubId: o.sub_account_id ?? null, taxCode: o.tax_code ?? null, invoice: o.invoice_kind ?? null,
-      counterpartyId: o.counterparty_id ?? null, memo: o.memo,
+      counterpartyId: o.counterparty_id ?? null, memo: o.memo, dept: o.department_id ?? null,
     };
     const descs = [o.memo, extraOf.get(entryId) ?? ""].filter(Boolean);
     for (const d of descs) out.set(`${mine[0].side}|${normDescription(d)}`, hit);
@@ -337,12 +344,12 @@ export const guessLine = (
   if (rule) {
     return {
       counterId: rule.account_id, counterSubId: rule.sub_account_id, taxCode: rule.tax_code, invoice: rule.invoice_kind,
-      counterpartyId: rule.counterparty_id, memo: rule.memo.trim() || line.description, source: "rule", ruleId: rule.id, splits: rule.splits ?? [],
+      counterpartyId: rule.counterparty_id, memo: rule.memo.trim() || line.description, dept: rule.department_id ?? null, source: "rule", ruleId: rule.id, splits: rule.splits ?? [],
     };
   }
   const h = history.get(`${line.side}|${normDescription(line.description)}`);
   if (h) return { ...h, memo: h.memo || line.description, source: "history", splits: [] };
-  return { counterId: null, counterSubId: null, taxCode: null, invoice: null, counterpartyId: null, memo: line.description, source: null, splits: [] };
+  return { counterId: null, counterSubId: null, taxCode: null, invoice: null, counterpartyId: null, memo: line.description, dept: null, source: null, splits: [] };
 };
 
 /** 仕訳の相手の1行（税区分などはそのまま仕訳の行に入れる） */
@@ -351,6 +358,8 @@ export interface CounterPart {
   subId: number | null;
   tax: Pick<JournalLine, "tax_code" | "invoice_kind" | "business_class" | "purchase_use">;
   memo: string;
+  /** 部門（null = 共通）。この口座の行には、最初の相手科目の部門を付ける */
+  dept?: number | null;
 }
 
 /**
@@ -370,10 +379,13 @@ export const bankEntryLines = (
   const other = line.side === "debit" ? "credit" : "debit";
   const clean = (t: CounterPart["tax"]) => Object.fromEntries(Object.entries(t).filter(([, v]) => v !== null && v !== undefined));
   const mainMemo = main.memo.trim();
-  const mine: JournalLine = { row_no: 0, side: line.side, account_id: accountId, sub_account_id: subId, amount: line.amount, memo: mainMemo };
+  const dept = (d?: number | null) => (d ? { department_id: d } : {});
+  const mine: JournalLine = { row_no: 0, side: line.side, account_id: accountId, sub_account_id: subId, amount: line.amount, memo: mainMemo, ...dept(main.dept) };
   const counters: JournalLine[] = [
-    { row_no: 0, side: other, account_id: main.accountId, sub_account_id: main.subId, amount: line.amount - split, memo: mainMemo, ...clean(main.tax) },
-    ...splits.map((s): JournalLine => ({ row_no: 0, side: other, account_id: s.accountId!, sub_account_id: s.subId, amount: s.amount!, memo: s.memo.trim() || mainMemo, ...clean(s.tax) })),
+    { row_no: 0, side: other, account_id: main.accountId, sub_account_id: main.subId, amount: line.amount - split, memo: mainMemo, ...clean(main.tax), ...dept(main.dept) },
+    ...splits.map((s): JournalLine => ({
+      row_no: 0, side: other, account_id: s.accountId!, sub_account_id: s.subId, amount: s.amount!, memo: s.memo.trim() || mainMemo, ...clean(s.tax), ...dept(s.dept),
+    })),
   ];
   return (line.side === "debit" ? [mine, ...counters] : [...counters, mine]).map((l, i) => ({ ...l, row_no: i + 1 }));
 };

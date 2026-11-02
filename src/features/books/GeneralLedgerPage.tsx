@@ -23,9 +23,10 @@ import { LEDGER_ORDER, ledgerCsvAll, ledgerHelpers, type BookSource } from "../.
 import { CATEGORY_LABEL, isBalanceSheet } from "../../constants/accounts";
 import { subKey } from "../../lib/types";
 import { fileLabel } from "../../lib/business";
+import { COMMON_LABEL, departmentName, matchesDepartment, type DepartmentFilter } from "../../lib/departments";
 
 export const GeneralLedgerPage = () => {
-  const { year, accounts, accountMap, subAccounts, labelOf, subMap, taxYears, settings, counterparties } = useAppContext();
+  const { year, accounts, accountMap, subAccounts, labelOf, subMap, taxYears, settings, counterparties, departments } = useAppContext();
   const { lines, opening, subOpening } = useYearData();
   const toast = useToast();
   const [accountId, setAccountIdRaw] = useState(accounts[0].id);
@@ -44,6 +45,8 @@ export const GeneralLedgerPage = () => {
   const [minAmt, setMinAmt] = useState("");
   const [maxAmt, setMaxAmt] = useState("");
   const [q, setQ] = useState("");
+  /** 部門で絞り込む（画面だけ。残高は科目全体のまま） */
+  const [deptFilter, setDeptFilter] = useState<DepartmentFilter>("all");
   // 印刷：対象（この科目 / すべての科目）と、補助科目ごとに分けるか（補助元帳）
   const [printing, setPrinting] = useState(false);
   const [printAll, setPrintAll] = useState(false);
@@ -67,7 +70,7 @@ export const GeneralLedgerPage = () => {
     for (const l of lines) if (l.counterparty_id) m.set(l.entry_id, names.get(l.counterparty_id) ?? "");
     return m;
   }, [lines, counterparties]);
-  const narrowed = !!(minAmt.trim() || maxAmt.trim() || q.trim());
+  const narrowed = !!(minAmt.trim() || maxAmt.trim() || q.trim()) || deptFilter !== "all";
   const { carried, rows } = useMemo(() => {
     const all = buildLedger(account, base, lines, accountMap, sub);
     const periodOf = (r: LedgerRow) => (r.isAdjustment ? ADJUSTMENT_PERIOD : Number(r.date.slice(5, 7)));
@@ -78,6 +81,7 @@ export const GeneralLedgerPage = () => {
     const hi = parseAmount(maxAmt);
     const query = q.trim();
     const hit = (r: LedgerRow) => {
+      if (!matchesDepartment({ department_id: r.departmentId }, deptFilter)) return false;
       const amount = r.debit || r.credit;
       if (lo != null && amount < lo) return false;
       if (hi != null && amount > hi) return false;
@@ -89,7 +93,7 @@ export const GeneralLedgerPage = () => {
       carried: prefix.length ? prefix[prefix.length - 1].balance : base,
       rows: all.filter((r) => !before(r) && periodOf(r) <= to && (!dateTo || r.date <= dateTo) && hit(r)),
     };
-  }, [account, base, lines, accountMap, from, to, sub, dateFrom, dateTo, minAmt, maxAmt, q, labelOf, subMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [account, base, lines, accountMap, from, to, sub, dateFrom, dateTo, minAmt, maxAmt, q, deptFilter, labelOf, subMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sum = rows.reduce((t, r) => ({ dr: t.dr + r.debit, cr: t.cr + r.credit }), { dr: 0, cr: 0 });
 
@@ -99,7 +103,9 @@ export const GeneralLedgerPage = () => {
   );
 
   // ── 印刷・CSV（相手科目・税区分などの名前と、対象の科目は lib/bookExport.ts。まとめての書き出しと同じ） ──
-  const book: BookSource = useMemo(() => ({ accounts, subs: subAccounts, counterparties, taxYears, opening, subOpening, lines }), [accounts, subAccounts, counterparties, taxYears, opening, subOpening, lines]);
+  const book: BookSource = useMemo(
+    () => ({ accounts, subs: subAccounts, counterparties, departments, taxYears, opening, subOpening, lines }), [accounts, subAccounts, counterparties, departments, taxYears, opening, subOpening, lines],
+  );
   const { counterOf, taxOf, subName, baseOf, targets: allTargets } = useMemo(() => ledgerHelpers(book), [book]);
   /** 期間（1〜13。13 = 決算整理） */
   const period = { from, to };
@@ -193,6 +199,13 @@ export const GeneralLedgerPage = () => {
               <Search size={15} />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="摘要・相手科目・取引先で探す" />
             </label>
+            {departments.length > 0 && (
+              <select value={String(deptFilter)} onChange={(e) => setDeptFilter(e.target.value === "all" ? "all" : Number(e.target.value))} aria-label="部門で絞り込み">
+                <option value="all">すべての部門</option>
+                <option value="0">{COMMON_LABEL}</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            )}
             {(dateFrom || dateTo || narrowed) && <span className="muted small">印刷・CSV は、この絞り込みを使わず期間のボタンのとおりに出します</span>}
           </div>
           <div className="table-wrap scroll-y">
@@ -233,6 +246,7 @@ export const GeneralLedgerPage = () => {
                     <td className="memo">
                       {sub === undefined && r.subId && <span className="sub-tag">{subMap.get(r.subId)?.name}</span>}
                       {r.memo}
+                      {r.departmentId && <span className="dept-tag">{departmentName(departments, r.departmentId)}</span>}
                       {r.taxCode && r.taxCode !== "none" && (
                         <span className="tax-tag" title={taxLongLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, lt), displayUse(taxYears, lt))}>
                           {taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(taxYears, lt), displayUse(taxYears, lt))}

@@ -93,6 +93,7 @@ export const reversalLines = (lines: JournalLine[]): JournalLine[] =>
   lines.map((l) => ({
     row_no: l.row_no, side: l.side === "debit" ? "credit" : "debit", account_id: l.account_id, sub_account_id: l.sub_account_id, amount: l.amount,
     memo: `振り戻し ${l.memo}`.trim(), tax_code: l.tax_code ?? null, invoice_kind: l.invoice_kind ?? null, business_class: l.business_class ?? null, purchase_use: l.purchase_use ?? null,
+    ...(l.department_id ? { department_id: l.department_id } : {}),
   }));
 
 /** 棚卸の確かめ：期首の振替と期首残高、期末の棚卸高と棚卸資産の残高が合っているか（合っていなければ文言） */

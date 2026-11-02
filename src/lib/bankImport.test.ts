@@ -151,4 +151,8 @@ describe("明細から仕訳の行（分ける）", () => {
     expect(bankEntryLines({ side: "credit", amount: 9_000 }, 3, 5, main, split({ accountId: 3, subId: 5 }))).toMatch(/同じ科目/);
     expect(bankEntryLines({ side: "credit", amount: 9_000 }, 3, 5, { ...main, accountId: null }, [])).toMatch(/相手科目/);
   });
+  test("部門：この口座の行と最初の相手科目には最初の部門、分けた行にはその行の部門", () => {
+    const lines = bankEntryLines({ side: "credit", amount: 50_000 }, 3, 5, { ...main, dept: 1 }, [{ accountId: 680, subId: null, tax: {}, memo: "", amount: 6_000, dept: 2 }]);
+    expect(typeof lines === "string" ? lines : lines.map((l) => l.department_id ?? null)).toEqual([1, 2, 1]);
+  });
 });

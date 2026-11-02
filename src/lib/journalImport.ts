@@ -6,12 +6,12 @@
  *  - 必須：日付・借方科目・借方金額・貸方科目・貸方金額
  *  - 任意：伝票No（同じ番号の行を1つの仕訳にまとめる。無ければ1行 = 1仕訳）・借方補助・貸方補助・摘要・取引先・状態（「削除済み」の行は飛ばす）・
  *    決算整理（何か入っていれば決算整理仕訳。日付は年度末）・借方税区分・借方インボイス・借方事業区分・借方用途区分・貸方税区分・貸方インボイス・貸方事業区分・貸方用途区分
- *    （空なら科目・取引先の初期値。免税事業者の期間の仕訳では外れる）
+ *    （空なら科目・取引先の初期値。免税事業者の期間の仕訳では外れる）・借方部門・貸方部門（空なら共通。部門の一覧に無い名前は問題。「部門」の列1つなら両側に）
  *  - それ以外の列（登録番号・登録日時など）は読まない
- * 科目・補助科目・取引先は名前で探す（全角半角・空白の違いは無視）。見つからない名前は作らずに問題として返す
+ * 科目・補助科目・取引先・部門は名前で探す（全角半角・空白の違いは無視）。見つからない名前は作らずに問題として返す
  * 1つでも問題があれば取り込まない（画面で行番号つきで知らせる）
  */
-import type { Account, Counterparty, JournalLine, SubAccount, VoucherRow } from "./types";
+import type { Account, Counterparty, Department, JournalLine, SubAccount, VoucherRow } from "./types";
 import { emptyRow, rowsToLines, type FlatLine } from "./accounting";
 import { parseAmount, toHalfWidth } from "./format";
 import { normName } from "./counterparty";
@@ -25,6 +25,8 @@ export interface ImportContext {
   accounts: Account[];
   subs: SubAccount[];
   counterparties: Counterparty[];
+  /** 部門（無ければ部門の列は読まない） */
+  departments?: Department[];
   /** 締め済みの年度の日付か */
   isDateClosed?: (date: string) => boolean;
 }
@@ -75,6 +77,9 @@ export const COLUMNS = {
   crCls: ["貸方事業区分"],
   drUse: ["借方用途区分"],
   crUse: ["貸方用途区分"],
+  drDept: ["借方部門"],
+  crDept: ["貸方部門"],
+  dept: ["部門"],
 } as const;
 export type JournalCol = keyof typeof COLUMNS;
 type Col = JournalCol;
@@ -86,7 +91,7 @@ export type JournalColumnMap = Record<Col, number>;
 export const COLUMN_LABELS: Record<Col, string> = {
   no: "伝票番号", date: "日付", drAcc: "借方科目", drSub: "借方補助科目", drAmt: "借方金額", crAcc: "貸方科目", crSub: "貸方補助科目", crAmt: "貸方金額",
   memo: "摘要", cp: "取引先", state: "状態", adj: "決算整理", drTax: "借方税区分", drInv: "借方インボイス", crTax: "貸方税区分", crInv: "貸方インボイス",
-  drCls: "借方事業区分", crCls: "貸方事業区分", drUse: "借方用途区分", crUse: "貸方用途区分",
+  drCls: "借方事業区分", crCls: "貸方事業区分", drUse: "借方用途区分", crUse: "貸方用途区分", drDept: "借方部門", crDept: "貸方部門", dept: "部門（両側）",
 };
 
 /** 見出しの名前から列を推測する（無ければ -1） */
@@ -145,6 +150,7 @@ export const importJournalCsv = (text: string, ctx: ImportContext, map?: Journal
 
   const accByName = new Map(ctx.accounts.map((a) => [normName(a.name), a]));
   const findSub = (accountId: number, name: string) => ctx.subs.find((s) => s.account_id === accountId && normName(s.name) === normName(name));
+  const findDept = (name: string) => (ctx.departments ?? []).find((d) => normName(d.name) === normName(name));
 
   const groups = new Map<string, Group>();
   let skipped = 0;
@@ -201,6 +207,10 @@ export const importJournalCsv = (text: string, ctx: ImportContext, map?: Journal
       const useRaw = get(`${side}Use`);
       const use = parsePurchaseUse(useRaw);
       if (use === undefined) err(`${label}用途区分「${useRaw}」が読めません（課税対応・共通対応・非課税対応）`);
+      // 部門（「借方部門」「貸方部門」、無ければ「部門」の列を両側に。空・「共通」なら部門なし）
+      const deptRaw = get(`${side}Dept`) || get("dept");
+      const dept = deptRaw && !/^共通/.test(deptRaw) ? findDept(deptRaw) : null;
+      if (dept === undefined) err(`${label}部門「${deptRaw}」が部門の一覧にありません（先に部門を登録してください）`);
       if (side === "dr") {
         vr.debitAccountId = acc.id;
         vr.debitSubId = subId;
@@ -209,6 +219,7 @@ export const importJournalCsv = (text: string, ctx: ImportContext, map?: Journal
         vr.debitInvoice = inv ?? null;
         vr.debitClass = cls ?? null;
         vr.debitUse = use ?? null;
+        vr.debitDept = dept?.id ?? null;
       } else {
         vr.creditAccountId = acc.id;
         vr.creditSubId = subId;
@@ -217,6 +228,7 @@ export const importJournalCsv = (text: string, ctx: ImportContext, map?: Journal
         vr.creditInvoice = inv ?? null;
         vr.creditClass = cls ?? null;
         vr.creditUse = use ?? null;
+        vr.creditDept = dept?.id ?? null;
       }
     }
 

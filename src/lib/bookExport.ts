@@ -9,7 +9,7 @@ import type { CsvValue } from "./csv";
 import {
   buildLedger, buildTrialBalance, closingBalances, groupByEntry, subTrialRow, summarizeIncome, type FlatLine, type LedgerRow, type TrialBalanceRow,
 } from "./accounting";
-import type { Account, AccountCategory, Counterparty, OpeningBalances, SubAccount, SubOpeningBalances, TaxYear } from "./types";
+import type { Account, AccountCategory, Counterparty, Department, OpeningBalances, SubAccount, SubOpeningBalances, TaxYear } from "./types";
 import { subKey } from "./types";
 import { inputDelayDays, isLateInput, type InputPeriod } from "./inputPeriod";
 import type { DaysOff } from "./scan";
@@ -29,6 +29,8 @@ export interface BookSource {
   subOpening: SubOpeningBalances;
   /** 帳簿の明細（税抜経理の年は lib/taxExclusive.ts の bookLines を通したもの） */
   lines: FlatLine[];
+  /** 部門（元帳の CSV の「部門」の列。無ければ空） */
+  departments?: Pick<Department, "id" | "name">[];
 }
 
 /** 科目（補助科目）の名前。例：普通預金（A銀行） */
@@ -97,12 +99,15 @@ export const journalRowsAll = (
 
 export const JOURNAL_CSV_HEADER = [
   "伝票No", "日付", "借方科目", "借方補助", "借方金額", "貸方科目", "貸方補助", "貸方金額", "摘要", "取引先", "登録番号", "状態", "登録日時", "登録までの日数", "入力期間", "決算整理",
-  "借方税区分", "借方インボイス", "借方事業区分", "借方用途区分", "貸方税区分", "貸方インボイス", "貸方事業区分", "貸方用途区分",
+  "借方税区分", "借方インボイス", "借方事業区分", "借方用途区分", "貸方税区分", "貸方インボイス", "貸方事業区分", "貸方用途区分", "借方部門", "貸方部門",
 ];
 
 /** 仕訳日記帳の CSV の行 */
-export const journalCsvRows = (rows: JournalRow[], accounts: Account[], subs: SubAccount[], counterparties: Counterparty[]): CsvValue[][] => {
+export const journalCsvRows = (
+  rows: JournalRow[], accounts: Account[], subs: SubAccount[], counterparties: Counterparty[], departments: Pick<Department, "id" | "name">[] = [],
+): CsvValue[][] => {
   const an = new Map(accounts.map((a) => [a.id, a.name]));
+  const dept = (l?: FlatLine) => (l?.department_id ? departments.find((d) => d.id === l.department_id)?.name ?? "" : "");
   const sn = new Map(subs.map((s) => [s.id, s.name]));
   const taxCols = (l?: FlatLine) => [
     l?.tax_code ? taxLongLabel(l.tax_code, null, l.date) : "", invoiceCsvLabel(l?.tax_code, l?.invoice_kind), l?.business_class ? classLabel(l.business_class) : "",
@@ -114,7 +119,7 @@ export const journalCsvRows = (rows: JournalRow[], accounts: Account[], subs: Su
       r.cr ? an.get(r.cr.account_id) ?? "" : "", sub(r.cr), r.cr?.amount ?? "", r.memo, r.counterparty,
       r.counterparty ? counterparties.find((c) => c.name === r.counterparty)?.invoice_no ?? "" : "", r.deleted ? "削除済み" : "",
       r.createdAt, r.createdAt ? inputDelayDays(r.date, r.createdAt) : "", r.late ? (r.reason ? `過ぎて登録（理由：${r.reason}）` : "過ぎて登録") : "", r.adjustment ? "決算整理" : "",
-      ...taxCols(r.dr), ...taxCols(r.cr)],
+      ...taxCols(r.dr), ...taxCols(r.cr), dept(r.dr), dept(r.cr)],
   );
 };
 
@@ -143,6 +148,8 @@ export const ledgerHelpers = (b: BookSource) => {
       return r.taxCode && r.taxCode !== "none" ? taxShortLabel(r.taxCode, r.invoiceKind, r.date, displayClass(b.taxYears, lt), displayUse(b.taxYears, lt)) : "";
     },
     subName: (id: number | null) => (id ? sn.get(id) ?? "" : ""),
+    /** その行の部門の名前（共通は空） */
+    deptName: (r: LedgerRow) => (r.departmentId ? b.departments?.find((d) => d.id === r.departmentId)?.name ?? "" : ""),
     /** 科目（補助科目）の期首残高。損益の科目は 0 */
     baseOf: (a: Account, s?: number | null) => (!isBalanceSheet(a.category) ? 0 : s === undefined ? b.opening[a.id] ?? 0 : b.subOpening[subKey(a.id, s)] ?? 0),
     /** 残高か動きがある科目（区分の順） */
@@ -152,7 +159,7 @@ export const ledgerHelpers = (b: BookSource) => {
 
 /** 1つの科目の元帳の CSV の行（printBooks の ledgerCsvRows に、元帳の関数を渡す） */
 const ledgerCsvRowsOf = (a: Account, h: ReturnType<typeof ledgerHelpers>, s: { rows: LedgerRow[]; opening: number; from: number; to: number }) =>
-  ledgerCsvRows(a.name, { ...s, counterOf: h.counterOf, taxOf: h.taxOf }, (r) => h.subName(r.subId), (r) => h.cpOfEntry.get(r.entry_id) ?? "");
+  ledgerCsvRows(a.name, { ...s, counterOf: h.counterOf, taxOf: h.taxOf }, (r) => h.subName(r.subId), (r) => h.cpOfEntry.get(r.entry_id) ?? "", h.deptName);
 
 /** 総勘定元帳の CSV の行（残高か動きがある科目すべて。期間は 1〜13） */
 export const ledgerCsvAll = (b: BookSource, from: number, to: number): CsvValue[][] => {
