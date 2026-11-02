@@ -11,7 +11,7 @@
 import { closingBalances, summarizeIncome, type FlatLine, type IncomeSummary } from "./accounting";
 import { monthlySales, partnerTotals, payeeBreakdown, type MonthlySales, type PayeeRow } from "./statements";
 import { purchaseAccountIds, statementLayout, type StatementLayout } from "./statementLines";
-import { depreciationFor, isOldStraight, type FixedAsset } from "./depreciation";
+import { depreciationFor, statementLife, statementMemo, statementMethod, type FixedAsset } from "./depreciation";
 import { allowanceAccounts, allowanceCalc, type AllowanceCalc } from "./allowance";
 import { accountsOfKind } from "./incomeKind";
 import type { Account, HomeUseRate, OpeningBalances } from "./types";
@@ -178,8 +178,6 @@ const int = (v: string | undefined, min: number, max: number) => {
   return Number.isInteger(n) && n >= min && n <= max ? n : null;
 };
 
-const METHOD_LABEL: Record<FixedAsset["method"], string> = { straight: "定額法", declining: "定率法", lump3: "一括償却", small: "少額", deferred: "任意償却" };
-
 type PayeeName = (r: Pick<PayeeRow, "counterpartyId" | "subId">) => string;
 /** 書き込みがあるか（空欄なら帳簿から出す） */
 const written = (v: string | undefined) => !!v && v.trim() !== "";
@@ -231,10 +229,9 @@ export const depreciationLinesOf = (assets: FixedAsset[], year: number, notes: R
     .filter((x) => x.d && !(x.d.opening === 0 && x.d.depreciation === 0))
     .map(({ a, d }): DepreciationLine => ({
       name: a.name, quantity: notes[`dep:${a.id}:qty`] ?? "", acquired: a.acquired_on.slice(0, 7), cost: a.cost, base: d!.base,
-      method: isOldStraight(a) ? "旧定額法" : METHOD_LABEL[a.method],
-      life: a.method === "straight" || a.method === "declining" ? a.useful_life : a.method === "lump3" ? 3 : null, rate: d!.rate, months: d!.months,
+      method: statementMethod(a), life: statementLife(a), rate: d!.rate, months: d!.months,
       depreciation: d!.depreciation, businessRate: d!.businessRate, business: d!.business, closing: d!.closing,
-      memo: [a.method === "small" ? "措法28の2" : "", d!.equal ? "均等償却" : "", d!.revised ? "改定償却率" : "", d!.disposed ? `${Number(a.disposed_on!.slice(5, 7))}月売却・除却` : "", a.memo].filter(Boolean).join(" "),
+      memo: statementMemo(a, d!, year).join(" "),
     }));
 
 export const buildBlueStatement = (s: BlueStatementSource): BlueStatement => {

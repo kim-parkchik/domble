@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
-  assetLockError, assetYears, businessRateIn, decliningProblem, decliningRates, depreciationFor, depreciationLines, disposalLines, usedAssetLife, methodLabel, oldStraightRateMil, smallTotalOfYear, straightRateMil, validateAsset,
+  assetLockError, assetYears, businessRateIn, conversionOf, decliningKind, decliningProblem, decliningRates, depreciationFor, depreciationLines, disposalLines, lifeText,
+  usedAssetLife, methodLabel, oldDecliningRateMil, oldStraightRateMil, smallTotalOfYear, statementLife, statementMemo, statementMethod, straightRateMil, validateAsset,
   type FixedAsset,
 } from "./depreciation";
 
@@ -228,13 +229,110 @@ describe("200%定率法（平成24年4月1日以後の取得）", () => {
     // 年の途中から使ったら月割り（1円未満切り上げ）
     expect(dep({ ...machine, used_on: "2026-10-01", acquired_on: "2026-10-01" }, 2026)).toBe(50_000);
   });
-  test("使えない資産：平成24年3月31日以前の取得、建物、平成28年4月1日以後の建物附属設備・構築物、ソフトウェア", () => {
-    expect(validateAsset({ ...machine, acquired_on: "2012-03-31", used_on: "2012-03-31" }, blueOpts)).toMatch(/平成24年4月1日以後/);
+  test("使えない資産：平成10年4月1日以後の建物、平成28年4月1日以後の建物附属設備・構築物、ソフトウェア", () => {
     expect(decliningProblem("130", "2026-01-01")).toMatch(/建物/);
+    expect(decliningProblem("130", "1998-04-01")).toMatch(/平成10年4月1日以後/);
+    expect(decliningProblem("130", "1998-03-31")).toBeNull();
     expect(decliningProblem("131", "2016-04-01")).toMatch(/建物附属設備/);
     expect(decliningProblem("131", "2016-03-31")).toBeNull();
     expect(decliningProblem("138", "2026-01-01")).toMatch(/ソフトウェア/);
+    expect(decliningProblem("138", "2005-01-01")).toMatch(/ソフトウェア/);
     expect(validateAsset(machine, { ...blueOpts, accountCode: "130" })).toMatch(/建物/);
+  });
+});
+
+describe("どの定率法かは取得日で決まる", () => {
+  const m = (acquired_on: string, declining_250 = 0) => asset({ method: "declining", useful_life: 10, acquired_on, used_on: acquired_on, declining_250 });
+  test("平成19年3月31日以前は旧定率法、平成24年3月31日までは250%、それより後は200%。平成24年4〜12月は 250% も選べる", () => {
+    expect(["2007-03-31", "2007-04-01", "2012-03-31", "2012-04-01", "2013-01-01"].map((d) => decliningKind(m(d)))).toEqual(["old", "250", "250", "200", "200"]);
+    expect([decliningKind(m("2012-04-01", 1)), decliningKind(m("2012-12-31", 1)), decliningKind(m("2013-01-01", 1))]).toEqual(["250", "250", "200"]);
+    expect([m("2007-03-31"), m("2010-01-01"), m("2026-01-01")].map(methodLabel)).toEqual(["旧定率法", "定率法（250%）", "定率法（200%）"]);
+    expect([m("2007-03-31"), m("2010-01-01"), asset({ acquired_on: "2007-03-31" })].map(statementMethod)).toEqual(["旧定率法", "定率法", "旧定額法"]);
+    expect(validateAsset(m("2010-01-01"), blueOpts)).toBeNull();
+  });
+});
+
+describe("旧定率法（平成19年3月31日以前の取得）", () => {
+  test("償却率は別表第七の旧定率法の欄", () => {
+    expect([2, 3, 5, 10, 19, 50, 51, 84, 85, 100].map(oldDecliningRateMil)).toEqual([684, 536, 369, 206, 114, 45, 44, 27, 26, 23]);
+  });
+  test("期首の未償却残高 × 償却率。95% に達した翌年から5年で1円まで均等償却（国税庁 No.2105 の例：500万円・5年・0.369）", () => {
+    const a = asset({ cost: 5_000_000, useful_life: 5, method: "declining", acquired_on: "2001-01-10", used_on: "2001-01-10" });
+    const years = Array.from({ length: 13 }, (_, i) => dep(a, 2001 + i));
+    expect(years[0]).toBe(1_845_000);
+    // 7年目は 95%（未償却残高 250,000円）ちょうどまで、8〜11年目は (250,000 − 1) ÷ 5、12年目は残り（1円を残す）
+    expect(years.slice(6)).toEqual([65_606, 50_000, 50_000, 50_000, 50_000, 49_999, 0]);
+    expect(depreciationFor(a, 2008)).toMatchObject({ equal: true, rate: 0.2, base: 250_000 });
+    expect(depreciationFor(a, 2002)).toMatchObject({ equal: false, rate: 0.369, base: 3_155_000 });
+    expect(depreciationFor(a, 2012)!.closing).toBe(1);
+  });
+});
+
+describe("250%定率法（平成19年4月1日〜平成24年3月31日の取得）", () => {
+  const machine = asset({ name: "機械", cost: 1_000_000, useful_life: 10, method: "declining", acquired_on: "2010-01-01", used_on: "2010-01-01" });
+  test("償却率・改定償却率・保証率は別表第九。償却保証額に満たなくなった年から改定償却率", () => {
+    expect(decliningRates(10, "250")).toEqual({ rate: 250, revised: 334, guarantee: 4448 });
+    expect(decliningRates(3, "250")).toEqual({ rate: 833, revised: 1000, guarantee: 2789 });
+    expect(decliningRates(91, "250")).toEqual({ rate: 27, revised: 27, guarantee: 649 });
+    const years = Array.from({ length: 11 }, (_, i) => dep(machine, 2010 + i));
+    // 7年目の調整前償却額 44,495 は償却保証額 44,480 以上。8年目（33,371）から 133,483 × 0.334
+    expect(years).toEqual([250_000, 187_500, 140_625, 105_469, 79_102, 59_326, 44_495, 44_584, 44_584, 44_314, 0]);
+    expect(depreciationFor(machine, 2017)).toMatchObject({ revised: true, rate: 0.334, base: 133_483 });
+  });
+});
+
+describe("リース期間定額法", () => {
+  const copier = asset({ name: "複合機", cost: 600_000, method: "lease", useful_life: 0, lease_months: 60, residual_value: 0, acquired_on: "2026-04-01", used_on: "2026-04-01" });
+  test("（取得価額 − 残価保証額）× その年のリース期間の月数 ÷ リース期間の月数。0円まで（備忘価額を残さない）", () => {
+    expect(Array.from({ length: 7 }, (_, i) => dep(copier, 2026 + i))).toEqual([90_000, 120_000, 120_000, 120_000, 120_000, 30_000, 0]);
+    expect(depreciationFor(copier, 2026)).toMatchObject({ rate: null, base: 600_000, months: 9 });
+    expect(depreciationFor(copier, 2031)).toMatchObject({ months: 3, closing: 0 });
+    expect([methodLabel(copier), statementMethod(copier), lifeText(copier), statementLife(copier)]).toEqual(["リース期間定額法", "リース期間定額法", "60か月", null]);
+  });
+  test("残価保証額まで償却する。端数は累計で切り上げ、最後の年で合わせる。売却・除却した月まで", () => {
+    const r = { ...copier, residual_value: 60_000 };
+    expect(Array.from({ length: 6 }, (_, i) => dep(r, 2026 + i))).toEqual([81_000, 108_000, 108_000, 108_000, 108_000, 27_000]);
+    expect(depreciationFor(r, 2031)!.closing).toBe(60_000);
+    const odd = { ...copier, cost: 100_000, lease_months: 7, acquired_on: "2026-10-15", used_on: "2026-10-15" };
+    expect([dep(odd, 2026), dep(odd, 2027)]).toEqual([42_858, 57_142]);
+    expect(depreciationFor({ ...copier, disposed_on: "2027-06-30" }, 2027)).toMatchObject({ months: 6, depreciation: 60_000, closing: 450_000 });
+  });
+  test("確かめ：平成20年4月1日以後の契約、リース期間の月数、残価保証額", () => {
+    expect(validateAsset(copier, blueOpts)).toBeNull();
+    expect(validateAsset({ ...copier, acquired_on: "2008-03-31", used_on: "2008-03-31" }, blueOpts)).toMatch(/平成20年4月1日以後/);
+    expect(validateAsset({ ...copier, lease_months: 0 }, blueOpts)).toMatch(/リース期間/);
+    expect(validateAsset({ ...copier, residual_value: 600_000 }, blueOpts)).toMatch(/残価保証額/);
+  });
+});
+
+describe("家事用から転用した資産", () => {
+  // 国税庁 No.2109 の計算例：取得価額1,000万円・耐用年数22年、平成22年6月10日取得、令和5年4月1日から業務に使う
+  const house = asset({ name: "貸家", cost: 10_000_000, useful_life: 22, acquired_on: "2010-06-10", used_on: "2023-04-01", converted: 1 });
+  test("使っていなかった期間の減価の額：取得価額 × 0.9 × 旧定額法の償却率（耐用年数の1.5倍）× 年数（6か月以上は1年）", () => {
+    expect(conversionOf(house)).toEqual({ months: 153, years: 13, life: 33, rate: 31, decline: 3_627_000, book: 6_373_000 });
+    expect(depreciationFor(house, 2023)).toMatchObject({ opening: 6_373_000, depreciation: 345_000, closing: 6_028_000, rate: 0.046, base: 10_000_000 });
+    // 6か月未満の端数は切り捨て
+    expect(conversionOf({ ...house, used_on: "2011-12-09" }).years).toBe(1);
+    expect(conversionOf({ ...house, used_on: "2011-12-10" }).years).toBe(2);
+  });
+  test("減価の額は取得価額の 95% まで。旧定額法の資産は、95% に達していれば転用した年から均等償却", () => {
+    const old = asset({ cost: 1_000_000, useful_life: 2, acquired_on: "1995-01-01", used_on: "2006-01-01", converted: 1 });
+    expect(conversionOf(old)).toMatchObject({ years: 11, decline: 950_000, book: 50_000 });
+    expect(depreciationFor(old, 2006)).toMatchObject({ opening: 50_000, depreciation: 10_000, equal: true });
+    // 転用したことを外せば、取得価額から
+    expect(depreciationFor({ ...house, converted: 0 }, 2023)!.opening).toBe(10_000_000);
+  });
+  test("確かめ：定額法・定率法だけ。使い始めた日は取得日より後", () => {
+    expect(validateAsset({ ...house, method: "lump3", cost: 150_000 }, blueOpts)).toMatch(/定額法・定率法/);
+    expect(validateAsset({ ...house, used_on: house.acquired_on }, blueOpts)).toMatch(/取得日より後/);
+    expect(statementMemo(house, depreciationFor(house, 2023)!, 2023)).toEqual(["業務転用"]);
+    expect(statementMemo(house, depreciationFor(house, 2024)!, 2024)).toEqual([]);
+  });
+  test("締めた年に使っている資産は、転用・リース期間・残価保証額も変えられない（無い・0 は同じに見る）", () => {
+    const closed = [2023];
+    expect(assetLockError(house, { ...house, converted: 0 }, closed)).toMatch(/家事用からの転用/);
+    const plain = asset({ used_on: "2023-01-01", acquired_on: "2023-01-01" });
+    expect(assetLockError({ ...plain, converted: 0, declining_250: 0 }, { ...plain }, closed)).toBeNull();
   });
 });
 

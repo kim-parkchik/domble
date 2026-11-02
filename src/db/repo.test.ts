@@ -10,7 +10,7 @@ import { ACCOUNT_SEEDS } from "../constants/accounts";
 import * as repo from "./repo";
 import type { JournalLine } from "../lib/types";
 import { subKey } from "../lib/types";
-import { depreciationFor, depreciationLines } from "../lib/depreciation";
+import { conversionOf, depreciationFor, depreciationLines } from "../lib/depreciation";
 import { inventoryLines } from "../lib/yearEnd";
 import { allowanceCalc, allowanceLines } from "../lib/allowance";
 import { taxYearOf } from "../lib/tax";
@@ -346,6 +346,25 @@ describe("固定資産台帳・減価償却（repo）", () => {
     expect(h.at(-2)!.new_value).toContain("事業 70%");
   });
 
+  test("リース資産・転用した資産・250%定率法の選択を保存して読み直せる。使わない項目は持たない。履歴に残る", async () => {
+    const { db, base } = await setup();
+    const lease = await repo.saveAsset(db, null, { ...base, name: "複合機", method: "lease", useful_life: 0, cost: 600_000, lease_months: 60, residual_value: 0, converted: 1 });
+    const house = await repo.saveAsset(db, null, { ...base, name: "車", acquired_on: "2020-01-10", used_on: "2026-04-10", useful_life: 6, converted: 1, lease_months: 12 });
+    const old = await repo.saveAsset(db, null, { ...base, name: "機械", method: "declining", useful_life: 10, acquired_on: "2012-06-01", used_on: "2012-06-01", declining_250: 1 });
+    const get = async (id: number) => (await repo.getAssets(db)).find((x) => x.id === id)!;
+    expect(await get(lease)).toMatchObject({ method: "lease", lease_months: 60, residual_value: 0, converted: 0, useful_life: 0 });
+    expect(await get(house)).toMatchObject({ converted: 1, lease_months: null, residual_value: null });
+    expect(await get(old)).toMatchObject({ declining_250: 1 });
+    expect(depreciationFor(await get(house), 2026)!.opening).toBe(240_000 - conversionOf({ acquired_on: "2020-01-10", used_on: "2026-04-10", cost: 240_000, useful_life: 6 }).decline);
+    // 250%定率法の選択は、平成24年4〜12月の取得のときだけ
+    await repo.saveAsset(db, old, { ...(await get(old)), acquired_on: "2013-01-10", used_on: "2013-01-10" });
+    expect((await get(old)).declining_250).toBe(0);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "asset");
+    expect(h.map((x) => x.new_value).join("\n")).toContain("リース期間定額法 60か月");
+    expect(h.map((x) => x.new_value).join("\n")).toContain("家事用から転用");
+    await expect(repo.saveAsset(db, null, { ...base, method: "lease", useful_life: 0, lease_months: null })).rejects.toThrow(/リース期間の月数/);
+  });
+
   test("年末の減価償却の仕訳：決算整理仕訳で作り、作り直すときは同じ仕訳を訂正する", async () => {
     const { db, base, ids, id } = await setup();
     await repo.saveAsset(db, null, base);
@@ -495,6 +514,7 @@ describe("固定資産台帳と年の締め・年ごとの事業専用割合（r
     expect(() => raw.run("UPDATE fixed_assets SET business_rate = 100 WHERE id = ?", [a])).toThrow(/締め済み/);
     expect(() => raw.run("UPDATE fixed_assets SET disposed_on = '2025-10-31' WHERE id = ?", [a])).toThrow(/締め済み/);
     expect(() => raw.run("DELETE FROM fixed_assets WHERE id = ?", [a])).toThrow(/締め済み/);
+    expect(() => raw.run("UPDATE fixed_assets SET converted = 1 WHERE id = ?", [a])).toThrow(/締め済み/);
     expect(() => raw.run("INSERT INTO asset_rates (asset_id, from_year, rate) VALUES (?, 2025, 10)", [a])).toThrow(/締め済み/);
     raw.run("UPDATE fixed_assets SET disposed_on = '2026-10-31' WHERE id = ?", [a]);
     raw.run("UPDATE asset_rates SET rate = 70 WHERE asset_id = ? AND from_year = 2026", [a]);

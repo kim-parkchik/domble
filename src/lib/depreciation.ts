@@ -3,20 +3,32 @@ import type { IncomeKind, JournalLine } from "./types";
 /**
  * 減価償却の計算（純粋関数）
  *
- * 個人の法定の償却方法は定額法（平成19年3月31日以前の取得は旧定額法）なので、次に対応する（定率法・旧定率法は届出が要るので、あとで）
+ * 個人の法定の償却方法は定額法（平成19年3月31日以前の取得は旧定額法）。定率法は届出をした人だけ。次に対応する
  *  - 定額法（平成19年4月1日以後に取得したもの）：取得価額 × 償却率 × 使った月数 / 12。1円未満は切り上げ。
  *    最後は未償却残高が 1円（備忘価額）になるまで償却する
  *  - 旧定額法（償却方法「定額法」で、取得日が平成19年3月31日以前のもの。国税庁 No.2105、決算書の書き方）：
  *    取得価額 × 90% × 旧定額法の償却率 × 月数 / 12。償却費の累計が取得価額の 95% に達したら、その翌年から5年間で
  *    1円まで均等に償却する（{取得価額 − 取得価額 × 95% − 1円} ÷ 5 × 月数 / 12）
- *  - 200%定率法（平成24年4月1日以後に取得したもの。償却方法の届出をした人。国税庁 No.2106、耐用年数省令 別表第十）：
- *    期首の未償却残高 × 定率法の償却率（調整前償却額）。これが償却保証額（取得価額 × 保証率）に満たなくなった年から、
- *    改定取得価額（その年の期首の未償却残高）× 改定償却率。月割り・1円未満切り上げ・1円（備忘価額）まで は定額法と同じ。
- *    建物、平成28年4月1日以後に取得した建物附属設備・構築物、ソフトウェアには使えない
+ *  - 定率法（償却方法の届出をした人）。どの定率法かは取得日で決まる（decliningKind。国税庁 No.2105・No.2106・No.2109）
+ *    - 旧定率法（平成19年3月31日以前の取得。耐用年数省令 別表第七）：期首の未償却残高 × 旧定率法の償却率 × 月数 / 12。
+ *      累計が取得価額の 95% に達したら、旧定額法と同じく翌年から5年間で1円まで均等に償却する
+ *    - 250%定率法（平成19年4月1日〜平成24年3月31日の取得。別表第九）・200%定率法（平成24年4月1日以後の取得。別表第十）：
+ *      期首の未償却残高 × 定率法の償却率（調整前償却額）。これが償却保証額（取得価額 × 保証率）に満たなくなった年から、
+ *      改定取得価額（その年の期首の未償却残高）× 改定償却率。月割り・1円未満切り上げ・1円（備忘価額）まで は定額法と同じ。
+ *      平成24年4月1日〜12月31日の取得は、経過措置で 250%定率法（改正前の償却率）も選べる（declining_250）
+ *    - 平成10年4月1日以後に取得した建物、平成28年4月1日以後に取得した建物附属設備・構築物、ソフトウェアには使えない
+ *  - リース期間定額法（平成20年4月1日以後に契約した所有権移転外リース取引のリース資産。所得税法施行令120条の2）：
+ *    （取得価額 − 残価保証額）× その年のリース期間の月数 ÷ リース期間の月数。残価保証額（無ければ 0円）まで償却する（備忘価額は残さない）。
+ *    科目は資産の種類（工具器具備品など）、リース料の総額は未払金で入れる
  *  - 一括償却資産（10万円以上20万円未満）：取得価額の 1/3 ずつを3年。月割りしない。売ったり捨てたりしても3年続ける
  *  - 少額減価償却資産（青色申告・30万円未満。1年の合計300万円まで）：使い始めた年に全額
  *  - 繰延資産（開業費など。任意償却）：年ごとに償却する額を決める（決めていない年は60か月の均等償却。月割り）。0円まで償却する
  * 償却率は「1 / 耐用年数」を小数第3位で切り上げたもの（定額法の償却率表と同じ値になる）
+ *
+ * 家事用の資産を事業用に転用したもの（converted。国税庁 No.2109、所得税法施行令85条）：使い始めた日（転用した日）の未償却残高は、
+ *  取得価額 − 取得価額 × 0.9 × 旧定額法の償却率（耐用年数 × 1.5 の年数。1年未満の端数は切り捨て）× 使っていなかった年数
+ *  （取得した日から転用した日まで。6か月以上の端数は1年、6か月未満は切り捨て）。減価の額は旧定額法に準じて取得価額の 95% まで。
+ *  転用したあとは、取得日で決まる償却方法・法定耐用年数で、定額法は取得価額、定率法は未償却残高を基に計算する（conversionOf）
  *
  * 事業専用割合：償却費のうち、必要経費に入れるのは事業で使っている割合だけ（1円未満は切り捨て。経費を多く見積もらない側）。
  * 残りは事業主貸にする。未償却残高は、割合にかかわらず償却費の全額だけ減る。
@@ -26,20 +38,27 @@ import type { IncomeKind, JournalLine } from "./types";
  * （assetLockError。DB のトリガー（schema.ts）でも同じ条件で拒否する）
  */
 
-export type DepreciationMethod = "straight" | "declining" | "lump3" | "small" | "deferred";
+export type DepreciationMethod = "straight" | "declining" | "lump3" | "small" | "deferred" | "lease";
 export type DisposalKind = "sale" | "scrap";
 export const DISPOSAL_LABEL: Record<DisposalKind, string> = { sale: "売却", scrap: "除却" };
 
 export const METHOD_LABEL: Record<DepreciationMethod, string> = {
   straight: "定額法",
-  declining: "定率法（200%）",
+  declining: "定率法",
+  lease: "リース期間定額法",
   lump3: "一括償却資産（3年）",
   small: "少額減価償却資産",
   deferred: "繰延資産（任意償却）",
 };
 
-/** 200%定率法を使える取得日（この日以後。それより前の 250%定率法・旧定率法には対応していない） */
-export const DECLINING_FROM = "2012-04-01";
+/** 定率法の種類：旧定率法 ／ 250%定率法 ／ 200%定率法（取得日で決まる。decliningKind） */
+export type DecliningKind = "old" | "250" | "200";
+/** 250%定率法で計算する取得日（この日以前。平成19年3月31日以前は旧定率法） */
+export const DECLINING_250_UNTIL = "2012-03-31";
+/** 平成24年4月1日〜12月31日の取得は、経過措置で 250%定率法（改正前の償却率）も選べる（国税庁 No.2106） */
+export const canChoose250 = (acquiredOn: string) => acquiredOn >= "2012-04-01" && acquiredOn <= "2012-12-31";
+/** リース期間定額法を使える取得日（平成20年4月1日以後に契約した所有権移転外リース取引） */
+export const LEASE_FROM = "2008-04-01";
 /** 繰延資産の、償却する額を決めていない年の均等償却の月数 */
 export const DEFERRED_MONTHS = 60;
 
@@ -63,11 +82,34 @@ const DECLINING_GUARANTEE = [
   1422, 1370, 1370, 1337, 1288, 1281, 1281, 1240, 1240, 1201, 1201, 1165, 1165, 1130, 1130, 1097, 1097, 1065, 1034, 1034, 1006, 1063, 1035, 1007, 980,
   954, 929, 929, 907, 884, 929, 907, 885, 864, 885, 864, 844, 863, 844, 825, 807, 790, 807, 790, 773, 757, 773, 757, 742,
 ];
+/**
+ * 250%定率法の償却率・改定償却率（千分率）と保証率（十万分率）。耐用年数 2〜100年（耐用年数省令 別表第九。
+ * 平成19年4月1日から平成24年3月31日までの間に取得をされた減価償却資産）。2年は改定償却率・保証率が無い（0）
+ */
+const DECLINING250_RATES = [
+  1000, 833, 625, 500, 417, 357, 313, 278, 250, 227, 208, 192, 179, 167, 156, 147, 139, 132, 125, 119, 114, 109, 104, 100, 96, 93, 89, 86, 83, 81, 78, 76,
+  74, 71, 69, 68, 66, 64, 63, 61, 60, 58, 57, 56, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 45, 44, 43, 42, 42, 41, 40, 40, 39, 38, 38, 37, 37, 36, 36, 35,
+  35, 34, 34, 33, 33, 32, 32, 32, 31, 31, 30, 30, 30, 29, 29, 29, 28, 28, 28, 27, 27, 27, 27, 26, 26, 26, 26, 25, 25,
+];
+const DECLINING250_REVISED = [
+  0, 1000, 1000, 1000, 500, 500, 334, 334, 334, 250, 250, 200, 200, 200, 167, 167, 143, 143, 143, 125, 125, 112, 112, 112, 100, 100, 91, 91, 84, 84, 84, 77,
+  77, 72, 72, 72, 67, 67, 67, 63, 63, 59, 59, 59, 56, 56, 53, 53, 53, 50, 50, 48, 48, 46, 46, 46, 44, 44, 44, 42, 42, 42, 40, 39, 39, 38, 38, 38, 38, 36,
+  36, 35, 35, 34, 34, 33, 33, 33, 32, 32, 31, 31, 31, 30, 30, 30, 29, 29, 29, 27, 27, 27, 27, 27, 27, 27, 27, 26, 26,
+];
+const DECLINING250_GUARANTEE = [
+  0, 2789, 5274, 6249, 5776, 5496, 5111, 4731, 4448, 4123, 3870, 3633, 3389, 3217, 3063, 2905, 2757, 2616, 2517, 2408, 2296, 2226, 2157, 2058, 1989,
+  1902, 1866, 1803, 1766, 1688, 1655, 1585, 1532, 1532, 1494, 1425, 1393, 1370, 1317, 1306, 1261, 1248, 1210, 1175, 1175, 1153, 1126, 1102, 1072, 1053,
+  1036, 1028, 1015, 1007, 961, 952, 945, 934, 895, 892, 882, 847, 847, 847, 828, 828, 810, 800, 771, 771, 751, 751, 738, 738, 726, 726, 716, 693, 693,
+  683, 683, 673, 653, 653, 645, 627, 627, 620, 603, 649, 632, 615, 598, 594, 578, 563, 549, 549, 546,
+];
 const lifeIndex = (life: number) => Math.min(Math.max(life, 2), 100) - 2;
-/** 200%定率法の償却率・改定償却率（千分率）・保証率（十万分率） */
-export const decliningRates = (life: number) => ({
-  rate: DECLINING_RATES[lifeIndex(life)], revised: DECLINING_REVISED[lifeIndex(life)], guarantee: DECLINING_GUARANTEE[lifeIndex(life)],
-});
+/** 定率法の償却率・改定償却率（千分率）・保証率（十万分率）。kind = 200%定率法（既定）か 250%定率法 */
+export const decliningRates = (life: number, kind: "200" | "250" = "200") => {
+  const i = lifeIndex(life);
+  return kind === "250"
+    ? { rate: DECLINING250_RATES[i], revised: DECLINING250_REVISED[i], guarantee: DECLINING250_GUARANTEE[i] }
+    : { rate: DECLINING_RATES[i], revised: DECLINING_REVISED[i], guarantee: DECLINING_GUARANTEE[i] };
+};
 
 /**
  * 中古資産の耐用年数（簡便法。国税庁 No.5404・耐用年数省令3条）：
@@ -131,6 +173,14 @@ export interface FixedAsset {
   memo: string;
   /** 所得の区分（不動産所得の資産は減価償却費（不動産）にし、不動産所得用の決算書に出す。無ければ事業所得） */
   income_kind?: IncomeKind;
+  /** リース期間定額法：リース期間の月数（1か月未満の端数は1か月）。使い始めた日の月からリース期間が始まる */
+  lease_months?: number | null;
+  /** リース期間定額法：残価保証額（無ければ 0。ここまで償却する） */
+  residual_value?: number | null;
+  /** 家事用の資産を事業用に転用した（1）：使い始めた日 = 転用した日。その日の未償却残高を計算する（conversionOf） */
+  converted?: number;
+  /** 平成24年4月1日〜12月31日に取得した資産を、経過措置で 250%定率法（改正前の償却率）で計算する（1） */
+  declining_250?: number;
 }
 
 /** 事業専用割合を変えた年と割合 */
@@ -141,11 +191,11 @@ export interface AssetRate {
 
 /** ある年度の償却 */
 export interface YearDepreciation {
-  /** 償却率（定額法・旧定額法のとき。例 0.250。旧定額法の均等償却の年は 0.200） */
+  /** 償却率（定額法・定率法のとき。例 0.250。旧定額法・旧定率法の均等償却の年は 0.200） */
   rate: number | null;
-  /** 償却の基礎になる金額（取得価額。旧定額法は取得価額 × 90%、均等償却の年は取得価額 × 5%） */
+  /** 償却の基礎になる金額（取得価額。旧定額法は取得価額 × 90%、定率法は期首の未償却残高、均等償却の年は取得価額 × 5%、リース資産は取得価額 − 残価保証額） */
   base: number;
-  /** 旧定額法で、95% に達した翌年からの5年間の均等償却の年 */
+  /** 旧定額法・旧定率法で、95% に達した翌年からの5年間の均等償却の年 */
   equal: boolean;
   /** 200%定率法で、改定償却率に切り替えた年（償却の基礎になる金額は改定取得価額） */
   revised: boolean;
@@ -179,13 +229,59 @@ const OLD_STRAIGHT_RATES = [
   13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11, 11, 11, 11, 10,
 ];
 export const oldStraightRateMil = (life: number) => OLD_STRAIGHT_RATES[Math.min(Math.max(life, 2), 100) - 2];
+/** 旧定率法の償却率（千分率。耐用年数 2〜100年。別表第七） */
+const OLD_DECLINING_RATES = [
+  684, 536, 438, 369, 319, 280, 250, 226, 206, 189, 175, 162, 152, 142, 134, 127, 120, 114, 109, 104, 99, 95, 92, 88, 85, 82, 79, 76, 74, 72, 69, 67, 66,
+  64, 62, 60, 59, 57, 56, 55, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 43, 42, 41, 40, 40, 39, 38, 38, 37, 36, 36, 35, 35, 34, 34, 33, 33, 32, 32, 32,
+  31, 31, 30, 30, 30, 29, 29, 28, 28, 28, 27, 27, 26, 26, 26, 26, 26, 25, 25, 25, 25, 24, 24, 24, 23, 23, 23, 23,
+];
+export const oldDecliningRateMil = (life: number) => OLD_DECLINING_RATES[Math.min(Math.max(life, 2), 100) - 2];
 
 /** 旧定額法で計算するか（償却方法が定額法で、取得日が平成19年3月31日以前） */
 export const isOldStraight = (a: Pick<FixedAsset, "method" | "acquired_on">) => a.method === "straight" && a.acquired_on <= OLD_STRAIGHT_UNTIL;
-/** 台帳・決算書に出す償却方法（取得日で旧定額法になるものは「旧定額法」） */
-export const methodLabel = (a: Pick<FixedAsset, "method" | "acquired_on">) => (isOldStraight(a) ? "旧定額法" : METHOD_LABEL[a.method]);
-/** 旧定額法：償却費の累計が取得価額の 95% に達したときの未償却残高（取得価額 × 5%） */
+/** 定率法の種類（取得日で決まる。平成24年4月〜12月の取得は、250%定率法を選んでいれば 250%） */
+export const decliningKind = (a: Pick<FixedAsset, "acquired_on" | "declining_250">): DecliningKind =>
+  a.acquired_on <= OLD_STRAIGHT_UNTIL ? "old" : a.acquired_on <= DECLINING_250_UNTIL || (canChoose250(a.acquired_on) && !!a.declining_250) ? "250" : "200";
+/** 旧定率法で計算するか（償却方法が定率法で、取得日が平成19年3月31日以前） */
+export const isOldDeclining = (a: Pick<FixedAsset, "method" | "acquired_on">) => a.method === "declining" && a.acquired_on <= OLD_STRAIGHT_UNTIL;
+const DECLINING_KIND_LABEL: Record<DecliningKind, string> = { old: "旧定率法", "250": "定率法（250%）", "200": "定率法（200%）" };
+/** 台帳に出す償却方法（取得日で旧定額法・旧定率法・250%定率法になるものは、その名前） */
+export const methodLabel = (a: Pick<FixedAsset, "method" | "acquired_on" | "declining_250">) =>
+  isOldStraight(a) ? "旧定額法" : a.method === "declining" ? DECLINING_KIND_LABEL[decliningKind(a)] : METHOD_LABEL[a.method];
+const STATEMENT_METHOD: Record<DepreciationMethod, string> = {
+  straight: "定額法", declining: "定率法", lease: "リース期間定額法", lump3: "一括償却", small: "少額", deferred: "任意償却",
+};
+/** 決算書の「償却方法」の欄（旧定額法・旧定率法のほかは、定率法の 250%・200% も「定率法」） */
+export const statementMethod = (a: Pick<FixedAsset, "method" | "acquired_on">) =>
+  isOldStraight(a) ? "旧定額法" : isOldDeclining(a) ? "旧定率法" : STATEMENT_METHOD[a.method];
+/** 耐用年数を使う償却方法（定額法・定率法） */
+export const hasLife = (method: DepreciationMethod) => method === "straight" || method === "declining";
+/** 決算書の「耐用年数」の欄（定額法・定率法・一括償却資産。ほかは null） */
+export const statementLife = (a: Pick<FixedAsset, "method" | "useful_life">) => (hasLife(a.method) ? a.useful_life : a.method === "lump3" ? 3 : null);
+/** 台帳の「耐用年数」の欄（リース資産はリース期間の月数） */
+export const lifeText = (a: Pick<FixedAsset, "method" | "useful_life" | "lease_months">) =>
+  a.method === "lease" ? `${a.lease_months ?? 0}か月` : statementLife(a) !== null ? `${statementLife(a)}年` : "—";
+/** 旧定額法・旧定率法：償却費の累計が取得価額の 95% に達したときの未償却残高（取得価額 × 5%） */
 const oldFloor = (cost: number) => cost - Math.floor((cost * 95) / 100);
+
+/**
+ * 家事用から転用した資産の、使っていなかった期間の減価の額と、転用したときの未償却残高（国税庁 No.2109）
+ *  life = 耐用年数 × 1.5（1年未満の端数は切り捨て）、rate = その年数の旧定額法の償却率（千分率）、
+ *  years = 取得した日から転用した日（使い始めた日）の前日までの年数（6か月以上の端数は1年、6か月未満は切り捨て）、
+ *  decline = 取得価額 × 0.9 × rate × years（1円未満は切り上げ。取得価額の 95% まで）。耐用年数の1.5倍が100年を超えるときは100年の率
+ */
+export const conversionOf = (a: Pick<FixedAsset, "acquired_on" | "used_on" | "cost" | "useful_life">) => {
+  const [y1, m1, d1] = a.acquired_on.split("-").map(Number);
+  const [y2, m2, d2] = a.used_on.split("-").map(Number);
+  const months = Math.max(0, (y2 - y1) * 12 + (m2 - m1) - (d2 < d1 ? 1 : 0));
+  const years = Math.floor(months / 12) + (months % 12 >= 6 ? 1 : 0);
+  const life = Math.floor((a.useful_life * 3) / 2);
+  const rate = oldStraightRateMil(life);
+  const decline = Math.min(Math.ceil((a.cost * 9 * rate * years) / 10_000), Math.floor((a.cost * 95) / 100));
+  return { months, years, life, rate, decline, book: a.cost - decline };
+};
+/** 償却を始めるときの未償却残高（転用した資産は、転用したときの未償却残高。ほかは取得価額） */
+const startBook = (a: FixedAsset) => (a.converted && hasLife(a.method) ? conversionOf(a).book : a.cost);
 
 const yearOf = (date: string) => Number(date.slice(0, 4));
 const monthOf = (date: string) => Number(date.slice(5, 7));
@@ -196,6 +292,18 @@ const monthsIn = (a: FixedAsset, year: number) => {
   const to = a.disposed_on && yearOf(a.disposed_on) === year ? monthOf(a.disposed_on) : 12;
   return Math.max(0, to - from + 1);
 };
+
+/** リース期間の月数（1か月以上） */
+const leaseMonthsOf = (a: FixedAsset) => Math.max(1, a.lease_months ?? 0);
+/** リース期間の始め（使い始めた月）から、その年の終わり（売却・除却した年はその月）までの月数（リース期間の月数まで） */
+const leaseMonthsThrough = (a: FixedAsset, year: number) => {
+  const startYear = yearOf(a.used_on);
+  if (year < startYear) return 0;
+  const end = a.disposed_on && yearOf(a.disposed_on) <= year ? (yearOf(a.disposed_on) - startYear) * 12 + monthOf(a.disposed_on) : (year - startYear) * 12 + 12;
+  return Math.min(leaseMonthsOf(a), Math.max(0, end - monthOf(a.used_on) + 1));
+};
+/** リース期間定額法の、months か月分の償却費の累計（{取得価額 − 残価保証額} × months ÷ リース期間の月数。1円未満は切り上げ） */
+const leaseCumulative = (a: FixedAsset, months: number) => Math.ceil(((a.cost - (a.residual_value ?? 0)) * months) / leaseMonthsOf(a));
 
 /** その年の事業専用割合（from_year がその年以前で最も新しいもの。無ければ使い始めた年からの割合） */
 export const businessRateIn = (a: Pick<FixedAsset, "business_rate" | "rates">, year: number) => {
@@ -225,7 +333,10 @@ export const closedYearsOf = (a: Pick<FixedAsset, "used_on" | "disposed_on" | "m
 const LOCKED_FIELDS: [keyof Omit<FixedAsset, "id">, string][] = [
   ["name", "名称"], ["account_id", "科目"], ["acquired_on", "取得日"], ["used_on", "使い始めた日"], ["cost", "取得価額"], ["method", "償却方法"],
   ["useful_life", "耐用年数"], ["opening_year", "期首の未償却残高の年"], ["opening_book_value", "期首の未償却残高"], ["memo", "備考"], ["income_kind", "所得の区分"],
+  ["lease_months", "リース期間"], ["residual_value", "残価保証額"], ["converted", "家事用からの転用"], ["declining_250", "250%定率法の選択"],
 ];
+/** 0/1 の項目（無い・0・false を同じに見る） */
+const FLAG_FIELDS = new Set<string>(["converted", "declining_250"]);
 const LOCK_HINT = "直すときは、事業者設定で締めを戻してください。";
 const yearsText = (ys: number[]) => ys.map((y) => `${y}年`).join("・");
 
@@ -243,7 +354,8 @@ export const assetLockError = (
   if (!after) return was.length ? `締め済みの年（${yearsText(was)}）に使っている資産は削除できません。${LOCK_HINT}` : null;
   if (was.length === 0) return will.length ? `締め済みの年（${yearsText(will)}）に使っていることになる変更はできません。${LOCK_HINT}` : null;
   const norm = (v: unknown) => v ?? null;
-  const changed = LOCKED_FIELDS.filter(([k]) => norm(before[k]) !== norm(after[k])).map(([, label]) => label);
+  const field = (a: Omit<FixedAsset, "id">, k: keyof Omit<FixedAsset, "id">) => (FLAG_FIELDS.has(k) ? (a[k] ? 1 : 0) : norm(a[k]));
+  const changed = LOCKED_FIELDS.filter(([k]) => field(before, k) !== field(after, k)).map(([, label]) => label);
   if (changed.length) {
     return `締め済みの年（${yearsText(was)}）に使っている資産のため、${changed.join("・")}は変えられません（売却・除却の日と、締めていない年からの事業専用割合は変えられます）。${LOCK_HINT}`;
   }
@@ -290,19 +402,29 @@ const depreciationOfYear = (a: FixedAsset, year: number, book: number, carry: Ca
     const amount = chosen ?? Math.ceil((a.cost * monthsIn(a, year)) / DEFERRED_MONTHS);
     return Math.max(0, Math.min(amount, book));
   }
+  if (a.method === "lease") {
+    // その年の終わりまでの累計 − 前の年の終わりまでの累計。リース期間の最後の年は残価保証額ちょうどまで
+    const residual = a.residual_value ?? 0;
+    const [now, before] = [leaseMonthsThrough(a, year), leaseMonthsThrough(a, year - 1)];
+    if (now >= leaseMonthsOf(a)) return Math.max(0, book - residual);
+    return Math.max(0, Math.min(leaseCumulative(a, now) - leaseCumulative(a, before), book - residual));
+  }
+  if (isOldStraight(a) || isOldDeclining(a)) {
+    const floor = oldFloor(a.cost);
+    // 95% に達するまで：旧定額法は取得価額 × 90% × 旧定額法の償却率、旧定率法は期首の未償却残高 × 旧定率法の償却率。達する年は 95% ちょうどまで
+    if (book > floor) {
+      const [annual, unit] = isOldStraight(a) ? [a.cost * 9 * oldStraightRateMil(a.useful_life), 120_000] : [book * oldDecliningRateMil(a.useful_life), 12_000];
+      return Math.max(0, Math.min(Math.ceil((annual * monthsIn(a, year)) / unit), book - floor));
+    }
+    // 達した翌年から：(取得価額 × 5% − 1円) ÷ 5 ずつ、1円まで
+    return Math.max(0, Math.min(Math.ceil(((floor - 1) * monthsIn(a, year)) / 60), book - 1));
+  }
   if (a.method === "declining") {
     // 調整前償却額（期首の未償却残高 × 償却率）が償却保証額に満たなくなった年から、改定取得価額 × 改定償却率
-    const r = decliningRates(a.useful_life);
+    const r = decliningRates(a.useful_life, decliningKind(a) === "250" ? "250" : "200");
     if (carry.revisedBase === null && r.guarantee > 0 && book * r.rate * 100 < a.cost * r.guarantee) carry.revisedBase = book;
     const annual = carry.revisedBase === null ? book * r.rate : carry.revisedBase * r.revised;
     return Math.max(0, Math.min(Math.ceil((annual * monthsIn(a, year)) / 12000), book - 1));
-  }
-  if (isOldStraight(a)) {
-    const floor = oldFloor(a.cost);
-    // 95% に達するまで：取得価額 × 90% × 旧定額法の償却率。達する年は 95% ちょうどまで
-    if (book > floor) return Math.max(0, Math.min(Math.ceil((a.cost * 9 * oldStraightRateMil(a.useful_life) * monthsIn(a, year)) / 120_000), book - floor));
-    // 達した翌年から：(取得価額 × 5% − 1円) ÷ 5 ずつ、1円まで
-    return Math.max(0, Math.min(Math.ceil(((floor - 1) * monthsIn(a, year)) / 60), book - 1));
   }
   const annual = Math.ceil((a.cost * straightRateMil(a.useful_life) * monthsIn(a, year)) / 12000);
   return Math.max(0, Math.min(annual, book - 1));
@@ -319,7 +441,7 @@ export const depreciationFor = (a: FixedAsset, year: number): YearDepreciation |
   // 一括償却資産は除却しても3年続けるので、除却で打ち切らない
   if (a.method !== "lump3" && a.disposed_on && yearOf(a.disposed_on) < year) return null;
   const carry: Carry = { revisedBase: null };
-  let book = a.cost;
+  let book = startBook(a);
   for (let y = start; y < year; y++) {
     if (a.opening_year !== null && a.opening_book_value !== null && y === a.opening_year) {
       book = a.opening_book_value;
@@ -335,17 +457,25 @@ export const depreciationFor = (a: FixedAsset, year: number): YearDepreciation |
   const businessRate = businessRateIn(a, year);
   const { business, private: priv } = splitBusiness(depreciation, businessRate);
   const old = isOldStraight(a);
-  const equal = old && book <= oldFloor(a.cost);
+  const oldDeclining = isOldDeclining(a);
+  const equal = (old || oldDeclining) && book <= oldFloor(a.cost);
   const revised = a.method === "declining" && carry.revisedBase !== null;
-  const dr = a.method === "declining" ? decliningRates(a.useful_life) : null;
+  const dr = a.method === "declining" && !oldDeclining ? decliningRates(a.useful_life, decliningKind(a) === "250" ? "250" : "200") : null;
   return {
-    rate: a.method === "declining" ? (revised ? dr!.revised : dr!.rate) / 1000
-      : a.method !== "straight" ? null : equal ? 0.2 : (old ? oldStraightRateMil(a.useful_life) : straightRateMil(a.useful_life)) / 1000,
-    // 償却の基礎になる金額：定額法は取得価額（旧定額法は × 90%・均等償却の年は × 5%）、定率法は期首の未償却残高（切り替えた年からは改定取得価額）、繰延資産は取得価額
-    base: a.method === "declining" ? (revised ? carry.revisedBase! : book) : equal ? oldFloor(a.cost) : old ? Math.floor((a.cost * 9) / 10) : a.cost,
+    rate: equal ? 0.2
+      : oldDeclining ? oldDecliningRateMil(a.useful_life) / 1000
+      : a.method === "declining" ? (revised ? dr!.revised : dr!.rate) / 1000
+      : a.method !== "straight" ? null : (old ? oldStraightRateMil(a.useful_life) : straightRateMil(a.useful_life)) / 1000,
+    // 償却の基礎になる金額：定額法は取得価額（旧定額法は × 90%）、定率法は期首の未償却残高（切り替えた年からは改定取得価額）、
+    // 旧定額法・旧定率法の均等償却の年は取得価額 × 5%、リース資産は取得価額 − 残価保証額、繰延資産は取得価額
+    base: equal ? oldFloor(a.cost)
+      : a.method === "declining" ? (revised ? carry.revisedBase! : book)
+      : a.method === "lease" ? a.cost - (a.residual_value ?? 0)
+      : old ? Math.floor((a.cost * 9) / 10) : a.cost,
     equal,
     revised,
-    months: a.method === "straight" || a.method === "declining" || a.method === "deferred" ? monthsIn(a, year) : 12,
+    months: a.method === "lease" ? leaseMonthsThrough(a, year) - leaseMonthsThrough(a, year - 1)
+      : hasLife(a.method) || a.method === "deferred" ? monthsIn(a, year) : 12,
     opening: book,
     depreciation,
     businessRate,
@@ -356,9 +486,17 @@ export const depreciationFor = (a: FixedAsset, year: number): YearDepreciation |
   };
 };
 
-/** 定率法を使えない資産（建物、平成28年4月1日以後に取得した建物附属設備・構築物、ソフトウェア）なら理由。科目のコードで見る */
+/** 決算書の「摘要」の欄に書くこと（措法28の2・均等償却・改定償却率・リース期間・業務転用（転用した年）・売却・除却した月・備考） */
+export const statementMemo = (a: FixedAsset, d: YearDepreciation, year: number): string[] =>
+  [
+    a.method === "small" ? "措法28の2" : "", d.equal ? "均等償却" : "", d.revised ? "改定償却率" : "",
+    a.method === "lease" ? `リース期間${a.lease_months ?? 0}月` : "", a.converted && yearOf(a.used_on) === year ? "業務転用" : "",
+    d.disposed ? `${monthOf(a.disposed_on!)}月売却・除却` : "", a.memo,
+  ].filter(Boolean);
+
+/** 定率法を使えない資産（平成10年4月1日以後に取得した建物、平成28年4月1日以後に取得した建物附属設備・構築物、ソフトウェア）なら理由。科目のコードで見る */
 export const decliningProblem = (accountCode: string, acquiredOn: string): string | null => {
-  if (accountCode === "130") return "建物は定額法で償却します（定率法は使えません）";
+  if (accountCode === "130" && acquiredOn >= "1998-04-01") return "平成10年4月1日以後に取得した建物は、定額法（旧定額法）で償却します（定率法は使えません）";
   if ((accountCode === "131" || accountCode === "136") && acquiredOn >= "2016-04-01") return "平成28年4月1日以後に取得した建物附属設備・構築物は、定額法で償却します";
   if (accountCode === "138") return "ソフトウェアは定額法で償却します";
   return null;
@@ -372,11 +510,20 @@ export const validateAsset = (a: Omit<FixedAsset, "id">, opts: { blue: boolean; 
   if (a.used_on < a.acquired_on) return "使い始めた日は、取得日より後にしてください";
   if (!Number.isInteger(a.cost) || a.cost <= 0) return "取得価額は 1円以上の整数で入れてください";
   if (!Number.isInteger(a.business_rate) || a.business_rate < 0 || a.business_rate > 100) return "事業専用割合は 0〜100 の整数で入れてください";
-  if ((a.method === "straight" || a.method === "declining") && (!Number.isInteger(a.useful_life) || a.useful_life < 2 || a.useful_life > 100)) return "耐用年数は 2〜100 の整数で入れてください";
+  if (hasLife(a.method) && (!Number.isInteger(a.useful_life) || a.useful_life < 2 || a.useful_life > 100)) return "耐用年数は 2〜100 の整数で入れてください";
   if (a.method === "declining") {
-    if (a.acquired_on < DECLINING_FROM) return "定率法は、平成24年4月1日以後に取得した資産だけ計算できます（250%定率法・旧定率法には対応していません）";
     const problem = decliningProblem(opts.accountCode ?? "", a.acquired_on);
     if (problem) return problem;
+  }
+  if (a.method === "lease") {
+    if (a.acquired_on < LEASE_FROM) return "リース期間定額法は、平成20年4月1日以後に契約した所有権移転外リース取引のリース資産に使います";
+    if (!Number.isInteger(a.lease_months) || (a.lease_months ?? 0) < 1 || (a.lease_months ?? 0) > 1200) return "リース期間の月数を 1〜1200 の整数で入れてください";
+    const residual = a.residual_value ?? 0;
+    if (!Number.isInteger(residual) || residual < 0 || residual >= a.cost) return "残価保証額は 0円以上・取得価額より小さい整数で入れてください";
+  }
+  if (a.converted) {
+    if (!hasLife(a.method)) return "家事用から転用した資産は、定額法・定率法で償却します";
+    if (a.used_on <= a.acquired_on) return "家事用から転用した資産は、使い始めた日（転用した日）を取得日より後にしてください";
   }
   if (a.method === "deferred") {
     for (const [y, amount] of Object.entries(a.amortization ?? {})) {

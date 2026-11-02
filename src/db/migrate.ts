@@ -11,8 +11,8 @@ type Db = Pick<Database, "select" | "execute">;
 
 /** 作り直すテーブルと、作り直しが要るか（今の CREATE 文から判定） */
 export const TABLE_REBUILDS: { table: string; needed: (sql: string) => boolean }[] = [
-  // 固定資産の償却方法に、200%定率法（declining）と繰延資産（deferred）を足した（method の CHECK）
-  { table: "fixed_assets", needed: (sql) => !sql.includes("'declining'") },
+  // 固定資産の償却方法に、200%定率法（declining）と繰延資産（deferred）、リース期間定額法（lease）を足した（method の CHECK）
+  { table: "fixed_assets", needed: (sql) => !sql.includes("'lease'") },
   // 取り込みの記録の種類に、給与の CSV（payroll）を足した（kind の CHECK）
   { table: "import_batches", needed: (sql) => !sql.includes("'payroll'") },
 ];

@@ -141,6 +141,28 @@ describe("収支内訳書の1ページ", () => {
     expect(at(2022)).toMatchObject({ method: "旧定額法", base: 9_000_000, rate: 0.046, depreciation: 414_000, memo: "" });
     expect(at(2025)).toMatchObject({ method: "旧定額法", base: 500_000, rate: 0.2, depreciation: 100_000, closing: 300_000, memo: "均等償却" });
   });
+  test("減価償却費の計算：旧定率法、リース期間定額法（耐用年数・償却率は空。摘要にリース期間）、転用した年の摘要に「業務転用」", () => {
+    const base: FixedAsset = {
+      id: 7, name: "機械", account_id: acc("機械装置").id, acquired_on: "2001-01-10", used_on: "2001-01-10", cost: 5_000_000, method: "declining", useful_life: 5,
+      business_rate: 100, opening_year: null, opening_book_value: null, disposed_on: null, memo: "",
+    };
+    const lease: FixedAsset = { ...base, id: 8, name: "複合機", method: "lease", useful_life: 0, cost: 600_000, acquired_on: "2026-04-01", used_on: "2026-04-01", lease_months: 60, residual_value: 0 };
+    const car: FixedAsset = { ...base, id: 9, name: "車", method: "straight", useful_life: 6, cost: 1_200_000, acquired_on: "2022-05-01", used_on: "2026-04-01", converted: 1 };
+    const deps = buildWhiteStatement({
+      year: 2026, accounts: seeds, opening: {}, lines: [], notes: {}, assets: [base, lease, car], homeUseRates: [], excludeEntryIds: [], payeeName: () => "", family: [],
+    }).detail.depreciation;
+    expect(deps.map((d) => [d.name, d.method, d.life, d.rate, d.months, d.memo])).toEqual([
+      // 旧定率法の機械は 2012年に1円まで償却済み（1円の資産として出る）
+      ["機械", "旧定率法", 5, 0.2, 12, "均等償却"],
+      ["複合機", "リース期間定額法", null, null, 9, "リース期間60月"],
+      ["車", "定額法", 6, 0.167, 9, "業務転用"],
+    ]);
+    // 2001年は旧定率法の率
+    const y2001 = buildWhiteStatement({
+      year: 2001, accounts: seeds, opening: {}, lines: [], notes: {}, assets: [base], homeUseRates: [], excludeEntryIds: [], payeeName: () => "", family: [],
+    }).detail.depreciation[0];
+    expect(y2001).toMatchObject({ method: "旧定率法", life: 5, rate: 0.369, base: 5_000_000, depreciation: 1_845_000 });
+  });
   test("白色の年の貸倒引当金（個別評価）：繰入は経費、戻入は経費から差し引く（追加の欄。知らせる）", () => {
     const amounts = new Map([[acc("貸倒引当金繰入").id, 30_000], [acc("貸倒引当金戻入").id, 20_000]]);
     const w = whiteSummary(seeds, (a) => amounts.get(a.id) ?? 0);

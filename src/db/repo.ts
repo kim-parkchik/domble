@@ -48,7 +48,7 @@ import {
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
 import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, MANUFACTURING_CODES, normalSideOf } from "../constants/accounts";
-import { assetLockError, businessRateIn, DISPOSAL_LABEL, disposalLines, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
+import { assetLockError, businessRateIn, canChoose250, DISPOSAL_LABEL, disposalLines, hasLife, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
 import type { InventoryAdjust } from "../lib/taxReturn";
@@ -2349,7 +2349,8 @@ const setHomeUseRun_ = (db: Database, year: number, entryId: number) =>
 // ────────────────────────────────────────────
 export type AssetInput = Omit<FixedAsset, "id">;
 
-const ASSET_COLUMNS = "id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind, disposal_kind, sale_price";
+const ASSET_COLUMNS =
+  "id, name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind, disposal_kind, sale_price, lease_months, residual_value, converted, declining_250";
 
 type Amortization = { asset_id: number; fiscal_year: number; amount: number };
 
@@ -2385,7 +2386,9 @@ const yearClosedYears = async (db: Database) => (await getClosings(db)).filter((
 const assetText = (a: AssetInput) =>
   [
     `取得 ${a.acquired_on}`, `使用開始 ${a.used_on}`, `取得価額 ${a.cost.toLocaleString()}円`,
-    methodLabel(a) + (a.method === "straight" ? ` ${a.useful_life}年` : ""),
+    methodLabel(a) + (hasLife(a.method) ? ` ${a.useful_life}年` : "")
+      + (a.method === "lease" ? ` ${a.lease_months}か月${a.residual_value ? `・残価保証額 ${a.residual_value.toLocaleString()}円` : ""}` : ""),
+    a.converted ? "家事用から転用" : "",
     `事業 ${a.business_rate}%` + (a.rates ?? []).map((r) => `・${r.from_year}年から ${r.rate}%`).join(""),
     a.opening_year !== null ? `${a.opening_year}年期首の未償却残高 ${a.opening_book_value?.toLocaleString()}円` : "",
     a.disposed_on ? `${a.disposal_kind ? DISPOSAL_LABEL[a.disposal_kind] : "売却・除却"} ${a.disposed_on}${a.disposal_kind === "sale" ? `（${(a.sale_price ?? 0).toLocaleString()}円）` : ""}` : "",
@@ -2398,7 +2401,12 @@ const normalizeAsset = (a: AssetInput): AssetInput => ({
   ...a,
   name: a.name.trim(),
   memo: a.memo.trim(),
-  useful_life: a.method === "straight" || a.method === "declining" ? a.useful_life : 0,
+  useful_life: hasLife(a.method) ? a.useful_life : 0,
+  // リース期間・残価保証額はリース期間定額法のときだけ。転用は定額法・定率法、250%定率法の選択は平成24年4〜12月に取得した定率法のときだけ
+  lease_months: a.method === "lease" ? a.lease_months ?? null : null,
+  residual_value: a.method === "lease" ? a.residual_value ?? 0 : null,
+  converted: a.converted && hasLife(a.method) ? 1 : 0,
+  declining_250: a.declining_250 && a.method === "declining" && canChoose250(a.acquired_on) ? 1 : 0,
   // 繰延資産の年ごとの償却額は、繰延資産のときだけ
   amortization: a.method === "deferred" ? a.amortization : undefined,
   disposed_on: a.disposed_on || null,
@@ -2432,9 +2440,11 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
     const err = assetLockError(null, added, closed);
     if (err) throw new Error(err);
     const r = await db.execute(
-      `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind, disposal_kind, sale_price)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind, a.disposal_kind ?? null, a.sale_price ?? null],
+      `INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life, business_rate, opening_year, opening_book_value, disposed_on, memo, income_kind, disposal_kind, sale_price,
+         lease_months, residual_value, converted, declining_250)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind, a.disposal_kind ?? null, a.sale_price ?? null,
+        a.lease_months ?? null, a.residual_value ?? null, a.converted ?? 0, a.declining_250 ?? 0],
     );
     const newId = Number(r.lastInsertId);
     for (const [y, amount] of Object.entries(added.amortization ?? {})) {
@@ -2470,9 +2480,10 @@ const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, ye
   if (err) throw new Error(err);
   await db.execute(
     `UPDATE fixed_assets SET name = ?, account_id = ?, acquired_on = ?, used_on = ?, cost = ?, method = ?, useful_life = ?, business_rate = ?,
-       opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, income_kind = ?, disposal_kind = ?, sale_price = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
+       opening_year = ?, opening_book_value = ?, disposed_on = ?, memo = ?, income_kind = ?, disposal_kind = ?, sale_price = ?,
+       lease_months = ?, residual_value = ?, converted = ?, declining_250 = ?, updated_at = DATETIME('now','localtime') WHERE id = ?`,
     [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, base, a.opening_year, a.opening_book_value, a.disposed_on, a.memo, a.income_kind,
-      a.disposal_kind ?? null, a.sale_price ?? null, id],
+      a.disposal_kind ?? null, a.sale_price ?? null, a.lease_months ?? null, a.residual_value ?? null, a.converted ?? 0, a.declining_250 ?? 0, id],
   );
   for (const r of before.rates ?? []) {
     if (!rates.some((x) => x.from_year === r.from_year)) await db.execute("DELETE FROM asset_rates WHERE asset_id = ? AND from_year = ?", [id, r.from_year]);

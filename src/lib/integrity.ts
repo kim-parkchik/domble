@@ -100,6 +100,8 @@ export interface AssetStateInput {
   opening_year: number | null; opening_book_value: number | null; disposed_on: string | null; memo: string; income_kind: string;
   /** 売却・除却の区分と売却額。あとから足した項目なので、入っているときだけ正規形に入れる（それまでの記録のハッシュを変えないため） */
   disposal_kind?: string | null; sale_price?: number | null;
+  /** リース期間定額法のリース期間・残価保証額、家事用からの転用、250%定率法の選択。あとから足した項目なので、あるときだけ */
+  lease_months?: number | null; residual_value?: number | null; converted?: number; declining_250?: number;
 }
 /** 固定資産台帳の1件（あとの年から変えた事業専用割合を含む） */
 export const assetState = (a: AssetStateInput | null, rates: { from_year: number; rate: number }[], amortizations: { fiscal_year: number; amount: number }[] = []) =>
@@ -107,6 +109,9 @@ export const assetState = (a: AssetStateInput | null, rates: { from_year: number
     ? [a.name, a.account_id, a.acquired_on, a.used_on, a.cost, a.method, a.useful_life, a.business_rate, a.opening_year ?? null, a.opening_book_value ?? null,
       a.disposed_on ?? null, a.memo, a.income_kind, rates.map((r) => [r.from_year, r.rate]).sort(cmp),
       ...(a.disposal_kind ? [["disposal", a.disposal_kind, a.sale_price ?? null]] : []),
+      ...(a.lease_months ? [["lease", a.lease_months, a.residual_value ?? 0]] : []),
+      ...(a.converted ? [["converted"]] : []),
+      ...(a.declining_250 ? [["declining250"]] : []),
       // 繰延資産の年ごとの償却額（あとから足した項目なので、あるときだけ）
       ...(amortizations.length ? [["amortization", amortizations.map((x) => [x.fiscal_year, x.amount]).sort(cmp)]] : [])]
     : null);

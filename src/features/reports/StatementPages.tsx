@@ -15,7 +15,7 @@ import { CODE } from "../../constants/accounts";
 import { monthlySales, payeeBreakdown, type PayeeRow } from "../../lib/statements";
 import { familyMonthsProblem, partnerLines, partnerTable, payFiguresOf, payLinesOf, type PartnerTable } from "../../lib/blueStatement";
 import type { AccountRef, PayFigure } from "../../lib/payroll";
-import { depreciationFor, isOldStraight, type FixedAsset } from "../../lib/depreciation";
+import { depreciationFor, statementLife, statementMemo, statementMethod, type FixedAsset } from "../../lib/depreciation";
 import { summarizeBalanceSheet, type FlatLine } from "../../lib/accounting";
 import { statementLayout } from "../../lib/statementLines";
 import { balanceSheetForm, type BalanceRow } from "../../lib/statementForm";
@@ -496,8 +496,6 @@ export const PartnerSections = ({ lines, salesTotal, purchaseTotal, salesOther, 
   );
 };
 
-const METHOD_SHORT: Record<FixedAsset["method"], string> = { straight: "定額法", declining: "定率法", lump3: "一括償却", small: "少額", deferred: "任意償却" };
-
 /** rateLabel：不動産所得用は「貸付割合」 */
 export const DepreciationSection = ({ assets, notes, onSaved, rateLabel = "事業専用割合" }: NoteProps & { assets: FixedAsset[]; rateLabel?: string }) => {
   const { year } = useAppContext();
@@ -529,8 +527,8 @@ export const DepreciationSection = ({ assets, notes, onSaved, rateLabel = "事�
                   <td>{a.acquired_on.slice(0, 4)}年{Number(a.acquired_on.slice(5, 7))}月</td>
                   <td className="num">{yen(a.cost)}</td>
                   <td className="num">{yen(d!.base)}</td>
-                  <td>{isOldStraight(a) ? "旧定額法" : METHOD_SHORT[a.method]}</td>
-                  <td className="num">{a.method === "straight" || a.method === "declining" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—"}</td>
+                  <td>{statementMethod(a)}</td>
+                  <td className="num">{statementLife(a) !== null ? `${statementLife(a)}年` : "—"}</td>
                   <td className="num">{d!.rate !== null ? d!.rate.toFixed(3) : a.method === "lump3" ? "1/3" : "—"}</td>
                   <td className="num">{d!.months}/12</td>
                   <td className="num">{yen(d!.depreciation)}</td>
@@ -540,7 +538,7 @@ export const DepreciationSection = ({ assets, notes, onSaved, rateLabel = "事�
                   <td className="num">{yen(d!.business)}</td>
                   <td className="num">{yen(d!.closing)}</td>
                   <td>
-                    {[a.method === "small" ? "措法28の2" : "", d!.equal ? "均等償却" : "", d!.revised ? "改定償却率" : "", d!.disposed ? `${a.disposed_on!.slice(5, 7).replace(/^0/, "")}月売却・除却` : "", a.memo].filter(Boolean).join("　")}
+                    {statementMemo(a, d!, year).join("　")}
                   </td>
                 </tr>
               ))}

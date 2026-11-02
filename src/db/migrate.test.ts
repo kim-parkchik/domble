@@ -22,7 +22,7 @@ describe("テーブルの作り直し（列の追加ではできない変更）"
     const isTrigger = (s: string) => s.trimStart().startsWith("CREATE TRIGGER");
     // 古い形式：method の CHECK が狭い fixed_assets
     const old = SCHEMA.find((s) => s.includes("CREATE TABLE IF NOT EXISTS fixed_assets ("))!
-      .replace("CHECK (method IN ('straight','declining','lump3','small','deferred'))", "CHECK (method IN ('straight','lump3','small'))");
+      .replace("CHECK (method IN ('straight','declining','lump3','small','deferred','lease'))", "CHECK (method IN ('straight','lump3','small'))");
     for (const s of SCHEMA.filter((x) => !isTrigger(x))) raw.run(s.includes("CREATE TABLE IF NOT EXISTS fixed_assets (") ? old : s);
     for (const [t, c, d] of COLUMN_MIGRATIONS) {
       const cols = raw.query(`PRAGMA table_info(${t})`).all() as { name: string }[];
@@ -42,9 +42,10 @@ describe("テーブルの作り直し（列の追加ではできない変更）"
 
     expect(raw.query("SELECT id, name, method, income_kind FROM fixed_assets").all()).toEqual([{ id: 7, name: "パソコン", method: "straight", income_kind: "business" }]);
     expect(raw.query("SELECT asset_id, rate FROM asset_rates").all()).toEqual([{ asset_id: 7, rate: 80 }]);
-    // 定率法・繰延資産を入れられる。番号は消した 9 の続きから
+    // 定率法・繰延資産・リース期間定額法を入れられる。番号は消した 9 の続きから
     raw.run(`INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, useful_life) VALUES ('車', 1, '2026-01-01', '2026-01-01', 100, 'declining', 6)`);
     expect(raw.query("SELECT MAX(id) AS id FROM fixed_assets").get()).toEqual({ id: 10 });
+    raw.run(`INSERT INTO fixed_assets (name, account_id, acquired_on, used_on, cost, method, lease_months) VALUES ('複合機', 1, '2026-01-01', '2026-01-01', 600, 'lease', 60)`);
     expect(raw.query("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 });
     // もう一度開いても作り直さない
     const before = raw.query("SELECT sql FROM sqlite_master WHERE name = 'fixed_assets'").get();
@@ -72,7 +73,7 @@ describe("テーブルの作り直し：取り込みの記録", () => {
  * 形式を変えてこのテストが落ちたら、constants/appConfig.ts の SCHEMA_VERSION を1つ上げ、ここの version と hash を新しい値にする
  * （古い版の domble で新しい帳簿を開いたときに、読み取り専用で開くようにするため）
  */
-const SCHEMA_FINGERPRINT = { version: 11, hash: "8e1df4c16bb016f0" };
+const SCHEMA_FINGERPRINT = { version: 12, hash: "cf268b5c004b7bec" };
 
 test("帳簿の形式を変えたら、形式の版（SCHEMA_VERSION）を上げる", () => {
   const hash = createHash("sha256").update(JSON.stringify([SCHEMA, COLUMN_MIGRATIONS, RETIRED_TRIGGERS, TABLE_REBUILDS.map((t) => t.table)])).digest("hex").slice(0, 16);

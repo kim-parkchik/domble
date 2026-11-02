@@ -28,8 +28,9 @@ export const FILE_FILTER_NAME = "domble 帳簿ファイル";
  *  9 = 2026-11-01（取引先の法人番号）
  * 10 = 2026-11-01（確認コードを控えた記録・送るメールアドレス）
  * 11 = 2026-11-02（部門：部門の一覧、明細・明細のルールの部門）
+ * 12 = 2026-11-02（固定資産：リース期間定額法・リース期間・残価保証額、家事用からの転用、250%定率法の選択）
  */
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

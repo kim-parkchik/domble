@@ -49,7 +49,10 @@ const assetClosed = (t: string, extra = "") =>
   `EXISTS (SELECT 1 FROM fiscal_closings c WHERE c.period_end = (c.fiscal_year || '-12-31')
      AND c.fiscal_year BETWEEN ${yearOfCol(`${t}.used_on`)} AND ${assetEnd(t)}${extra})`;
 /** 締めた年にかかる資産で変えられない列（売却・除却の日と事業専用割合は別に見る） */
-const ASSET_LOCKED_COLUMNS = ["name", "account_id", "acquired_on", "used_on", "cost", "method", "useful_life", "opening_year", "opening_book_value", "memo", "income_kind"];
+const ASSET_LOCKED_COLUMNS = [
+  "name", "account_id", "acquired_on", "used_on", "cost", "method", "useful_life", "opening_year", "opening_book_value", "memo", "income_kind",
+  "lease_months", "residual_value", "converted", "declining_250",
+];
 const disposedFrom = `MIN(COALESCE(${yearOfCol("OLD.disposed_on")}, 9999), COALESCE(${yearOfCol("NEW.disposed_on")}, 9999))`;
 /** 売却・除却の日・区分・売却額のどれかが変わったか */
 const disposalChanged = "(OLD.disposed_on IS NOT NEW.disposed_on OR OLD.disposal_kind IS NOT NEW.disposal_kind OR OLD.sale_price IS NOT NEW.sale_price)";
@@ -108,8 +111,8 @@ const CLOSED_TRIGGERS: string[] = [
   // 固定資産台帳：締めた年に台帳に出る資産の追加・削除、売却・除却の日と事業専用割合のほかの変更、締めた年にかかる売却・除却の日の変更
   guard("trg_closed_assets_ins", "INSERT", "fixed_assets", assetClosed("NEW")),
   guard("trg_closed_assets_del", "DELETE", "fixed_assets", assetClosed("OLD")),
-  // 売却・除却の区分と売却額を足したときに条件を変えたので、名前に _2 をつけて作り直した（古い名前は RETIRED_TRIGGERS）
-  guard("trg_closed_assets_upd_2", "UPDATE", "fixed_assets",
+  // 条件を変えたときは名前の番号を上げて作り直す（古い名前は RETIRED_TRIGGERS）。_2：売却・除却の区分と売却額、_3：リース期間・残価保証額・転用・250%定率法の選択
+  guard("trg_closed_assets_upd_3", "UPDATE", "fixed_assets",
     `(${assetClosed("OLD")} AND (${ASSET_LOCKED_COLUMNS.map((c) => `OLD.${c} IS NOT NEW.${c}`).join(" OR ")}
        OR (${disposalChanged} AND (${assetClosed("OLD", ` AND c.fiscal_year >= ${disposedFrom}`)} OR ${assetClosed("NEW", ` AND c.fiscal_year >= ${disposedFrom}`)}))
        OR (OLD.business_rate IS NOT NEW.business_rate
@@ -135,8 +138,8 @@ export const RETIRED_TRIGGERS = [
   "trg_settings_mode_fixed",
   // 通常モードでも証憑の履歴を残すようにしたとき、削除の止め方を厳密モードだけにした（_s）
   "trg_evidence_history_no_delete", "trg_evidences_no_delete", "trg_evidence_files_no_delete",
-  // 固定資産に売却・除却の区分と売却額を足したとき
-  "trg_closed_assets_upd",
+  // 固定資産に売却・除却の区分と売却額を足したとき（_2 はリース期間定額法・転用などを足したとき）
+  "trg_closed_assets_upd", "trg_closed_assets_upd_2",
   ...YEAR_GUARD_PREFIXES.flatMap((p) => ["ins", "upd", "del"].map((x) => `${p}_${x}`)),
 ];
 
@@ -378,7 +381,7 @@ export const SCHEMA: string[] = [
     acquired_on TEXT NOT NULL,          -- 取得日
     used_on TEXT NOT NULL,              -- 事業に使い始めた日（償却はこの月から）
     cost INTEGER NOT NULL CHECK (cost > 0),
-    method TEXT NOT NULL CHECK (method IN ('straight','declining','lump3','small','deferred')),
+    method TEXT NOT NULL CHECK (method IN ('straight','declining','lump3','small','deferred','lease')),
     useful_life INTEGER NOT NULL DEFAULT 0,
     business_rate INTEGER NOT NULL DEFAULT 100 CHECK (business_rate BETWEEN 0 AND 100),
     opening_year INTEGER,               -- domble を使う前から持っている資産：この年の期首の未償却残高から始める
@@ -944,6 +947,11 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["fixed_assets", "disposal_kind", "TEXT CHECK (disposal_kind IN ('sale','scrap'))"],
   ["fixed_assets", "sale_price", "INTEGER CHECK (sale_price >= 0)"],
   ["fixed_assets", "income_kind", "TEXT NOT NULL DEFAULT 'business' CHECK (income_kind IN ('business','realestate'))"],
+  // リース期間定額法のリース期間の月数と残価保証額、家事用から転用した資産、平成24年4〜12月の取得で 250%定率法を選んだ資産（lib/depreciation.ts）
+  ["fixed_assets", "lease_months", "INTEGER CHECK (lease_months >= 1)"],
+  ["fixed_assets", "residual_value", "INTEGER CHECK (residual_value >= 0)"],
+  ["fixed_assets", "converted", "INTEGER NOT NULL DEFAULT 0 CHECK (converted IN (0, 1))"],
+  ["fixed_assets", "declining_250", "INTEGER NOT NULL DEFAULT 0 CHECK (declining_250 IN (0, 1))"],
   // 不動産所得：none なし ／ small 事業的規模でない ／ business 事業的規模
   ["settings", "real_estate", "TEXT NOT NULL DEFAULT 'none' CHECK (real_estate IN ('none','small','business'))"],
   ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],

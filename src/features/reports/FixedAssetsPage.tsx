@@ -27,8 +27,8 @@ import { ownerText, periodText, type PrintDoc } from "../../lib/printLayout";
 import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
 import { ASSET_LIVES } from "../../constants/assetLives";
 import {
-  businessRateIn, closedYearsOf, depreciationFor, depreciationLines, DISPOSAL_LABEL, disposalLines, EXPENSE_LIMIT, usedAssetLife, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear,
-  validateAsset,
+  businessRateIn, canChoose250, closedYearsOf, conversionOf, decliningKind, depreciationFor, depreciationLines, DISPOSAL_LABEL, disposalLines, EXPENSE_LIMIT, hasLife, lifeText,
+  usedAssetLife, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear, validateAsset,
   type DepreciationMethod, type DisposalKind, type FixedAsset,
 } from "../../lib/depreciation";
 import type { IncomeKind } from "../../lib/types";
@@ -255,7 +255,7 @@ export const FixedAssetsPage = () => {
                     <td>{ymd(a.used_on)}</td>
                     <td className="num">{yen(a.cost)}</td>
                     <td>{methodLabel(a)}</td>
-                    <td className="num">{a.method === "straight" || a.method === "declining" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—"}</td>
+                    <td className="num">{lifeText(a)}</td>
                     <td className="num">{d!.rate !== null ? d!.rate.toFixed(3) : "—"}</td>
                     <td className="num">{d!.months}</td>
                     <td className="num">{yen(d!.opening)}</td>
@@ -353,7 +353,7 @@ export const FixedAssetsPage = () => {
                 const made = disposals.find((d) => d.asset_id === a.id);
                 const planned = disposalLines(a, disposalIds(a.disposal_kind === "sale" ? receiveId ?? made?.receive_account_id ?? bankId : null), !!a.disposed_on && isExclusiveOn(taxYears, a.disposed_on));
                 const book = depreciationFor(a, year)?.closing ?? 0;
-                const state = a.method !== "straight" && a.method !== "declining" ? "定額法・定率法の資産だけ作れます（振替伝票で入れてください）"
+                const state = !hasLife(a.method) ? "定額法・定率法の資産だけ作れます（振替伝票で入れてください）"
                   : !a.disposal_kind ? "台帳の「編集」で、売却か除却かを選んでください"
                     : !made ? "未作成"
                       : planned && made.lines !== lineKey(planned) ? `作成済み（No.${made.entry_id}）：台帳の計算と違います。作り直してください`
@@ -364,12 +364,12 @@ export const FixedAssetsPage = () => {
                     <td>{ymd(a.disposed_on!)}</td>
                     <td>{a.disposal_kind ? DISPOSAL_LABEL[a.disposal_kind] : "—"}</td>
                     <td className="num">{a.disposal_kind === "sale" ? yen(a.sale_price ?? 0) : ""}</td>
-                    <td className="num">{a.method === "straight" || a.method === "declining" ? yen(book) : ""}</td>
+                    <td className="num">{hasLife(a.method) ? yen(book) : ""}</td>
                     <td>
                       {made ? <button className="link-btn" onClick={() => setViewing(made.entry_id)}>{state}</button> : <span className={state === "未作成" ? "" : "muted"}>{state}</span>}
                     </td>
                     <td className="row-actions">
-                      <button className="btn ghost sm" onClick={() => makeDisposal(a)} disabled={!can("entry") || (a.method !== "straight" && a.method !== "declining") || !a.disposal_kind}>
+                      <button className="btn ghost sm" onClick={() => makeDisposal(a)} disabled={!can("entry") || !hasLife(a.method) || !a.disposal_kind}>
                         <Wand2 size={14} /> {made ? "作り直す" : "仕訳を作る"}
                       </button>
                     </td>
@@ -439,7 +439,13 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
   const [used, setUsed] = useState(asset?.used_on ?? "");
   const [cost, setCost] = useState<number | null>(asset?.cost ?? null);
   const [method, setMethod] = useState<DepreciationMethod>(asset?.method ?? "straight");
-  const [life, setLife] = useState(asset && (asset.method === "straight" || asset.method === "declining") ? String(asset.useful_life) : "");
+  const [life, setLife] = useState(asset && hasLife(asset.method) ? String(asset.useful_life) : "");
+  // リース期間定額法：リース期間の月数と残価保証額
+  const [leaseMonths, setLeaseMonths] = useState(asset?.lease_months ? String(asset.lease_months) : "");
+  const [residual, setResidual] = useState<number | null>(asset?.residual_value || null);
+  // 家事用から転用した資産、平成24年4〜12月の取得で 250%定率法を選ぶか
+  const [converted, setConverted] = useState(!!asset?.converted);
+  const [use250, setUse250] = useState(!!asset?.declining_250);
   // 中古資産の耐用年数（簡便法）の計算
   const [usedAsset, setUsedAsset] = useState(false);
   const [legalLife, setLegalLife] = useState("");
@@ -494,7 +500,12 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
     opening_book_value: hasOpening ? openingValue ?? null : null, disposed_on: disposed || null, memo, income_kind: kind,
     disposal_kind: disposed ? disposalKind : null, sale_price: disposed && disposalKind === "sale" ? salePrice : null,
     amortization: method === "deferred" ? (amortize !== null ? { [year]: amortize } : {}) : undefined,
+    lease_months: method === "lease" ? Number(leaseMonths) || 0 : null, residual_value: method === "lease" ? residual ?? 0 : null,
+    converted: converted && hasLife(method) ? 1 : 0, declining_250: use250 && method === "declining" && canChoose250(acquired) ? 1 : 0,
   });
+  // 家事用から転用した資産：転用したときの未償却残高の内訳
+  const conversion = converted && hasLife(method) && cost && acquired && used > acquired && Number(life) >= 2
+    ? conversionOf({ acquired_on: acquired, used_on: used, cost, useful_life: Number(life) }) : null;
   // 繰延資産：表示中の年の、決めていないときの償却額（60か月の均等償却）
   const evenAmount = method === "deferred" && cost && (used || acquired) ? depreciationFor({ ...input(), id: 0, amortization: undefined }, year)?.depreciation ?? null : null;
 
@@ -541,6 +552,7 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
               <select className="input" value={method} onChange={(e) => changeMethod(e.target.value as DepreciationMethod)}>
                 <option value="straight">{METHOD_LABEL.straight}</option>
                 <option value="declining">{METHOD_LABEL.declining}（届出をした人）</option>
+                <option value="lease">{METHOD_LABEL.lease}（所有権移転外リース）</option>
                 <option value="lump3">{METHOD_LABEL.lump3}（{yen(EXPENSE_LIMIT)}〜{yen(LUMP3_LIMIT)}円未満）</option>
                 <option value="small" disabled={!blue}>{METHOD_LABEL.small}（{smallLimitFor(acquired) ? `${yen(smallLimitFor(acquired)!)}円未満` : "令和11年3月までの取得"}・青色申告）</option>
                 <option value="deferred">{METHOD_LABEL.deferred}（開業費など）</option>
@@ -559,7 +571,7 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
               <FullDateInput value={acquired} onChange={setAcquired} year={year} aria-label="取得日" onValidity={markDate("acquired")} />
             </label>
             <label className="field">
-              <span>事業に使い始めた日（空なら取得日）</span>
+              <span>{converted && hasLife(method) ? "事業に使い始めた日（転用した日）" : method === "lease" ? "使い始めた日（リース期間の初日。空なら取得日）" : "事業に使い始めた日（空なら取得日）"}</span>
               <FullDateInput value={used} onChange={setUsed} year={year} aria-label="事業に使い始めた日" onValidity={markDate("used")} />
             </label>
           </div>
@@ -568,14 +580,28 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
               <span>取得価額（円）</span>
               <AmountInput value={cost} onChange={setCost} aria-label="取得価額" />
             </label>
-            {method === "straight" || method === "declining" ? (
+            {hasLife(method) ? (
               <label className="field">
                 <span>耐用年数（年）</span>
                 <input className="input" inputMode="numeric" value={life} onChange={(e) => setLife(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="耐用年数" disabled={usedLife !== null} />
               </label>
+            ) : method === "lease" ? (
+              <label className="field">
+                <span>リース期間（月数）</span>
+                <input className="input" inputMode="numeric" value={leaseMonths} onChange={(e) => setLeaseMonths(e.target.value.replace(/\D/g, "").slice(0, 4))} aria-label="リース期間の月数" placeholder="例：60" />
+              </label>
             ) : <div className="field" />}
           </div>
-          {(method === "straight" || method === "declining") && (
+          {method === "lease" && (
+            <div className="field-row">
+              <label className="field">
+                <span>残価保証額（円。無ければ空）</span>
+                <AmountInput value={residual} onChange={setResidual} aria-label="残価保証額" />
+              </label>
+              <div className="field" />
+            </div>
+          )}
+          {hasLife(method) && (
             <div className="field-row wrap">
               <label className="field">
                 <span>耐用年数表から選ぶ（主なもの）</span>
@@ -593,7 +619,7 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
               </label>
             </div>
           )}
-          {usedAsset && (method === "straight" || method === "declining") && (
+          {usedAsset && hasLife(method) && (
             <div className="field-row wrap">
               <label className="field" style={{ maxWidth: 140 }}>
                 <span>法定耐用年数（年）</span>
@@ -624,11 +650,41 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
               <label className="check"><input type="radio" name="asset-kind" checked={kind === "realestate"} onChange={() => setKind("realestate")} /> 不動産所得の資産（貸家・アパートなど。減価償却費（不動産）にし、不動産所得用の決算書に出します）</label>
             </div>
           )}
-          {(method === "straight" || method === "declining") && <p className="field-note">耐用年数は国税庁の耐用年数表で確かめてください（表に無いもの・運送事業用などは手で入れます）。</p>}
+          {hasLife(method) && (
+            <label className="check">
+              <input type="checkbox" checked={converted} onChange={(e) => setConverted(e.target.checked)} /> 家事用の資産を事業用に転用した（使い始めた日に転用した日を入れる）
+            </label>
+          )}
+          {conversion && (
+            <p className="field-note">
+              転用したときの未償却残高：{yen(conversion.book)}円（取得価額 {yen(cost ?? 0)}円 − 減価の額 {yen(conversion.decline)}円）。
+              減価の額は、取得価額 × 0.9 × 旧定額法の償却率 {(conversion.rate / 1000).toFixed(3)}（耐用年数 {life}年 × 1.5 ＝ {conversion.life}年）× 使っていなかった {conversion.years}年
+              （{Math.floor(conversion.months / 12)}年{conversion.months % 12}か月。6か月以上の端数は1年、6か月未満は切り捨て）{conversion.decline === Math.floor(((cost ?? 0) * 95) / 100) ? "。取得価額の95%までにしています" : ""}。
+              転用したあとは、取得日で決まる償却方法と法定耐用年数で計算します（定額法は取得価額 × 償却率）。
+              転用した日に、振替伝票で「資産の科目 ／ 事業主借」をこの未償却残高で入れてください（帳簿の残高と台帳が合います）。
+            </p>
+          )}
+          {hasLife(method) && <p className="field-note">耐用年数は国税庁の耐用年数表で確かめてください（表に無いもの・運送事業用などは手で入れます）。</p>}
           {method === "declining" && (
             <p className="field-note">
-              定率法は、所得税の減価償却資産の償却方法の届出書を出した人だけが使えます（出していなければ定額法）。平成24年4月1日以後に取得した資産を200%定率法で計算します
-              （期首の未償却残高 × 償却率。償却保証額に満たなくなった年から、改定取得価額 × 改定償却率）。建物・ソフトウェアなどは定額法です。
+              定率法は、所得税の減価償却資産の償却方法の届出書を出した人だけが使えます（出していなければ定額法）。どの定率法かは取得日で決まります。
+              {!acquired ? "平成19年3月31日以前の取得は旧定率法、平成24年3月31日までの取得は250%定率法、それより後は200%定率法です。"
+                : decliningKind({ acquired_on: acquired, declining_250: use250 ? 1 : 0 }) === "old"
+                  ? "平成19年3月31日以前に取得した資産なので、旧定率法で計算します（期首の未償却残高 × 旧定率法の償却率。償却費の累計が取得価額の95%に達したら、その翌年から5年間で1円まで均等に償却します）。"
+                  : `${decliningKind({ acquired_on: acquired, declining_250: use250 ? 1 : 0 }) === "250" ? "250%" : "200%"}定率法で計算します（期首の未償却残高 × 償却率。償却保証額に満たなくなった年から、改定取得価額 × 改定償却率）。`}
+              建物（平成10年4月1日以後の取得）・ソフトウェアなどは定額法です。
+            </p>
+          )}
+          {method === "declining" && canChoose250(acquired) && (
+            <label className="check">
+              <input type="checkbox" checked={use250} onChange={(e) => setUse250(e.target.checked)} /> 改正前の償却率（250%定率法）で計算する（平成24年4〜12月の取得の経過措置。平成24年分に定率法を選んでいた人）
+            </label>
+          )}
+          {method === "lease" && (
+            <p className="field-note">
+              平成20年4月1日以後に契約した所有権移転外リース取引のリース資産を、リース期間で均等に償却します（（取得価額 − 残価保証額）× その年のリース期間の月数 ÷ リース期間の月数。残価保証額まで償却します）。
+              取得価額はリース料の総額です（利息相当額を分けるときは、それを除いた額）。リースを始めたときの仕訳は振替伝票で「工具器具備品など ／ 未払金」、毎月の支払いは「未払金 ／ 普通預金」で入れます。
+              「リース資産」の科目を使いたいときは、勘定科目の画面で資産の科目を足すと、ここで選べます。
             </p>
           )}
           {method === "deferred" && (

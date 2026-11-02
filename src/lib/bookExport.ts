@@ -15,7 +15,7 @@ import { inputDelayDays, isLateInput, type InputPeriod } from "./inputPeriod";
 import type { DaysOff } from "./scan";
 import { classLabel, displayClass, displayUse, invoiceCsvLabel, isPurchaseCode, taxLongLabel, taxShortLabel, useLabel } from "./tax";
 import { yen } from "./format";
-import { depreciationFor, methodLabel, type FixedAsset } from "./depreciation";
+import { depreciationFor, lifeText, methodLabel, type FixedAsset } from "./depreciation";
 import { BS_CATEGORIES, CATEGORY_LABEL, isBalanceSheet, PL_CATEGORIES } from "../constants/accounts";
 import { ledgerCsvRows, type AssetPrintLine, type TrialPrintLine } from "./printBooks";
 
@@ -243,7 +243,7 @@ export const assetsOfYear = (assets: FixedAsset[], year: number) =>
 /** 固定資産台帳の印刷・CSV の1行 */
 export const assetPrintLine = (a: FixedAsset, d: NonNullable<ReturnType<typeof depreciationFor>>, accountName: (id: number) => string): AssetPrintLine => ({
   name: a.name, account: accountName(a.account_id), acquired: a.acquired_on, used: a.used_on, cost: a.cost, method: methodLabel(a),
-  life: a.method === "straight" || a.method === "declining" ? `${a.useful_life}年` : a.method === "lump3" ? "3年" : "—", rate: d.rate !== null ? d.rate.toFixed(3) : "—",
+  life: lifeText(a), rate: d.rate !== null ? d.rate.toFixed(3) : "—",
   months: d.months, opening: d.opening, depreciation: d.depreciation, businessRate: d.businessRate, business: d.business, closing: d.closing,
   memo: [d.disposed ? `${ymd(a.disposed_on!)} 売却・除却` : "", a.memo].filter(Boolean).join("　"),
 });
