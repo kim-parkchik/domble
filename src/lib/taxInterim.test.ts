@@ -4,7 +4,9 @@
 import { describe, expect, test } from "bun:test";
 import type { TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
-import { interimKind, interimPlan, nextOpenDay, prevTaxInfo } from "./taxInterim";
+import {
+  interimKind, interimPlan, interimRows, interimTotal, nextOpenDay, prevTaxInfo, provisionalMethods, provisionalReturn, strayProvisionals, type ProvisionalFiled,
+} from "./taxInterim";
 import { buildTaxBase, standardReturn } from "./taxReturn";
 
 const plan = (prevTax: number | null, x: { voluntary?: boolean; exempt?: boolean; holidays?: string[] } = {}) =>
@@ -99,5 +101,51 @@ describe("前年の確定消費税額", () => {
     expect(prevTaxInfo({ year: 2026, prevLines: [], taxYears: from2026, manual: null })).toMatchObject({ amount: null, source: "none" });
     expect(prevTaxInfo({ year: 2026, prevLines: [], taxYears: [{ ...standard[0], from_year: 2024, status: "exempt" }, ...from2026], manual: null }))
       .toMatchObject({ amount: 0, source: "exempt" });
+  });
+});
+
+describe("仮決算による中間申告", () => {
+  const line = (date: string, side: FlatLine["side"], amount: number, tax_code: FlatLine["tax_code"], business_class: number | null = null): FlatLine => ({
+    entry_id: 1, date, description: "", row_no: 1, side, account_id: 1, sub_account_id: null, amount, memo: "", tax_code,
+    invoice_kind: tax_code === "purchase10" ? "qualified" : null, business_class,
+  });
+  const standard: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual" }];
+  const lines = [
+    line("2026-06-30", "credit", 2_200_000, "sales10"), // 期間の外
+    line("2026-07-01", "credit", 11_000_000, "sales10", 2),
+    line("2026-09-30", "debit", 5_500_000, "purchase10"),
+    line("2026-10-01", "debit", 1_100_000, "purchase10"), // 期間の外
+  ];
+  const q3 = { from: "2026-07-01", to: "2026-09-30" };
+  const options = { businessClass: 5, baseSales: null, deduction: "individual" as const };
+
+  test("期間の明細だけで、期間を1つの課税期間として計算する（本則課税：780,000 − 390,000）", () => {
+    const p = provisionalReturn({ period: q3, lines, taxYears: standard, method: "standard", options });
+    expect([p.national, p.local, p.shortfall, p.r.firstKind]).toEqual([390_000, 110_000, false, "一般用"]);
+    expect(p.r.forms.find((f) => f.id === "first")!.rows.find((r) => r.no === "⑩")?.c ?? 0).toBe(0);
+  });
+  test("簡易課税は明細の事業区分で（第二種 80%：780,000 − 624,000）", () => {
+    const p = provisionalReturn({ period: q3, lines, taxYears: standard, method: "simplified", options });
+    expect([p.national, p.r.firstKind]).toEqual([156_000, "簡易課税用"]);
+  });
+  test("マイナス（控除不足）なら中間納付税額は 0。還付は受けられない", () => {
+    const p = provisionalReturn({ period: { from: "2026-10-01", to: "2026-10-31" }, lines, taxYears: standard, method: "standard", options });
+    expect([p.national, p.local, p.shortfall]).toEqual([0, 0, true]);
+    expect(p.r.total).toBeLessThan(0);
+  });
+  test("方式：本則課税・簡易課税の年はその方式。2割特例・3割特例の年は本則課税か簡易課税", () => {
+    expect([provisionalMethods("standard"), provisionalMethods("simplified"), provisionalMethods("twenty"), provisionalMethods("thirty")])
+      .toEqual([["standard"], ["simplified"], ["standard", "simplified"], ["standard", "simplified"]]);
+  });
+  test("期ごとの額：仮決算で申告した期は保存した額、ほかは前年の実績。合わない保存は合計に入れない", () => {
+    const p = plan(6_000_000); // 年3回：1回 1,500,000円・地方消費税 423,000円
+    const filed: ProvisionalFiled[] = [
+      { ...q3, method: "standard", national: 390_000, local: 110_000, filed_on: "2026-11-20" },
+      { from: "2026-01-01", to: "2026-06-30", method: "standard", national: 1, local: 1, filed_on: "2026-08-01" },
+    ];
+    const rows = interimRows(p, filed);
+    expect(rows.map((r) => [r.payNational, r.payLocal, !!r.provisional])).toEqual([[1_500_000, 423_000, false], [1_500_000, 423_000, false], [390_000, 110_000, true]]);
+    expect(interimTotal(rows)).toEqual({ national: 3_390_000, local: 956_000 });
+    expect(strayProvisionals(p, filed).map((f) => f.from)).toEqual(["2026-01-01"]);
   });
 });

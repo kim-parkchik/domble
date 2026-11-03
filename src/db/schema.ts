@@ -99,6 +99,7 @@ const CLOSED_TRIGGERS: string[] = [
   ...yearGuards("trg_closed_tax_years", "tax_years", "from_year"),
   ...yearGuards("trg_closed_filing_years", "filing_years", "from_year"),
   ...yearGuards("trg_closed_tax_interims", "tax_interims", "fiscal_year"),
+  ...yearGuards("trg_closed_tax_interim_provisionals", "tax_interim_provisionals", "fiscal_year"),
   ...yearGuards("trg_closed_tax_return_inputs", "tax_return_inputs", "fiscal_year"),
   ...yearGuards("trg_closed_tax_base_sales", "tax_base_sales", "fiscal_year"),
   ...yearGuards("trg_closed_tax_inventory_adjusts", "tax_inventory_adjusts", "fiscal_year"),
@@ -319,6 +320,21 @@ export const SCHEMA: string[] = [
     fiscal_year INTEGER PRIMARY KEY,
     national INTEGER NOT NULL DEFAULT 0 CHECK (national >= 0),
     local INTEGER NOT NULL DEFAULT 0 CHECK (local >= 0)
+  );`,
+
+  /**
+   * 消費税の仮決算による中間申告（期ごと。申告した額。lib/taxInterim.ts の ProvisionalFiled）。行の無い期は前年の実績による中間申告。
+   * method：仮決算の方式（本則課税・簡易課税）。filed_on：申告した日
+   */
+  `CREATE TABLE IF NOT EXISTS tax_interim_provisionals (
+    fiscal_year INTEGER NOT NULL,
+    period_from TEXT NOT NULL,
+    period_to TEXT NOT NULL,
+    method TEXT NOT NULL CHECK (method IN ('standard','simplified')),
+    national INTEGER NOT NULL CHECK (national >= 0),
+    local INTEGER NOT NULL CHECK (local >= 0),
+    filed_on TEXT NOT NULL,
+    PRIMARY KEY (fiscal_year, period_from)
   );`,
 
   /**

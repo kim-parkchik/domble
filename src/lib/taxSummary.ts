@@ -232,8 +232,11 @@ export interface TaxCheckInput {
   summary: TaxSummary;
   /** 基準期間・特定期間の課税売上高（読み込み中は null） */
   baseSales?: BaseSalesInfo | null;
-  /** 中間申告の予定と、申告書に入れてある中間納付税額（読み込み中は null） */
-  interim?: { plan: InterimPlan; entered: { national: number; local: number } } | null;
+  /**
+   * 中間申告の予定と、申告書に入れてある中間納付税額（読み込み中は null）。
+   * total：期ごとの中間納付税額の合計（仮決算で申告した期は保存した額。無ければ前年の実績の合計）
+   */
+  interim?: { plan: InterimPlan; entered: { national: number; local: number }; total?: { national: number; local: number } } | null;
   /** 棚卸資産の調整（付表2-3 ⑯）と、帳簿の期首・期末の棚卸高（読み込み中は null） */
   inventory?: { adjust: InventoryAdjust | null; opening: number; closing: number } | null;
   /** 固定資産台帳（売却の漏れ・家事と兼用する資産の取得を確かめる。読み込み中は null） */
@@ -352,7 +355,10 @@ const yenText = (n: number) => `${n.toLocaleString()}円`;
 const interimIssues = (year: number, i: NonNullable<TaxCheckInput["interim"]>): TaxIssue[] => {
   const { plan, entered } = i;
   const none = entered.national === 0 && entered.local === 0;
-  const planned = `消費税 ${yenText(plan.national)}・地方消費税 ${yenText(plan.local)}`;
+  const total = i.total ?? { national: plan.national, local: plan.local };
+  // 仮決算で申告した期があって、合計が前年の実績と違う
+  const provisional = total.national !== plan.national || total.local !== plan.local;
+  const planned = `消費税 ${yenText(total.national)}・地方消費税 ${yenText(total.local)}`;
   const prev = `前年（${year - 1}年）の確定消費税額 ${yenText(plan.prevTax ?? 0)}`;
   if (plan.kind === "unknown") {
     return [{
@@ -366,7 +372,7 @@ const interimIssues = (year: number, i: NonNullable<TaxCheckInput["interim"]>): 
       detail: `${prev}は48万円以下です。任意の中間申告をしたときは、事業者設定の「消費税」で届出の印を付けてください。`,
     }];
   }
-  if (none) {
+  if (none && (total.national > 0 || total.local > 0)) {
     return [{
       level: plan.kind === "voluntary" ? "info" : "warn", title: "中間納付税額が入っていません", fix: "return", entryIds: [],
       detail: `${prev}から、${year}年の中間申告は${INTERIM_KIND_LABEL[plan.kind]}（合計 ${planned}）です。`
@@ -374,11 +380,13 @@ const interimIssues = (year: number, i: NonNullable<TaxCheckInput["interim"]>): 
         + (plan.kind === "voluntary" ? "任意の中間申告書を期限までに出さなかったときは、0 のままで構いません。" : ""),
     }];
   }
-  if (entered.national !== plan.national || entered.local !== plan.local) {
+  if (entered.national !== total.national || entered.local !== total.local) {
     return [{
-      level: "info", title: "中間納付税額が、前年の実績で計算した額と違います", fix: "return", entryIds: [],
-      detail: `前年の実績で計算すると ${planned} です（入っている額：消費税 ${yenText(entered.national)}・地方消費税 ${yenText(entered.local)}）。`
-        + "仮決算で中間申告をしたときや、前年の税額が修正申告で変わったときは、そのままで構いません。",
+      level: "info", fix: "return", entryIds: [],
+      title: provisional ? "中間納付税額が、中間申告の額（前年の実績・仮決算）の合計と違います" : "中間納付税額が、前年の実績で計算した額と違います",
+      detail: `${provisional ? "前年の実績と、中間申告タブで保存した仮決算の額を合計" : "前年の実績で計算"}すると ${planned} です（入っている額：消費税 ${yenText(entered.national)}・地方消費税 ${yenText(entered.local)}）。`
+        + (provisional ? "" : "仮決算で中間申告をしたときは、中間申告タブで期ごとに仮決算の額を保存してください。")
+        + "前年の税額が修正申告で変わったときは、そのままで構いません。",
     }];
   }
   return [];

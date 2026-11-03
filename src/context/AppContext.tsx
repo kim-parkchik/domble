@@ -9,7 +9,9 @@ import { taxActiveOn, taxYearOf } from "../lib/tax";
 import { bookLines, exclusiveAccountsOf } from "../lib/taxExclusive";
 import { filingOf, type FilingOfYear } from "../lib/filing";
 import { baseSalesInfo, type BaseSalesInfo } from "../lib/baseSales";
-import { interimPlan, prevTaxInfo, type InterimPlan, type PrevTaxInfo } from "../lib/taxInterim";
+import {
+  interimPlan, interimRows, interimTotal, prevTaxInfo, strayProvisionals, type InterimPlan, type InterimRow, type PrevTaxInfo, type ProvisionalFiled,
+} from "../lib/taxInterim";
 import type { InputPeriod } from "../lib/inputPeriod";
 
 interface AppContextValue {
@@ -314,12 +316,18 @@ export interface InterimInfo {
   plan: InterimPlan;
   /** 申告書に入れてある中間納付税額 */
   entered: { national: number; local: number };
+  /** 期ごとの中間納付税額（仮決算で申告した期は保存した額、ほかは前年の実績） */
+  rows: InterimRow[];
+  /** 1年分の中間納付税額（確定申告の ⑩・㉑ に入れる額） */
+  total: { national: number; local: number };
+  /** 保存した仮決算のうち、今の予定の期と合わないもの */
+  stray: ProvisionalFiled[];
 }
 
 /** 表示中の年度の中間申告（前年の帳簿・手で入れた前年の税額・その年の消費税の設定から。lib/taxInterim.ts） */
 export const useInterim = (): InterimInfo | null => {
   const { db, year, taxYears, taxYear, dataVersion } = useAppContext();
-  const [loaded, setLoaded] = useState<{ prev: PrevTaxInfo; holidays: ReadonlySet<string>; entered: InterimInfo["entered"] } | null>(null);
+  const [loaded, setLoaded] = useState<{ prev: PrevTaxInfo; holidays: ReadonlySet<string>; entered: InterimInfo["entered"]; filed: ProvisionalFiled[] } | null>(null);
   useEffect(() => {
     let alive = true;
     Promise.all([
@@ -327,19 +335,21 @@ export const useInterim = (): InterimInfo | null => {
       repo.getTaxPrevManual(db, year),
       repo.getHolidayData(db),
       repo.getTaxInterim(db, year),
+      repo.getInterimProvisionals(db, year),
     ])
-      .then(([prevLines, manual, h, entered]) => alive && setLoaded({
-        prev: prevTaxInfo({ year, prevLines, taxYears, manual }), holidays: new Set(h.holidays.map((x) => x.date)), entered,
+      .then(([prevLines, manual, h, entered, filed]) => alive && setLoaded({
+        prev: prevTaxInfo({ year, prevLines, taxYears, manual }), holidays: new Set(h.holidays.map((x) => x.date)), entered, filed,
       }))
       .catch(console.error);
     return () => {
       alive = false;
     };
   }, [db, year, taxYears, dataVersion]);
-  return useMemo(() => loaded && {
-    prev: loaded.prev,
-    entered: loaded.entered,
-    plan: interimPlan({ year, prevTax: loaded.prev.amount, exempt: taxYear.status === "exempt", voluntary: !!taxYear.voluntary_interim, holidays: loaded.holidays }),
+  return useMemo(() => {
+    if (!loaded) return null;
+    const plan = interimPlan({ year, prevTax: loaded.prev.amount, exempt: taxYear.status === "exempt", voluntary: !!taxYear.voluntary_interim, holidays: loaded.holidays });
+    const rows = interimRows(plan, loaded.filed);
+    return { prev: loaded.prev, entered: loaded.entered, plan, rows, total: interimTotal(rows), stray: strayProvisionals(plan, loaded.filed) };
   }, [loaded, year, taxYear.status, taxYear.voluntary_interim]);
 };
 

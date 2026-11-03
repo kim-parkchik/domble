@@ -257,6 +257,18 @@ describe("中間申告（確認）", () => {
     expect(check(6_000_000, { national: 4_500_000, local: 1_269_000 })).toEqual([]);
     expect(check(6_000_000, { national: 4_000_000, local: 1_128_200 })[0]).toMatchObject({ level: "info", title: expect.stringMatching(/計算した額と違います/) });
   });
+  test("仮決算で申告した期があれば、保存した額との合計と比べる", () => {
+    const plan = interimPlan({ year: 2026, prevTax: 6_000_000, exempt: false, voluntary: false });
+    const run = (entered: { national: number; local: number }, total: { national: number; local: number }) => taxChecks({
+      year: 2026, lines: [], accounts, counterparties: [], taxYears: standard, ...REG, summary: buildTaxSummary([], accounts, standard), interim: { plan, entered, total },
+    });
+    const total = { national: 3_390_000, local: 956_000 };
+    expect(run(total, total)).toEqual([]);
+    expect(run({ national: 4_500_000, local: 1_269_000 }, total)[0]).toMatchObject({ title: expect.stringMatching(/前年の実績・仮決算/) });
+    expect(run({ national: 4_500_000, local: 1_269_000 }, total)[0].detail).toMatch(/消費税 3,390,000円・地方消費税 956,000円/);
+    // 全部の期が仮決算で 0 なら、0 のままで構わない
+    expect(run({ national: 0, local: 0 }, { national: 0, local: 0 })).toEqual([]);
+  });
   test("前年の税額が分からなければ入れるように知らせる。要らない年に入っていれば知らせる", () => {
     expect(check(null, { national: 0, local: 0 })[0]).toMatchObject({ level: "info", fix: "interim", title: "前年（2025年）の確定消費税額が分かりません" });
     expect(check(300_000, { national: 0, local: 0 })).toEqual([]);

@@ -52,6 +52,7 @@ import { assetLockError, businessRateIn, canChoose250, DISPOSAL_LABEL, disposalL
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
 import type { InventoryAdjust } from "../lib/taxReturn";
+import type { ProvisionalFiled } from "../lib/taxInterim";
 import { FILING_KIND_LABEL, FILING_TAX_LABEL, type FilingLine, type TaxFiling } from "../lib/amendment";
 import {
   DOC_KIND_LABEL, docMemo, docProblem, invoiceEntryLines, ITEM_TAX_LABEL, paymentEntryLines, ROUNDING_LABEL, salesDate, savedTotals,
@@ -1085,6 +1086,13 @@ export const getTaxInterim = async (db: Database, year: number) => {
   return r[0] ?? { national: 0, local: 0 };
 };
 
+/** 仮決算で申告した中間申告（期の初めの順） */
+export const getInterimProvisionals = (db: Database, year: number) =>
+  db.select<ProvisionalFiled[]>(
+    "SELECT period_from AS \"from\", period_to AS \"to\", method, national, local, filed_on FROM tax_interim_provisionals WHERE fiscal_year = ? ORDER BY period_from",
+    [year],
+  );
+
 /** 消費税の申告書で書き込む額（非課税資産の輸出等の金額。無ければ 0） */
 export const getTaxReturnInput = async (db: Database, year: number) => {
   const r = await db.select<{ nontax_export: number }[]>("SELECT nontax_export FROM tax_return_inputs WHERE fiscal_year = ?", [year]);
@@ -1197,6 +1205,46 @@ const saveTaxInterim_ = async (db: Database, year: number, national: number, loc
   await logMaster(db, {
     target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: `${year}年の消費税の中間納付税額`,
     old_value: text(before), new_value: text({ national, local }),
+  });
+};
+
+const provisionalText = (x: ProvisionalFiled | undefined) =>
+  x ? `仮決算（${x.method === "simplified" ? "簡易課税" : "本則課税"}）消費税 ${x.national.toLocaleString()} 円・地方消費税 ${x.local.toLocaleString()} 円、${x.filed_on} に申告` : "前年の実績";
+const provisionalLabel = (year: number, x: Pick<ProvisionalFiled, "from" | "to">) =>
+  `${year}年の消費税の中間申告（${Number(x.from.slice(5, 7))}月〜${Number(x.to.slice(5, 7))}月分）`;
+
+/** 仮決算で申告した中間申告の額を保存する（同じ期があれば置き換える）。変更は履歴に残す（厳密モード） */
+const saveInterimProvisional_ = async (db: Database, year: number, x: ProvisionalFiled) => {
+  const ymd = /^\d{4}-\d{2}-\d{2}$/;
+  if (![x.from, x.to, x.filed_on].every((d) => ymd.test(d)) || x.from > x.to || x.from.slice(0, 4) !== String(year) || x.to.slice(0, 4) !== String(year)) {
+    throw new Error("中間申告対象期間と申告した日を正しく入れてください");
+  }
+  if (x.method !== "standard" && x.method !== "simplified") throw new Error("仮決算の方式が正しくありません");
+  for (const n of [x.national, x.local]) {
+    if (!Number.isInteger(n) || n < 0 || n > 100_000_000_000) throw new Error("中間納付税額は 0 以上の整数（円）で入れてください");
+  }
+  await assertYearOpen(db, year);
+  const before = (await getInterimProvisionals(db, year)).find((r) => r.from === x.from);
+  await db.execute(
+    `INSERT INTO tax_interim_provisionals (fiscal_year, period_from, period_to, method, national, local, filed_on) VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (fiscal_year, period_from) DO UPDATE SET period_to = excluded.period_to, method = excluded.method, national = excluded.national,
+       local = excluded.local, filed_on = excluded.filed_on`,
+    [year, x.from, x.to, x.method, x.national, x.local, x.filed_on],
+  );
+  if (provisionalText(before) === provisionalText(x)) return;
+  await logMaster(db, {
+    target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: provisionalLabel(year, x), old_value: provisionalText(before), new_value: provisionalText(x),
+  });
+};
+
+/** 仮決算で申告した中間申告を消して、前年の実績に戻す */
+const deleteInterimProvisional_ = async (db: Database, year: number, from: string) => {
+  await assertYearOpen(db, year);
+  const before = (await getInterimProvisionals(db, year)).find((r) => r.from === from);
+  if (!before) return;
+  await db.execute("DELETE FROM tax_interim_provisionals WHERE fiscal_year = ? AND period_from = ?", [year, from]);
+  await logMaster(db, {
+    target_type: "setting", target_id: year, action: "change", fiscal_year: year, label: provisionalLabel(year, before), old_value: provisionalText(before), new_value: provisionalText(undefined),
   });
 };
 
@@ -3895,6 +3943,8 @@ export const addFiling = inTx(addFiling_, (f) => `${f.fiscal_year}年の${FILING
 export const deleteFiling = inTx(deleteFiling_, (id) => `申告の控え #${id} の削除`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
+export const saveInterimProvisional = inTx(saveInterimProvisional_, (year) => `${year}年の仮決算による中間申告`, { perm: "settings" });
+export const deleteInterimProvisional = inTx(deleteInterimProvisional_, (year) => `${year}年の仮決算による中間申告`, { perm: "settings" });
 export const saveNontaxExport = inTx(saveNontaxExport_, (year) => `${year}年の非課税資産の輸出等の金額`, { perm: "settings" });
 export const saveInventoryAdjust = inTx(saveInventoryAdjust_, (year) => `${year}年の棚卸資産の調整`, { perm: "settings" });
 export const saveRefundDetail = inTx(saveRefundDetail_, (year) => `${year}年の還付申告に関する明細書`, { perm: "settings" });

@@ -2,7 +2,7 @@
  * 消費税の申告書の数字（「消費税」の画面の「申告書」タブ。計算は lib/taxReturn.ts）
  *  - 方式の比較：その年に使える方式（本則・簡易・2割特例・3割特例）の納付税額を並べる
  *  - 選んだ方式の付表・第二表・第一表を、欄の番号つきで出す（確定申告書等作成コーナーや e-Tax に書き写す）
- *  - 中間納付税額は年度ごとに入れる（前年の実績で計算した中間申告の額を「判定した額を入れる」で入れられる）
+ *  - 中間納付税額は年度ごとに入れる（中間申告の額（前年の実績と、保存した仮決算の額）の合計を「判定した額を入れる」で入れられる）
  *  - 本則課税の棚卸資産の調整（付表2-3 ⑯）は年度ごとに、税率・控除できる割合ごとの取得価額を入れる
  *  - 選んだ方式の申告書を e-Tax のデータ（.xtx）で書き出す（作るのは lib/taxXtx.ts。申告者の情報は事業者設定から）
  *  - 一般用で ⑧ 控除不足還付税額があるときは、還付申告に関する明細書を出して保存し、e-Tax のデータにも入れる（RefundDetailSection.tsx）
@@ -22,7 +22,7 @@ import { purchaseFigures, refundDetailFromBooks } from "../../lib/taxRefundDetai
 import { RefundDetailSection, useRefundDetail } from "./RefundDetailSection";
 import {
   buildTaxBase, computeReturn, inventoryAdjustTax, inventoryOf, methodsFor, METHOD_LABEL, thirtyReturn, twentyReturn,
-  type InventoryAdjust, type Rate, type ReturnMethod, type TaxForm, type TaxReturn,
+  type InventoryAdjust, type Rate, type ReturnMethod, type TaxReturn,
 } from "../../lib/taxReturn";
 import { closingBalances, type FlatLine } from "../../lib/accounting";
 import { taxYearOf } from "../../lib/tax";
@@ -32,6 +32,7 @@ import { consumptionFilingLines } from "../../lib/amendment";
 import { FilingSection, useFilings } from "./FilingSection";
 import * as repo from "../../db/repo";
 import { MyNumberDialog } from "../../components/MyNumberDialog";
+import { FormTable, signed } from "./TaxFormTable";
 
 /** 方式ごとの、使うための主な条件 */
 const METHOD_NOTE: Record<ReturnMethod, string> = {
@@ -40,8 +41,6 @@ const METHOD_NOTE: Record<ReturnMethod, string> = {
   twenty: "登録によって課税事業者になった方（基準期間の課税売上高が1,000万円以下など）。届出は不要",
   thirty: "登録によって課税事業者になった個人事業者（基準期間の課税売上高が1,000万円以下など）。届出は不要",
 };
-
-const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
 
 /**
  * その年の課税区分で計算した申告書（決算整理の未払消費税等に使う。免税事業者の年・読み込み中は null）。
@@ -441,36 +440,3 @@ export const TaxReturnView = () => {
     </div>
   );
 };
-
-const FormTable = ({ form }: { form: TaxForm }) => (
-  <section className="tax-form-block">
-    <h4>{form.title}</h4>
-    <table className="ledger tax-form-table">
-      <colgroup>
-        <col style={{ width: 52 }} />
-        <col />
-        {form.abc && <><col style={{ width: 130 }} /><col style={{ width: 130 }} /></>}
-        <col style={{ width: 140 }} />
-        <col style={{ width: "22%" }} />
-      </colgroup>
-      <thead>
-        <tr>
-          <th>欄</th><th>項目</th>
-          {form.abc && <><th className="num">6.24% 適用分 A</th><th className="num">7.8% 適用分 B</th></>}
-          <th className="num">{form.abc ? "合計 C" : "金額"}</th><th>備考</th>
-        </tr>
-      </thead>
-      <tbody>
-        {form.rows.map((r, i) => (
-          <tr key={`${r.no}-${i}`}>
-            <td className="tax-form-no">{r.no}</td>
-            <td>{r.label}</td>
-            {form.abc && <><td className="num">{r.a === undefined ? "" : yen(r.a)}</td><td className="num">{r.b === undefined ? "" : yen(r.b)}</td></>}
-            <td className="num"><b>{r.c === null ? "" : signed(r.c)}</b></td>
-            <td className="muted">{r.note ?? ""}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </section>
-);

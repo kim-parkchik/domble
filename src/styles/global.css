@@ -978,6 +978,13 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .tax-interim-table tfoot td { border-top: 1px solid var(--rule-strong); }
 .tax-interim-fill { align-items: center; gap: 8px; }
 .tax-interim-fill .field-note { margin: 0; flex: 1 1 auto; }
+.tax-interim-table tr.on td { background: var(--accent-tint); }
+.tax-provisional { margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid var(--rule-strong); }
+.tax-provisional-method { max-width: 420px; }
+.tax-provisional-compare { max-width: 640px; margin: 8px 0; }
+.tax-provisional-compare td { white-space: normal; overflow: visible; text-overflow: clip; }
+.tax-provisional-actions { align-items: flex-end; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.tax-provisional-actions .field { max-width: 180px; }
 /* 所得税 */
 .it-bar { align-items: center; gap: 8px; flex-wrap: wrap; }
 .it-balance { font-size: 13px; margin-left: 8px; }

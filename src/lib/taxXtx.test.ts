@@ -7,7 +7,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { simplifiedReturn, standardReturn, thirtyReturn, twentyReturn, type TaxBase } from "./taxReturn";
-import { buildTaxXtx, refundShortfall, xtxProblem, xtxVersionFor } from "./taxXtx";
+import { buildTaxXtx, interimXtxProblem, refundShortfall, xtxProblem, xtxVersionFor } from "./taxXtx";
 import { EMPTY_REFUND_BANK, type PurchaseFigures, type TaxRefundDetailInput } from "./taxRefundDetail";
 import { filerProblems, formXml, isValidMyNumber, itXml, normalizeEtaxInfo, toKatakana, warekiXml, type EtaxFiler, type EtaxInfo } from "./etax";
 
@@ -54,6 +54,31 @@ describe("棚卸資産の調整（付表2-3 ⑯：DTE00200〜00220）", () => {
   });
   test("調整が無ければ ⑯ は書かない", () => {
     expect(buildTaxXtx(standardReturn(b, opts), filer, period)).not.toContain("DTE00220");
+  });
+});
+
+describe("仮決算による中間申告（申告の種類 2:中間、中間申告の場合の対象期間）", () => {
+  const b = base({ sales: { 8: 1_080_000, 10: 2_200_000 }, purchase: { 8: 540_000, 10: 1_100_000 } });
+  const interim = { from: "2026-07-01", to: "2026-09-30" };
+  test("一般用：第一表 AAI00170・AAI00180、第二表 AAN00140・AAN00150。課税期間はその年のまま。XSD に合う", () => {
+    const xml = buildTaxXtx(standardReturn(b, opts), filer, { ...period, interim });
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain("<SHINKOKU_KBN ID=\"SHINKOKU_KBN\"><kubun_CD>2</kubun_CD></SHINKOKU_KBN>");
+    expect(xml).toMatch(/<AAI00170><gen:era>5<\/gen:era><gen:yy>8<\/gen:yy><gen:mm>7<\/gen:mm><gen:dd>1<\/gen:dd><\/AAI00170>/);
+    expect(xml).toMatch(/<AAN00150><gen:era>5<\/gen:era><gen:yy>8<\/gen:yy><gen:mm>9<\/gen:mm><gen:dd>30<\/gen:dd><\/AAN00150>/);
+    expect(xml).toContain("<KAZEI_KIKAN_FROM ID=\"KAZEI_KIKAN_FROM\"><gen:era>5</gen:era><gen:yy>8</gen:yy><gen:mm>1</gen:mm><gen:dd>1</gen:dd>");
+  });
+  test("簡易課税用：第一表 ABH00170・ABH00180、第二表 ABM00140・ABM00150。XSD に合う", () => {
+    const xml = buildTaxXtx(simplifiedReturn(b, opts), filer, { ...period, interim });
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain("<ABH00180>");
+    expect(xml).toContain("<ABM00140>");
+  });
+  test("控除不足（マイナス）の仮決算は書き出さない（還付は受けられない）", () => {
+    const r = standardReturn(base({ sales: { 8: 0, 10: 110_000 }, purchase: { 8: 0, 10: 2_200_000 } }), opts);
+    expect(interimXtxProblem(r)).toMatch(/控除不足/);
+    expect(() => buildTaxXtx(r, filer, { ...period, interim })).toThrow(/控除不足/);
+    expect(interimXtxProblem(standardReturn(b, opts))).toBeNull();
   });
 });
 

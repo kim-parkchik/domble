@@ -8,12 +8,17 @@
  *  - 中間納付税額は百円未満切り捨て。地方消費税（中間納付譲渡割額）はその 22/78（百円未満切り捨て）
  *  - 期限は対象期間の末日の翌日から2か月以内（年11回の1月分・2月分は5月31日）。土日・祝日・12月29日〜1月3日なら次の日
  *  - 個人事業者の課税期間は暦年なので、前年の途中から課税事業者になっていても月数で割らない
- *  - その年が免税事業者なら中間申告は無い。仮決算による中間申告・課税期間の短縮の特例は扱わない
+ *  - その年が免税事業者なら中間申告は無い。課税期間の短縮の特例は扱わない
+ * 仮決算による中間申告（消法43条。No.6609）：前年の実績の代わりに、中間申告対象期間を1つの課税期間として、その期間の帳簿で計算した税額で申告できる
+ *  - 期ごとに選べる。期限までに出さなければ、前年の実績の額で申告したものとみなされる（任意の中間申告は中間納付しない）
+ *  - 方式はその年の課税区分（本則課税・簡易課税）。2割特例・3割特例は確定申告で使う特例として扱い、仮決算は本則課税（簡易課税の届出があれば簡易課税）で計算する
+ *  - 税額がマイナス（控除不足）でも還付は受けられない（中間納付税額は 0）
+ *  - 申告した額は期ごとに保存し（ProvisionalFiled）、確定申告の中間納付税額は、保存した額と前年の実績の額の合計（interimRows・interimTotal）
  */
 import type { TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { taxYearOf } from "./tax";
-import { buildTaxBase, computeReturn, floor100, type ReturnMethod } from "./taxReturn";
+import { buildTaxBase, computeReturn, floor100, type ReturnMethod, type ReturnOptions, type TaxBase, type TaxReturn } from "./taxReturn";
 
 export const INTERIM_NONE_LIMIT = 480_000;
 export const INTERIM_ONCE_LIMIT = 4_000_000;
@@ -164,3 +169,71 @@ export const INTERIM_KIND_LABEL: Record<InterimKind, string> = {
   three: "年3回",
   monthly: "年11回",
 };
+
+// ────────────────────────────────────────────
+// 仮決算による中間申告
+// ────────────────────────────────────────────
+
+/** 仮決算で申告した期（申告した額。あとで帳簿を直しても変わらない） */
+export interface ProvisionalFiled {
+  /** 中間申告対象期間 */
+  from: string;
+  to: string;
+  method: "standard" | "simplified";
+  national: number;
+  local: number;
+  /** 申告した日 */
+  filed_on: string;
+}
+
+/** 仮決算で使える方式（2割特例・3割特例の年は本則課税か簡易課税。簡易課税は届出があるとき） */
+export const provisionalMethods = (status: ReturnMethod): ProvisionalFiled["method"][] =>
+  status === "standard" || status === "simplified" ? [status] : ["standard", "simplified"];
+
+export interface Provisional {
+  base: TaxBase;
+  r: TaxReturn;
+  /** 中間納付税額・中間納付譲渡割額（マイナスなら 0） */
+  national: number;
+  local: number;
+  /** 控除不足（マイナス）になった。還付は受けられない */
+  shortfall: boolean;
+}
+
+/** 仮決算：期間の明細だけで、中間申告対象期間を1つの課税期間として申告書を計算する（棚卸資産の調整・非課税資産の輸出等は無し） */
+export const provisionalReturn = (x: {
+  period: { from: string; to: string };
+  lines: FlatLine[];
+  taxYears: TaxYear[];
+  method: ProvisionalFiled["method"];
+  options: Pick<ReturnOptions, "businessClass" | "baseSales" | "deduction">;
+}): Provisional => {
+  const base = buildTaxBase(x.lines.filter((l) => l.date >= x.period.from && l.date <= x.period.to), x.taxYears);
+  const r = computeReturn(x.method, base, { ...x.options, interimNational: 0, interimLocal: 0, inventory: null, nontaxExport: 0 });
+  return { base, r, national: Math.max(0, r.national), local: Math.max(0, r.local), shortfall: r.total < 0 };
+};
+
+export interface InterimRow extends InterimPeriod {
+  /** 仮決算で申告した額（前年の実績なら null） */
+  provisional: ProvisionalFiled | null;
+  /** 申告する中間納付税額（仮決算か前年の実績） */
+  payNational: number;
+  payLocal: number;
+}
+
+/** 期ごとの中間納付税額：仮決算で申告した期は保存した額、ほかは前年の実績の額 */
+export const interimRows = (plan: InterimPlan, filed: ProvisionalFiled[]): InterimRow[] =>
+  plan.periods.map((p) => {
+    const f = filed.find((x) => x.from === p.from && x.to === p.to) ?? null;
+    return { ...p, provisional: f, payNational: f ? f.national : p.national, payLocal: f ? f.local : p.local };
+  });
+
+/** 1年分の中間納付税額（確定申告の ⑩・㉑） */
+export const interimTotal = (rows: InterimRow[]) => ({
+  national: rows.reduce((t, r) => t + r.payNational, 0),
+  local: rows.reduce((t, r) => t + r.payLocal, 0),
+});
+
+/** 保存した仮決算のうち、今の予定の期と合わないもの（前年の税額を直して回数が変わったときなど） */
+export const strayProvisionals = (plan: InterimPlan, filed: ProvisionalFiled[]) =>
+  filed.filter((f) => !plan.periods.some((p) => p.from === f.from && p.to === f.to));

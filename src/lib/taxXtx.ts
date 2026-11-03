@@ -11,7 +11,8 @@
  *  - 令和9年分からは書き出せない：飲食料品の税率の引下げ（1%）に合わせた様式（令和9年4月1日以後終了課税期間用。0.78% の欄が増え、
  *    第二表の欄の番号が変わり、3割特例の付表6 も加わる）がまだドラフト版で、e-Tax の仕様が出ていないため
  *  - 一般用で ⑧ 控除不足還付税額があるときは、消費税の還付申告に関する明細書（個人事業者用）SHC025 も付ける（lib/taxRefundDetail.ts）
- * 確定申告だけ（中間申告・修正申告は対象外）。個人番号と提出年月日は e-Tax の側で入れる
+ * 確定申告・修正申告（修正確定）と、仮決算による中間申告（申告の種類「2:中間」。第一表・第二表の「中間申告の場合の対象期間」を書き、課税期間はその年。
+ *   控除不足（マイナス）のときは還付を受けられず書き方を確かめられないので書き出さない）。個人番号と提出年月日は e-Tax の側で入れる
  */
 import type { FormRow, TaxReturn } from "./taxReturn";
 import { documentXml, formXml, itRefs, itXml, type EtaxFiler, type EtaxValues, type FormAttrs } from "./etax";
@@ -233,6 +234,12 @@ const firstValues = (r: TaxReturn, f: EtaxFiler, amend?: ConsumptionAmend) => {
   return v;
 };
 
+/** 第一表（AAI・ABH の 170・180）と第二表（AAN・ABM の 140・150）の「中間申告の場合の対象期間」 */
+const interimPeriod = (prefix: string, first: boolean, p: { from: string; to: string }): EtaxValues => ({
+  [tag(prefix, first ? 170 : 140)]: { date: p.from },
+  [tag(prefix, first ? 180 : 150)]: { date: p.to },
+});
+
 const secondValues = (r: TaxReturn, f: EtaxFiler) => {
   const general = r.firstKind === "一般用";
   const t: Table = general
@@ -251,7 +258,13 @@ export interface XtxOptions {
   refundDetail?: { input: TaxRefundDetailInput; purchases: PurchaseFigures };
   /** 修正申告として書き出すとき：第一表の ⑬⑭㉔㉕ と ㉖（⑭＋㉕）。申告の種類「3:修正確定」（lib/amendment.ts の consumptionAmendment） */
   amend?: ConsumptionAmend;
+  /** 仮決算による中間申告として書き出すとき：中間申告対象期間（YYYY-MM-DD）。from・to は課税期間（その年）のまま */
+  interim?: { from: string; to: string };
 }
+
+/** 仮決算による中間申告を書き出せないとき、その理由 */
+export const interimXtxProblem = (r: TaxReturn) =>
+  r.total < 0 ? "仮決算の税額がマイナス（控除不足）のため、中間納付税額は 0円です（還付は受けられません）。この中間申告書は e-Tax のデータに書き出しません" : null;
 
 /** 第一表の ⑧ 控除不足還付税額（明細書が要るのは、一般用でこれがあるとき） */
 export const refundShortfall = (r: TaxReturn) => (r.firstKind === "一般用" ? rowOf(r, "first", "⑧")?.c ?? 0 : 0);
@@ -343,25 +356,29 @@ const refundDetailValues = (r: TaxReturn, d: NonNullable<XtxOptions["refundDetai
 
 /** 申告書の数字（TaxReturn）から xtx を作る。書き出せない方式・年分なら例外 */
 export const buildTaxXtx = (r: TaxReturn, filer: EtaxFiler, o: XtxOptions): string => {
-  const problem = xtxProblem(r, Number(o.from.slice(0, 4)));
+  const problem = xtxProblem(r, Number(o.from.slice(0, 4))) ?? (o.interim ? interimXtxProblem(r) : null);
   if (problem) throw new Error(problem);
   const p = PROCEDURES[r.firstKind];
   const attrs: FormAttrs = { author: filer.yago.trim() || filer.name.trim(), createdOn: o.createdOn };
-  const first = { ...firstValues(r, filer, o.amend), ...secondValues(r, filer) };
+  const general = r.firstKind === "一般用";
+  const first = {
+    ...firstValues(r, filer, o.amend), ...secondValues(r, filer),
+    ...(o.interim ? { ...interimPeriod(general ? "AAI" : "ABH", true, o.interim), ...interimPeriod(general ? "AAN" : "ABM", false, o.interim) } : {}),
+  };
   const fuhyo: [string, EtaxValues][] =
     r.method === "twenty" ? [["SHB070", fill(fuhyoHead("AYA"), rowsOf(r, "6"), FUHYO6)]]
       : r.method === "standard" ? [["SHB017", fuhyo13Values(r)], ["SHB033", fuhyo23Values(r)]]
         : [["SHB047", fill(fuhyoHead("DUA"), rowsOf(r, "4-3"), FUHYO43)], ["SHB067", fuhyo53Values(r)]];
   // 還付申告に関する明細書（一般用で ⑧ 控除不足還付税額があるとき）
-  const refund: [string, EtaxValues][] = refundShortfall(r) > 0 && o.refundDetail ? [["SHC025", refundDetailValues(r, o.refundDetail, Number(o.from.slice(0, 4)))]] : [];
+  const refund: [string, EtaxValues][] = !o.interim && refundShortfall(r) > 0 && o.refundDetail ? [["SHC025", refundDetailValues(r, o.refundDetail, Number(o.from.slice(0, 4)))]] : [];
   // 手続の XSD の順番：第一表・第二表、付表1-3/4-3、付表2-3/5-3、付表6、還付申告に関する明細書
   const forms = [[p.first, first] as [string, EtaxValues], ...fuhyo, ...refund].map(([id, values]) => ({ id, xml: formXml(id, values, attrs) }));
   return documentXml({
     namespace: NAMESPACE,
     procedure: p.procedure,
     procedureVersion: xtxVersionFor(Number(o.from.slice(0, 4))).version,
-    // 申告の種類：1 確定 ／ 3 修正確定（帳票フィールド仕様書 SHA010・SHA020 の AAI00150・ABH00150）
-    it: itXml(filer, { procedure: p.procedure, procedureName: p.name, from: o.from, to: o.to, shinkokuKbn: o.amend ? 3 : 1, refund: !o.amend && r.total < 0 }),
+    // 申告の種類：1 確定 ／ 2 中間 ／ 3 修正確定（帳票フィールド仕様書 SHA010・SHA020 の AAI00150・ABH00150）
+    it: itXml(filer, { procedure: p.procedure, procedureName: p.name, from: o.from, to: o.to, shinkokuKbn: o.interim ? 2 : o.amend ? 3 : 1, refund: !o.amend && !o.interim && r.total < 0 }),
     forms,
   });
 };

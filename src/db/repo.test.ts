@@ -1945,6 +1945,32 @@ describe("消費税の中間納付税額（repo）", () => {
   });
 });
 
+describe("仮決算による中間申告（repo）", () => {
+  test("期ごとに保存して置き換え、消すと前年の実績に戻る。変更は履歴に残り、年の締めをした年度は変えられない", async () => {
+    const { db, raw } = strict;
+    const q3 = { from: "2026-07-01", to: "2026-09-30", method: "standard" as const, national: 390_000, local: 110_000, filed_on: "2026-11-20" };
+    expect(await repo.getInterimProvisionals(db, 2026)).toEqual([]);
+    await repo.saveInterimProvisional(db, 2026, q3);
+    await repo.saveInterimProvisional(db, 2026, { ...q3, national: 400_000, local: 112_800 });
+    expect(await repo.getInterimProvisionals(db, 2026)).toEqual([{ ...q3, national: 400_000, local: 112_800 }]);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.label === "2026年の消費税の中間申告（7月〜9月分）");
+    expect(h.map((x) => [x.old_value, x.new_value]).reverse()).toEqual([
+      ["前年の実績", "仮決算（本則課税）消費税 390,000 円・地方消費税 110,000 円、2026-11-20 に申告"],
+      ["仮決算（本則課税）消費税 390,000 円・地方消費税 110,000 円、2026-11-20 に申告", "仮決算（本則課税）消費税 400,000 円・地方消費税 112,800 円、2026-11-20 に申告"],
+    ]);
+    await expect(repo.saveInterimProvisional(db, 2026, { ...q3, national: -1 })).rejects.toThrow(/0 以上/);
+    await expect(repo.saveInterimProvisional(db, 2026, { ...q3, from: "2025-07-01" })).rejects.toThrow(/中間申告対象期間/);
+    await expect(repo.saveInterimProvisional(db, 2026, { ...q3, method: "twenty" as "standard" })).rejects.toThrow(/方式/);
+    await repo.deleteInterimProvisional(db, 2026, q3.from);
+    expect(await repo.getInterimProvisionals(db, 2026)).toEqual([]);
+    expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "2026年の消費税の中間申告（7月〜9月分）", new_value: "前年の実績" });
+    await repo.saveInterimProvisional(db, 2026, q3);
+    await repo.closeYear(db, 2026);
+    await expect(repo.deleteInterimProvisional(db, 2026, q3.from)).rejects.toThrow(/締め済み/);
+    expect(() => raw.run("DELETE FROM tax_interim_provisionals WHERE fiscal_year = 2026")).toThrow(/締め/);
+  });
+});
+
 describe("基準期間の課税売上高の手入力（repo）", () => {
   test("保存すると優先して使い、null で外す。変更は履歴に残る", async () => {
     const { db } = strict;
