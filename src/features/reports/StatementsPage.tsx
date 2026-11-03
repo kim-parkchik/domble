@@ -11,7 +11,7 @@ import { closingBalances, summarizeIncome } from "../../lib/accounting";
 import { yen } from "../../lib/format";
 import * as repo from "../../db/repo";
 import type { IncomeKind } from "../../lib/types";
-import { BLUE_DEDUCTION_LIMIT } from "../../lib/incomeTax";
+import { blueDeductionLimit } from "../../lib/incomeTax";
 import { statementLayout, type StatementLayout } from "../../lib/statementLines";
 import { incomeStatementForm, manufacturingForm, type FormRow } from "../../lib/statementForm";
 import { monthlySales } from "../../lib/statements";
@@ -20,6 +20,7 @@ import { BalanceSheetView, BusinessHead, StatementPage2, StatementPage3 } from "
 import { WhiteStatements } from "./WhiteStatementPages";
 import { RealEstateStatements } from "./RealEstateStatementPages";
 import { isYearCompliant } from "../../lib/ebook";
+import { filingNotes } from "../../lib/filing";
 import { accountsOfKind } from "../../lib/incomeKind";
 import { realEstateStatement } from "../../lib/realEstateStatement";
 import { ownerText } from "../../lib/printLayout";
@@ -77,7 +78,13 @@ const BlueStatements = () => {
   const layoutWarnings = layout.warnings;
   const monthlyPurchases = useMemo(() => monthlySales(bizAccounts, lines).purchases.reduce((s, x) => s + x, 0), [bizAccounts, lines]);
 
-  const limit = BLUE_DEDUCTION_LIMIT[filing.type];
+  const limit = blueDeductionLimit(filing.type, year);
+  // 令和9年分からの申告の種類の注意（55万円を引き継いだ年・条件のそろわない75万円）
+  const [ebookFiled, setEbookFiled] = useState(false);
+  useEffect(() => {
+    repo.getStatementNotes(db, year).then((n) => setEbookFiled(!!n["ebook:filed"])).catch(console.error);
+  }, [db, year]);
+  const blueWarnings = filingNotes(filing.type, year, { compliant: isYearCompliant(settings, year), filed: ebookFiled }).filter((n) => n.level === "warn");
   // 青色申告特別控除は不動産所得から先に差し引く
   // 不動産所得は不動産所得用の決算書と同じ計算（専従者給与は事業的規模のときだけ必要経費）
   const scale = settings.real_estate ?? "none";
@@ -126,6 +133,7 @@ const BlueStatements = () => {
         </button>
       </PageHeader>
 
+      {blueWarnings.map((n) => <p key={n.text} className="notice print-skip">{n.text}</p>)}
       {layoutWarnings.length > 0 && (
         <p className="notice print-skip">
           {layoutWarnings.join("。")}（決算書と e-Tax 用のデータ）。勘定科目の画面の「決算書の欄」で、書く欄を選び直せます。

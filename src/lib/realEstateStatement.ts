@@ -15,7 +15,7 @@ import { partnerTotals, payeeBreakdown } from "./statements";
 import { depreciationLinesOf, payeeLinesOf, payFiguresOf, payLinesOf, type BlueStatementSource, type DepreciationLine, type PayeeLine, type PayLine } from "./blueStatement";
 import { CODE } from "../constants/accounts";
 import { accountsOfKind } from "./incomeKind";
-import { BLUE_DEDUCTION_LIMIT } from "./incomeTax";
+import { blueDeductionLimit } from "./incomeTax";
 
 export interface ReLine {
   no: string;
@@ -61,8 +61,8 @@ const WHITE_MAIN: [string, string][] = [["⑥", "給料賃金"], ["⑦", "減価
 const WHITE_OTHER: [string, string][] = [["㋑", "租税公課"], ["㋺", "損害保険料"], ["㋩", "修繕費"]];
 
 /** 不動産所得の青色申告特別控除の上限（事業所得が無く、事業的規模でない貸付けなら 10万円） */
-export const realEstateDeductionLimit = (filingType: FilingType, scale: RealEstateScale, hasBusiness: boolean) =>
-  !hasBusiness && scale !== "business" ? Math.min(BLUE_DEDUCTION_LIMIT[filingType], 100_000) : BLUE_DEDUCTION_LIMIT[filingType];
+export const realEstateDeductionLimit = (filingType: FilingType, year: number, scale: RealEstateScale, hasBusiness: boolean) =>
+  !hasBusiness && scale !== "business" ? Math.min(blueDeductionLimit(filingType, year), 100_000) : blueDeductionLimit(filingType, year);
 
 /**
  * amount = 科目の残高（期末）。familyAllowed = 専従者給与を必要経費にできる（事業的規模の青色申告）。deductionLimit = 青色申告特別控除の上限（白色は 0）
@@ -241,7 +241,7 @@ export const buildRealEstateBook = (s: RealEstateBookSource): RealEstateBook => 
   const biz = summarizeIncome(accountsOfKind(s.accounts, "business"), end);
   const hasBusiness = biz.revenue !== 0 || biz.income !== 0;
   const st = realEstateStatement(s.accounts, amount, s.white ? "white" : "blue", {
-    familyAllowed: !s.white && s.scale === "business", deductionLimit: s.white ? 0 : realEstateDeductionLimit(s.filingType, s.scale, hasBusiness),
+    familyAllowed: !s.white && s.scale === "business", deductionLimit: s.white ? 0 : realEstateDeductionLimit(s.filingType, s.year, s.scale, hasBusiness),
   });
   const idOf = (code: string) => s.accounts.find((a) => a.code === code)?.id ?? 0;
   const drawId = idOf(CODE.OWNER_DRAW);

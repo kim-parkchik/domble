@@ -16,7 +16,7 @@ import type { WhiteStatement } from "./whiteStatement";
 import type { BalanceRow, RealEstateBook } from "./realEstateStatement";
 import { documentXml, filerProblems, formXml, itRefs, itXml, type EtaxFiler, type EtaxValue, type EtaxValues, type FormAttrs } from "./etax";
 import {
-  dependentDeduction, fieldNo, hasMedicalDetail, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type MedicalKind, type Relative,
+  blueDeductionLimit, dependentDeduction, fieldNo, hasMedicalDetail, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type MedicalKind, type Relative,
 } from "./incomeTax";
 import type { Settings } from "./types";
 import { medicalStatement, selfMedStatement, statementProblem } from "./medicalStatement";
@@ -121,10 +121,11 @@ export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer"
 };
 
 /** 書き出すけれど、データに入らないもの・確かめてほしいこと */
-export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" | "result" | "statement" | "white" | "realEstate">): string[] => {
+export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" | "result" | "statement" | "white" | "realEstate"> & { biz?: Pick<BusinessFigures, "filingType"> }): string[] => {
   const n: string[] = [];
   if (incomeXtxVersionFor(src.year).fallback) {
     n.push(`令和${src.year - 2018}年分の e-Tax の版はまだ domble に入っていないため、令和${INCOME_XTX_FIRST_YEAR - 2018}年分の版で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください`);
+    if (src.biz?.filingType === "blue75") n.push("75万円の青色申告特別控除は、決算書の2ページの「青色申告特別控除額の計算」の65万円の欄に書いています");
   }
   const rel = relativesShown(src.input, src.year);
   if (rel.length > RELATIVE_ROWS) n.push(`第二表の親族の欄は${RELATIVE_ROWS}人分です。${rel.slice(RELATIVE_ROWS).map((v) => v.d.name).join("・")}は書いていません`);
@@ -503,7 +504,8 @@ const statementValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues
   // 青色申告特別控除額の計算：⑥ 不動産所得、⑦ 控除前の所得、⑧ 不動産所得から差し引く額、⑨ 控除額
   v.AMF01510 = st.realEstateIncome ? st.realEstateIncome : undefined;
   v.AMF01520 = Math.max(0, pl.income);
-  if (src.biz.filingType === "blue10") Object.assign(v, { AMF01570: st.realEstateDeduction, AMF01580: st.deduction });
+  // 10万円の控除（55万円の設定を引き継いだ令和9年分以後の年も 10万円）は、10万円の欄に書く
+  if (blueDeductionLimit(src.biz.filingType, src.year) <= 100_000) Object.assign(v, { AMF01570: st.realEstateDeduction, AMF01580: st.deduction });
   else Object.assign(v, { AMF01540: st.realEstateDeduction, AMF01550: st.deduction });
 
   // 3ページ：売上（収入）金額・仕入金額の明細（4件まで。残りは上記以外）

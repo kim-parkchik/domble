@@ -804,6 +804,15 @@ describe("申告の種類（年度ごと。repo）", () => {
     // 年度ごとに決めたあとは、事業者の情報からは変えられない
     await expect(repo.saveSettings(db, { ...(await repo.getSettings(db)), filing_type: "white" })).rejects.toThrow(/年度ごと/);
   });
+  test("75万円は令和9年分から、55万円は令和8年分まで選べる。55万円は令和9年分以後に引き継げる（10万円で計算する）", async () => {
+    const { db } = strict;
+    await expect(repo.saveFilingYear(db, 2026, "blue75")).rejects.toThrow(/75万円の青色申告特別控除は令和9年分から/);
+    await expect(repo.saveFilingYear(db, 2027, "blue55")).rejects.toThrow(/令和8年分まで/);
+    await repo.saveFilingYear(db, 2026, "blue55");
+    await repo.saveFilingYear(db, 2028, "blue75");
+    expect([await repo.filingTypeIn(db, 2027), await repo.filingTypeIn(db, 2028)]).toEqual(["blue55", "blue75"]);
+    await expect(repo.saveSettings(db, { ...(await repo.getSettings(db)), filing_type: "blue75" })).rejects.toThrow(/令和9年分から/);
+  });
   test("締めた年度と、締めた年度が引き継ぐ年の設定は変えられない（トリガーでも止める）", async () => {
     const { db, raw } = strict;
     await repo.saveFilingYear(db, 2024, "white");

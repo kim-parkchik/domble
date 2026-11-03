@@ -15,6 +15,8 @@ export const TABLE_REBUILDS: { table: string; needed: (sql: string) => boolean }
   { table: "fixed_assets", needed: (sql) => !sql.includes("'lease'") },
   // 取り込みの記録の種類に、給与の CSV（payroll）を足した（kind の CHECK）
   { table: "import_batches", needed: (sql) => !sql.includes("'payroll'") },
+  // 申告の種類に、令和9年分からの75万円控除（blue75）を足した（filing_type の CHECK）
+  { table: "filing_years", needed: (sql) => !sql.includes("'blue75'") },
 ];
 
 const createSqlOf = (table: string) => {

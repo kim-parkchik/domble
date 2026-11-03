@@ -68,12 +68,28 @@ describe("テーブルの作り直し：取り込みの記録", () => {
   });
 });
 
+describe("テーブルの作り直し：申告の種類", () => {
+  test("75万円控除（blue75）が無い帳簿を作り直し、年度ごとの設定を残す", async () => {
+    const raw = new Sqlite(":memory:");
+    const isTrigger = (s: string) => s.trimStart().startsWith("CREATE TRIGGER");
+    const old = SCHEMA.find((s) => s.includes("CREATE TABLE IF NOT EXISTS filing_years ("))!.replace("'blue75',", "");
+    for (const s of SCHEMA.filter((x) => !isTrigger(x))) raw.run(s.includes("CREATE TABLE IF NOT EXISTS filing_years (") ? old : s);
+    raw.run("INSERT INTO filing_years (from_year, filing_type) VALUES (2025, 'blue55')");
+    expect(() => raw.run("INSERT INTO filing_years (from_year, filing_type) VALUES (2027, 'blue75')")).toThrow(/CHECK/);
+    await rebuildTables(wrap(raw));
+    raw.run("INSERT INTO filing_years (from_year, filing_type) VALUES (2027, 'blue75')");
+    expect(raw.query("SELECT from_year, filing_type FROM filing_years ORDER BY from_year").all()).toEqual([
+      { from_year: 2025, filing_type: "blue55" }, { from_year: 2027, filing_type: "blue75" },
+    ]);
+  });
+});
+
 /**
  * 帳簿の形式（テーブル・列・トリガー・作り直し）の指紋と、そのときの形式の版。
  * 形式を変えてこのテストが落ちたら、constants/appConfig.ts の SCHEMA_VERSION を1つ上げ、ここの version と hash を新しい値にする
  * （古い版の domble で新しい帳簿を開いたときに、読み取り専用で開くようにするため）
  */
-const SCHEMA_FINGERPRINT = { version: 14, hash: "d74012d2cab43043" };
+const SCHEMA_FINGERPRINT = { version: 15, hash: "55968584166f06e8" };
 
 test("帳簿の形式を変えたら、形式の版（SCHEMA_VERSION）を上げる", () => {
   const hash = createHash("sha256").update(JSON.stringify([SCHEMA, COLUMN_MIGRATIONS, RETIRED_TRIGGERS, TABLE_REBUILDS.map((t) => t.table)])).digest("hex").slice(0, 16);

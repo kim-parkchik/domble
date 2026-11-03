@@ -248,6 +248,15 @@ describe("書き出せないとき・版", () => {
     expect(incomeXtxVersionFor(2026)).toEqual({ version: "25.0.1", fallback: true });
     expect(incomeXtxNotices(source({}, { year: 2026 })).join()).toMatch(/令和8年分の e-Tax の版/);
   });
+  test("令和9年分：55万円を引き継いだ年は「青色申告特別控除額の計算」の10万円の欄、75万円は65万円の欄に書いて知らせる", () => {
+    const deduction = String(statement().deduction);
+    const xml55 = buildIncomeTaxXtx(source({}, { year: 2027, biz: { ...biz, filingType: "blue55" } }));
+    expect([val(xml55, "AMF01580"), val(xml55, "AMF01550")]).toEqual([deduction, undefined]);
+    const src75 = source({}, { year: 2027, biz: { ...biz, filingType: "blue75" } });
+    expect([val(buildIncomeTaxXtx(src75), "AMF01550"), val(buildIncomeTaxXtx(src75), "AMF01580")]).toEqual([deduction, undefined]);
+    expect(incomeXtxNotices(src75).join()).toMatch(/75万円の青色申告特別控除は.*65万円の欄/);
+    expect(incomeXtxNotices(source({}, { year: 2027 })).join()).not.toMatch(/75万円/);
+  });
   test("医療費控除・セルフメディケーション税制を受けるときは、明細書が無いことを知らせる", () => {
     const notice = (medical: IncomeTaxInput["medical"]) => incomeXtxNotices(source({ medical })).join();
     expect(notice({ kind: "normal", paid: 300_000, reimbursed: 0 })).toMatch(/医療費控除の明細書は書き出していません/);

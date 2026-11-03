@@ -28,7 +28,7 @@ import { buildIncomeTaxXtx, incomeXtxNotices, incomeXtxProblems, myNumberPersons
 import { MyNumberDialog } from "../../components/MyNumberDialog";
 import { CODE } from "../../constants/accounts";
 import {
-  BLUE_DEDUCTION_LIMIT, CARRY_LABELS, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, fieldNo, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES,
+  blueDeductionLimit, CARRY_LABELS, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, fieldNo, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES,
   DONATION_LOCALS, emptyRelative, EMPTY_INCOME_TAX_INPUT, spouseDeduction,
   type CarriedLoss, type Disability, type Donation, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PastIncomeTax, type PayerRow, type PremiumRow,
   type Relative, HEALTH_EFFORTS, MEDICAL_KINDS, hasMedicalDetail, medicalTotals, type MedicalRow, type SelfMedRow,
@@ -39,6 +39,7 @@ import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
 import { incomeFilingLines } from "../../lib/amendment";
 import { salesDate, savedTotals } from "../../lib/salesDoc";
 import { FilingSection, useFilings } from "./FilingSection";
+import { filingNotes } from "../../lib/filing";
 
 type View = "input" | "first" | "second" | "fourth" | "medical" | "filing";
 
@@ -172,6 +173,12 @@ export const IncomeTaxPage = () => {
   const [exportSrc, setExportSrc] = useState<IncomeTaxXtxSource | null>(null);
   // 「優良な電子帳簿」の区分で書き出すのに、まとめて入力した年のおそれがあるときの注意
   const [ebookNote, setEbookNote] = useState("");
+  // 申告の種類について知らせること（令和9年分からの75万円・65万円の条件。届出書は電子帳簿保存法の画面のチェック）
+  const [ebookFiled, setEbookFiled] = useState(false);
+  useEffect(() => {
+    repo.getStatementNotes(db, year).then((n) => setEbookFiled(!!n["ebook:filed"])).catch(console.error);
+  }, [db, year, dataVersion]);
+  const blueNotes = filingNotes(filingType, year, { compliant: isYearCompliant(settings, year), filed: ebookFiled });
   const prepareExport = async () => {
     try {
       const [notes, assets, homeRun, depRun, inputPeriod, payrollSettings, bonusEntryIds] = await Promise.all([
@@ -186,7 +193,7 @@ export const IncomeTaxPage = () => {
         invoiceNoOf: (id: number) => counterparties.find((c) => c.id === id)?.invoice_no ?? "",
         corporateNoOf: (id: number) => counterparties.find((c) => c.id === id)?.corporate_no ?? "",
       };
-      const statement = buildBlueStatement({ ...books, deductionLimit: BLUE_DEDUCTION_LIMIT[filingType], realEstateIncome: biz.realEstate?.incomeBeforeBlue });
+      const statement = buildBlueStatement({ ...books, deductionLimit: blueDeductionLimit(filingType, year), realEstateIncome: biz.realEstate?.incomeBeforeBlue });
       // 不動産所得用の決算書（不動産所得がある年）
       const realEstate = biz.realEstate ? buildRealEstateBook({ ...books, white, scale: reScale, filingType }) : undefined;
       const whiteSt = white ? buildWhiteStatement({ ...books, family: familyMembers(x) }) : undefined;
@@ -268,6 +275,7 @@ export const IncomeTaxPage = () => {
       <section className="sheet sheet-fill">
         <div className="scroll-y">
           {result.notes.map((n) => <p key={n} className="notice it-note">{n}</p>)}
+          {blueNotes.map((n) => <p key={n.text} className={n.level === "warn" ? "notice it-note" : "field-note it-note"}>{n.text}</p>)}
           {view === "input" ? (
             <InputView
               x={x} set={set} setX={setX} result={result} year={year} disabled={!admin} drawings={drawings.length > 0} onPick={pickFromBooks} white={white} familyLines={familyLines}

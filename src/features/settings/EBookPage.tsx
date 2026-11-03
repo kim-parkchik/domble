@@ -22,7 +22,7 @@ import {
 import { MODE_LABEL } from "../start/SetupScreen";
 import type { Page } from "../../App";
 import * as repo from "../../db/repo";
-import { isBlue } from "../../lib/filing";
+import { FILING_LABEL, isBlue } from "../../lib/filing";
 import { DEFAULT_INPUT_PERIOD, inputPeriodText, type InputPeriod } from "../../lib/inputPeriod";
 import pkg from "../../../package.json";
 
@@ -51,7 +51,8 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
   // 入力の時期（年末や年が明けてからまとめて入れた年か）
   const timing = useMemo(() => inputTimeliness(rawLines, inputPeriod, year, daysOff), [rawLines, inputPeriod, year, daysOff]);
   const caution = compliant && timing.caution;
-  const blue = isBlue(filingTypeOf(year));
+  const filingType = filingTypeOf(year);
+  const blue = isBlue(filingType);
   const deadline = filingDeadline(year, holidays);
   const fileName = filePath.split(/[\\/]/).pop() ?? "";
   const books = ["仕訳帳", "総勘定元帳", "現金出納帳・預金出納帳", ...(hasAssets ? ["固定資産台帳"] : [])];
@@ -157,8 +158,9 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
               </>
             ) : (
               <>
-                令和9年分からは、<b>e-Tax で申告し、かつ優良な電子帳簿で保存して届出書を出す</b>と75万円、e-Tax で申告すると65万円、
-                書面で申告すると10万円になる予定です（令和8年度税制改正）。最新の内容は国税庁の案内で確かめてください。
+                令和9年分からは、<b>e-Tax で申告し、かつ仕訳帳・総勘定元帳を優良な電子帳簿で保存して届出書を出す</b>と75万円、e-Tax で申告すると65万円、
+                書面で申告すると10万円です（令和8年度税制改正。55万円の控除は無くなります）。
+                {year}年の申告の種類（事業者設定）は「{FILING_LABEL[filingType]}」です。
               </>
             )}
           </dd>

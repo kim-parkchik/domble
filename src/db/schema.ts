@@ -285,7 +285,7 @@ export const SCHEMA: string[] = [
    */
   `CREATE TABLE IF NOT EXISTS filing_years (
     from_year INTEGER PRIMARY KEY,
-    filing_type TEXT NOT NULL CHECK (filing_type IN ('blue65','blue55','blue10','white'))
+    filing_type TEXT NOT NULL CHECK (filing_type IN ('blue75','blue65','blue55','blue10','white'))
   );`,
 
   /**

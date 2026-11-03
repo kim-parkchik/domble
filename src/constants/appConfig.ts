@@ -31,8 +31,9 @@ export const FILE_FILTER_NAME = "domble 帳簿ファイル";
  * 12 = 2026-11-02（固定資産：リース期間定額法・リース期間・残価保証額、家事用からの転用、250%定率法の選択）
  * 13 = 2026-11-03（申告の控え：tax_filings。修正申告・更正の請求の修正前の数字）
  * 14 = 2026-11-03（見積書・請求書：sales_docs・sales_payments、設定の振込先・端数の丸め方・備考）
+ * 15 = 2026-11-03（申告の種類：令和9年分からの75万円控除。filing_years の CHECK）
  */
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

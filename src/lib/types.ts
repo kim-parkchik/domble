@@ -166,7 +166,8 @@ export interface VoucherRow {
   creditDept?: number | null;
 }
 
-export type FilingType = "blue65" | "blue55" | "blue10" | "white";
+/** 申告の種類：青色申告（75万円・65万円・55万円・10万円控除）・白色申告。75万円は令和9年分から、55万円は令和8年分まで（lib/filing.ts） */
+export type FilingType = "blue75" | "blue65" | "blue55" | "blue10" | "white";
 /** 申告の種類（年度ごと。from_year 以降に適用し、次の設定がある年まで引き継ぐ。無い年は settings.filing_type） */
 export interface FilingYear {
   from_year: number;

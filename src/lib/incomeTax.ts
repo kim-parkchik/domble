@@ -24,6 +24,7 @@
  * 扱わないもの：利子・配当・譲渡・一時所得、分離課税、雑損控除、特定支出控除、配当控除などほかの税額控除、災害減免、外国税額控除
  */
 import type { FilingType, RealEstateScale } from "./types";
+import { BLUE75_FROM } from "./filing";
 
 // ────────────────────────────────────────────
 // 入力（年度ごとに保存する。帳簿から出せないもの）
@@ -619,8 +620,13 @@ export const incomeTaxOn = (taxable: number) => {
   return Math.floor((taxable * pct) / 100) - minus;
 };
 
-/** 青色申告特別控除の上限（申告の種類から。不動産所得との按分などは考えない） */
-export const BLUE_DEDUCTION_LIMIT: Record<FilingType, number> = { blue65: 650_000, blue55: 550_000, blue10: 100_000, white: 0 };
+/** 青色申告特別控除の上限（[令和8年分まで, 令和9年分から]）。55万円の設定を引き継いだ令和9年分以後の年は、書面で申告したときの 10万円（lib/filing.ts） */
+const BLUE_LIMITS: Record<FilingType, [number, number]> = {
+  blue75: [650_000, 750_000], blue65: [650_000, 650_000], blue55: [550_000, 100_000], blue10: [100_000, 100_000], white: [0, 0],
+};
+
+/** 青色申告特別控除の上限（申告の種類と年分から。不動産所得との按分などは考えない） */
+export const blueDeductionLimit = (type: FilingType, year: number) => BLUE_LIMITS[type][year >= BLUE75_FROM ? 1 : 0];
 
 // ────────────────────────────────────────────
 // 申告書
@@ -777,7 +783,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   // 青色申告特別控除は不動産所得、事業所得の順に差し引く。事業所得が無く、不動産の貸付けが事業的規模でなければ 10万円まで
   const re = biz.realEstate;
   const hasBusiness = biz.revenue !== 0 || biz.incomeBeforeBlue !== 0;
-  const blueLimit = re && !hasBusiness && re.scale !== "business" ? Math.min(BLUE_DEDUCTION_LIMIT[biz.filingType], 100_000) : BLUE_DEDUCTION_LIMIT[biz.filingType];
+  const blueLimit = re && !hasBusiness && re.scale !== "business" ? Math.min(blueDeductionLimit(biz.filingType, year), 100_000) : blueDeductionLimit(biz.filingType, year);
   const blueRealEstate = white || !re ? 0 : Math.min(blueLimit, Math.max(0, re.incomeBeforeBlue));
   const blue = white ? 0 : blueRealEstate + Math.min(blueLimit - blueRealEstate, Math.max(0, biz.incomeBeforeBlue));
 

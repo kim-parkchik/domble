@@ -222,7 +222,7 @@ export const RealEstateStatements = ({ white }: { white: boolean }) => {
   // 事業所得があれば、貸借対照表は一般用の決算書に書く
   const hasBusiness = biz.revenue !== 0 || biz.income !== 0;
   const st = useMemo(() => realEstateStatement(accounts, (a: Account) => end.get(a.id) ?? 0, white ? "white" : "blue", {
-    familyAllowed: !white && scale === "business", deductionLimit: white ? 0 : realEstateDeductionLimit(filing.type, scale, hasBusiness),
+    familyAllowed: !white && scale === "business", deductionLimit: white ? 0 : realEstateDeductionLimit(filing.type, year, scale, hasBusiness),
   }), [accounts, end, white, scale, filing.type, hasBusiness]);
   const income = useMemo(() => rentIncomeRows(accounts, lines), [accounts, lines]);
 

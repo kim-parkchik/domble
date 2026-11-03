@@ -15,14 +15,14 @@ import { subKey } from "../../lib/types";
 import { longDate, yen } from "../../lib/format";
 import { normalizePostalCode, validateBusinessInfo } from "../../lib/business";
 import { cycleMonthsOf, SCAN_METHOD_LABEL, type ScanInputMethod } from "../../lib/scan";
-import { scanStorageRule } from "../../lib/ebook";
+import { isYearCompliant, scanStorageRule } from "../../lib/ebook";
 import { HolidaySection } from "./HolidaySection";
 import { EncryptionSection } from "./EncryptionSection";
 import { BackupSection } from "./BackupSection";
 import { BookExportSection } from "./BookExportSection";
 import { CODE } from "../../constants/accounts";
 import type { FilingType, RealEstateScale, Settings } from "../../lib/types";
-import { FILING_LABEL } from "../../lib/filing";
+import { BLUE75_FROM, FILING_LABEL, filingNotes, filingTypeProblem, filingTypesFor } from "../../lib/filing";
 import * as repo from "../../db/repo";
 import { ANCHOR_HOW_LABEL, anchorSaveOf, closedLabel, closedMonthOf } from "../../lib/closing";
 import { MODE_LABEL } from "../start/SetupScreen";
@@ -102,13 +102,13 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, setup = fa
             <label className="field">
               <span>申告の種類</span>
               <select className="input" value={s.filing_type} onChange={(e) => set("filing_type", e.target.value as FilingType)}>
-                {Object.entries(FILING_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                <FilingOptions year={s.fiscal_year} value={s.filing_type} />
               </select>
             </label>
           </div>
           <p className="field-note">
             青色申告は、税務署に青色申告承認申請書を出している人です（その年の3月15日まで。1月16日以後に開業した年は、開業の日から2か月以内）。
-            正規の簿記で記帳して決算書を添え、e-Tax で申告するか優良な電子帳簿で保存すると65万円、そうでなければ55万円、簡易な記帳なら10万円の控除です。
+            {blueDeductionText(s.fiscal_year)}
             出していなければ白色申告です。年ごとにあとから変えられます（事業者設定の「申告の種類」）。
           </p>
         </>
@@ -123,6 +123,19 @@ export const SettingsForm = ({ initial, onSubmit, submitLabel, extra, setup = fa
     </form>
   );
 };
+
+/** その年に選べる申告の種類（選べない種類を引き継いでいれば、それも選べない形で出す） */
+const FilingOptions = ({ year, value }: { year: number; value: FilingType }) => (
+  <>
+    {filingTypesFor(year).map((k) => <option key={k} value={k}>{FILING_LABEL[k]}</option>)}
+    {filingTypeProblem(value, year) && <option value={value} disabled>{FILING_LABEL[value]}（{year}年は選べません）</option>}
+  </>
+);
+
+/** 青色申告特別控除の額と条件（令和9年分から変わる） */
+const blueDeductionText = (year: number) => year >= BLUE75_FROM
+  ? "正規の簿記で記帳して決算書を添え、e-Tax で期限内に申告すると65万円、加えて仕訳帳・総勘定元帳を優良な電子帳簿で保存して届出書を出すと75万円、書面で申告すると10万円の控除です。"
+  : "正規の簿記で記帳して決算書を添え、e-Tax で申告するか優良な電子帳簿で保存すると65万円、そうでなければ55万円、簡易な記帳なら10万円の控除です（令和9年分からは、e-Tax で65万円、優良な電子帳簿も使って75万円、書面で10万円）。";
 
 /** 申告の種類（年度ごと。決めた設定は、次に変える年まで引き継ぐ） */
 /** 不動産所得の有無と規模（年度ごと。決めた設定は、次に変える年まで引き継ぐ）。「あり」にすると不動産所得の科目（非表示で入っている）を表示する */
@@ -218,6 +231,12 @@ const FilingSection = () => {
   const toast = useToast();
   const [type, setType] = useState<FilingType>(filing.type);
   useEffect(() => setType(filing.type), [filing.type]);
+  // 75万円の条件（優良な電子帳簿の届出書）は、電子帳簿保存法の画面のチェック
+  const [filed, setFiled] = useState(false);
+  useEffect(() => {
+    repo.getStatementNotes(db, year).then((n) => setFiled(!!n["ebook:filed"])).catch(console.error);
+  }, [db, year]);
+  const notes = filingNotes(filing.type, year, { compliant: isYearCompliant(settings, year), filed });
   const disabled = isClosed || readOnly || !can("settings");
   const save = async () => {
     try {
@@ -235,21 +254,23 @@ const FilingSection = () => {
       <p className="prose">
         申告の種類は年ごとに決めます。決めた種類は、次に変える年まで引き継がれます。白色申告の年は、決算書が収支内訳書の形になり、家族への給与の代わりに事業専従者控除を計算します。
         青色申告にするには、青色申告承認申請書を出しておきます（その年の3月15日まで。1月16日以後に開業した年は、開業の日から2か月以内）。
+        {blueDeductionText(year)}
       </p>
       <form className="settings-form" onSubmit={(e) => { e.preventDefault(); save(); }}>
         <label className="field">
           <span>{year}年の申告の種類</span>
           <select className="input" value={type} onChange={(e) => setType(e.target.value as FilingType)} disabled={disabled}>
-            {Object.entries(FILING_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <FilingOptions year={year} value={type} />
           </select>
         </label>
         <div>
-          <button className="btn primary" type="submit" disabled={disabled || (type === filing.type && !filing.inherited)}>
+          <button className="btn primary" type="submit" disabled={disabled || !!filingTypeProblem(type, year) || (type === filing.type && !filing.inherited)}>
             <Save size={16} /> {year}年から、この種類にする
           </button>
         </div>
       </form>
       {filing.inherited && !isClosed && <p className="field-note">{filingYears.length ? "前の年" : "帳簿を作ったとき"}の設定を引き継いでいます。保存すると {year}年からの設定になります。</p>}
+      {notes.map((n) => <p key={n.text} className={n.level === "warn" ? "warn-box" : "field-note"}>{n.text}</p>)}
       {isClosed && <p className="field-note">{year}年は締め済みのため変更できません。</p>}
       {filingYears.length > 0 && (
         <dl className="kv mode-years">

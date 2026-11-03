@@ -23,7 +23,7 @@ import {
   useLabel, validateTaxYear,
 } from "../lib/tax";
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
-import { FILING_LABEL, filingOf, isBlue, isFilingType } from "../lib/filing";
+import { FILING_LABEL, filingOf, filingTypeProblem, isBlue, isFilingType } from "../lib/filing";
 import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
 import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
@@ -412,6 +412,8 @@ const saveSettings_ = async (db: Database, s: Settings) => {
   const before = await getSettings(db);
   if (s.filing_type !== before.filing_type) {
     if (!isFilingType(s.filing_type)) throw new Error("申告の種類が正しくありません");
+    const problem = filingTypeProblem(s.filing_type, s.fiscal_year);
+    if (problem) throw new Error(problem);
     if ((await getFilingYears(db)).length > 0 || (await getClosings(db)).length > 0) throw new Error("申告の種類は、年度ごとの設定で変えてください");
   }
   await db.execute(
@@ -467,6 +469,8 @@ export const filingTypeIn = async (db: Database, year: number): Promise<FilingTy
 /** year 年からの申告の種類を保存する（前の年から引き継いでいた年も、その年の設定として持つ）。変更は履歴に残す（厳密モード） */
 const saveFilingYear_ = async (db: Database, year: number, type: FilingType) => {
   if (!isFilingType(type)) throw new Error("申告の種類が正しくありません");
+  const problem = filingTypeProblem(type, year);
+  if (problem) throw new Error(problem);
   await assertYearOpen(db, year);
   const rows = await getFilingYears(db);
   const before = filingOf(rows, (await getSettings(db)).filing_type, year);
