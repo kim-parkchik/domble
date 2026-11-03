@@ -17,7 +17,7 @@ import { splitByRate, entryRateOf, splitLinesByHomeUse, yearEndRows, privateTaxS
 import { depreciationLines, depreciationFor } from "../../../src/lib/depreciation";
 import { statementLayout } from "../../../src/lib/statementLines";
 import { monthlySales, payeeBreakdown } from "../../../src/lib/statements";
-import { BLUE_DEDUCTION_LIMIT, computeIncomeTax, type BusinessFigures, type IncomeTaxInput } from "../../../src/lib/incomeTax";
+import { blueDeductionLimit, computeIncomeTax, type BusinessFigures, type IncomeTaxInput } from "../../../src/lib/incomeTax";
 import { buildTaxBase, computeReturn, methodsFor, type ReturnMethod } from "../../../src/lib/taxReturn";
 import { baseSalesInfo, methodProblem } from "../../../src/lib/baseSales";
 import { prevTaxInfo, interimPlan } from "../../../src/lib/taxInterim";
@@ -180,7 +180,7 @@ export const yearFigures = async (db: Database, b: Book) => {
   const pl = summarizeIncome(accounts, end);
   const bs = summarizeBalanceSheet(accounts, end);
   const settings = await repo.getSettings(db);
-  const limit = BLUE_DEDUCTION_LIMIT[settings.filing_type];
+  const limit = blueDeductionLimit(settings.filing_type, YEAR);
   const blue = Math.min(limit, Math.max(0, pl.income));
   const layout = statementLayout(accounts, (a) => end.get(a.id) ?? 0, (a) => opening[a.id] ?? 0);
   const monthly = monthlySales(accounts, lines);
@@ -252,7 +252,7 @@ export const incomeXtxOf = async (db: Database, b: Book, input: IncomeTaxInput, 
     homeUseRates: await repo.getHomeUseRates(db, YEAR),
     excludeEntryIds: [await repo.getHomeUseRun(db, YEAR), await repo.getDepreciationRun(db, YEAR)].filter((x): x is number => x !== null),
     payeeName: (r) => (r.counterpartyId ? cps.find((c) => c.id === r.counterpartyId)?.name ?? "" : r.subId ? subs.find((x) => x.id === r.subId)?.name ?? "" : "（支払先の指定なし）"),
-    deductionLimit: BLUE_DEDUCTION_LIMIT[f.settings.filing_type],
+    deductionLimit: blueDeductionLimit(f.settings.filing_type, YEAR),
   });
   const src = {
     year: YEAR, filer: filerFromSettings(f.settings), input, result: it.r, biz: it.biz, statement, settings: f.settings,

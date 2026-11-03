@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
+  ChartColumn,
   House, BookOpen, FileText, ReceiptText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Network, Users, UserRound, Repeat,
   ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked, ClipboardCheck, Wallet,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import { GeneralLedgerPage } from "./features/books/GeneralLedgerPage";
 import { HistoryPage } from "./features/books/HistoryPage";
 import { EvidencePage } from "./features/evidence/EvidencePage";
 import { TrialBalancePage } from "./features/reports/TrialBalancePage";
+import { ChartsPage } from "./features/reports/ChartsPage";
 import { YearEndPage } from "./features/reports/YearEndPage";
 import { StatementsPage } from "./features/reports/StatementsPage";
 import { HomeUsePage } from "./features/reports/HomeUsePage";
@@ -60,7 +62,7 @@ import { IntegrityNotice } from "./components/IntegrityNotice";
 import { displayName } from "./lib/business";
 
 export type Page =
-  | "home" | "cashbook" | "voucher" | "sales" | "payroll" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening"
+  | "home" | "cashbook" | "voucher" | "sales" | "payroll" | "journal" | "ledger" | "evidence" | "history" | "trial" | "charts" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening"
   | "accounts" | "counterparties" | "departments" | "users" | "settings" | "ebook" | "manual" | "yearend";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
@@ -87,6 +89,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
     group: "集計",
     items: [
       { id: "trial", label: "残高試算表", icon: <Scale size={17} /> },
+      { id: "charts", label: "グラフ", icon: <ChartColumn size={17} /> },
       { id: "yearend", label: "決算整理", icon: <ClipboardCheck size={17} /> },
       { id: "homeuse", label: "家事按分", icon: <Percent size={17} /> },
       { id: "assets", label: "固定資産台帳", icon: <Boxes size={17} /> },
@@ -616,6 +619,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
           {page === "evidence" && <EvidencePage />}
           {page === "history" && <HistoryPage />}
           {page === "trial" && <TrialBalancePage />}
+          {page === "charts" && <ChartsPage />}
           {page === "yearend" && <YearEndPage go={go} goCarry={goCarry} />}
           {page === "homeuse" && <HomeUsePage />}
           {page === "assets" && <FixedAssetsPage />}
