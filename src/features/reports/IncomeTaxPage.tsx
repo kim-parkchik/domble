@@ -36,8 +36,10 @@ import {
 import * as repo from "../../db/repo";
 import { medicalStatement, selfMedStatement, statementProblem } from "../../lib/medicalStatement";
 import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
+import { incomeFilingLines } from "../../lib/amendment";
+import { FilingSection, useFilings } from "./FilingSection";
 
-type View = "input" | "first" | "second" | "fourth" | "medical";
+type View = "input" | "first" | "second" | "fourth" | "medical" | "filing";
 
 const signed = (n: number) => (n < 0 ? `△${yen(-n)}` : yen(n));
 const emptyPayer = (): PayerRow => ({ item: "", payer: "", payerId: "", income: 0, withheld: 0 });
@@ -182,8 +184,9 @@ export const IncomeTaxPage = () => {
     setExportSrc(null);
     if (!src) return;
     try {
-      const xml = buildIncomeTaxXtx({ ...src, numbers });
-      const path = await saveDialog({ defaultPath: `所得税申告_${year}年分.xtx`, filters: [{ name: "e-Tax のデータ", extensions: ["xtx"] }] });
+      const amend = filing.amendExport ? filing.amendment?.income : undefined;
+      const xml = buildIncomeTaxXtx({ ...src, numbers, amend });
+      const path = await saveDialog({ defaultPath: `所得税${amend ? "修正" : ""}申告_${year}年分.xtx`, filters: [{ name: "e-Tax のデータ", extensions: ["xtx"] }] });
       if (!path) return;
       await writeTextFile(path, xml);
       toast("e-Tax のデータを書き出しました");
@@ -191,7 +194,10 @@ export const IncomeTaxPage = () => {
       toast(`書き出せませんでした：${String(e).replace(/^Error: /, "")}`, "error");
     }
   };
-  const publicRefund = (result.rows.find((r) => r.no === fieldNo(53))?.value ?? 0) > 0 && filer.refund?.kind === "public";
+  // 申告の控えと修正申告（保存していない変更があるときは、今の数字を出さない）
+  const filingLines = useMemo(() => (changed ? null : incomeFilingLines(result)), [changed, result]);
+  const filing = useFilings("income", filingLines);
+  const publicRefund = !filing.amendExport && (result.rows.find((r) => r.no === fieldNo(53))?.value ?? 0) > 0 && filer.refund?.kind === "public";
 
   return (
     <div className="page">
@@ -204,6 +210,7 @@ export const IncomeTaxPage = () => {
           {([
             ["input", "入力"], ["first", "第一表"], ["second", "第二表"], ...(fourth ? [["fourth", "第四表"]] : []),
             ...(hasMedicalDetail(x.medical) ? [["medical", x.medical.kind === "self" ? "セルフメディケーションの明細書" : "医療費控除の明細書"]] : []),
+            ["filing", "申告の控え・修正"],
           ] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>{label}</button>
           ))}
@@ -219,7 +226,7 @@ export const IncomeTaxPage = () => {
           className="btn ghost" onClick={prepareExport} disabled={changed || xtxProblems.length > 0}
           title={changed ? "保存してから書き出してください" : xtxProblems.join("。")}
         >
-          <FileDown size={16} /> e-Tax 用に書き出す
+          <FileDown size={16} /> e-Tax 用に書き出す{filing.amendExport ? "（修正申告）" : ""}
         </button>
       </div>
       {exportSrc && (
@@ -251,6 +258,8 @@ export const IncomeTaxPage = () => {
             <FourthTable result={result} year={year} />
           ) : view === "medical" ? (
             <MedicalStatementView x={x} result={result} year={year} />
+          ) : view === "filing" ? (
+            <FilingSection tax="income" current={filingLines} state={filing} />
           ) : (
             <SecondTable result={result} x={x} familySalary={biz.familySalary} white={white} familyLines={familyLines} />
           )}

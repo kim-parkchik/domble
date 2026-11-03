@@ -103,6 +103,25 @@ describe("本則課税（一般用：RSH0010）", () => {
   });
 });
 
+describe("修正申告", () => {
+  const b = base({ sales: { 8: 0, 10: 33_000_000 }, purchase: { 8: 0, 10: 11_000_000 } });
+  const r = standardReturn(b, opts);
+  const amend = { known: r.national - 50_000, pay: 50_000, knownLocal: r.local - 14_100, payLocal: 14_100, total: 64_100 };
+  test("一般用：申告の種類 3:修正確定、⑬⑭㉔㉕、㉖ は ⑭＋㉕。還付の口座は書かない", () => {
+    const xml = buildTaxXtx(r, filer, { ...period, amend });
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain('<SHINKOKU_KBN ID="SHINKOKU_KBN"><kubun_CD>3</kubun_CD></SHINKOKU_KBN>');
+    expect([val(xml, "AAJ00150"), val(xml, "AAJ00160"), val(xml, "AAK00110"), val(xml, "AAK00120"), val(xml, "AAK00130")])
+      .toEqual([String(amend.known), "50000", String(amend.knownLocal), "14100", "64100"]);
+  });
+  test("簡易課税用：ABI00150・ABI00160・ABJ00110・ABJ00120・ABJ00130。修正前が還付ならマイナス", () => {
+    const xml = buildTaxXtx(simplifiedReturn(b, opts), filer, { ...period, amend: { known: -30_000, pay: 80_000, knownLocal: -8_400, payLocal: 22_500, total: 102_500 } });
+    expect(validate(xml)).toBe("");
+    expect([val(xml, "ABI00150"), val(xml, "ABI00160"), val(xml, "ABJ00110"), val(xml, "ABJ00120"), val(xml, "ABJ00130")])
+      .toEqual(["-30000", "80000", "-8400", "22500", "102500"]);
+  });
+});
+
 describe("簡易課税（簡易課税用：RSH0030）", () => {
   test("1種類の事業", () => {
     const b = base({ sales: { 8: 19_192_000, 10: 11_516_000 }, salesReturn: { 8: 1_250_000, 10: 756_000 }, exportSales: 1_100_000, badDebt: { 8: 0, 10: 560_000 } });

@@ -466,6 +466,26 @@ describe("固定資産の売却・除却の仕訳（repo）", () => {
   });
 });
 
+describe("申告の控え（repo）", () => {
+  test("残して読み直せる（年ごと）。年を締めたあとも残せ、削除もでき、厳密モードでは履歴に残る。日付と数字を確かめる", async () => {
+    const { db } = strict;
+    const lines = [{ key: "third", no: "", label: "第3期分の税額", value: 123_400 }];
+    const a = await repo.addFiling(db, { fiscal_year: 2025, tax: "income", kind: "original", filed_on: "2026-03-10", lines, memo: " e-Tax " });
+    await repo.closeYear(db, 2025);
+    const b = await repo.addFiling(db, { fiscal_year: 2025, tax: "income", kind: "amended", filed_on: "2026-06-01", lines: [{ ...lines[0], value: 150_000 }], memo: "" });
+    await repo.addFiling(db, { fiscal_year: 2026, tax: "consumption", kind: "original", filed_on: "2027-03-20", lines, memo: "" });
+    expect((await repo.getFilings(db, 2025)).map((f) => [f.id, f.kind, f.lines[0].value, f.memo])).toEqual([[a, "original", 123_400, "e-Tax"], [b, "amended", 150_000, ""]]);
+    expect(await repo.getFilings(db)).toHaveLength(3);
+    await repo.deleteFiling(db, b);
+    expect((await repo.getFilings(db, 2025)).map((f) => f.id)).toEqual([a]);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "filing");
+    expect(h.map((x) => x.action).reverse()).toEqual(["create", "create", "create", "delete"]);
+    expect(h.at(-1)!.new_value).toContain("2026-03-10 確定申告");
+    await expect(repo.addFiling(db, { fiscal_year: 2025, tax: "income", kind: "original", filed_on: "", lines, memo: "" })).rejects.toThrow(/申告した日/);
+    await expect(repo.addFiling(db, { fiscal_year: 2025, tax: "income", kind: "original", filed_on: "2026-03-10", lines: [{ ...lines[0], value: 1.5 }], memo: "" })).rejects.toThrow(/整数/);
+  });
+});
+
 describe("固定資産台帳と年の締め・年ごとの事業専用割合（repo）", () => {
   const setup = async () => {
     const { db, raw } = strict;

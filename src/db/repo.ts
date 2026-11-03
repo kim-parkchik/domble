@@ -52,6 +52,7 @@ import { assetLockError, businessRateIn, canChoose250, DISPOSAL_LABEL, disposalL
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
 import type { InventoryAdjust } from "../lib/taxReturn";
+import { FILING_KIND_LABEL, FILING_TAX_LABEL, type FilingLine, type TaxFiling } from "../lib/amendment";
 import {
   DEFAULT_BACKUP_GENERATIONS, MAX_BACKUP_GENERATIONS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
 } from "../constants/appConfig";
@@ -813,6 +814,48 @@ const saveIncomeTaxInput_ = async (db: Database, year: number, input: IncomeTaxI
     "INSERT INTO income_tax_inputs (fiscal_year, data) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET data = excluded.data",
     [year, JSON.stringify(n)],
   );
+};
+
+// ── 申告の控え（修正申告・更正の請求の「修正前」。lib/amendment.ts） ──
+type FilingRow = Omit<TaxFiling, "lines"> & { lines: string };
+const parseFiling = (r: FilingRow): TaxFiling => {
+  let lines: FilingLine[] = [];
+  try {
+    const x = JSON.parse(r.lines);
+    if (Array.isArray(x)) lines = x.filter((l) => l && typeof l.key === "string" && Number.isFinite(l.value));
+  } catch {
+    /* 読めなければ空 */
+  }
+  return { ...r, lines };
+};
+const filingText = (f: Omit<TaxFiling, "id">) =>
+  [`${f.filed_on} ${FILING_KIND_LABEL[f.kind]}`, ...f.lines.map((l) => `${l.no}${l.label} ${l.value.toLocaleString()}円`), f.memo ? `メモ ${f.memo}` : ""].filter(Boolean).join("、");
+
+/** 申告の控え（year を渡せばその年だけ。申告した日の古い順） */
+export const getFilings = async (db: Database, year?: number): Promise<TaxFiling[]> =>
+  (await db.select<FilingRow[]>(
+    `SELECT id, fiscal_year, tax, kind, filed_on, lines, memo FROM tax_filings ${year === undefined ? "" : "WHERE fiscal_year = ?"} ORDER BY filed_on, id`,
+    year === undefined ? [] : [year],
+  )).map(parseFiling);
+
+const addFiling_ = async (db: Database, f: Omit<TaxFiling, "id">) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f.filed_on)) throw new Error("申告した日を入れてください");
+  if (!f.lines.length || f.lines.some((l) => !Number.isInteger(l.value))) throw new Error("申告書の数字を整数で入れてください");
+  const r = await db.execute(
+    "INSERT INTO tax_filings (fiscal_year, tax, kind, filed_on, lines, memo) VALUES (?, ?, ?, ?, ?, ?)",
+    [f.fiscal_year, f.tax, f.kind, f.filed_on, JSON.stringify(f.lines), f.memo.trim()],
+  );
+  const id = Number(r.lastInsertId);
+  await logMaster(db, { target_type: "filing", target_id: id, action: "create", fiscal_year: f.fiscal_year, label: `${FILING_TAX_LABEL[f.tax]}の申告の控え`, old_value: "", new_value: filingText(f) });
+  return id;
+};
+
+const deleteFiling_ = async (db: Database, id: number) => {
+  const r = await db.select<FilingRow[]>("SELECT id, fiscal_year, tax, kind, filed_on, lines, memo FROM tax_filings WHERE id = ?", [id]);
+  if (!r[0]) throw new Error("申告の控えが見つかりません");
+  const f = parseFiling(r[0]);
+  await db.execute("DELETE FROM tax_filings WHERE id = ?", [id]);
+  await logMaster(db, { target_type: "filing", target_id: id, action: "delete", fiscal_year: f.fiscal_year, label: `${FILING_TAX_LABEL[f.tax]}の申告の控え`, old_value: filingText(f), new_value: "" });
 };
 
 /** その年の中間納付税額（申告した税額。無ければ 0） */
@@ -3613,6 +3656,8 @@ export const setAccountStatementLine = inTx(masterOpen(setAccountStatementLine_)
 export const saveFilingYear = inTx(saveFilingYear_, (year) => `${year}年の申告の種類`, { perm: "settings" });
 export const saveRealEstate = inTx(saveRealEstate_, () => "不動産所得", { perm: "settings" });
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
+export const addFiling = inTx(addFiling_, (f) => `${f.fiscal_year}年の${FILING_TAX_LABEL[f.tax]}の申告の控え`, { perm: "settings" });
+export const deleteFiling = inTx(deleteFiling_, (id) => `申告の控え #${id} の削除`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });
 export const saveTaxInterim = inTx(saveTaxInterim_, (year) => `${year}年の中間納付税額`, { perm: "settings" });
 export const saveNontaxExport = inTx(saveNontaxExport_, (year) => `${year}年の非課税資産の輸出等の金額`, { perm: "settings" });

@@ -15,6 +15,7 @@
 import type { FormRow, TaxReturn } from "./taxReturn";
 import { documentXml, formXml, itRefs, itXml, type EtaxFiler, type EtaxValues, type FormAttrs } from "./etax";
 import type { PurchaseFigure, PurchaseFigures, RefundTradeRow, TaxRefundDetailInput } from "./taxRefundDetail";
+import type { ConsumptionAmend } from "./amendment";
 
 const NAMESPACE = "http://xml.e-tax.nta.go.jp/XSD/shohi";
 const PROCEDURES = {
@@ -182,7 +183,7 @@ const headValues = (prefix: string, f: EtaxFiler, first: boolean, refund: boolea
   return v;
 };
 
-const firstValues = (r: TaxReturn, f: EtaxFiler) => {
+const firstValues = (r: TaxReturn, f: EtaxFiler, amend?: ConsumptionAmend) => {
   const general = r.firstKind === "一般用";
   const [tax, local, note, ref] = general ? ["AAJ", "AAK", "AAL", "AAM"] : ["ABI", "ABJ", "ABK", "ABL"];
   const table: Table = {
@@ -193,7 +194,13 @@ const firstValues = (r: TaxReturn, f: EtaxFiler) => {
     ...(general ? { "⑮": "AAJ00180", "⑯": "AAJ00190" } : { "⑮": "ABI00170", baseSales: "ABI00180" }),
   };
   const rows = rowsOf(r, "first");
-  const v = fill(headValues(general ? "AAI" : "ABH", f, true, r.total < 0), rows, table);
+  const v = fill(headValues(general ? "AAI" : "ABH", f, true, !amend && r.total < 0), rows, table);
+  if (amend) {
+    // この申告書が修正申告である場合：⑬ 既確定税額・⑭ 差引納付税額、㉔ 既確定譲渡割額・㉕ 差引納付譲渡割額。㉖ は ⑭＋㉕
+    Object.assign(v, {
+      [tag(tax, 150)]: amend.known, [tag(tax, 160)]: amend.pay, [tag(local, 110)]: amend.knownLocal, [tag(local, 120)]: amend.payLocal, [tag(local, 130)]: amend.total,
+    });
+  }
   // 付記事項（割賦基準・延払基準・工事進行基準・現金主義会計）と、課税標準額に対する消費税額の計算の特例（積上げ計算）は「無」
   for (const n of [10, 20, 30, 40]) v[tag(note, n)] = { kubun: 2 };
   v[tag(ref, 10)] = { kubun: 2 };
@@ -236,6 +243,8 @@ export interface XtxOptions {
   createdOn: string;
   /** 還付申告に関する明細書（⑧ 控除不足還付税額があるときに付ける） */
   refundDetail?: { input: TaxRefundDetailInput; purchases: PurchaseFigures };
+  /** 修正申告として書き出すとき：第一表の ⑬⑭㉔㉕ と ㉖（⑭＋㉕）。申告の種類「3:修正確定」（lib/amendment.ts の consumptionAmendment） */
+  amend?: ConsumptionAmend;
 }
 
 /** 第一表の ⑧ 控除不足還付税額（明細書が要るのは、一般用でこれがあるとき） */
@@ -332,7 +341,7 @@ export const buildTaxXtx = (r: TaxReturn, filer: EtaxFiler, o: XtxOptions): stri
   if (problem) throw new Error(problem);
   const p = PROCEDURES[r.firstKind];
   const attrs: FormAttrs = { author: filer.yago.trim() || filer.name.trim(), createdOn: o.createdOn };
-  const first = { ...firstValues(r, filer), ...secondValues(r, filer) };
+  const first = { ...firstValues(r, filer, o.amend), ...secondValues(r, filer) };
   const fuhyo: [string, EtaxValues][] =
     r.method === "twenty" ? [["SHB070", fill(fuhyoHead("AYA"), rowsOf(r, "6"), FUHYO6)]]
       : r.method === "standard" ? [["SHB017", fuhyo13Values(r)], ["SHB033", fuhyo23Values(r)]]
@@ -345,7 +354,8 @@ export const buildTaxXtx = (r: TaxReturn, filer: EtaxFiler, o: XtxOptions): stri
     namespace: NAMESPACE,
     procedure: p.procedure,
     procedureVersion: xtxVersionFor(Number(o.from.slice(0, 4))).version,
-    it: itXml(filer, { procedure: p.procedure, procedureName: p.name, from: o.from, to: o.to, shinkokuKbn: 1, refund: r.total < 0 }),
+    // 申告の種類：1 確定 ／ 3 修正確定（帳票フィールド仕様書 SHA010・SHA020 の AAI00150・ABH00150）
+    it: itXml(filer, { procedure: p.procedure, procedureName: p.name, from: o.from, to: o.to, shinkokuKbn: o.amend ? 3 : 1, refund: !o.amend && r.total < 0 }),
     forms,
   });
 };

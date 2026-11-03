@@ -197,6 +197,24 @@ describe("配偶者・親族・事業専従者と個人番号", () => {
   });
 });
 
+describe("修正申告", () => {
+  test("申告の種類 2:修正、修正区分 1:該当、修正前の第3期分の税額（還付はマイナス）と増加額。還付の受取場所は書かない", () => {
+    const src = source({}, { filer: { ...filer, refund: { kind: "public" } }, numbers: { self: "123456789018" }, amend: { before: -12_345, increase: 80_000 } });
+    const xml = buildIncomeTaxXtx(src);
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain('<SHINKOKU_KBN ID="SHINKOKU_KBN"><kubun_CD>2</kubun_CD></SHINKOKU_KBN>');
+    expect(val(xml, "ABA00256")).toBe("1");
+    expect([val(xml, "ABB00765"), val(xml, "ABB00767")]).toEqual(["-12345", "80000"]);
+    expect(xml).not.toContain("ABZ40000");
+  });
+  test("確定申告は 1:確定で、修正の欄は書かない", () => {
+    const xml = buildIncomeTaxXtx(source());
+    expect(xml).toContain('<SHINKOKU_KBN ID="SHINKOKU_KBN"><kubun_CD>1</kubun_CD></SHINKOKU_KBN>');
+    expect(xml).not.toContain("ABA00256");
+    expect(xml).not.toContain("ABB00763");
+  });
+});
+
 describe("還付・1月1日の住所・依頼税理士", () => {
   test("公金受取口座：口座を書かず、口座情報利用同意区分を 1（個人番号が要る）", () => {
     const src = source({ businessWithholding: [{ item: "報酬", payer: "株式会社エー", payerId: "東京都港区1-1", income: 5_000_000, withheld: 510_500 }] }, {

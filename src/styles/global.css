@@ -398,6 +398,23 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .tax-return-title .spacer { flex: 1; }
 .tax-return-notes { font-size: 12.5px; color: var(--muted); margin: 8px 0; padding-left: 18px; }
 .tax-xtx { margin: 8px 0; padding: 8px 12px; background: #f4f7fb; border-radius: 4px; font-size: 12.5px; color: var(--muted); }
+/* 申告の控え・修正申告（FilingSection.tsx） */
+.filing { margin: 20px 0 8px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.filing-list { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 8px 0 12px; }
+.filing-table { width: 100%; max-width: 760px; }
+.filing-table td .badge { margin-left: 6px; background: var(--accent-tint); color: var(--accent); }
+.filing-h { margin: 14px 0 6px; font-size: 13.5px; }
+.filing-compare { width: 100%; max-width: 760px; }
+.filing-compare tr.filing-changed td { background: var(--warn-bg); }
+.filing-compare td, .filing-fields td, .filing-input td { white-space: normal; }
+.filing-box { max-width: 760px; margin: 10px 0; padding: 10px 14px; border-radius: 6px; background: #f4f7fb; font-size: 13px; }
+.filing-box.amend { background: var(--warn-bg); color: var(--warn-ink); }
+.filing-box p { margin: 0 0 6px; }
+.filing-box ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; }
+.filing-fields { width: 100%; max-width: 560px; margin: 6px 0 8px; background: var(--paper); color: var(--ink); }
+.filing-steps { margin: 8px 0; font-size: 12.5px; color: var(--muted); }
+.filing-steps ol { margin: 6px 0 0; padding-left: 20px; }
+.filing-input { width: 100%; margin: 6px 0 10px; }
 .tax-form-block { margin-top: 16px; break-inside: avoid; }
 .tax-form-block h4 { font-size: 13px; margin: 0 0 6px; }
 .tax-form-table td { font-size: 12.5px; }

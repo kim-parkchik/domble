@@ -28,6 +28,8 @@ import { closingBalances, type FlatLine } from "../../lib/accounting";
 import { taxYearOf } from "../../lib/tax";
 import type { OpeningBalances } from "../../lib/types";
 import { AmountInput } from "../../components/Inputs";
+import { consumptionFilingLines } from "../../lib/amendment";
+import { FilingSection, useFilings } from "./FilingSection";
 import * as repo from "../../db/repo";
 import { MyNumberDialog } from "../../components/MyNumberDialog";
 
@@ -260,16 +262,20 @@ export const TaxReturnView = () => {
   const missing = filerProblems(filer);
   // 個人番号は書き出すときに入れてもらう（保存しない）。公金受取口座で還付を受けるときは必須
   const [askNumber, setAskNumber] = useState(false);
-  const publicRefund = shown.total < 0 && filer.refund?.kind === "public";
+  // 申告の控えと修正申告（表示中の方式の数字と比べる）
+  const filingLines = useMemo(() => consumptionFilingLines(shown), [shown]);
+  const filing = useFilings("consumption", filingLines);
+  const publicRefund = !filing.amendExport && shown.total < 0 && filer.refund?.kind === "public";
   const exportXtx = async (myNumber: string) => {
     setAskNumber(false);
     try {
       const xml = buildTaxXtx(shown, { ...filer, myNumber }, {
         from: taxYear.taxable_from || `${year}-01-01`, to: `${year}-12-31`, createdOn: todayIso(),
         refundDetail: shortfall > 0 && refund.saved ? { input: refund.saved, purchases } : undefined,
+        amend: filing.amendExport ? filing.amendment?.consumption : undefined,
       });
       const path = await save({
-        defaultPath: `消費税申告_${year}年分_${METHOD_LABEL[method]}.xtx`,
+        defaultPath: `消費税${filing.amendExport ? "修正" : ""}申告_${year}年分_${METHOD_LABEL[method]}.xtx`,
         filters: [{ name: "e-Tax のデータ", extensions: ["xtx"] }],
       });
       if (!path) return;
@@ -370,7 +376,7 @@ export const TaxReturnView = () => {
           )}
           <button className="btn ghost sm print-skip" onClick={() => window.print()}><Printer size={14} /> 印刷</button>
           <button className="btn primary sm print-skip" onClick={() => setAskNumber(true)} disabled={!!xtxBlocked || missing.length > 0 || needDetail}>
-            <FileDown size={14} /> e-Tax 用に書き出す
+            <FileDown size={14} /> e-Tax 用に書き出す{filing.amendExport ? "（修正申告）" : ""}
           </button>
         </div>
         <div className="tax-xtx print-skip">
@@ -413,6 +419,7 @@ export const TaxReturnView = () => {
         {shortfall > 0 && refund.draft && (
           <RefundDetailSection draft={refund.draft} setDraft={refund.setDraft} saved={refund.saved} books={books} purchases={purchases} disabled={!admin || isClosed} />
         )}
+        <FilingSection tax="consumption" current={filingLines} state={filing} />
         <p className="field-note">
           確定申告書等作成コーナーや e-Tax に書き写すときの数字です。e-Tax 用のデータに書き出すこともできます（送信は e-Tax で行います）。
           申告の前に、集計表と「確認」の内容を確かめてください。

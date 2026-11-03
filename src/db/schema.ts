@@ -364,6 +364,22 @@ export const SCHEMA: string[] = [
     data TEXT NOT NULL
   );`,
 
+  /**
+   * 申告の控え（所得税・消費税。年に何件でも。いちばん新しいものが修正申告の「修正前」になる。lib/amendment.ts）
+   * kind = original 確定申告 ／ amended 修正申告 ／ reassessed 更正（税務署からの通知）。lines は申告書の主な数字（JSON。FilingLine[]）
+   * 帳簿ではなく控えなので、年を締めたあとも残せる（厳密モードでは履歴に残す）
+   */
+  `CREATE TABLE IF NOT EXISTS tax_filings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fiscal_year INTEGER NOT NULL,
+    tax TEXT NOT NULL CHECK (tax IN ('income','consumption')),
+    kind TEXT NOT NULL CHECK (kind IN ('original','amended','reassessed')),
+    filed_on TEXT NOT NULL,
+    lines TEXT NOT NULL,
+    memo TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
+  );`,
+
   /** 年末の按分振替で作った仕訳（年度ごとに1本。作り直すときはこの仕訳を訂正する） */
   `CREATE TABLE IF NOT EXISTS home_use_runs (
     fiscal_year INTEGER PRIMARY KEY,

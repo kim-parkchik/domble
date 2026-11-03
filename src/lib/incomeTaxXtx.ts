@@ -21,6 +21,7 @@ import {
 import type { Settings } from "./types";
 import { medicalStatement, selfMedStatement, statementProblem } from "./medicalStatement";
 import { circled, manufacturingForm } from "./statementForm";
+import type { IncomeAmend } from "./amendment";
 
 const NAMESPACE = "http://xml.e-tax.nta.go.jp/XSD/shotoku";
 const PROCEDURE = { procedure: "RKO0010", name: "所得税及び復興特別所得税申告" };
@@ -58,6 +59,11 @@ export interface IncomeTaxXtxSource {
   numbers: Record<string, string>;
   /** 作成日（YYYY-MM-DD） */
   createdOn: string;
+  /**
+   * 修正申告として書き出すとき：修正前の第3期分の税額と増加額（lib/amendment.ts の incomeAmendment）。
+   * 申告の種類「2:修正」、第一表の修正区分「1:該当」と「修正申告」の欄を書く（還付の受取場所は書かない）
+   */
+  amend?: IncomeAmend;
 }
 
 // ── 載せる人 ──
@@ -209,6 +215,8 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     // 税金の計算
     ABB00580: fourth ? undefined : row("㉛"), ABB00590: row("㉜"), ABB00650: amount(row("㉟")), ABB00670: row("㊷"), ABB01010: row("㊹"), ABB01020: row("㊺"), ABB01030: row("㊻"),
     ABB00710: amount(row("㊾")), ABB00720: row("㊿"), ABB00730: amount(row(fieldNo(51))), ABB00750: amount(row(fieldNo(52))), ABB00760: amount(row(fieldNo(53))),
+    // 修正申告：修正区分と、修正前の第3期分の税額（還付はマイナス）・第3期分の税額の増加額
+    ABA00256: src.amend ? { kubun: 1 } : undefined, ABB00765: src.amend?.before, ABB00767: src.amend?.increase,
     // その他
     ABB00775: amount(row(fieldNo(56))), ABB00780: amount(row(fieldNo(57))), ABB00790: amount(row(fieldNo(58))), ABB00800: amount(row(fieldNo(59))),
     ABB00810: amount(row(fieldNo(60))), ABB00830: amount(row(fieldNo(62))),
@@ -1001,7 +1009,8 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
     ...src.filer, myNumber: self && /^\d{12}$/.test(self) ? self : "", birthday: /^\d{4}-\d{2}-\d{2}$/.test(src.input.birthday) ? src.input.birthday : "",
     jan1Address: src.input.jan1Address,
   };
-  const refund = (src.result.rows.find((r) => r.no === fieldNo(53))?.value ?? 0) > 0;
+  // 還付の受取場所は、還付になる確定申告のときだけ（修正申告は増えた税額を納める）
+  const refund = !src.amend && (src.result.rows.find((r) => r.no === fieldNo(53))?.value ?? 0) > 0;
   const it = { refund, personal: true, nenbun: src.year };
   const refs = itRefs(filer, it);
   const attrs: FormAttrs = { author: filer.yago.trim() || filer.name.trim(), createdOn: src.createdOn };
@@ -1013,7 +1022,8 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
     namespace: NAMESPACE,
     procedure: PROCEDURE.procedure,
     procedureVersion: incomeXtxVersionFor(src.year).version,
-    it: itXml(filer, { procedure: PROCEDURE.procedure, procedureName: PROCEDURE.name, shinkokuKbn: 1, ...it }),
+    // 申告の種類：1 確定 ／ 2 修正（帳票フィールド仕様書 KOA020 の ABA00020）
+    it: itXml(filer, { procedure: PROCEDURE.procedure, procedureName: PROCEDURE.name, shinkokuKbn: src.amend ? 2 : 1, ...it }),
     // 手続の XSD の順番：申告書（KOA020）、収支内訳書（一般用 KOA110・不動産所得用 KOA130）、青色申告決算書（一般用 KOA210・不動産所得用 KOA220）。
     // 事業所得が無く不動産所得だけなら、一般用は書かない
     forms: [
