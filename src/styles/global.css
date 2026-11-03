@@ -398,6 +398,48 @@ button.warn-box { cursor: pointer; margin-top: 0; }
 .tax-return-title .spacer { flex: 1; }
 .tax-return-notes { font-size: 12.5px; color: var(--muted); margin: 8px 0; padding-left: 18px; }
 .tax-xtx { margin: 8px 0; padding: 8px 12px; background: #f4f7fb; border-radius: 4px; font-size: 12.5px; color: var(--muted); }
+/* 見積書・請求書（features/sales/SalesDocsPage.tsx） */
+.sales-table td .badge { margin-right: 4px; }
+.sales-table td.sales-to { white-space: normal; }
+.sales-table td.sales-to span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sales-table td.sales-actions { white-space: nowrap; }
+.bank-invoice { width: 100%; margin-top: 4px; font-size: 12px; height: 28px; }
+.sales-state { background: var(--accent-tint); color: var(--accent); }
+.sales-state.draft { background: #eef0f3; color: var(--muted); }
+.sales-state.paid { background: #e5f4ea; color: #1f6b3a; }
+.sales-state.partial, .sales-state.issued { background: var(--warn-bg); color: var(--warn-ink); }
+.sales-state.void { background: #f6e3e3; color: var(--cr); }
+.sales-form .sales-options { align-items: flex-end; gap: 16px; }
+.sales-items td { white-space: normal; }
+.sales-items .input { width: 100%; }
+.sales-under { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 8px 0; }
+.sales-totals { width: auto; min-width: 380px; }
+.sales-totals tr.sales-total td { font-weight: 700; }
+/* 請求書・見積書の印刷（A4 縦。帳簿の印刷プレビューの枠を使う） */
+.doc-page { font-size: 9.5pt; line-height: 1.5; padding: 16mm 15mm 12mm; position: relative; }
+.doc-title { text-align: center; font-family: var(--font-title); font-size: 20pt; letter-spacing: .5em; margin: 0 0 4mm; }
+.doc-meta { text-align: right; font-size: 9pt; }
+.doc-head { display: grid; grid-template-columns: 1.2fr 1fr; gap: 8mm; margin: 4mm 0 6mm; }
+.doc-to-name { font-size: 14pt; border-bottom: 1px solid #000; padding-bottom: 1mm; margin-bottom: 2mm; }
+.doc-subject { margin-top: 2mm; }
+.doc-lead { margin: 4mm 0 2mm; }
+.doc-amount { display: flex; align-items: baseline; gap: 4mm; border-bottom: 2px solid #000; padding: 1mm 0; margin-bottom: 2mm; }
+.doc-amount b { font-size: 16pt; }
+.doc-from { padding-top: 10mm; }
+.doc-from-name { font-size: 12pt; font-weight: 700; }
+.doc-small { font-size: 8.5pt; }
+.doc-items { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.doc-items th, .doc-items td { border: 1px solid #555; padding: 1.4mm 2mm; vertical-align: top; overflow-wrap: anywhere; }
+.doc-items th { background: #eef1f5; font-weight: 700; }
+.doc-items .num, .doc-totals .num { text-align: right; white-space: nowrap; }
+.doc-foot { display: grid; grid-template-columns: 1fr auto; gap: 6mm; margin-top: 4mm; align-items: start; }
+.doc-totals { border-collapse: collapse; min-width: 75mm; }
+.doc-totals td { border: 1px solid #555; padding: 1.2mm 2mm; }
+.doc-totals tr.sales-total td { font-weight: 700; background: #eef1f5; }
+.doc-box { border: 1px solid #555; padding: 2mm; margin-top: 2mm; white-space: pre-wrap; }
+.doc-cont { text-align: right; margin-top: 2mm; }
+.doc-page-no { position: absolute; bottom: 6mm; right: 15mm; font-size: 8pt; color: #555; }
+
 /* 申告の控え・修正申告（FilingSection.tsx） */
 .filing { margin: 20px 0 8px; padding-top: 12px; border-top: 1px solid var(--rule); }
 .filing-list { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 8px 0 12px; }

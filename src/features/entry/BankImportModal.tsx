@@ -28,6 +28,7 @@ import * as repo from "../../db/repo";
 import { taxCodeDef } from "../../lib/tax";
 import { DepartmentSelect } from "../../components/DepartmentSelect";
 import { departmentName } from "../../lib/departments";
+import { paymentCandidates, paymentEntryLines, remainingOf, savedTotals, type OpenInvoice } from "../../lib/salesDoc";
 
 type View = "pending" | "read" | "skipped" | "rules";
 
@@ -58,7 +59,13 @@ interface Draft {
   source: "rule" | "history" | null;
   dupEntry: number | null;
   splits: SplitDraft[];
+  /** 請求書の入金にする（請求書の id）と、差し引かれた振込手数料 */
+  docId: number | null;
+  fee: number;
 }
+
+/** 入金の候補にする、入金の残っている請求書（取引先つき） */
+type OpenDoc = OpenInvoice & { counterparty_id: number | null };
 
 const splitsFromRule = (splits: BankRuleSplit[]): SplitDraft[] =>
   splits.map((x) => ({ counterId: x.account_id, counterSubId: x.sub_account_id, tax: { ...NO_TAX, code: x.tax_code, invoice: x.invoice_kind }, amount: x.amount, memo: x.memo, dept: x.department_id ?? null }));
@@ -73,7 +80,7 @@ const sideLabels = (a: Account) =>
       : { inc: "ご利用（増加）", dec: "返金・支払（減少）" };
 
 export const BankImportModal = ({ account, initialSub, onClose }: { account: Account; initialSub: number | null | undefined; onClose: () => void }) => {
-  const { db, accounts, activeSubsOf, subMap, labelOf, isDateClosed, bump, dataVersion, year, can, departments } = useAppContext();
+  const { db, accounts, activeSubsOf, subMap, labelOf, isDateClosed, bump, dataVersion, year, can, departments, counterparties } = useAppContext();
   // 部門の欄は、部門を作ってあるときだけ出す（相手科目の下）
   const useDept = departments.length > 0;
   /** 非表示・削除した部門は入れない */
@@ -92,12 +99,24 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
   const [rules, setRules] = useState<BankRule[]>([]);
   const [allLines, setAllLines] = useState<FlatLine[]>([]);
   const [history, setHistory] = useState<Map<string, HistoryHit>>(new Map());
+  const [openDocs, setOpenDocs] = useState<OpenDoc[]>([]);
   const [reload, setReload] = useState(0);
   useEffect(() => {
     let alive = true;
-    Promise.all([repo.getBankLines(db, account.id, subId), repo.getBankRules(db), repo.getLines(db, "1900-01-01", "2999-12-31"), repo.getBankHistory(db, account.id, subId)])
-      .then(([r, ru, ls, h]) => {
+    Promise.all([
+      repo.getBankLines(db, account.id, subId), repo.getBankRules(db), repo.getLines(db, "1900-01-01", "2999-12-31"), repo.getBankHistory(db, account.id, subId),
+      repo.getSalesDocs(db), repo.getSalesPayments(db),
+    ])
+      .then(([r, ru, ls, h, docs, pays]) => {
         if (!alive) return;
+        // 入金の残っている発行済みの請求書（明細の取り込みの入金の候補）
+        setOpenDocs(docs.filter((x) => x.kind === "invoice" && x.status === "issued").map((x) => {
+          const cp = counterparties.find((c) => c.id === x.counterparty_id);
+          return {
+            id: x.id, doc_no: x.doc_no, to_name: x.to_name, names: [x.to_name, cp?.name ?? "", cp?.kana ?? ""].filter(Boolean), due_date: x.due_date,
+            remaining: remainingOf(savedTotals(x).billed, pays.filter((p) => p.doc_id === x.id)), counterparty_id: x.counterparty_id,
+          };
+        }).filter((x) => x.remaining > 0));
         setRows(r);
         setRules(ru);
         setAllLines(ls);
@@ -122,22 +141,30 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
     setDrafts((prev) => {
       const next = new Map<number, Draft>();
       const used = new Set<number>();
+      const usedDocs = new Set([...prev.values()].map((d) => d.docId).filter((v): v is number => v !== null));
       for (const r of pending) {
         const old = prev.get(r.id);
         if (old) { next.set(r.id, old); continue; }
         const g = guessLine(r, account, liveRules, history);
         const dup = findBookDuplicate(r, allLines, account.id, subId, used);
         if (dup) used.add(dup);
-        next.set(r.id, {
+        const draft: Draft = {
           checked: !!g.counterId && !dup, counterId: g.counterId, counterSubId: g.counterSubId,
           tax: { ...NO_TAX, code: g.taxCode, invoice: g.invoice }, memo: g.memo, counterpartyId: g.counterpartyId, dept: activeDept(g.dept), source: g.source, dupEntry: dup,
-          splits: splitsFromRule(g.splits),
-        });
+          splits: splitsFromRule(g.splits), docId: null, fee: 0,
+        };
+        // 入金で、ルールに合わなければ、請求書の入金の候補（1つだけか、摘要に取引先の名前があるもの）を入れる
+        const c = g.source !== "rule" ? invoiceCandidates(r).find((x) => !usedDocs.has(x.id)) : undefined;
+        const only = c && invoiceCandidates(r).length === 1;
+        if (c && (only || c.named) && receivableId) {
+          usedDocs.add(c.id);
+          next.set(r.id, { ...draft, ...invoiceDraft(c.id, c.fee), checked: !dup });
+        } else next.set(r.id, draft);
       }
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, liveRules, history, allLines]);
+  }, [rows, liveRules, history, allLines, openDocs]);
   const patch = (id: number, p: Partial<Draft>) => setDrafts((m) => new Map(m).set(id, { ...m.get(id)!, ...p }));
   const patchSplit = (id: number, i: number, p: Partial<SplitDraft>) =>
     setDrafts((m) => {
@@ -149,6 +176,19 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
     patch(id, { splits: [...d.splits, { counterId: null, counterSubId: null, tax: NO_TAX, amount: null, memo: "", dept: d.dept }] });
   };
   const removeSplit = (id: number, i: number) => patch(id, { splits: drafts.get(id)!.splits.filter((_, j) => j !== i) });
+
+  // ── 請求書の入金（売掛金の口座の入金だけ。lib/salesDoc.ts の paymentCandidates） ──
+  const receivableId = accounts.find((a) => a.code === CODE.RECEIVABLE)?.id ?? null;
+  const feeAccountId = accounts.find((a) => a.code === CODE.FEES)?.id ?? null;
+  const invoiceCandidates = (r: repo.BankLineRow) =>
+    account.category === "asset" && r.side === account.normal_side ? paymentCandidates({ amount: r.amount, description: r.description }, openDocs) : [];
+  /** 請求書の入金にするときの中身（相手科目は売掛金、取引先と摘要は請求書から） */
+  const invoiceDraft = (docId: number, fee: number): Partial<Draft> => {
+    const doc = openDocs.find((x) => x.id === docId)!;
+    return {
+      docId, fee, counterId: receivableId, counterSubId: null, tax: NO_TAX, counterpartyId: doc.counterparty_id, memo: `請求書 ${doc.doc_no} の入金`, splits: [], checked: true,
+    };
+  };
 
   /** ルールを当て直す（手で変えた行も、ルールに合えば書き換える） */
   const applyRules = () => {
@@ -174,13 +214,21 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
   const checked = pending.filter((r) => drafts.get(r.id)?.checked);
   const register = async () => {
     const problems: string[] = [];
-    const items: { lineId: number; date: string; lines: JournalLine[]; counterpartyId: number | null }[] = [];
+    const items: { lineId: number; date: string; lines: JournalLine[]; counterpartyId: number | null; salesDocId?: number; applied?: number }[] = [];
     const years = [...new Set(checked.map((r) => Number(r.date.slice(0, 4))))];
     const rates = new Map<number, HomeUseRate[]>(await Promise.all(years.map(async (y) => [y, await repo.getHomeUseRates(db, y)] as const)));
     for (const r of checked) {
       const d = drafts.get(r.id)!;
       const where = `${shortDate(r.date)} ${r.description}`;
       if (isDateClosed(r.date)) { problems.push(`${where}：締めた月の明細です`); continue; }
+      // 請求書の入金：口座 ＋ 振込手数料 ／ 売掛金（相手科目を売掛金から変えたら、ふつうの仕訳にする）
+      if (d.docId && d.counterId === receivableId && receivableId) {
+        if (d.fee > 0 && !feeAccountId) { problems.push(`${where}：支払手数料の科目がありません`); continue; }
+        const lines = paymentEntryLines({ amount: r.amount, fee: d.fee, memo: d.memo }, { bank: account.id, receivable: receivableId, fee: feeAccountId ?? 0 })
+          .map((l) => (l.account_id === account.id ? { ...l, sub_account_id: subId } : l));
+        items.push({ lineId: r.id, date: r.date, lines, counterpartyId: d.counterpartyId, salesDocId: d.docId, applied: r.amount + d.fee });
+        continue;
+      }
       const built = bankEntryLines(r, account.id, subId, { accountId: d.counterId, subId: d.counterSubId, tax: taxOf(d.tax), memo: d.memo, dept: d.dept },
         d.splits.map((x) => ({ accountId: x.counterId, subId: x.counterSubId, tax: taxOf(x.tax), memo: x.memo, amount: x.amount, dept: x.dept })));
       if (typeof built === "string") { problems.push(`${where}：${built}`); continue; }
@@ -330,9 +378,22 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
                               <MemoInput value={d.memo} onChange={(v) => patch(r.id, { memo: v })} aria-label="仕訳の摘要" />
                               <CounterpartyField value={d.counterpartyId} onChange={(v) => patch(r.id, { counterpartyId: v })} aria-label="取引先" />
                             </div>
+                            {invoiceCandidates(r).length > 0 && (
+                              <select className="input bank-invoice" value={d.docId ?? ""} aria-label="請求書の入金"
+                                onChange={(e) => {
+                                  const v = Number(e.target.value) || null;
+                                  patch(r.id, v ? invoiceDraft(v, invoiceCandidates(r).find((x) => x.id === v)!.fee) : { docId: null, fee: 0 });
+                                }}>
+                                <option value="">請求書の入金にしない</option>
+                                {invoiceCandidates(r).map((c) => (
+                                  <option key={c.id} value={c.id}>請求書 {c.doc_no} {c.to_name}{c.fee ? `（振込手数料 ${yen(c.fee)}円）` : ""}</option>
+                                ))}
+                              </select>
+                            )}
                           </td>
                           <td>
                             {d.dupEntry ? <span className="badge bank-dup" title={`帳簿に同じ日・同じ金額の仕訳（伝票 No.${d.dupEntry}）があります`}>重複かも</span>
+                              : d.docId && d.counterId === receivableId ? <span className="badge badge-adjust" title="請求書の入金にします（入金済みになります）">請求書</span>
                               : d.source === "rule" ? <span className="badge badge-adjust">ルール</span>
                                 : d.source === "history" ? <span className="badge">前の仕訳</span> : null}
                           </td>

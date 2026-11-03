@@ -37,6 +37,7 @@ import * as repo from "../../db/repo";
 import { medicalStatement, selfMedStatement, statementProblem } from "../../lib/medicalStatement";
 import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
 import { incomeFilingLines } from "../../lib/amendment";
+import { salesDate, savedTotals } from "../../lib/salesDoc";
 import { FilingSection, useFilings } from "./FilingSection";
 
 type View = "input" | "first" | "second" | "fourth" | "medical" | "filing";
@@ -129,6 +130,26 @@ export const IncomeTaxPage = () => {
     const n = next.socialInsurance.length + next.smallBusiness.length - x.socialInsurance.length - x.smallBusiness.length;
     setX(next);
     toast(n ? `事業主貸の補助科目から ${n} 行入れました（保存はまだです）` : "入れられる補助科目はありませんでした");
+  };
+
+  /** 源泉徴収ありの請求書（その年に売上を立てた、発行済みのもの）から、事業の源泉徴収を支払者ごとに入れる（入っている支払者は入れない） */
+  const pickInvoices = async () => {
+    try {
+      const docs = (await repo.getSalesDocs(db)).filter((d) => d.kind === "invoice" && d.status === "issued" && d.withholding && salesDate(d).startsWith(String(year)));
+      const by = new Map<string, { payer: string; payerId: string; income: number; withheld: number }>();
+      for (const d of docs) {
+        const t = savedTotals(d);
+        const cp = counterparties.find((c) => c.id === d.counterparty_id);
+        const payer = cp?.name ?? d.to_name;
+        const row = by.get(payer) ?? { payer, payerId: cp?.corporate_no || d.to_address, income: 0, withheld: 0 };
+        by.set(payer, { ...row, income: row.income + t.total, withheld: row.withheld + t.withholding });
+      }
+      const add = [...by.values()].filter((r) => !x.businessWithholding.some((b) => b.payer.trim() === r.payer));
+      setX({ ...x, businessWithholding: [...x.businessWithholding, ...add.map((r) => ({ item: "報酬", ...r }))] });
+      toast(add.length ? `源泉徴収ありの請求書から ${add.length} 行入れました（保存はまだです）` : "入れられる請求書はありませんでした（源泉徴収ありの発行済みの請求書で、まだ入っていない支払者）");
+    } catch (e) {
+      toast(String(e).replace(/^Error: /, ""), "error");
+    }
   };
 
   const save = async () => {
@@ -250,7 +271,7 @@ export const IncomeTaxPage = () => {
           {view === "input" ? (
             <InputView
               x={x} set={set} setX={setX} result={result} year={year} disabled={!admin} drawings={drawings.length > 0} onPick={pickFromBooks} white={white} familyLines={familyLines}
-              pastCarry={pastCarry}
+              pastCarry={pastCarry} onPickInvoices={pickInvoices}
             />
           ) : view === "first" ? (
             <FirstTable result={result} year={year} />
@@ -348,10 +369,10 @@ const PREMIUM_COLS = (placeholder: string): Col<PremiumRow>[] => [
   { key: "amount", label: "支払った額", kind: "amount", width: 150 },
 ];
 
-const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, white, familyLines, pastCarry }: {
+const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, white, familyLines, pastCarry, onPickInvoices }: {
   x: IncomeTaxInput; set: <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => void; setX: (f: (p: IncomeTaxInput) => IncomeTaxInput) => void;
   result: IncomeTaxResult; year: number; disabled: boolean; drawings: boolean; onPick: () => void; white: boolean; familyLines: FamilyLine[];
-  pastCarry: CarriedLoss[] | null;
+  pastCarry: CarriedLoss[] | null; onPickInvoices: () => void;
 }) => {
   const { rules } = rulesFor(year);
   const man = (n: number) => `${n / 10_000}万円`;
@@ -387,8 +408,9 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, whi
       </label>
     </Section>
 
-    <Section title="事業所得（営業等）の源泉徴収" note="報酬・料金などで源泉徴収された収入を、支払者ごとに入れます（支払調書や請求書の控えから）。事業所得の金額そのものは、帳簿と決算書から出します。">
+    <Section title="事業所得（営業等）の源泉徴収" note="報酬・料金などで源泉徴収された収入を、支払者ごとに入れます（支払調書や請求書の控えから。「請求書から入れる」で、源泉徴収ありの請求書の合計を入れられます）。事業所得の金額そのものは、帳簿と決算書から出します。">
       <RowsEditor rows={x.businessWithholding} cols={PAYER_COLS} onChange={(v) => set("businessWithholding", v)} make={emptyPayer} addLabel="支払者を足す" disabled={disabled} />
+      <button type="button" className="btn ghost sm" onClick={onPickInvoices} disabled={disabled}><Wand2 size={14} /> 請求書から入れる</button>
     </Section>
 
     <Section title="給与" note="源泉徴収票の「支払金額」と「源泉徴収税額」を入れます。源泉徴収票の社会保険料・生命保険料などは、下の所得控除の欄に入れてください。">

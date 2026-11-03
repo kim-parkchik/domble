@@ -3,7 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type Database from "./db/connection";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
-  House, BookOpen, FileText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Network, Users, UserRound, Repeat,
+  House, BookOpen, FileText, ReceiptText, ScrollText, BookText, Scale, FileSpreadsheet, Landmark, Tags, Settings as SettingsIcon, LogOut, History, ShieldCheck, Percent, Paperclip, Building2, Network, Users, UserRound, Repeat,
   ChevronDown, Copy, FolderOpen, Eye, Boxes, ShieldOff, Receipt, Calculator, BookMarked, ClipboardCheck, Wallet,
 } from "lucide-react";
 import { Popover } from "./components/Popover";
@@ -53,13 +53,14 @@ import { UnlockScreen } from "./features/start/UnlockScreen";
 import { NEEDS_KEY, WRONG_KEY, type Unlock } from "./db/encryption";
 import { UsersPage } from "./features/settings/UsersPage";
 import { EBookPage } from "./features/settings/EBookPage";
+import { SalesDocsPage } from "./features/sales/SalesDocsPage";
 import { ManualPage } from "./features/settings/ManualPage";
 import { YearNotice } from "./components/YearNotice";
 import { IntegrityNotice } from "./components/IntegrityNotice";
 import { displayName } from "./lib/business";
 
 export type Page =
-  | "home" | "cashbook" | "voucher" | "payroll" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening"
+  | "home" | "cashbook" | "voucher" | "sales" | "payroll" | "journal" | "ledger" | "evidence" | "history" | "trial" | "homeuse" | "assets" | "tax" | "statements" | "incometax" | "opening"
   | "accounts" | "counterparties" | "departments" | "users" | "settings" | "ebook" | "manual" | "yearend";
 
 const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[] }[] = [
@@ -69,6 +70,7 @@ const NAV: { group: string; items: { id: Page; label: string; icon: ReactNode }[
     items: [
       { id: "cashbook", label: "帳簿入力", icon: <BookOpen size={17} /> },
       { id: "voucher", label: "振替伝票", icon: <FileText size={17} /> },
+      { id: "sales", label: "請求書・見積書", icon: <ReceiptText size={17} /> },
       { id: "payroll", label: "給与", icon: <Wallet size={17} /> },
     ],
   },
@@ -607,6 +609,7 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
           {page === "home" && <DashboardPage go={go} />}
           {page === "cashbook" && <CashBookPage go={go} />}
           {page === "voucher" && <JournalVoucherPage />}
+          {page === "sales" && <SalesDocsPage />}
           {page === "payroll" && <PayrollPage go={go} />}
           {page === "journal" && <JournalListPage />}
           {page === "ledger" && <GeneralLedgerPage />}

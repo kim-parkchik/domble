@@ -466,6 +466,106 @@ describe("固定資産の売却・除却の仕訳（repo）", () => {
   });
 });
 
+describe("見積書・請求書（repo）", () => {
+  const setup = async (mode: "strict" | "standard" = "strict") => {
+    const { db } = mode === "strict" ? strict : makeDb("standard");
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const cp = await repo.createCounterparty(db, { name: "株式会社ヤマダ", kana: "やまだ", invoice_no: "", memo: "" });
+    // 課税事業者（本則課税・税込経理）の年
+    await repo.saveTaxYear(db, { from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "" });
+    const doc: repo.SalesDocInput = {
+      kind: "invoice", doc_no: "2026-0001", issue_date: "2026-05-31", delivery_date: null, due_date: "2026-06-30", counterparty_id: cp, to_name: "株式会社ヤマダ",
+      honorific: "御中", to_address: "", subject: "ロゴ制作", items: [{ name: "デザイン料", qty: 1, unit: "式", price: 100_000, tax: "10" }], price_mode: "exclusive",
+      withholding: 1, notes: "", bank_text: "", source_id: null, revenue_account_id: null,
+    };
+    return { db, id, cp, doc };
+  };
+  const linesOf = async (db: Database, entryId: number) =>
+    (await repo.getEntry(db, entryId))!.lines.map((l) => [l.side, l.account_id, l.amount, l.tax_code ?? null]);
+
+  test("下書き → 発行で売掛金の仕訳（源泉徴収は事業主貸）。直すと同じ仕訳を訂正。番号は重ならない", async () => {
+    const { db, id, cp, doc } = await setup();
+    const docId = await repo.saveSalesDoc(db, null, doc);
+    expect((await repo.getSalesDocs(db))[0]).toMatchObject({ id: docId, status: "draft", entry_id: null });
+    await repo.issueSalesDoc(db, docId);
+    const issued = (await repo.getSalesDocs(db))[0];
+    expect(issued.status).toBe("issued");
+    expect((await repo.getEntry(db, issued.entry_id!))!).toMatchObject({ date: "2026-05-31", counterparty_id: cp });
+    expect(await linesOf(db, issued.entry_id!)).toEqual([
+      ["debit", id("売掛金"), 99_790, "none"], ["credit", id("売上高"), 110_000, "sales10"], ["debit", id("事業主貸"), 10_210, "none"],
+    ]);
+    // 取引日があればその日に売上を立てる。金額を直すと同じ仕訳を訂正する
+    await repo.saveSalesDoc(db, docId, { ...doc, delivery_date: "2026-05-20", items: [{ ...doc.items[0], price: 200_000 }] });
+    const after = (await repo.getSalesDocs(db))[0];
+    expect(after.entry_id).toBe(issued.entry_id);
+    expect((await repo.getEntry(db, after.entry_id!))!.date).toBe("2026-05-20");
+    expect((await linesOf(db, after.entry_id!))[0]).toEqual(["debit", id("売掛金"), 199_580, "none"]);
+    await expect(repo.saveSalesDoc(db, null, { ...doc })).rejects.toThrow(/もうあります/);
+    await expect(repo.deleteSalesDoc(db, docId)).rejects.toThrow(/削除できません/);
+    const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "salesdoc");
+    expect(h.map((x) => x.action).reverse()).toEqual(["issue", "change"]);
+  });
+
+  test("入金：預金 ＋ 振込手数料 ／ 売掛金。取り消すと仕訳も消す。入金があると取消できない。取消で売掛金の仕訳を削除", async () => {
+    const { db, id, doc } = await setup();
+    const docId = await repo.saveSalesDoc(db, null, doc);
+    await repo.issueSalesDoc(db, docId);
+    const payEntry = await repo.addSalesPayment(db, docId, { paid_on: "2026-06-30", amount: 99_130, fee: 660, bankAccountId: id("普通預金"), feeAccountId: id("支払手数料") });
+    // 税区分は科目の初期値（振込手数料は課税仕入）
+    expect(await linesOf(db, payEntry)).toEqual([["debit", id("普通預金"), 99_130, "none"], ["credit", id("売掛金"), 99_790, "none"], ["debit", id("支払手数料"), 660, "purchase10"]]);
+    expect((await repo.getSalesPayments(db)).map((p) => [p.doc_id, p.amount])).toEqual([[docId, 99_790]]);
+    await expect(repo.voidSalesDoc(db, docId, "誤り")).rejects.toThrow(/入金があります/);
+    const [p] = await repo.getSalesPayments(db);
+    await repo.removeSalesPayment(db, p.id);
+    expect(await repo.getSalesPayments(db)).toEqual([]);
+    expect((await repo.getEntry(db, payEntry))!.is_deleted).toBe(1);
+    await expect(repo.voidSalesDoc(db, docId, " ")).rejects.toThrow(/理由/);
+    const entryId = (await repo.getSalesDocs(db))[0].entry_id!;
+    await repo.voidSalesDoc(db, docId, "金額の誤り");
+    expect((await repo.getSalesDocs(db))[0]).toMatchObject({ status: "void", entry_id: null });
+    expect((await repo.getEntry(db, entryId))!.is_deleted).toBe(1);
+    await expect(repo.saveSalesDoc(db, docId, doc)).rejects.toThrow(/取消した書類/);
+  });
+
+  test("明細の取り込みで入金にする（仕訳はそのまま。入金を取り消してもつなぎを外すだけ）。通常モードで仕訳を削除すると、つなぎも外れる", async () => {
+    const { db, id, cp, doc } = await setup("standard");
+    const docId = await repo.saveSalesDoc(db, null, doc);
+    await repo.issueSalesDoc(db, docId);
+    const bank = id("普通預金");
+    await repo.addBankLines(db, bank, null, [{ row: 0, date: "2026-06-30", description: "ﾌﾘｺﾐ ｶ)ﾔﾏﾀﾞ", side: "debit", amount: 99_790, balance: null, fingerprint: "p" }], "明細.csv");
+    const line = (await repo.getBankLines(db, bank, null))[0];
+    const lines: JournalLine[] = [
+      { row_no: 1, side: "debit", account_id: bank, sub_account_id: null, amount: 99_790, memo: "入金" },
+      { row_no: 1, side: "credit", account_id: id("売掛金"), sub_account_id: null, amount: 99_790, memo: "入金" },
+    ];
+    const [entry] = await repo.registerBankLines(db, [{ lineId: line.id, date: line.date, lines, counterpartyId: cp, salesDocId: docId, applied: 99_790 }], "明細.csv");
+    const [p] = await repo.getSalesPayments(db);
+    expect([p.entry_id, p.amount, p.created]).toEqual([entry, 99_790, 0]);
+    await repo.removeSalesPayment(db, p.id);
+    expect(await repo.getEntry(db, entry)).not.toBeNull();
+    await repo.linkSalesPayment(db, docId, entry, 99_790);
+    await expect(repo.linkSalesPayment(db, docId, entry, 99_790)).rejects.toThrow(/もう入金/);
+    // 通常モードで請求書の仕訳を削除すると、請求書は仕訳の無い発行済みになる
+    await repo.deleteEntry(db, entry);
+    expect(await repo.getSalesPayments(db)).toEqual([]);
+    await repo.deleteEntry(db, (await repo.getSalesDocs(db))[0].entry_id!);
+    expect((await repo.getSalesDocs(db))[0]).toMatchObject({ status: "issued", entry_id: null });
+  });
+
+  test("見積書は仕訳を作らない。下書きは削除できる。請求書の設定（振込先・端数）", async () => {
+    const { db, doc } = await setup();
+    const est = await repo.saveSalesDoc(db, null, { ...doc, kind: "estimate", doc_no: "2026-0001", withholding: 0 });
+    await repo.issueSalesDoc(db, est);
+    expect((await repo.getSalesDocs(db))[0]).toMatchObject({ kind: "estimate", status: "issued", entry_id: null });
+    const draft = await repo.saveSalesDoc(db, null, { ...doc, source_id: est });
+    await repo.deleteSalesDoc(db, draft);
+    expect((await repo.getSalesDocs(db)).map((d) => d.id)).toEqual([est]);
+    await repo.saveInvoiceSettings(db, { invoice_bank: " ○○銀行 本店 普通 ", invoice_rounding: "round", invoice_notes: "" });
+    expect(await repo.getInvoiceSettings(db)).toEqual({ invoice_bank: "○○銀行 本店 普通", invoice_rounding: "round", invoice_notes: "" });
+  });
+});
+
 describe("申告の控え（repo）", () => {
   test("残して読み直せる（年ごと）。年を締めたあとも残せ、削除もでき、厳密モードでは履歴に残る。日付と数字を確かめる", async () => {
     const { db } = strict;

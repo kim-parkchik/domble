@@ -274,10 +274,10 @@ export const subKey = (accountId: number, subId: number | null) => `${accountId}
 /** 科目・補助科目・期首残高の変更履歴 */
 export interface MasterHistoryRecord {
   id: number;
-  target_type: "account" | "sub" | "opening" | "homeuse" | "closing" | "counterparty" | "department" | "user" | "setting" | "asset" | "filing";
+  target_type: "account" | "sub" | "opening" | "homeuse" | "closing" | "counterparty" | "department" | "user" | "setting" | "asset" | "filing" | "salesdoc";
   target_id: number;
   /** close / unlock は年度の締め（target_type = closing、target_id = 年度） */
-  action: "create" | "rename" | "hide" | "show" | "delete" | "change" | "close" | "unlock";
+  action: "create" | "rename" | "hide" | "show" | "delete" | "change" | "close" | "unlock" | "issue" | "void";
   fiscal_year: number;
   label: string;
   old_value: string;

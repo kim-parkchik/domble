@@ -54,6 +54,10 @@ import { closingInventory, inventoryProblem, reversalLines, type InventoryCount 
 import type { InventoryAdjust } from "../lib/taxReturn";
 import { FILING_KIND_LABEL, FILING_TAX_LABEL, type FilingLine, type TaxFiling } from "../lib/amendment";
 import {
+  DOC_KIND_LABEL, docMemo, docProblem, invoiceEntryLines, ITEM_TAX_LABEL, paymentEntryLines, ROUNDING_LABEL, salesDate, savedTotals,
+  type DocItem, type DocTotals, type Rounding, type SalesDoc, type SalesPayment,
+} from "../lib/salesDoc";
+import {
   DEFAULT_BACKUP_GENERATIONS, MAX_BACKUP_GENERATIONS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
 } from "../constants/appConfig";
 
@@ -703,8 +707,9 @@ const setBankLinesStatus_ = async (db: Database, ids: number[], status: "pending
 };
 
 /** 明細を仕訳にする（まとめて。1つのトランザクションなので、途中で失敗したら1件も残らない） */
+/** salesDocId = 請求書の入金にする明細（applied = 売掛金から消す額。受け取った額 ＋ 差し引かれた振込手数料） */
 const registerBankLines_ = async (
-  db: Database, items: { lineId: number; date: string; lines: JournalLine[]; counterpartyId: number | null }[], source: string,
+  db: Database, items: { lineId: number; date: string; lines: JournalLine[]; counterpartyId: number | null; salesDocId?: number; applied?: number }[], source: string,
 ) => {
   const ids: number[] = [];
   if (items.length === 0) return ids;
@@ -720,6 +725,7 @@ const registerBankLines_ = async (
       const entryId = await createEntry_(db, it.date, it.lines, it.counterpartyId, `明細の取り込み（${source}）`);
       await db.execute("UPDATE bank_lines SET status = 'done', entry_id = ? WHERE id = ?", [entryId, it.lineId]);
       await link(entryId);
+      if (it.salesDocId && it.applied) await linkSalesPayment_(db, it.salesDocId, entryId, it.applied);
       ids.push(entryId);
     }
   });
@@ -814,6 +820,217 @@ const saveIncomeTaxInput_ = async (db: Database, year: number, input: IncomeTaxI
     "INSERT INTO income_tax_inputs (fiscal_year, data) VALUES (?, ?) ON CONFLICT (fiscal_year) DO UPDATE SET data = excluded.data",
     [year, JSON.stringify(n)],
   );
+};
+
+// ── 見積書・請求書（計算は lib/salesDoc.ts） ──
+//  - 請求書を発行すると売掛金の仕訳を作る（直すと同じ仕訳を訂正、取消で削除）。入金は sales_payments（作った仕訳か、明細の取り込みの仕訳）
+//  - 発行済みの書類の発行・変更・取消・入金は、厳密モードでは履歴に残す（適格請求書の写しとして、発行した中身を残す）
+export interface InvoiceSettings {
+  invoice_bank: string;
+  invoice_rounding: Rounding;
+  invoice_notes: string;
+}
+export const getInvoiceSettings = async (db: Database): Promise<InvoiceSettings> =>
+  (await db.select<InvoiceSettings[]>("SELECT invoice_bank, invoice_rounding, invoice_notes FROM settings WHERE id = 1"))[0]
+    ?? { invoice_bank: "", invoice_rounding: "floor", invoice_notes: "" };
+const saveInvoiceSettings_ = async (db: Database, x: InvoiceSettings) => {
+  if (!(x.invoice_rounding in ROUNDING_LABEL)) throw new Error("端数の丸め方を選んでください");
+  const before = await getInvoiceSettings(db);
+  await db.execute("UPDATE settings SET invoice_bank = ?, invoice_rounding = ?, invoice_notes = ? WHERE id = 1", [x.invoice_bank.trim(), x.invoice_rounding, x.invoice_notes.trim()]);
+  const text = (v: InvoiceSettings) => `振込先 ${v.invoice_bank || "なし"}、端数 ${ROUNDING_LABEL[v.invoice_rounding]}、備考 ${v.invoice_notes || "なし"}`;
+  if (text(before) !== text({ ...x, invoice_bank: x.invoice_bank.trim(), invoice_notes: x.invoice_notes.trim() })) {
+    await logMaster(db, { target_type: "setting", target_id: 1, action: "change", fiscal_year: await currentYear(db), label: "請求書の設定", old_value: text(before), new_value: text(x) });
+  }
+};
+
+export type SalesDocInput = Omit<SalesDoc, "id" | "status" | "entry_id" | "rounding" | "exempt">;
+type SalesDocRow = Omit<SalesDoc, "items"> & { items: string; entry_live: number | null };
+const SALES_DOC_COLUMNS = `d.id, d.kind, d.doc_no, d.issue_date, d.delivery_date, d.due_date, d.counterparty_id, d.to_name, d.honorific, d.to_address, d.subject, d.items,
+  d.price_mode, d.withholding, d.notes, d.bank_text, d.status, d.source_id, d.entry_id, d.revenue_account_id, d.rounding, d.exempt`;
+const parseDoc = (r: SalesDocRow): SalesDoc => {
+  let items: DocItem[] = [];
+  try {
+    const x = JSON.parse(r.items);
+    if (Array.isArray(x)) items = x;
+  } catch {
+    /* 読めなければ空 */
+  }
+  // 仕訳が削除されていれば、仕訳は無いものとして扱う（発行し直すと作り直す）
+  const { entry_live, ...rest } = r;
+  return { ...rest, items, entry_id: r.entry_id && entry_live ? r.entry_id : null };
+};
+/** 見積書・請求書（発行日の新しい順） */
+export const getSalesDocs = async (db: Database): Promise<SalesDoc[]> =>
+  (await db.select<SalesDocRow[]>(
+    `SELECT ${SALES_DOC_COLUMNS}, (e.id IS NOT NULL AND e.is_deleted = 0) AS entry_live
+       FROM sales_docs d LEFT JOIN journal_entries e ON e.id = d.entry_id ORDER BY d.issue_date DESC, d.id DESC`,
+  )).map(parseDoc);
+const getSalesDoc = async (db: Database, id: number) => {
+  const r = await db.select<SalesDocRow[]>(
+    `SELECT ${SALES_DOC_COLUMNS}, (e.id IS NOT NULL AND e.is_deleted = 0) AS entry_live FROM sales_docs d LEFT JOIN journal_entries e ON e.id = d.entry_id WHERE d.id = ?`, [id],
+  );
+  if (!r[0]) throw new Error("書類が見つかりません");
+  return parseDoc(r[0]);
+};
+/** 入金（仕訳が削除されたものは数えない） */
+export const getSalesPayments = async (db: Database): Promise<(SalesPayment & { created: number })[]> =>
+  db.select(
+    `SELECT p.id, p.doc_id, p.entry_id, p.paid_on, p.amount, p.created FROM sales_payments p LEFT JOIN journal_entries e ON e.id = p.entry_id
+      WHERE p.entry_id IS NULL OR e.is_deleted = 0 ORDER BY p.paid_on, p.id`,
+  );
+
+/** 保存するときの丸め方（設定）と、売上の日の年が免税事業者か */
+const docBasis = async (db: Database, d: Pick<SalesDoc, "issue_date" | "delivery_date">) => ({
+  rounding: (await getInvoiceSettings(db)).invoice_rounding,
+  exempt: taxYearOf(await getTaxYears(db), Number(salesDate(d).slice(0, 4))).status === "exempt" ? 1 : 0,
+});
+const totalsOf = async (_db: Database, d: SalesDoc) => savedTotals(d);
+const docText = (d: SalesDoc, t: DocTotals) =>
+  [`${d.doc_no} ${d.issue_date}`, `${d.to_name} ${d.honorific}`, d.subject, ...d.items.map((it) => `${it.name} ${it.qty}${it.unit} × ${it.price.toLocaleString()}円（${ITEM_TAX_LABEL[it.tax]}）`),
+    `合計 ${t.total.toLocaleString()}円`, t.withholding ? `源泉徴収 ${t.withholding.toLocaleString()}円・差引 ${t.billed.toLocaleString()}円` : ""].filter(Boolean).join("、");
+const logDoc = async (db: Database, d: SalesDoc, action: "issue" | "change" | "void", old_value: string, new_value: string) =>
+  logMaster(db, { target_type: "salesdoc", target_id: d.id, action, fiscal_year: Number(d.issue_date.slice(0, 4)), label: `${DOC_KIND_LABEL[d.kind]} ${d.doc_no}`, old_value, new_value });
+
+/** 請求書の仕訳の科目（売掛金・売上の科目・事業主貸） */
+const invoiceIds = async (db: Database, d: Pick<SalesDoc, "revenue_account_id" | "issue_date">) => {
+  const accts = await getAccounts(db, Number(d.issue_date.slice(0, 4)));
+  const idOf = (code: string) => accts.find((a) => a.code === code)?.id ?? 0;
+  const ids = { receivable: idOf(CODE.RECEIVABLE), revenue: d.revenue_account_id ?? idOf("401"), draw: idOf(CODE.OWNER_DRAW) };
+  if (!ids.receivable || !ids.revenue || !ids.draw) throw new Error("売掛金・売上高・事業主貸の科目が見つかりません");
+  return ids;
+};
+/** 請求書の仕訳を作る・作り直す（発行済みの請求書） */
+const postInvoice = async (db: Database, d: SalesDoc) => {
+  const t = await totalsOf(db, d);
+  if (t.billed <= 0) throw new Error("請求額が 0円の請求書は発行できません");
+  const lines = invoiceEntryLines(d, t, await invoiceIds(db, d));
+  if (d.entry_id) {
+    await updateEntry_(db, d.entry_id, salesDate(d), lines, `${DOC_KIND_LABEL[d.kind]} ${d.doc_no} の訂正`, d.counterparty_id);
+    return d.entry_id;
+  }
+  const id = await createEntry_(db, salesDate(d), lines, d.counterparty_id, `${DOC_KIND_LABEL[d.kind]} ${d.doc_no} の発行`);
+  await db.execute("UPDATE sales_docs SET entry_id = ? WHERE id = ?", [id, d.id]);
+  return id;
+};
+
+/** 追加（id = null）・変更。下書きは自由に直せ、発行済みの請求書を直すと仕訳も訂正する（取消の書類は直せない） */
+const saveSalesDoc_ = async (db: Database, id: number | null, input: SalesDocInput) => {
+  const x: SalesDocInput = {
+    ...input, doc_no: input.doc_no.trim(), to_name: input.to_name.trim(), to_address: input.to_address.trim(), subject: input.subject.trim(),
+    notes: input.notes.trim(), bank_text: input.kind === "invoice" ? input.bank_text.trim() : "", withholding: input.withholding ? 1 : 0,
+    delivery_date: input.delivery_date || null, due_date: input.due_date || null,
+    items: input.items.map((it) => ({ ...it, name: it.name.trim(), unit: it.unit.trim() })),
+  };
+  const problem = docProblem(x);
+  if (problem) throw new Error(problem);
+  const dup = await db.select<{ id: number }[]>("SELECT id FROM sales_docs WHERE kind = ? AND doc_no = ? AND id <> ?", [x.kind, x.doc_no, id ?? 0]);
+  if (dup.length) throw new Error(`番号「${x.doc_no}」の${DOC_KIND_LABEL[x.kind]}がもうあります`);
+  const basis = await docBasis(db, x);
+  const values = [x.kind, x.doc_no, x.issue_date, x.delivery_date, x.due_date, x.counterparty_id, x.to_name, x.honorific, x.to_address, x.subject, JSON.stringify(x.items),
+    x.price_mode, x.withholding, x.notes, x.bank_text, x.source_id, x.revenue_account_id, basis.rounding, basis.exempt];
+  if (id === null) {
+    const r = await db.execute(
+      `INSERT INTO sales_docs (kind, doc_no, issue_date, delivery_date, due_date, counterparty_id, to_name, honorific, to_address, subject, items, price_mode, withholding,
+         notes, bank_text, source_id, revenue_account_id, rounding, exempt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      values,
+    );
+    return Number(r.lastInsertId);
+  }
+  const before = await getSalesDoc(db, id);
+  if (before.status === "void") throw new Error("取消した書類は直せません");
+  if (before.kind !== x.kind) throw new Error("書類の種類は変えられません");
+  await db.execute(
+    `UPDATE sales_docs SET kind = ?, doc_no = ?, issue_date = ?, delivery_date = ?, due_date = ?, counterparty_id = ?, to_name = ?, honorific = ?, to_address = ?, subject = ?,
+       items = ?, price_mode = ?, withholding = ?, notes = ?, bank_text = ?, source_id = ?, revenue_account_id = ?, rounding = ?, exempt = ?,
+       updated_at = DATETIME('now','localtime') WHERE id = ?`,
+    [...values, id],
+  );
+  if (before.status === "issued") {
+    const after = await getSalesDoc(db, id);
+    if (after.kind === "invoice") await postInvoice(db, after);
+    const [o, n] = [docText(before, await totalsOf(db, before)), docText(after, await totalsOf(db, after))];
+    if (o !== n) await logDoc(db, after, "change", o, n);
+  }
+  return id;
+};
+
+/** 発行する（請求書は売掛金の仕訳を作る） */
+const issueSalesDoc_ = async (db: Database, id: number) => {
+  const d = await getSalesDoc(db, id);
+  if (d.status !== "draft") throw new Error("下書きの書類だけ発行できます");
+  await db.execute("UPDATE sales_docs SET status = 'issued', updated_at = DATETIME('now','localtime') WHERE id = ?", [id]);
+  if (d.kind === "invoice") await postInvoice(db, d);
+  await logDoc(db, d, "issue", "", docText(d, await totalsOf(db, d)));
+};
+
+/** 取消（請求書は売掛金の仕訳を削除する。入金があれば先に入金を取り消す） */
+const voidSalesDoc_ = async (db: Database, id: number, reason: string) => {
+  const d = await getSalesDoc(db, id);
+  if (d.status !== "issued") throw new Error("発行済みの書類だけ取り消せます");
+  if ((await getSalesPayments(db)).some((p) => p.doc_id === id)) throw new Error("入金があります。先に入金を取り消してください");
+  if (!reason.trim()) throw new Error("取消の理由を入れてください");
+  if (d.entry_id) await deleteEntry_(db, d.entry_id, `${DOC_KIND_LABEL[d.kind]} ${d.doc_no} の取消：${reason.trim()}`);
+  await db.execute("UPDATE sales_docs SET status = 'void', updated_at = DATETIME('now','localtime') WHERE id = ?", [id]);
+  await logDoc(db, d, "void", docText(d, await totalsOf(db, d)), `取消：${reason.trim()}`);
+};
+
+/** 下書きの削除（発行した書類は削除せず取り消す） */
+const deleteSalesDoc_ = async (db: Database, id: number) => {
+  const d = await getSalesDoc(db, id);
+  if (d.status !== "draft") throw new Error("発行した書類は削除できません（取り消してください）");
+  await db.execute("UPDATE sales_docs SET source_id = NULL WHERE source_id = ?", [id]);
+  await db.execute("DELETE FROM sales_docs WHERE id = ?", [id]);
+};
+
+/** 入金を記録する（入金の仕訳を作る）。fee = 差し引かれた振込手数料 */
+const addSalesPayment_ = async (db: Database, docId: number, p: { paid_on: string; amount: number; fee: number; bankAccountId: number; feeAccountId: number }) => {
+  const d = await getSalesDoc(db, docId);
+  if (d.kind !== "invoice" || d.status !== "issued") throw new Error("発行済みの請求書だけ入金を記録できます");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.paid_on)) throw new Error("入金日を入れてください");
+  if (!Number.isInteger(p.amount) || p.amount <= 0 || !Number.isInteger(p.fee) || p.fee < 0) throw new Error("金額は整数で入れてください");
+  const { receivable } = await invoiceIds(db, d);
+  const memo = `${docMemo(d)} の入金`;
+  const entryId = await createEntry_(db, p.paid_on, paymentEntryLines({ amount: p.amount, fee: p.fee, memo }, { bank: p.bankAccountId, receivable, fee: p.feeAccountId }), d.counterparty_id, memo);
+  await db.execute("INSERT INTO sales_payments (doc_id, entry_id, paid_on, amount, created) VALUES (?, ?, ?, ?, 1)", [docId, entryId, p.paid_on, p.amount + p.fee]);
+  await logDoc(db, d, "change", "", `入金 ${p.paid_on} ${(p.amount + p.fee).toLocaleString()}円（仕訳 No.${entryId}）`);
+  return entryId;
+};
+/**
+ * 入金にできる帳簿の仕訳（明細の取り込みなどで作った、売掛金を減らす仕訳）：請求書と同じ取引先で、請求書の売上の日より後のもの。
+ * もう入金にした仕訳と、請求書の仕訳は除く。amount = 売掛金を減らした額
+ */
+export const receivableCredits = async (db: Database, docId: number) => {
+  const d = await getSalesDoc(db, docId);
+  const { receivable } = await invoiceIds(db, d);
+  return db.select<{ entry_id: number; date: string; description: string; amount: number }[]>(
+    `SELECT e.id AS entry_id, e.date, e.description, SUM(l.amount) AS amount FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id
+      WHERE e.is_deleted = 0 AND l.side = 'credit' AND l.account_id = ? AND e.date >= ?
+        AND COALESCE(e.counterparty_id, 0) = COALESCE(?, 0)
+        AND e.id NOT IN (SELECT entry_id FROM sales_payments WHERE entry_id IS NOT NULL)
+        AND e.id NOT IN (SELECT entry_id FROM sales_docs WHERE entry_id IS NOT NULL)
+      GROUP BY e.id ORDER BY e.date, e.id`,
+    [receivable, salesDate(d), d.counterparty_id],
+  );
+};
+
+/** 帳簿にある仕訳（明細の取り込みなど）を入金にする。amount = 売掛金から消す額 */
+const linkSalesPayment_ = async (db: Database, docId: number, entryId: number, amount: number) => {
+  const d = await getSalesDoc(db, docId);
+  if (d.kind !== "invoice" || d.status !== "issued") throw new Error("発行済みの請求書だけ入金にできます");
+  const e = await getEntry(db, entryId);
+  if (!e || e.is_deleted) throw new Error("仕訳が見つかりません");
+  if ((await getSalesPayments(db)).some((p) => p.entry_id === entryId)) throw new Error("この仕訳はもう入金にしています");
+  await db.execute("INSERT INTO sales_payments (doc_id, entry_id, paid_on, amount, created) VALUES (?, ?, ?, ?, 0)", [docId, entryId, e.date, amount]);
+  await logDoc(db, d, "change", "", `入金 ${e.date} ${amount.toLocaleString()}円（仕訳 No.${entryId}）`);
+};
+/** 入金を取り消す（domble で作った入金の仕訳は削除する。明細の取り込みなどの仕訳はつなぎを外すだけ） */
+const removeSalesPayment_ = async (db: Database, paymentId: number) => {
+  const p = (await db.select<(SalesPayment & { created: number })[]>("SELECT id, doc_id, entry_id, paid_on, amount, created FROM sales_payments WHERE id = ?", [paymentId]))[0];
+  if (!p) throw new Error("入金が見つかりません");
+  const d = await getSalesDoc(db, p.doc_id);
+  await db.execute("DELETE FROM sales_payments WHERE id = ?", [paymentId]);
+  if (p.created && p.entry_id) await deleteEntry_(db, p.entry_id, `${docMemo(d)} の入金の取消`);
+  await logDoc(db, d, "change", `入金 ${p.paid_on} ${p.amount.toLocaleString()}円`, "入金の取消");
 };
 
 // ── 申告の控え（修正申告・更正の請求の「修正前」。lib/amendment.ts） ──
@@ -1202,8 +1419,9 @@ export const accountUsage = async (db: Database, id: number) => {
           + (SELECT COUNT(*) FROM bank_lines WHERE account_id = ?)
           + (SELECT COUNT(*) FROM bank_formats WHERE account_id = ?)
           + (SELECT COUNT(*) FROM bank_rules WHERE account_id = ? OR target_account_id = ?)
-          + (SELECT COUNT(*) FROM bank_rule_splits WHERE account_id = ?) AS n`,
-    [id, id, id, id, id, id, id, id, id],
+          + (SELECT COUNT(*) FROM bank_rule_splits WHERE account_id = ?)
+          + (SELECT COUNT(*) FROM sales_docs WHERE revenue_account_id = ?) AS n`,
+    [id, id, id, id, id, id, id, id, id, id],
   );
   return r[0].n;
 };
@@ -1544,8 +1762,9 @@ export const counterpartyUsage = async (db: Database, id: number) => {
     `SELECT (SELECT COUNT(*) FROM journal_entries WHERE counterparty_id = ?)
           + (SELECT COUNT(*) FROM evidences WHERE counterparty_id = ?)
           + (SELECT COUNT(*) FROM journal_templates WHERE counterparty_id = ?)
-          + (SELECT COUNT(*) FROM bank_rules WHERE counterparty_id = ?) AS n`,
-    [id, id, id, id],
+          + (SELECT COUNT(*) FROM bank_rules WHERE counterparty_id = ?)
+          + (SELECT COUNT(*) FROM sales_docs WHERE counterparty_id = ?) AS n`,
+    [id, id, id, id, id],
   );
   return r[0].n;
 };
@@ -2248,6 +2467,9 @@ const deleteEntry_ = async (db: Database, id: number, reason = "") => {
     await db.execute("DELETE FROM home_use_runs WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM depreciation_runs WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM allowance_runs WHERE entry_id = ?", [id]);
+    // 請求書の仕訳・入金の仕訳なら、つなぎを外す（請求書は仕訳の無い発行済みになり、発行し直すと作り直す）
+    await db.execute("UPDATE sales_docs SET entry_id = NULL WHERE entry_id = ?", [id]);
+    await db.execute("DELETE FROM sales_payments WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_lines WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_entries WHERE id = ?", [id]);
     return;
@@ -3656,6 +3878,14 @@ export const setAccountStatementLine = inTx(masterOpen(setAccountStatementLine_)
 export const saveFilingYear = inTx(saveFilingYear_, (year) => `${year}年の申告の種類`, { perm: "settings" });
 export const saveRealEstate = inTx(saveRealEstate_, () => "不動産所得", { perm: "settings" });
 export const saveIncomeTaxInput = inTx(saveIncomeTaxInput_, (year) => `${year}年の所得税の申告書の入力`, { perm: "settings" });
+export const saveInvoiceSettings = inTx(saveInvoiceSettings_, () => "請求書の設定", { perm: "settings" });
+export const saveSalesDoc = inTx(saveSalesDoc_, (id, x) => `${DOC_KIND_LABEL[x.kind]} ${x.doc_no}${id === null ? " の作成" : " の保存"}`, { perm: "entry" });
+export const issueSalesDoc = inTx(issueSalesDoc_, (id) => `書類 #${id} の発行`, { perm: "entry" });
+export const voidSalesDoc = inTx(voidSalesDoc_, (id) => `書類 #${id} の取消`, { perm: "entry" });
+export const deleteSalesDoc = inTx(deleteSalesDoc_, (id) => `書類 #${id} の削除`, { perm: "entry" });
+export const addSalesPayment = inTx(addSalesPayment_, (id) => `請求書 #${id} の入金`, { perm: "entry" });
+export const linkSalesPayment = inTx(linkSalesPayment_, (id) => `請求書 #${id} の入金`, { perm: "entry" });
+export const removeSalesPayment = inTx(removeSalesPayment_, (id) => `入金 #${id} の取消`, { perm: "entry" });
 export const addFiling = inTx(addFiling_, (f) => `${f.fiscal_year}年の${FILING_TAX_LABEL[f.tax]}の申告の控え`, { perm: "settings" });
 export const deleteFiling = inTx(deleteFiling_, (id) => `申告の控え #${id} の削除`, { perm: "settings" });
 export const saveTaxPrevManual = inTx(saveTaxPrevManual_, (year) => `${year}年の前年の確定消費税額`, { perm: "settings" });

@@ -365,6 +365,50 @@ export const SCHEMA: string[] = [
   );`,
 
   /**
+   * 見積書・請求書（lib/salesDoc.ts）。items は明細（JSON。DocItem[]）。番号は種類ごとに重ならない
+   * status = draft 下書き ／ issued 発行済み ／ void 取消。請求書を発行すると売掛金の仕訳を作る（entry_id。直すと同じ仕訳を訂正する）
+   * 発行済みの書類の変更・取消は、厳密モードでは履歴に残す（適格請求書の写し）
+   */
+  `CREATE TABLE IF NOT EXISTS sales_docs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('estimate','invoice')),
+    doc_no TEXT NOT NULL,
+    issue_date TEXT NOT NULL,
+    delivery_date TEXT,
+    due_date TEXT,
+    counterparty_id INTEGER REFERENCES counterparties(id),
+    to_name TEXT NOT NULL,
+    honorific TEXT NOT NULL DEFAULT '御中',
+    to_address TEXT NOT NULL DEFAULT '',
+    subject TEXT NOT NULL DEFAULT '',
+    items TEXT NOT NULL,
+    price_mode TEXT NOT NULL DEFAULT 'exclusive' CHECK (price_mode IN ('exclusive','inclusive')),
+    withholding INTEGER NOT NULL DEFAULT 0 CHECK (withholding IN (0, 1)),
+    notes TEXT NOT NULL DEFAULT '',
+    bank_text TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','issued','void')),
+    source_id INTEGER REFERENCES sales_docs(id),
+    entry_id INTEGER REFERENCES journal_entries(id),
+    revenue_account_id INTEGER REFERENCES accounts(id),
+    rounding TEXT NOT NULL DEFAULT 'floor' CHECK (rounding IN ('floor','round','ceil')), -- 保存したときの丸め方（あとで設定を変えても金額が変わらない）
+    exempt INTEGER NOT NULL DEFAULT 0 CHECK (exempt IN (0, 1)),                             -- 保存したときに免税事業者の年だったか
+    created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
+    updated_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
+    UNIQUE (kind, doc_no)
+  );`,
+
+  /** 請求書の入金（売掛金から消した額 ＝ 受け取った額 ＋ 差し引かれた振込手数料）。created = domble で作った入金の仕訳（取り消すと仕訳も消す） */
+  `CREATE TABLE IF NOT EXISTS sales_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_id INTEGER NOT NULL REFERENCES sales_docs(id),
+    entry_id INTEGER REFERENCES journal_entries(id),
+    paid_on TEXT NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount > 0),
+    created INTEGER NOT NULL DEFAULT 0 CHECK (created IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
+  );`,
+
+  /**
    * 申告の控え（所得税・消費税。年に何件でも。いちばん新しいものが修正申告の「修正前」になる。lib/amendment.ts）
    * kind = original 確定申告 ／ amended 修正申告 ／ reassessed 更正（税務署からの通知）。lines は申告書の主な数字（JSON。FilingLine[]）
    * 帳簿ではなく控えなので、年を締めたあとも残せる（厳密モードでは履歴に残す）
@@ -968,6 +1012,10 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["fixed_assets", "residual_value", "INTEGER CHECK (residual_value >= 0)"],
   ["fixed_assets", "converted", "INTEGER NOT NULL DEFAULT 0 CHECK (converted IN (0, 1))"],
   ["fixed_assets", "declining_250", "INTEGER NOT NULL DEFAULT 0 CHECK (declining_250 IN (0, 1))"],
+  // 見積書・請求書の設定：振込先・端数の丸め方（明細の金額と税率ごとの消費税額）・備考の初期値（lib/salesDoc.ts）
+  ["settings", "invoice_bank", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "invoice_rounding", "TEXT NOT NULL DEFAULT 'floor' CHECK (invoice_rounding IN ('floor','round','ceil'))"],
+  ["settings", "invoice_notes", "TEXT NOT NULL DEFAULT ''"],
   // 不動産所得：none なし ／ small 事業的規模でない ／ business 事業的規模
   ["settings", "real_estate", "TEXT NOT NULL DEFAULT 'none' CHECK (real_estate IN ('none','small','business'))"],
   ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],
