@@ -18,7 +18,7 @@ import { useToast } from "../../components/Toast";
 import { CATEGORY_CODE_RANGE, CATEGORY_LABEL, FIXED_ASSET_CODES, LOCKED_CODES } from "../../constants/accounts";
 import { MAX_SUB_ACCOUNTS_PER_ACCOUNT } from "../../constants/appConfig";
 import { BUSINESS_CLASSES, PURCHASE_USES, TAX_CODES } from "../../constants/tax";
-import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, useLabel } from "../../lib/tax";
+import { accountTaxCode, builtinTaxCode, classLabel, isPurchaseCode, isReduced1, useLabel } from "../../lib/tax";
 import type { Account, AccountCategory, IncomeKind, PurchaseUse, Side, TaxCode } from "../../lib/types";
 import { isProfitLoss } from "../../lib/incomeKind";
 import * as repo from "../../db/repo";
@@ -193,7 +193,7 @@ export const AccountsPage = () => {
             <thead>
               <tr>
                 <th>使う</th><th>コード</th><th>科目名</th>
-                <th title="課税事業者の期間に、この科目を選んだときに入る税区分。資産の科目は借方（取得したとき）だけに使い、貸方は対象外です">税区分（初期値）</th>
+                <th title="課税事業者の期間に、この科目を選んだときに入る税区分。資産の科目は借方（取得したとき）だけに使い、貸方は対象外です。8%（軽減）は、令和9年4月1日〜令和11年3月31日の取引では 1%（軽減）で入ります">税区分（初期値）</th>
                 <th title="簡易課税の年に、この科目の課税売上に入る事業区分（「主な事業区分」は事業者設定の年度ごとの設定。資産の売却は第四種）と、本則課税の年に、この科目の課税仕入に入る用途区分（個別対応方式で使う）">事業区分・用途区分</th>
                 <th title={`青色申告決算書（e-Tax 用のデータ）で書く欄。初期値は科目名から自動（名前の同じ欄、無ければ科目名で書く追加の欄）。追加の欄が足りないときは雑費などにまとめます。変えると ${year}年からの欄になり、前の年の欄はそのまま残ります`}>決算書の欄（{year}年）</th>
                 <th>補助科目</th><th />
@@ -230,7 +230,8 @@ export const AccountsPage = () => {
                             onChange={(e) => setTax(a, e.target.value as TaxCode)} aria-label={`${a.name}の税区分の初期値`} disabled={frozen}
                             title={a.default_tax_code ? `変更済み（決まった初期値は「${TAX_CODES.find((t) => t.code === builtinTaxCode(a))!.label}」）` : "決まった初期値"}
                           >
-                            {TAX_CODES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+                            {/* 1%（軽減）は選ばない：8%（軽減）にしておけば、期間中の取引は 1% で入る（lib/tax.ts の reducedOn） */}
+                            {TAX_CODES.filter((t) => !isReduced1(t.code) || t.code === accountTaxCode(a)).map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
                           </select>
                         </td>
                         <td>

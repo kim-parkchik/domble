@@ -66,7 +66,7 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
   const hasInput = rows.some((r) => r.debitAccountId || r.creditAccountId || r.debitAmount || r.creditAmount || r.memo.trim());
   const pickTemplate = async (t: JournalTemplate) => {
     if (hasInput && !(await ask("今の入力を消して、定型仕訳を入れます。", { title: "定型仕訳の呼び出し", okLabel: "入れる", cancelLabel: "やめる" }))) return;
-    const r = applyTemplate(t.rows, accounts, subAccounts);
+    const r = applyTemplate(t.rows, accounts, subAccounts, date);
     setRows(padRows(r.rows));
     const cp = t.counterparty_id ? counterparties.find((c) => c.id === t.counterparty_id && c.is_active) : null;
     setCounterpartyId(cp ? cp.id : null);
@@ -98,8 +98,8 @@ export const VoucherForm = ({ entryId, initialDate, initialRows, initialCounterp
     const e = await repo.findMemoEntry(db, m).catch(() => null);
     const f = e ? voucherFill(e, m) : null;
     if (!e || !f) return;
-    const d = usableSide(f.debit, accounts, subAccounts);
-    const c = usableSide(f.credit, accounts, subAccounts);
+    const d = usableSide(f.debit, accounts, subAccounts, date);
+    const c = usableSide(f.credit, accounts, subAccounts, date);
     const patch: Partial<VoucherRow> = {
       ...(d ? { debitAccountId: d.accountId, debitSubId: d.subId, debitTax: d.tax, debitInvoice: d.invoice, debitClass: d.cls, debitUse: d.use, debitDept: activeDept(d.dept) } : {}),
       ...(c ? { creditAccountId: c.accountId, creditSubId: c.subId, creditTax: c.tax, creditInvoice: c.invoice, creditClass: c.cls, creditUse: c.use, creditDept: activeDept(c.dept) } : {}),

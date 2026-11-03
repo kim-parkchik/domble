@@ -17,10 +17,12 @@
  * 特定課税仕入れ（付表2-3 ⑬⑭・付表1-3 ①-2・第二表 ⑨⑩）：課税売上割合が 95% 未満のときだけ、支払対価の額を課税標準額に足し、その 7.8% を仕入税額に入れる
  * 非課税資産の輸出等（付表2-3 ③）：申告書で書き込んだ額
  * 課税売上割合に準ずる割合・調整対象固定資産の調整・有価証券等の譲渡の 5%・旧税率には対応していない
+ * 1%（軽減。令和9年4月1日〜令和11年3月31日の飲食料品）の取引は、0.78% の欄がある様式（令和9年4月1日以後終了課税期間用）がまだドラフト版なので
+ *   入れない（TaxBase.reduced1 に件数と金額を数え、画面で知らせる）
  */
 import type { Account, DeductionMethod, PurchaseUse, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
-import { isFullyDeductible, isImportCode, isPurchaseCode, taxActiveOn, taxCodeDef, transitionalRate } from "./tax";
+import { isBadDebtCode, isFullyDeductible, isImportCode, isPurchaseCode, taxActiveOn, taxCodeDef, transitionalRate } from "./tax";
 import { BUSINESS_CLASSES } from "../constants/tax";
 
 export type Rate = 8 | 10;
@@ -50,6 +52,8 @@ export interface TaxBase {
   importTax?: Record<Rate, number>;
   /** 特定課税仕入れの支払対価の額（税抜。返還を差し引いた額） */
   reverse?: number;
+  /** 1%（軽減）の明細（申告書の数字には入れない。件数と税込の金額） */
+  reduced1?: { lines: number; amount: number };
 }
 
 /** 課税仕入とその返還（インボイスのあるもの・経過措置の控除できる割合ごと） */
@@ -73,6 +77,7 @@ export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l
   const b: TaxBase = {
     sales: zero(), salesReturn: zero(), badDebt: zero(), badDebtRecovered: zero(), exportSales: 0, nontaxSales: 0,
     purchase: zero(), purchaseReturn: zero(), transitional: [], byClass: {}, byUse, useUnknown: 0, importTax: zero(), reverse: 0,
+    reduced1: { lines: 0, amount: 0 },
   };
   const addTransitional = (list: PurchaseGroup["transitional"], pct: number, rate: Rate, dr: boolean, amount: number) => {
     let t = list.find((x) => x.pct === pct);
@@ -82,11 +87,16 @@ export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l
   for (const l of lines) {
     if (l.is_deleted || !l.tax_code || l.tax_code === "none" || !taxActiveOn(taxYears, l.date)) continue;
     const def = taxCodeDef(l.tax_code);
+    if (def.rate === 1) {
+      b.reduced1!.lines++;
+      b.reduced1!.amount += l.amount;
+      continue;
+    }
     const rate = def.rate as Rate;
     const dr = l.side === "debit";
     if (l.tax_code === "export") b.exportSales += dr ? -l.amount : l.amount;
     else if (l.tax_code === "sales_nontax") b.nontaxSales += dr ? -l.amount : l.amount;
-    else if (l.tax_code === "baddebt10" || l.tax_code === "baddebt8") (dr ? b.badDebt : b.badDebtRecovered)[rate] += l.amount;
+    else if (isBadDebtCode(l.tax_code)) (dr ? b.badDebt : b.badDebtRecovered)[rate] += l.amount;
     else if (def.group === "sales") {
       (dr ? b.salesReturn : b.sales)[rate] += l.amount;
       const k = classOf(l) ?? 0;
@@ -125,8 +135,8 @@ export const buildTaxBase = (lines: FlatLine[], taxYears: TaxYear[], classOf: (l
 };
 
 // ── 端数の決まり ──
-/** 税込 → 税抜（1 円未満切り捨て） */
-export const exclusive = (amount: number, r: Rate) => Math.floor((amount * 100) / (100 + r));
+/** 税込 → 税抜（1 円未満切り捨て。r は 10・8・1） */
+export const exclusive = (amount: number, r: number) => Math.floor((amount * 100) / (100 + r));
 /** 税込の金額に含まれる消費税額（国税分。7.8/110・6.24/108。1 円未満切り捨て） */
 export const nationalTaxIn = (amount: number, r: Rate) => (r === 10 ? Math.floor((amount * 78) / 1100) : Math.floor((amount * 624) / 10800));
 /** 課税標準額 × 7.8%・6.24% */

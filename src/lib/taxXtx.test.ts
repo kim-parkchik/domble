@@ -325,10 +325,12 @@ test("年の途中から課税事業者：課税期間の初日", () => {
   expect(warekiXml("2019-04-30")).toContain("<gen:era>4</gen:era><gen:yy>31</gen:yy>");
 });
 
-test("書き出せないもの：3割特例・令和6年分以前", () => {
+test("書き出せないもの：令和9年分から（1% に合わせた新しい様式）・令和6年分以前", () => {
   const b = base({ sales: { 8: 0, 10: 1_100_000 } });
-  expect(xtxProblem(thirtyReturn(b, opts), 2027)).toMatch(/3割特例/);
-  expect(() => buildTaxXtx(thirtyReturn(b, opts), filer, { ...period, from: "2027-01-01", to: "2027-12-31" })).toThrow(/3割特例/);
+  expect(xtxProblem(thirtyReturn(b, opts), 2027)).toMatch(/令和9年分の e-Tax のデータは.*0\.78%/);
+  expect(xtxProblem(standardReturn(b, opts), 2028)).toMatch(/新しい様式/);
+  expect(() => buildTaxXtx(thirtyReturn(b, opts), filer, { ...period, from: "2027-01-01", to: "2027-12-31" })).toThrow(/新しい様式/);
+  expect(() => buildTaxXtx(standardReturn(b, opts), filer, { ...period, from: "2027-01-01", to: "2027-12-31" })).toThrow(/新しい様式/);
   expect(xtxProblem(twentyReturn(b, opts), 2024)).toMatch(/令和7年/);
   expect(xtxProblem(twentyReturn(b, opts), 2025)).toBeNull();
   expect(xtxProblem(twentyReturn(b, opts), 2026)).toBeNull();
@@ -356,19 +358,10 @@ describe("年分ごとの手続の版", () => {
     expect(xml).toContain('<RSH0010 VR="23.2.0" id="RSH0010">');
     expect(validate(xml)).toBe("");
   });
-  test("令和9年分は版 26.0.0（令和8年10月1日以後開始の課税期間用）で書き出し、その版の XSD に合う", () => {
-    const b = base({ sales: { 8: 1_080_000, 10: 2_200_000 }, purchase: { 8: 540_000, 10: 1_100_000 } });
-    const r9 = { from: "2027-01-01", to: "2027-12-31", createdOn: "2028-02-01" };
-    for (const xml of [buildTaxXtx(standardReturn(b, opts), filer, r9), buildTaxXtx(simplifiedReturn(b, opts), filer, r9)]) {
-      expect(xml).toMatch(/<RSH00[13]0 VR="26\.0\.0"/);
-      expect(validate(xml)).toBe("");
-    }
-  });
   test("表に無い新しい年分は、いちばん新しい版で書き出す（知らせる）", () => {
     expect(xtxVersionFor(2025)).toEqual({ version: "23.2.0", fallback: false });
     expect(xtxVersionFor(2026)).toEqual({ version: "23.2.0", fallback: false });
-    expect(xtxVersionFor(2027)).toEqual({ version: "26.0.0", fallback: false });
-    expect(xtxVersionFor(2028)).toEqual({ version: "26.0.0", fallback: true });
+    expect(xtxVersionFor(2027)).toEqual({ version: "23.2.0", fallback: true });
   });
 });
 

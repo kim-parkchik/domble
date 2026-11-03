@@ -48,21 +48,28 @@ export const DEDUCTION_METHODS: { value: DeductionMethod; label: string }[] = [
  *  - group：sales = 売上側、purchase = 仕入側、other = 対象外
  *  - rate：税率（%）。0 は税がかからないもの
  *  - 値引き・返品は区分を増やさず、貸借の側で判定する（売上の科目が借方なら売上の返還、仕入・経費の科目が貸方なら仕入の返還）
+ *  - 1%（軽減）は、令和9年4月1日〜令和11年3月31日の飲食料品の譲渡・保税地域からの引取り（消費税率 0.78%・地方消費税率 0.22%）。
+ *    8%（軽減）はそのまま残る（3月までの取引、定期供給契約・通信販売の経過措置、8%で売ったものの返品・貸倒れ、売り手が 8% で請求した仕入）。
+ *    科目の初期値・取り込みのルール・前の仕訳から入れるときは、取引日で 8% と 1% を切り替える（lib/tax.ts の reducedOn）
  */
 export const TAX_CODES: { code: TaxCode; label: string; short: string; group: "sales" | "purchase" | "other"; rate: number }[] = [
   { code: "none", label: "対象外", short: "対象外", group: "other", rate: 0 },
   { code: "sales10", label: "課税売上 10%", short: "課売10%", group: "sales", rate: 10 },
   { code: "sales8", label: "課税売上 8%（軽減）", short: "課売8%軽", group: "sales", rate: 8 },
+  { code: "sales1", label: "課税売上 1%（軽減）", short: "課売1%軽", group: "sales", rate: 1 },
   { code: "export", label: "輸出免税", short: "輸出免税", group: "sales", rate: 0 },
   { code: "sales_nontax", label: "非課税売上", short: "非課売", group: "sales", rate: 0 },
   { code: "purchase10", label: "課税仕入 10%", short: "課仕10%", group: "purchase", rate: 10 },
   { code: "purchase8", label: "課税仕入 8%（軽減）", short: "課仕8%軽", group: "purchase", rate: 8 },
+  { code: "purchase1", label: "課税仕入 1%（軽減）", short: "課仕1%軽", group: "purchase", rate: 1 },
   { code: "purchase_nontax", label: "非課税仕入", short: "非課仕", group: "purchase", rate: 0 },
   { code: "baddebt10", label: "貸倒れ 10%", short: "貸倒10%", group: "sales", rate: 10 },
   { code: "baddebt8", label: "貸倒れ 8%（軽減）", short: "貸倒8%軽", group: "sales", rate: 8 },
+  { code: "baddebt1", label: "貸倒れ 1%（軽減）", short: "貸倒1%軽", group: "sales", rate: 1 },
   // 輸入：税関に払った消費税のうち国税の額そのもの（輸入許可通知書の「消費税額」）を金額に入れる。地方消費税は対象外で入れる（付表2-3 ⑮）
   { code: "import10", label: "輸入の消費税（国税 7.8%）", short: "輸入7.8%", group: "purchase", rate: 10 },
   { code: "import8", label: "輸入の消費税（国税 6.24%・軽減）", short: "輸入6.24%", group: "purchase", rate: 8 },
+  { code: "import1", label: "輸入の消費税（国税 0.78%・軽減）", short: "輸入0.78%", group: "purchase", rate: 1 },
   // 特定課税仕入れ（国外事業者からの事業者向け電気通信利用役務の提供など）：支払った額（税抜）を入れる。
   // 課税売上割合が 95% 未満の本則課税の年だけ、課税標準額と仕入税額の両方に入れる（95% 以上・簡易課税・2割特例では無かったもの）
   { code: "reverse10", label: "特定課税仕入れ（リバースチャージ）", short: "特定課仕", group: "purchase", rate: 10 },

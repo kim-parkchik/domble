@@ -183,9 +183,9 @@ export type PurchaseUse = "taxable" | "nontaxable" | "common";
 export type DeductionMethod = "individual" | "lump";
 /** 明細の税区分（定義は constants/tax.ts の TAX_CODES） */
 export type TaxCode =
-  | "none" | "sales10" | "sales8" | "export" | "sales_nontax"
-  | "purchase10" | "purchase8" | "purchase_nontax" | "baddebt10" | "baddebt8"
-  | "import10" | "import8" | "reverse10";
+  | "none" | "sales10" | "sales8" | "sales1" | "export" | "sales_nontax"
+  | "purchase10" | "purchase8" | "purchase1" | "purchase_nontax" | "baddebt10" | "baddebt8" | "baddebt1"
+  | "import10" | "import8" | "import1" | "reverse10";
 /** インボイス区分：適格請求書あり／経過措置（適格請求書発行事業者以外からの仕入れ）／控除しない／帳簿のみ保存の特例（book_*。控除は適格と同じ） */
 export type InvoiceKind = "qualified" | "transitional" | "none"
   | "book_transport" | "book_vending" | "book_postage" | "book_travel" | "book_ticket" | "book_used";

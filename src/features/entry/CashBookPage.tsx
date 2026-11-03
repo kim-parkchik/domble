@@ -209,7 +209,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
   // 定型仕訳の呼び出し（この帳簿の科目と相手科目1つのものだけ。ほかは振替伝票で）
   const [picking, setPicking] = useState(false);
   const pickTemplate = (t: JournalTemplate) => {
-    const applied = applyTemplate(t.rows, accounts, subAccounts);
+    const applied = applyTemplate(t.rows, accounts, subAccounts, inputDate);
     const x = templateForBook(applied.rows, accountId, account.name);
     if ("error" in x) return toast(x.error, "error");
     setCounterId(x.counterId);
@@ -233,7 +233,7 @@ export const CashBookPage = ({ go }: { go: (p: Page) => void }) => {
     const e = await repo.findMemoEntry(db, m, accountId).catch(() => null);
     if (!e) return;
     const filled: string[] = [];
-    const f = counterId ? null : usableSide(bookFill(e, accountId, m), accounts, subAccounts);
+    const f = counterId ? null : usableSide(bookFill(e, accountId, m), accounts, subAccounts, inputDate);
     if (f) {
       setCounterId(f.accountId);
       setCounterSubId(f.subId);

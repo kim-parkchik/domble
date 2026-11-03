@@ -8,7 +8,8 @@ import { parseAmount, parseDateInput, shortDate, toHalfWidth } from "../lib/form
 import { useAppContext } from "../context/AppContext";
 import { BUSINESS_CLASSES, INVOICE_KINDS, PURCHASE_USES, TAX_CODES, TAX_DISABLED_NOTE } from "../constants/tax";
 import {
-  defaultInvoiceKind, defaultTaxCode, effectiveBusinessClass, effectivePurchaseUse, isPurchaseCode, isSalesCode, splitsTax, takesPurchaseUse, taxLongLabel, taxShortLabel, taxYearOf, useLabel,
+  defaultInvoiceKind, defaultTaxCode, effectiveBusinessClass, effectivePurchaseUse, inReduced1, isPurchaseCode, isReduced1, isSalesCode, splitsTax, takesPurchaseUse, taxLongLabel,
+  taxShortLabel, taxYearOf, useLabel,
 } from "../lib/tax";
 import { findCounterparty, normName, validateCounterparty } from "../lib/counterparty";
 import * as repo from "../db/repo";
@@ -329,7 +330,7 @@ export const TaxSelect = ({ label, value, invoice, businessClass, purchaseUse, o
   const simplified = ty.status === "simplified";
   const standard = ty.status === "standard";
   const cp = counterpartyId ? counterparties.find((c) => c.id === counterpartyId) : null;
-  const code = value ?? defaultTaxCode(account, side);
+  const code = value ?? defaultTaxCode(account, side, date);
   const inv = isPurchaseCode(code) ? invoice ?? defaultInvoiceKind(cp) : null;
   // 簡易課税の年の課税売上は、事業区分も選ぶ（入っていなければ科目の初期値・主な事業区分）
   const cls = simplified && isSalesCode(code) ? effectiveBusinessClass({ business_class: businessClass }, account, ty.business_class) : null;
@@ -339,7 +340,8 @@ export const TaxSelect = ({ label, value, invoice, businessClass, purchaseUse, o
   const opt = (c: TaxCode, i: InvoiceKind | null = null, k: number | null = null, u: PurchaseUse | null = null) => (
     <option key={optionValue(c, i, k, u)} value={optionValue(c, i, k, u)} title={taxLongLabel(c, i, date, k, u)}>{taxShortLabel(c, i, date, k, u, true)}</option>
   );
-  const group = (g: "sales" | "purchase") => TAX_CODES.filter((t) => t.group === g);
+  // 1%（軽減）は飲食料品の税率が 1% の期間だけ出す（期間外でも、入っていればそれは出す）
+  const group = (g: "sales" | "purchase") => TAX_CODES.filter((t) => t.group === g && (!isReduced1(t.code) || inReduced1(date) || t.code === code));
   // 帳簿のみ保存の特例は、本則課税の年だけ選べる（ほかの年は、入っているものだけ出す）
   const BOOK_ONLY = INVOICE_KINDS.filter((k) => k.value.startsWith("book_")).map((k) => k.value);
   const invoices: InvoiceKind[] = ["qualified", "transitional", "none", ...(standard ? BOOK_ONLY : inv && BOOK_ONLY.includes(inv) ? [inv] : [])];
@@ -520,7 +522,7 @@ export const TaxAmountField = ({ label, amount, code, invoice, accountId, side, 
   const { accountMap, counterparties, taxYears } = useAppContext();
   const account = accountId ? accountMap.get(accountId) : undefined;
   if (!account || !amount || !isExclusiveOn(taxYears, date)) return null;
-  const c = code ?? defaultTaxCode(account, side);
+  const c = code ?? defaultTaxCode(account, side, date);
   if (!splitsTax(c)) return null;
   const cp = counterpartyId ? counterparties.find((x) => x.id === counterpartyId) : null;
   const auto = autoTaxAmount({ amount, tax_code: c, invoice_kind: isPurchaseCode(c) ? invoice ?? defaultInvoiceKind(cp) : null, date });

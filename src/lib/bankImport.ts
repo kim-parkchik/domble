@@ -12,6 +12,7 @@
 import type { Account, InvoiceKind, JournalLine, TaxCode } from "./types";
 import type { FlatLine } from "./accounting";
 import { parseCsv } from "./csv";
+import { reducedOn } from "./tax";
 import { statementTable, warekiYymmdd, type BankFormatId } from "./bankFormats";
 
 // ────────────────────────────────────────────
@@ -379,18 +380,24 @@ export const ruleMatches = (r: BankRule, line: Pick<StatementLine, "description"
   return normDescription(line.description).includes(normDescription(r.keyword));
 };
 
+/**
+ * 明細の相手の推測：ルール（並び順）→ 前の明細・仕訳。
+ * 軽減税率の税区分は、明細の日付で 8% と 1% を切り替える（飲食料品の税率の引下げ。lib/tax.ts の reducedOn）
+ */
 export const guessLine = (
-  line: Pick<StatementLine, "description" | "side">, account: Pick<Account, "id" | "normal_side">, rules: BankRule[], history: Map<string, HistoryHit>,
+  line: Pick<StatementLine, "description" | "side"> & { date?: string }, account: Pick<Account, "id" | "normal_side">, rules: BankRule[], history: Map<string, HistoryHit>,
 ): Guess => {
+  const onDate = <C extends TaxCode | null>(code: C) => (line.date ? reducedOn(code, line.date) : code);
   const rule = [...rules].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).find((r) => ruleMatches(r, line, account));
   if (rule) {
     return {
-      counterId: rule.account_id, counterSubId: rule.sub_account_id, taxCode: rule.tax_code, invoice: rule.invoice_kind,
-      counterpartyId: rule.counterparty_id, memo: rule.memo.trim() || line.description, dept: rule.department_id ?? null, source: "rule", ruleId: rule.id, splits: rule.splits ?? [],
+      counterId: rule.account_id, counterSubId: rule.sub_account_id, taxCode: onDate(rule.tax_code), invoice: rule.invoice_kind,
+      counterpartyId: rule.counterparty_id, memo: rule.memo.trim() || line.description, dept: rule.department_id ?? null, source: "rule", ruleId: rule.id,
+      splits: (rule.splits ?? []).map((x) => ({ ...x, tax_code: onDate(x.tax_code) })),
     };
   }
   const h = history.get(`${line.side}|${normDescription(line.description)}`);
-  if (h) return { ...h, memo: h.memo || line.description, source: "history", splits: [] };
+  if (h) return { ...h, taxCode: onDate(h.taxCode), memo: h.memo || line.description, source: "history", splits: [] };
   return { counterId: null, counterSubId: null, taxCode: null, invoice: null, counterpartyId: null, memo: line.description, dept: null, source: null, splits: [] };
 };
 

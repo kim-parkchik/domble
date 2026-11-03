@@ -3,8 +3,8 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
-  docProblem, docState, docTotals, invoiceEntryLines, itemAmount, nextDocNo, paymentCandidates, paymentEntryLines, remainingOf, withholdingTax,
-  type DocItem, type SalesDoc,
+  docProblem, docState, docTotals, invoiceEntryLines, itemAmount, itemTaxOn, nextDocNo, paymentCandidates, paymentEntryLines, reducedItemNote, remainingOf,
+  withholdingTax, type DocItem, type SalesDoc,
 } from "./salesDoc";
 
 const item = (name: string, qty: number, price: number, tax: DocItem["tax"] = "10"): DocItem => ({ name, qty, unit: "式", price, tax });
@@ -30,6 +30,29 @@ describe("金額と消費税", () => {
     const t = docTotals(doc([item("a", 1, 50_000), item("b", 2, 1_000, "8")]), "floor", true);
     expect(t.groups.map((g) => [g.tax, g.base, g.tax_amount])).toEqual([["none", 52_000, 0]]);
     expect([t.taxTotal, t.total, t.exempt]).toEqual([0, 52_000, true]);
+  });
+});
+
+describe("飲食料品の税率の引下げ（1%）", () => {
+  test("3月と4月をまたぐ請求書：8%・1%・10% を税率ごとに合計して消費税を出す（国税庁 Q&A 問2-2 の例）", () => {
+    const t = docTotals(doc([item("豚肉ほか", 1, 40_000, "8"), item("雑貨（3月）", 1, 20_000), item("魚ほか", 1, 20_000, "1"), item("雑貨（4月）", 1, 30_000)]), "floor", false);
+    expect(t.groups.map((g) => [g.tax, g.base, g.tax_amount])).toEqual([["10", 50_000, 5_000], ["8", 40_000, 3_200], ["1", 20_000, 200]]);
+    expect([t.taxTotal, t.total]).toEqual([8_400, 118_400]);
+    const lines = invoiceEntryLines({ kind: "invoice", doc_no: "2027-0001", subject: "" }, t, { receivable: 111, revenue: 401, draw: 190 });
+    expect(lines.filter((l) => l.side === "credit").map((l) => [l.tax_code, l.amount, l.tax_amount])).toEqual([["sales10", 55_000, 5_000], ["sales8", 43_200, 3_200], ["sales1", 20_200, 200]]);
+  });
+  test("税込の単価：合計 × 1/101", () => {
+    const t = docTotals(doc([item("野菜", 3, 1_010, "1")], { price_mode: "inclusive" }), "floor", false);
+    expect(t.groups.map((g) => [g.base, g.tax_amount, g.total])).toEqual([[3_000, 30, 3_030]]);
+  });
+  test("複製・見積書から請求書へ：軽減税率の明細を新しい取引日の税率に。取引日と合わない明細は知らせる（書き直さない）", () => {
+    expect([itemTaxOn("8", "2027-04-01"), itemTaxOn("1", "2029-04-01"), itemTaxOn("10", "2027-04-01"), itemTaxOn("none", "2027-04-01")]).toEqual(["1", "8", "10", "none"]);
+    const d = (tax: DocItem["tax"], issue: string, delivery: string | null = null) => ({ items: [item("a", 1, 100, tax)], issue_date: issue, delivery_date: delivery });
+    expect(reducedItemNote(d("1", "2027-03-31"))).toMatch(/令和9年4月1日から/);
+    expect(reducedItemNote(d("1", "2027-03-31", "2027-04-01"))).toBeNull();
+    expect(reducedItemNote(d("8", "2027-04-15"))).toMatch(/1%（軽減）です/);
+    expect(reducedItemNote(d("8", "2027-03-31"))).toBeNull();
+    expect(reducedItemNote(d("10", "2027-04-15"))).toBeNull();
   });
 });
 

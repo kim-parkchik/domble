@@ -8,6 +8,7 @@
  *    適格・経過措置は取引先と日付で決まるので、今の取引先・日付の初期値に任せる
  */
 import type { Account, InvoiceKind, PurchaseUse, Side, SubAccount, TaxCode } from "./types";
+import { reducedOn } from "./tax";
 
 export interface MemoEntryLine {
   row_no: number;
@@ -72,11 +73,15 @@ export const voucherFill = (e: MemoEntry, memo: string): { debit: SideFill | nul
   return debit || credit ? { debit: debit ? sideOf(debit) : null, credit: credit ? sideOf(credit) : null } : null;
 };
 
-/** 今も使える形にする：非表示・消した科目なら入れない（null）。補助科目だけ使えなければ補助科目を外す */
+/**
+ * 今も使える形にする：非表示・消した科目なら入れない（null）。補助科目だけ使えなければ補助科目を外す。
+ * date（入れる仕訳の日付）があれば、軽減税率の税区分をその日の税率（8%・1%）に合わせる
+ */
 export const usableSide = (
-  f: SideFill | null, accounts: Pick<Account, "id" | "is_active">[], subs: Pick<SubAccount, "id" | "account_id" | "is_active">[],
+  f: SideFill | null, accounts: Pick<Account, "id" | "is_active">[], subs: Pick<SubAccount, "id" | "account_id" | "is_active">[], date?: string,
 ): SideFill | null => {
   if (!f || !accounts.some((a) => a.id === f.accountId && a.is_active)) return null;
   const subOk = f.subId === null || subs.some((x) => x.id === f.subId && x.account_id === f.accountId && x.is_active);
-  return subOk ? f : { ...f, subId: null };
+  const g = date ? { ...f, tax: reducedOn(f.tax, date) } : f;
+  return subOk ? g : { ...g, subId: null };
 };

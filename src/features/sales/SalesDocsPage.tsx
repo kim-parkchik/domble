@@ -16,10 +16,11 @@ import { AmountInput, CounterpartyField, FullDateInput } from "../../components/
 import { useToast } from "../../components/Toast";
 import { longDate, todayIso, yen } from "../../lib/format";
 import { displayName } from "../../lib/business";
-import { taxYearOf } from "../../lib/tax";
+import { inReduced1, taxYearOf } from "../../lib/tax";
 import { CODE } from "../../constants/accounts";
 import {
-  DOC_KIND_LABEL, DOC_STATE_LABEL, docState, docTotals, ITEM_TAX_LABEL, nextDocNo, remainingOf, ROUNDING_LABEL, salesDate, savedTotals,
+  DOC_KIND_LABEL, DOC_STATE_LABEL, docState, docTotals, isReducedItem, ITEM_TAX_LABEL, ITEM_TAXES, itemTaxOn, nextDocNo, reducedItemNote, remainingOf, ROUNDING_LABEL, salesDate,
+  savedTotals,
   type DocItem, type DocKind, type DocState, type DocTotals, type ItemTax, type Rounding, type SalesDoc, type SalesPayment,
 } from "../../lib/salesDoc";
 import * as repo from "../../db/repo";
@@ -91,9 +92,11 @@ export const SalesDocsPage = () => {
     const { id: _id, status: _s, entry_id: _e, rounding: _r, exempt: _x, ...rest } = d;
     return rest;
   };
+  /** 軽減税率の明細を、新しい書類の取引日の税率（8%・1%）に合わせる */
+  const itemsOn = (x: repo.SalesDocInput): repo.SalesDocInput => ({ ...x, items: x.items.map((it) => ({ ...it, tax: itemTaxOn(it.tax, salesDate(x)) })) });
   /** 見積書から請求書を作る（下書き）。同じ書類を複製する */
-  const toInvoice = (d: SalesDoc) => setEditing({ doc: null, draft: { ...inputOf(d), kind: "invoice", doc_no: blank("invoice").doc_no, issue_date: blank("invoice").issue_date, due_date: null, bank_text: conf.invoice_bank, source_id: d.id } });
-  const duplicate = (d: SalesDoc) => setEditing({ doc: null, draft: { ...inputOf(d), doc_no: blank(d.kind).doc_no, issue_date: blank(d.kind).issue_date, delivery_date: null, due_date: null, source_id: null } });
+  const toInvoice = (d: SalesDoc) => setEditing({ doc: null, draft: itemsOn({ ...inputOf(d), kind: "invoice", doc_no: blank("invoice").doc_no, issue_date: blank("invoice").issue_date, due_date: null, bank_text: conf.invoice_bank, source_id: d.id }) });
+  const duplicate = (d: SalesDoc) => setEditing({ doc: null, draft: itemsOn({ ...inputOf(d), doc_no: blank(d.kind).doc_no, issue_date: blank(d.kind).issue_date, delivery_date: null, due_date: null, source_id: null }) });
 
   const run = async (f: () => Promise<unknown>, done: string) => {
     try {
@@ -227,6 +230,9 @@ const DocEditor = ({ doc, initial, rounding, totalsOf, onClose, onSaved }: {
   });
   const invoice = x.kind === "invoice";
   const t = totalsOf(x);
+  // 飲食料品の税率の引下げ：取引日が 1% の期間か、軽減税率の明細と取引日が合っているか
+  const reduced1 = inReduced1(salesDate(x));
+  const reducedNote = reducedItemNote(x);
   const issued = doc?.status === "issued";
   const revenues = accounts.filter((a) => a.category === "revenue" && a.is_active);
 
@@ -336,7 +342,8 @@ const DocEditor = ({ doc, initial, rounding, totalsOf, onClose, onSaved }: {
                 <td><AmountInput value={it.price} onChange={(v) => setItem(i, { price: v ?? 0 })} aria-label={`${i + 1}行目の単価`} /></td>
                 <td>
                   <select className="input" value={it.tax} onChange={(e) => setItem(i, { tax: e.target.value as ItemTax })} aria-label={`${i + 1}行目の税`}>
-                    {(Object.keys(ITEM_TAX_LABEL) as ItemTax[]).map((k) => <option key={k} value={k}>{ITEM_TAX_LABEL[k]}</option>)}
+                    {/* 1%（軽減）は取引日が令和9年4月1日〜令和11年3月31日のときだけ（入っていればそれは出す） */}
+                    {ITEM_TAXES.filter((k) => k !== "1" || reduced1 || it.tax === "1").map((k) => <option key={k} value={k}>{ITEM_TAX_LABEL[k]}</option>)}
                   </select>
                 </td>
                 <td className="num">{yen(t.amounts[i] ?? 0)}</td>
@@ -352,6 +359,7 @@ const DocEditor = ({ doc, initial, rounding, totalsOf, onClose, onSaved }: {
           <TotalsTable t={t} />
         </div>
         {t.exempt && <p className="field-note">この年は免税事業者なので、消費税額と登録番号は出しません（金額をそのまま合計します）。</p>}
+        {!t.exempt && reducedNote && <p className="warn-box">{reducedNote}。</p>}
         <p className="field-note">消費税は税率ごとに合計してから1回だけ端数を処理します（{ROUNDING_LABEL[rounding]}。設定で変えられます）。</p>
 
         {invoice && (
@@ -384,7 +392,7 @@ const TotalsTable = ({ t, print = false }: { t: DocTotals; print?: boolean }) =>
     <tbody>
       {!t.exempt && t.groups.map((g) => (
         <tr key={g.tax}>
-          <td>{g.rate ? `${g.rate}%対象${g.tax === "8" ? "（軽減税率）" : ""}` : ITEM_TAX_LABEL[g.tax]}</td>
+          <td>{g.rate ? `${g.rate}%対象${isReducedItem(g.tax) ? "（軽減税率）" : ""}` : ITEM_TAX_LABEL[g.tax]}</td>
           <td className="num">{yen(g.base)}円</td>
           <td className="num">{g.rate ? `消費税 ${yen(g.tax_amount)}円` : ""}</td>
         </tr>
@@ -422,7 +430,7 @@ const DocPrint = ({ doc: d, totals: t, onClose }: { doc: SalesDoc; totals: DocTo
   const regNo = !t.exempt && settings.invoice_no && (!settings.invoice_registered_on || date >= settings.invoice_registered_on) ? settings.invoice_no : "";
   const pages: { from: number; to: number }[] = [];
   for (let i = 0; i === 0 || i < d.items.length; i += pages.length ? NEXT_ROWS : FIRST_ROWS) pages.push({ from: i, to: Math.min(d.items.length, i + (pages.length ? NEXT_ROWS : FIRST_ROWS)) });
-  const reduced = d.items.some((it) => it.tax === "8") && !t.exempt;
+  const reduced = d.items.some((it) => isReducedItem(it.tax)) && !t.exempt;
   const title = invoice ? "請求書" : "見積書";
 
   return createPortal(
@@ -474,7 +482,7 @@ const DocPrint = ({ doc: d, totals: t, onClose }: { doc: SalesDoc; totals: DocTo
               <tbody>
                 {d.items.slice(p.from, p.to).map((it, i) => (
                   <tr key={p.from + i}>
-                    <td>{it.name}{!t.exempt && it.tax === "8" ? " ※" : ""}{!t.exempt && (it.tax === "nontax" || it.tax === "export" || it.tax === "none") ? `（${ITEM_TAX_LABEL[it.tax]}）` : ""}</td>
+                    <td>{it.name}{!t.exempt && isReducedItem(it.tax) ? " ※" : ""}{!t.exempt && (it.tax === "nontax" || it.tax === "export" || it.tax === "none") ? `（${ITEM_TAX_LABEL[it.tax]}）` : ""}</td>
                     <td className="num">{it.qty.toLocaleString()}</td>
                     <td>{it.unit}</td>
                     <td className="num">{yen(it.price)}</td>
@@ -486,7 +494,7 @@ const DocPrint = ({ doc: d, totals: t, onClose }: { doc: SalesDoc; totals: DocTo
             {n === pages.length - 1 ? (
               <div className="doc-foot">
                 <div className="doc-notes">
-                  {reduced && <div className="doc-small">※ は軽減税率（8%）の対象です。</div>}
+                  {reduced && <div className="doc-small">※ は軽減税率の対象です。</div>}
                   {invoice && d.bank_text && <div className="doc-box"><b>お振込先</b><div>{d.bank_text}</div></div>}
                   {d.notes && <div className="doc-box"><b>備考</b><div>{d.notes}</div></div>}
                 </div>

@@ -2081,6 +2081,7 @@ const withTax = async (db: Database, date: string, lines: JournalLine[], counter
     stampMain && ty.status === "simplified" ? ty.business_class : null,
     stampMain && ty.status === "standard" ? "common" : null,
     ty.method === "exclusive",
+    date,
   );
   for (const l of out) {
     const p = l.tax_amount != null ? taxAmountProblem(l.amount, l.tax_amount) : null;
@@ -2495,8 +2496,8 @@ export const untaxedEntryIds = async (db: Database, year: number) => {
     `SELECT DISTINCT e.id, e.date FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id
       WHERE e.is_deleted = 0 AND e.date BETWEEN ? AND ?
         AND (l.tax_code IS NULL
-             ${status === "simplified" ? "OR (l.tax_code IN ('sales10','sales8') AND l.business_class IS NULL)" : ""}
-             ${status === "standard" ? "OR (l.tax_code IN ('purchase10','purchase8','import10','import8','reverse10') AND l.purchase_use IS NULL)" : ""})
+             ${status === "simplified" ? "OR (l.tax_code IN ('sales10','sales8','sales1') AND l.business_class IS NULL)" : ""}
+             ${status === "standard" ? "OR (l.tax_code IN ('purchase10','purchase8','purchase1','import10','import8','import1','reverse10') AND l.purchase_use IS NULL)" : ""})
       ORDER BY e.date, e.id`,
     [yearStart(year), yearEnd(year)],
   );

@@ -105,8 +105,8 @@ export interface RefundBooks {
   to: string;
 }
 
-const TAXABLE_SALES: TaxCode[] = ["sales10", "sales8"];
-const TAXABLE_PURCHASES: TaxCode[] = ["purchase10", "purchase8"];
+const TAXABLE_SALES: TaxCode[] = ["sales10", "sales8", "sales1"];
+const TAXABLE_PURCHASES: TaxCode[] = ["purchase10", "purchase8", "purchase1"];
 const rateOf = (code: TaxCode) => taxCodeDef(code).rate;
 /** 税抜の額（税込の額から、含まれている消費税等を引く） */
 export const withoutTax = (amount: number, code: TaxCode) => amount - includedTax(amount, rateOf(code));

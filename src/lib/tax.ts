@@ -10,6 +10,7 @@
  *    の順で決めて記録する（本則課税の年）。区分の無い課税仕入は共通対応として計算し、「確認」で知らせる
  *  - 課税売上割合が 95% 未満のときの控除の方式（個別対応方式・一括比例配分方式）は年度ごと。一括比例配分方式は2年続けて使う決まり
  * 制度は令和8年分に合わせている（2割特例は令和8年分まで、3割特例は令和9年分・令和10年分、経過措置は 80% → 70% …）
+ * 飲食料品の税率の引下げ（令和9年4月1日〜令和11年3月31日、軽減税率 8% → 1%）：1% の税区分を足し、初期値は取引日で切り替える（reducedOn）
  */
 import type { Account, Counterparty, DeductionMethod, InvoiceKind, JournalLine, PurchaseUse, Side, TaxCode, TaxStatus, TaxYear } from "./types";
 import {
@@ -28,16 +29,17 @@ const invoiceDef = (v: InvoiceKind) => INVOICE_KINDS.find((k) => k.value === v)!
 
 export const taxCodeDef = (code: TaxCode) => TAX_CODES.find((t) => t.code === code)!;
 /** 課税仕入（インボイス区分を持つ明細） */
-export const isPurchaseCode = (code: TaxCode | null | undefined) => code === "purchase10" || code === "purchase8";
+export const isPurchaseCode = (code: TaxCode | null | undefined) => code === "purchase10" || code === "purchase8" || code === "purchase1";
 /** 輸入の消費税（国税の額そのもの） */
-export const isImportCode = (code: TaxCode | null | undefined) => code === "import10" || code === "import8";
+export const isImportCode = (code: TaxCode | null | undefined) => code === "import10" || code === "import8" || code === "import1";
+/** 貸倒れ（借方 = 貸倒れ、貸方 = 貸倒れの回収） */
+export const isBadDebtCode = (code: TaxCode | null | undefined) => code === "baddebt10" || code === "baddebt8" || code === "baddebt1";
 /** 税抜経理で消費税額を分ける税区分（課税売上・課税仕入・貸倒れ・輸入の消費税） */
-export const splitsTax = (code: TaxCode | null | undefined) =>
-  code === "sales10" || code === "sales8" || code === "baddebt10" || code === "baddebt8" || isPurchaseCode(code) || isImportCode(code);
+export const splitsTax = (code: TaxCode | null | undefined) => isSalesCode(code) || isBadDebtCode(code) || isPurchaseCode(code) || isImportCode(code);
 /** 本則課税で用途区分を持つ明細（課税仕入・輸入の消費税・特定課税仕入れ） */
 export const takesPurchaseUse = (code: TaxCode | null | undefined) => isPurchaseCode(code) || isImportCode(code) || code === "reverse10";
 /** 課税売上（簡易課税の事業区分を持つ明細） */
-export const isSalesCode = (code: TaxCode | null | undefined) => code === "sales10" || code === "sales8";
+export const isSalesCode = (code: TaxCode | null | undefined) => code === "sales10" || code === "sales8" || code === "sales1";
 export const isBusinessClass = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 6;
 export const isPurchaseUse = (v: unknown): v is PurchaseUse => PURCHASE_USES.some((u) => u.value === v);
 export const isDeductionMethod = (v: unknown): v is DeductionMethod => DEDUCTION_METHODS.some((d) => d.value === v);
@@ -138,6 +140,28 @@ export const taxYearText = (t: Pick<TaxYear, "status" | "method" | "business_cla
 // 税区分の初期値
 // ────────────────────────────────────────────
 
+// ────────────────────────────────────────────
+// 飲食料品の税率の引下げ（令和9年4月1日〜令和11年3月31日。軽減税率 8% → 1%）
+//  1% は消費税率 0.78%・地方消費税率 0.22%。税率は譲渡（仕入）の日で決まる。期間中も 8% のままのもの：
+//  3月31日までの取引、定期供給契約・通信販売の経過措置、8% で売ったものの返品・貸倒れ、売り手が 8% で請求した仕入
+// ────────────────────────────────────────────
+
+export const REDUCED1_FROM = "2027-04-01";
+export const REDUCED1_UNTIL = "2029-03-31";
+/** 飲食料品の税率が 1% の期間か */
+export const inReduced1 = (date: string) => date >= REDUCED1_FROM && date <= REDUCED1_UNTIL;
+/** 1% の税区分か */
+export const isReduced1 = (code: TaxCode | null | undefined) => !!code && TAX_CODES.some((t) => t.code === code && t.rate === 1);
+const TO_1: Partial<Record<TaxCode, TaxCode>> = { sales8: "sales1", purchase8: "purchase1", import8: "import1" };
+const TO_8: Partial<Record<TaxCode, TaxCode>> = { sales1: "sales8", purchase1: "purchase8", import1: "import8" };
+/**
+ * 軽減税率の税区分を、その日の税率に合わせる（期間中は 1%、期間外は 8%）。
+ * 科目の初期値・取り込みのルール・前の仕訳・定型仕訳から入れるときに使う（手で選んだ区分は変えない）。
+ * 貸倒れは、もとの売上の税率で決まるので変えない
+ */
+export const reducedOn = <C extends TaxCode | null | undefined>(code: C, date: string): C =>
+  (code ? (inReduced1(date) ? TO_1[code] : TO_8[code]) ?? code : code) as C;
+
 /** 科目の決まった初期値（初期科目は ACCOUNT_TAX_DEFAULTS、追加した科目は区分から） */
 export const builtinTaxCode = (a: Pick<Account, "code" | "category">): TaxCode => {
   const c = ACCOUNT_TAX_DEFAULTS[a.code];
@@ -151,10 +175,13 @@ export const builtinTaxCode = (a: Pick<Account, "code" | "category">): TaxCode =
 export const accountTaxCode = (a: Pick<Account, "code" | "category" | "default_tax_code">): TaxCode => a.default_tax_code ?? builtinTaxCode(a);
 
 /**
- * 明細の税区分の初期値。資産の科目の初期値は借方（取得したとき）だけに使い、貸方（売却・償却など）は対象外にする
+ * 明細の税区分の初期値。資産の科目の初期値は借方（取得したとき）だけに使い、貸方（売却・償却など）は対象外にする。
+ * 軽減税率は取引日で 8% と 1% を切り替える（date が無ければ科目の初期値のまま）
  */
-export const defaultTaxCode = (a: Pick<Account, "code" | "category" | "default_tax_code">, side: Side): TaxCode =>
-  a.category === "asset" && side === "credit" ? "none" : accountTaxCode(a);
+export const defaultTaxCode = (a: Pick<Account, "code" | "category" | "default_tax_code">, side: Side, date?: string): TaxCode => {
+  const code = a.category === "asset" && side === "credit" ? "none" : accountTaxCode(a);
+  return date ? reducedOn(code, date) : code;
+};
 
 /** インボイス区分の初期値：「適格請求書発行事業者ではない」取引先なら経過措置、それ以外は適格 */
 export const defaultInvoiceKind = (cp: Pick<Counterparty, "not_registered"> | null | undefined): InvoiceKind =>
@@ -177,11 +204,13 @@ export const resolveLineTax = <L extends JournalLine>(
   mainUse: PurchaseUse | null = null,
   /** 税抜経理の年か */
   exclusive = false,
+  /** 仕訳の日付（軽減税率の初期値を 8% と 1% で切り替える） */
+  date?: string,
 ): L[] =>
   lines.map((l) => {
     if (!active) return { ...l, tax_code: null, invoice_kind: null, business_class: null, purchase_use: null, tax_amount: null };
     const acc = accountOf(l.account_id);
-    const code: TaxCode = l.tax_code && isTaxCode(l.tax_code) ? l.tax_code : acc ? defaultTaxCode(acc, l.side) : "none";
+    const code: TaxCode = l.tax_code && isTaxCode(l.tax_code) ? l.tax_code : acc ? defaultTaxCode(acc, l.side, date) : "none";
     const invoice = isPurchaseCode(code) ? (l.invoice_kind && isInvoiceKind(l.invoice_kind) ? l.invoice_kind : defaultInvoiceKind(cp)) : null;
     const cls = isSalesCode(code) ? (isBusinessClass(l.business_class) ? l.business_class : (acc ? defaultBusinessClass(acc) : null) ?? mainClass) : null;
     const use = takesPurchaseUse(code) ? (isPurchaseUse(l.purchase_use) ? l.purchase_use : acc?.default_purchase_use ?? mainUse) : null;

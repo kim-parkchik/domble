@@ -17,7 +17,7 @@ import { methodProblem } from "../../lib/baseSales";
 import { useToast } from "../../components/Toast";
 import { todayIso, yen } from "../../lib/format";
 import { filerFromSettings, filerProblems } from "../../lib/etax";
-import { buildTaxXtx, refundShortfall, xtxProblem, xtxVersionFor } from "../../lib/taxXtx";
+import { buildTaxXtx, refundShortfall, XTX_NEW_FORMS_YEAR, xtxProblem, xtxVersionFor } from "../../lib/taxXtx";
 import { purchaseFigures, refundDetailFromBooks } from "../../lib/taxRefundDetail";
 import { RefundDetailSection, useRefundDetail } from "./RefundDetailSection";
 import {
@@ -406,6 +406,19 @@ export const TaxReturnView = () => {
             )}。
             今は{shown.deduction.method === "individual" ? "個別対応方式" : "一括比例配分方式"}で計算しています（事業者設定の「消費税」の控除の方式。一括比例配分方式は2年続けて使う決まり）。
           </div>
+        )}
+        {(year >= XTX_NEW_FORMS_YEAR || !!base.reduced1?.lines) && (
+          <p className="warn-box">
+            <span>
+              {year >= XTX_NEW_FORMS_YEAR && (
+                <>
+                  令和{year - 2018}年分からは、飲食料品の税率の引下げ（1%）に合わせた新しい様式（令和9年4月1日以後終了課税期間用）で申告します。0.78% の欄が増え、第二表の欄の番号も変わります。
+                  ここの数字は今の様式（6.24%・7.8% だけ）の形で、国税庁の様式が確定したら直します。
+                </>
+              )}
+              {!!base.reduced1?.lines && <b> 1%（軽減）の明細 {base.reduced1.lines} 件（税込 {yen(base.reduced1.amount)}円）は、まだこの数字に入っていません。</b>}
+            </span>
+          </p>
         )}
         {shown.notes.length > 0 && (
           <ul className="tax-return-notes">{shown.notes.map((n) => <li key={n}>{n}</li>)}</ul>

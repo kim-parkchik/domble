@@ -11,8 +11,8 @@
  */
 import type { Account, TaxCode, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
-import { defaultTaxCode, taxActiveOn } from "./tax";
-import { exclusive, type Rate } from "./taxReturn";
+import { defaultTaxCode, isSalesCode, taxActiveOn, taxCodeDef } from "./tax";
+import { exclusive } from "./taxReturn";
 import { CODE } from "../constants/accounts";
 
 export const EXEMPT_LIMIT = 10_000_000;
@@ -32,20 +32,21 @@ export interface PeriodSales {
 /** 期間 [from, to] の課税売上高 */
 export const periodSales = (lines: FlatLine[], accounts: Account[], taxYears: TaxYear[], from: string, to: string): PeriodSales => {
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
-  const gross: Record<Rate, number> = { 8: 0, 10: 0 };
-  const returns: Record<Rate, number> = { 8: 0, 10: 0 };
+  // 税率ごと（10%・8%・1%）の税込の額
+  const gross: Record<number, number> = { 1: 0, 8: 0, 10: 0 };
+  const returns: Record<number, number> = { 1: 0, 8: 0, 10: 0 };
   let exemptPeriod = 0, exportSales = 0;
   for (const l of lines) {
     if (l.is_deleted || l.date < from || l.date > to) continue;
     const acc = accountMap.get(l.account_id);
-    const code: TaxCode | null = l.tax_code ?? (acc ? defaultTaxCode(acc, l.side) : null);
+    const code: TaxCode | null = l.tax_code ?? (acc ? defaultTaxCode(acc, l.side, l.date) : null);
     const sign = l.side === "credit" ? 1 : -1;
     if (code === "export") exportSales += sign * l.amount;
-    if (code !== "sales10" && code !== "sales8") continue;
+    if (!isSalesCode(code)) continue;
     if (!taxActiveOn(taxYears, l.date)) exemptPeriod += sign * l.amount;
-    else (l.side === "credit" ? gross : returns)[code === "sales10" ? 10 : 8] += l.amount;
+    else (l.side === "credit" ? gross : returns)[taxCodeDef(code!).rate] += l.amount;
   }
-  const taxable = ([8, 10] as Rate[]).reduce((s, r) => s + exclusive(gross[r], r) - exclusive(returns[r], r), 0);
+  const taxable = [1, 8, 10].reduce((s, r) => s + exclusive(gross[r], r) - exclusive(returns[r], r), 0);
   return { taxable, exemptPeriod, exportSales, total: taxable + exemptPeriod + exportSales };
 };
 

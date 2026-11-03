@@ -9,18 +9,41 @@
  *    税抜経理の年は、税率ごとの消費税額を仕訳の消費税額にする（請求書の額と合わせる）
  *  - 入金：預金（受け取った額）＋ 振込手数料（差し引かれた額） ／ 売掛金。差引請求額から入金の合計を引いた残りで、入金済みを決める
  *  - 明細の取り込みの入金の候補：入金の額が残りと同じか、残りより振込手数料の分（1,000円まで）だけ少ない請求書
+ *  - 飲食料品の税率の引下げ（令和9年4月1日〜令和11年3月31日）：明細の税に 1%（軽減）。※ の印はそのまま使える（「1%対象」の印は要らない）。
+ *    締めの期間が3月と4月をまたぐ請求書は、8% と 1% の明細を1枚に並べ、税率ごとに合計する（国税庁 Q&A 問2-1・2-2）
  */
 import type { JournalLine, TaxCode } from "./types";
+import { inReduced1 } from "./tax";
 
 export type DocKind = "estimate" | "invoice";
 export const DOC_KIND_LABEL: Record<DocKind, string> = { estimate: "見積書", invoice: "請求書" };
 /** draft 下書き ／ issued 発行済み ／ void 取消 */
 export type DocStatus = "draft" | "issued" | "void";
-/** 明細の税：10% ／ 8%（軽減） ／ 輸出免税 ／ 非課税 ／ 対象外（立替金など） */
-export type ItemTax = "10" | "8" | "export" | "nontax" | "none";
-export const ITEM_TAX_LABEL: Record<ItemTax, string> = { "10": "10%", "8": "8%（軽減）", export: "輸出免税", nontax: "非課税", none: "対象外" };
-const ITEM_TAX_CODE: Record<ItemTax, TaxCode> = { "10": "sales10", "8": "sales8", export: "export", nontax: "sales_nontax", none: "none" };
-const ITEM_RATE: Record<ItemTax, number> = { "10": 10, "8": 8, export: 0, nontax: 0, none: 0 };
+/** 明細の税：10% ／ 8%（軽減） ／ 1%（軽減。令和9年4月1日〜令和11年3月31日） ／ 輸出免税 ／ 非課税 ／ 対象外（立替金など） */
+export type ItemTax = "10" | "8" | "1" | "export" | "nontax" | "none";
+export const ITEM_TAX_LABEL: Record<ItemTax, string> = { "10": "10%", "8": "8%（軽減）", "1": "1%（軽減）", export: "輸出免税", nontax: "非課税", none: "対象外" };
+const ITEM_TAX_CODE: Record<ItemTax, TaxCode> = { "10": "sales10", "8": "sales8", "1": "sales1", export: "export", nontax: "sales_nontax", none: "none" };
+const ITEM_RATE: Record<ItemTax, number> = { "10": 10, "8": 8, "1": 1, export: 0, nontax: 0, none: 0 };
+/** 軽減税率の明細（※ の印をつける） */
+export const isReducedItem = (t: ItemTax) => t === "8" || t === "1";
+/** 軽減税率の明細を、その日の税率（8%・1%）に合わせる（複製・見積書から請求書へ） */
+export const itemTaxOn = (t: ItemTax, date: string): ItemTax => (!isReducedItem(t) ? t : inReduced1(date) ? "1" : "8");
+/**
+ * 軽減税率の明細と取引日の確かめ（書き直しはしない。知らせるだけ）
+ *  - 1% の明細があるのに、取引日が期間の外
+ *  - 8% の明細があるのに、取引日が期間中（3月までの分を一緒に請求する書類や、経過措置の取引ならそのまま）
+ */
+export const reducedItemNote = (d: Pick<SalesDoc, "items" | "issue_date" | "delivery_date">): string | null => {
+  const date = salesDate(d);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  if (d.items.some((it) => it.tax === "1") && !inReduced1(date)) {
+    return "1%（軽減）は、令和9年4月1日から令和11年3月31日までの飲食料品の取引だけです。取引日（無ければ発行日）を確かめてください";
+  }
+  if (d.items.some((it) => it.tax === "8") && inReduced1(date)) {
+    return "この取引日の飲食料品は 1%（軽減）です。3月31日までに納めた分を一緒に請求する書類や、定期供給契約・通信販売の経過措置の取引なら、8% のままでかまいません";
+  }
+  return null;
+};
 /** 単価が税抜か税込か */
 export type PriceMode = "exclusive" | "inclusive";
 /** 端数の丸め方（明細の金額と、税率ごとの消費税額） */
@@ -105,7 +128,7 @@ export interface TaxGroup {
 export interface DocTotals {
   /** 明細ごとの金額 */
   amounts: number[];
-  /** 税率・区分ごと（明細に出てくる順。10%・8%・輸出免税・非課税・対象外） */
+  /** 税率・区分ごと（10%・8%・1%・輸出免税・非課税・対象外の順。明細にあるものだけ） */
   groups: TaxGroup[];
   /** 税抜の合計（免税の年は金額の合計） */
   subtotal: number;
@@ -121,7 +144,8 @@ export interface DocTotals {
   exempt: boolean;
 }
 
-const GROUP_ORDER: ItemTax[] = ["10", "8", "export", "nontax", "none"];
+/** 明細の税の並び（選ぶ欄と、税率ごとの合計の順。数字のキーは Object.keys で昇順になるので、ここで決める） */
+export const ITEM_TAXES: ItemTax[] = ["10", "8", "1", "export", "nontax", "none"];
 
 /** 源泉徴収税額（報酬・料金。100万円までは 10.21%、超える部分は 20.42%。1円未満切り捨て） */
 export const withholdingTax = (base: number) =>
@@ -133,7 +157,7 @@ export const docTotals = (d: Pick<SalesDoc, "items" | "price_mode" | "withholdin
   const sumOf = (t: ItemTax) => d.items.reduce((s, it, i) => s + (it.tax === t ? amounts[i] : 0), 0);
   const groups: TaxGroup[] = exempt
     ? (d.items.length ? [{ tax: "none" as ItemTax, rate: 0, base: amounts.reduce((s, a) => s + a, 0), tax_amount: 0, total: amounts.reduce((s, a) => s + a, 0) }] : [])
-    : GROUP_ORDER.filter((t) => d.items.some((it) => it.tax === t)).map((t) => {
+    : ITEM_TAXES.filter((t) => d.items.some((it) => it.tax === t)).map((t) => {
       const rate = ITEM_RATE[t];
       const sum = sumOf(t);
       if (!rate) return { tax: t, rate, base: sum, tax_amount: 0, total: sum };

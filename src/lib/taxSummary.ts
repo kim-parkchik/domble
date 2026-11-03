@@ -12,7 +12,7 @@
 import type { Account, Counterparty, InvoiceKind, PurchaseUse, TaxCode, TaxStatus, TaxYear } from "./types";
 import { periodOfLine, type FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
-import { deductionProblem, isImportCode, isPurchaseCode, isSalesCode, statusProblem, takesPurchaseUse, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
+import { deductionProblem, inReduced1, isBadDebtCode, isImportCode, isPurchaseCode, isReduced1, isSalesCode, statusProblem, takesPurchaseUse, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
 import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
 import { INTERIM_KIND_LABEL, type InterimPlan } from "./taxInterim";
 import type { InventoryAdjust } from "./taxReturn";
@@ -35,7 +35,7 @@ const KIND_ORDER: TaxKind[] = ["sales", "salesReturn", "badDebt", "badDebtRecove
 /** 明細の区分（貸借の側で判定） */
 export const taxKindOf = (code: TaxCode, side: "debit" | "credit"): TaxKind => {
   if (code === "none") return "other";
-  if (code === "baddebt10" || code === "baddebt8") return side === "debit" ? "badDebt" : "badDebtRecovered";
+  if (isBadDebtCode(code)) return side === "debit" ? "badDebt" : "badDebtRecovered";
   if (taxCodeDef(code).group === "sales") return side === "credit" ? "sales" : "salesReturn";
   return side === "debit" ? "purchase" : "purchaseReturn";
 };
@@ -120,7 +120,7 @@ export const buildTaxSummary = (lines: FlatLine[], accounts: Account[], taxYears
   const net = (code: TaxCode) =>
     list.filter((r) => r.code === code && (r.kind === "sales" || r.kind === "salesReturn"))
       .reduce((s, r) => s + (r.kind === "sales" ? r.amount : -r.amount), 0);
-  const taxable = Math.floor((net("sales10") * 100) / 110) + Math.floor((net("sales8") * 100) / 108);
+  const taxable = Math.floor((net("sales10") * 100) / 110) + Math.floor((net("sales8") * 100) / 108) + Math.floor((net("sales1") * 100) / 101);
   const exportSales = net("export");
   const nontax = net("sales_nontax");
   const denom = taxable + exportSales + nontax;
@@ -213,7 +213,7 @@ const entryIdsOf = (ls: FlatLine[]) => {
 export const codeMismatch = (a: Account, code: TaxCode): string | null => {
   if (code === "none") return null;
   const group = taxCodeDef(code).group;
-  const bad = code === "baddebt10" || code === "baddebt8";
+  const bad = isBadDebtCode(code);
   if (a.category === "revenue" && (group === "purchase" || bad)) return "収益の科目に仕入・貸倒れの税区分";
   if ((a.category === "cogs" || a.category === "expense") && group === "sales" && !bad) return "経費・売上原価の科目に売上の税区分";
   if (a.category === "liability" || a.category === "equity" || a.category === "special") return "負債・資本・専従者給与の科目に対象外以外の税区分";
@@ -308,6 +308,40 @@ const assetAndAccountIssues = (x: TaxCheckInput, scoped: FlatLine[], status: Tax
         detail: "通勤手当（通勤に通常必要な額）は課税仕入になります。給料と分けて、明細の税区分を「課税仕入 10%」にしてください（補助科目で分けると入れやすくなります）。",
       });
     }
+  }
+  return out;
+};
+
+/**
+ * 飲食料品の税率の引下げ（令和9年4月1日〜令和11年3月31日。軽減税率 8% → 1%）の確かめ
+ *  - 期間の外の 1%：直す
+ *  - 期間中の 8%（軽減）の売上・仕入・輸入：念のため（返品・経過措置・売り手が 8% で請求した仕入ならそのまま）
+ *  - 1% の取引があれば、申告書の数字にまだ入らないこと（0.78% の欄がある様式がドラフト版のため）
+ */
+const reduced1Issues = (scoped: FlatLine[]): TaxIssue[] => {
+  const out: TaxIssue[] = [];
+  const outside = scoped.filter((l) => isReduced1(l.tax_code) && !inReduced1(l.date));
+  if (outside.length) {
+    out.push({
+      level: "error", title: "1%（軽減）の期間の外の取引が 1% になっています", fix: "entries", entryIds: entryIdsOf(outside),
+      detail: "飲食料品の税率が 1% になるのは、令和9年4月1日から令和11年3月31日までの取引です。それ以外の日の飲食料品は、税区分を 8%（軽減）にしてください。",
+    });
+  }
+  const eight = scoped.filter((l) => inReduced1(l.date) && (l.tax_code === "sales8" || l.tax_code === "purchase8" || l.tax_code === "import8"));
+  if (eight.length) {
+    out.push({
+      level: "info", title: "念のため：令和9年4月1日以後の取引が 8%（軽減）になっています", fix: "entries", entryIds: entryIdsOf(eight),
+      detail: "この期間の飲食料品は 1% です。3月31日までに売ったものの返品、定期供給契約・通信販売の経過措置（令和9年1月1日前の契約・申込み）、"
+        + "売り手が 8% で請求した仕入（売り手の出荷が3月31日まで）なら、8% のままでかまいません。そうでなければ、税区分を 1%（軽減）にしてください。",
+    });
+  }
+  const one = scoped.filter((l) => isReduced1(l.tax_code));
+  if (one.length) {
+    out.push({
+      level: "warn", title: "1%（軽減）の取引は、まだ申告書の数字に入りません", fix: "return", entryIds: [],
+      detail: `1%（軽減）の明細が ${one.length} 件（税込 ${yenText(one.reduce((t, l) => t + l.amount, 0))}）あります。0.78% の欄がある申告書の様式（令和9年4月1日以後終了課税期間用）は`
+        + "国税庁のドラフト版しか出ていないため、domble の申告書はまだ対応していません（集計表には入っています）。様式が確定したら対応します。",
+    });
   }
   return out;
 };
@@ -601,6 +635,7 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       }
     }
   }
+  issues.push(...reduced1Issues(scoped));
   issues.push(...assetAndAccountIssues(x, scoped, ty.status));
   if (ty.status === "standard") {
     const d = deductionProblem(x.taxYears, x.year, ty.deduction);

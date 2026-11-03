@@ -4,6 +4,7 @@
  */
 import type { Account, InvoiceKind, PurchaseUse, SubAccount, TaxCode, VoucherRow } from "./types";
 import { emptyRow } from "./accounting";
+import { reducedOn } from "./tax";
 
 export interface JournalTemplate {
   id: number;
@@ -76,9 +77,9 @@ export const removeFromTemplate = (rows: VoucherRow[], target: { accountId?: num
 
 /**
  * 呼び出す行。消された科目・補助科目は外す（科目が消えた側は空にし、両側とも空になった行は捨てる）
- * dropped：外した数（画面で知らせる）
+ * dropped：外した数（画面で知らせる）。date（入れる仕訳の日付）があれば、軽減税率の税区分をその日の税率に合わせる
  */
-export const applyTemplate = (rows: VoucherRow[], accounts: Account[], subs: SubAccount[]): { rows: VoucherRow[]; dropped: number } => {
+export const applyTemplate = (rows: VoucherRow[], accounts: Account[], subs: SubAccount[], date?: string): { rows: VoucherRow[]; dropped: number } => {
   const accIds = new Set(accounts.map((a) => a.id));
   const subOf = new Map(subs.map((s) => [s.id, s.account_id]));
   let dropped = 0;
@@ -86,6 +87,8 @@ export const applyTemplate = (rows: VoucherRow[], accounts: Account[], subs: Sub
   for (const r of rows) {
     const x = { ...emptyRow(), ...r };
     for (const side of ["debit", "credit"] as const) {
+      // 軽減税率の税区分は、入れる仕訳の日付の税率（8%・1%）に合わせる
+      if (date) x[`${side}Tax`] = reducedOn(x[`${side}Tax`], date);
       const acc = x[`${side}AccountId`];
       const sub = x[`${side}SubId`];
       if (acc && !accIds.has(acc)) {
