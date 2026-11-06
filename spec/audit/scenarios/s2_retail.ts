@@ -12,7 +12,7 @@
  * 動かし方：bun spec/audit/scenarios/s2_retail.ts（リポジトリの直下で）
  */
 import {
-  makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo, YEAR,
+  runInventory, runAccruedTax, taxXtxOf, makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo, YEAR,
   type Cmp,
 } from "./common";
 import { EMPTY_INCOME_TAX_INPUT, type IncomeTaxInput } from "../../../src/lib/incomeTax";
@@ -23,7 +23,7 @@ const M = (m: number, d: number) => `${YEAR}-${String(m).padStart(2, "0")}-${Str
 const last = (m: number) => M(m, new Date(YEAR, m, 0).getDate());
 
 // ── 設定 ──
-await repo.createAccount(db, { code: "208", name: "未払消費税等", kana: "みばらいしょうひぜいとう", category: "liability" });
+// 未払消費税等は初期科目（260）にある（前回は科目を足していた）
 await b.reload();
 await repo.saveInvoiceRegistration(db, "T1111111111111", "2023-10-01");
 await repo.saveTaxYear(db, { from_year: 2024, status: "simplified", method: "inclusive", business_class: 2, taxable_from: "", deduction: "individual", voluntary_interim: 0 });
@@ -95,13 +95,9 @@ await repo.saveTaxInterim(db, YEAR, 300_000, 84_600);
 
 // ── 決算整理 ──
 await runDepreciation(db, b);
-await voucher(db, b, rates, M(12, 31), [
-  { dr: "期首商品棚卸高", drAmt: 1_200_000, cr: "棚卸資産", crAmt: 1_200_000, memo: "期首棚卸の振替" },
-  { dr: "棚卸資産", drAmt: 1_350_000, cr: "期末商品棚卸高", crAmt: 1_350_000, memo: "期末棚卸" },
-], { adjustment: true });
-// 未払消費税（domble には自動の仕訳が無いので、申告書の数字を見て手で入れる）
-const pre = await taxReturnOf(db, b);
-await voucher(db, b, rates, M(12, 31), [{ dr: "租税公課", drAmt: pre.r.total, cr: "未払消費税等", crAmt: pre.r.total, memo: "令和7年分 消費税等の未払計上" }], { adjustment: true });
+// 棚卸・未払消費税等は決算整理の画面で作る（前回は振替伝票で手入力した）
+const invRun = await runInventory(db, b, 1_350_000);
+const accrued = await runAccruedTax(db, b);
 
 // ── 数字を出す ──
 const f = await yearFigures(db, b);
@@ -172,8 +168,12 @@ cmp(rows, "中間申告の判定：回数", "年1回", t.plan.kind === "once" ? 
 cmp(rows, "中間申告の判定：国税", 300_000, t.plan.national);
 cmp(rows, "中間申告の判定：地方", 84_600, t.plan.local);
 cmp(rows, "中間申告の判定：納付期限（8/31 は日曜）", "2025-09-01", t.plan.periods[0]?.payBy ?? null);
-cmp(rows, "未払消費税の決算整理仕訳", "自動で作る（市販ソフト）", "出せない", "申告書の ㉖ を見て振替伝票で手入力した");
+cmp(rows, "未払消費税等の決算整理仕訳（決算整理の画面）", 43_000, accrued.id ? accrued.total : null, "決算整理の画面で作れる（前回は手入力）");
+cmp(rows, "棚卸の振替の仕訳（決算整理の画面）", "作れる", invRun ? "作れる" : "出せない");
 cmp(rows, "消費税：令和7年分の e-Tax データ（.xtx）", "書き出せる", t.xtx ? "出せない" : "書き出せる");
+const tx = await taxXtxOf(db, t.r);
+cmp(rows, "消費税 xtx：手続 RSH0030（簡易課税用）の XSD に合う", "", tx.error || tx.invalid);
+cmp(rows, "消費税 xtx：納付税額 ⑪（ABB00110 相当の値を含む）", true, tx.xml.includes(">33600<"));
 
 // ── 所得税 ──
 const input: IncomeTaxInput = {

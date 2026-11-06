@@ -8,7 +8,7 @@
 import { Database as Sqlite } from "bun:sqlite";
 const ROOT = new URL("../../../src", import.meta.url).pathname;
 import type Database from "../../../src/db/connection";
-import { COLUMN_MIGRATIONS, SCHEMA } from "../../../src/db/schema";
+import { COLUMN_MIGRATIONS, SCHEMA, SEED_ACCOUNT_SQL } from "../../../src/db/schema";
 import { ACCOUNT_SEEDS, CODE } from "../../../src/constants/accounts";
 import * as repo from "../../../src/db/repo";
 import type { Account, HomeUseRate, JournalLine, TaxCode, InvoiceKind, PurchaseUse } from "../../../src/lib/types";
@@ -43,10 +43,8 @@ export const makeDb = (mode: "strict" | "standard" = "strict", year = YEAR) => {
   }
   for (const s of SCHEMA.filter(isTrigger)) raw.run(s);
   raw.run("INSERT INTO settings (id, fiscal_year, e_book_mode, business_name) VALUES (1, ?, ?, 'テスト')", [year, mode]);
-  ACCOUNT_SEEDS.forEach((a, i) =>
-    raw.run("INSERT INTO accounts (code, name, kana, category, normal_side, sort_order, is_system) VALUES (?, ?, ?, ?, ?, ?, 1)",
-      [a.code, a.name, a.kana, a.category, a.normal_side, i]),
-  );
+  // src/db/repo.test.ts の makeDb と同じ（所得の区分・非表示も入れる）
+  ACCOUNT_SEEDS.forEach((a, i) => raw.run(SEED_ACCOUNT_SQL, [a.code, a.name, a.kana, a.category, a.normal_side, i, a.income_kind ?? "business", a.hidden ? 0 : 1]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = (params?: unknown[]) => (params ?? []) as any[];
   const db = {
@@ -175,7 +173,7 @@ export const yearFigures = async (db: Database, b: Book) => {
   const accounts = b.accounts;
   const lines = await repo.getLines(db, yearStart(YEAR), yearEnd(YEAR));
   const opening = (await repo.getOpening(db, YEAR)).byAccount;
-  const tb = buildTrialBalance(accounts, opening, lines, yearStart(YEAR), yearStart(YEAR), yearEnd(YEAR));
+  const tb = buildTrialBalance(accounts, opening, lines, 1, 13);
   const end = closingBalances(accounts, opening, lines);
   const pl = summarizeIncome(accounts, end);
   const bs = summarizeBalanceSheet(accounts, end);
@@ -299,3 +297,125 @@ export const printTable = (title: string, rows: Cmp[]) => {
 
 export { repo, CODE, yearEnd, yearStart, buildTaxXtx, depreciationFor };
 export type { Account, JournalLine, HomeUseRate, IncomeTaxInput };
+
+// ───────── 2026-11-04 の確認で足したもの ─────────
+import { businessFigures } from "../../../src/lib/incomeTaxBooks";
+import { carriedLosses, carriedFromPast, type PastIncomeTax } from "../../../src/lib/incomeTax";
+import { bookLines, exclusiveAccountsOf } from "../../../src/lib/taxExclusive";
+
+/** 消費税の e-Tax のデータ（TaxReturnView の書き出しと同じ：buildTaxXtx）。XSD（spec/etax/shohi の RSH0010・RSH0030）に照らした結果も返す */
+export const taxXtxOf = async (db: Database, r: Parameters<typeof buildTaxXtx>[0], o: { interim?: { from: string; to: string }; year?: number } = {}) => {
+  if (!(await repo.getSettings(db)).etax_user_id) await setFiler(db); // 画面は e-Tax の欄が足りないと書き出さないので、先に入れる
+  const s = await repo.getSettings(db);
+  const filer = { ...filerFromSettings(s), myNumber: "" };
+  const y = o.year ?? YEAR;
+  let xml = "";
+  try {
+    xml = buildTaxXtx(r, filer, { from: `${y}-01-01`, to: `${y}-12-31`, createdOn: `${y + 1}-02-20`, ...(o.interim ? { interim: o.interim } : {}) });
+  } catch (e) {
+    return { xml: "", error: String(e), invalid: "" };
+  }
+  const fs = await import("node:fs");
+  const dir = fs.mkdtempSync(`${(await import("node:os")).tmpdir()}/domble-tx-`);
+  const file = `${dir}/t.xtx`;
+  fs.writeFileSync(file, xml);
+  const [, procedure, vr] = xml.match(/<(RSH\d{4}) VR="([\d.]+)"/)!;
+  const xsd = new URL(`../../etax/shohi/${procedure}-${vr.replace(/\./g, "").slice(0, 3)}.xsd`, import.meta.url).pathname;
+  const p = Bun.spawnSync(["xmllint", "--noout", "--schema", xsd, file]);
+  return { xml, error: "", invalid: p.exitCode === 0 ? "" : p.stderr.toString().slice(0, 400) };
+};
+
+/**
+ * 所得税（IncomeTaxPage と同じ：businessFigures（白色・不動産所得も）→ carriedFromPast → computeIncomeTax）
+ * y = 年分。繰越損失は、前の年の保存した所得税の入力と帳簿から引き継ぐ（画面と同じ）
+ */
+export const incomeTaxScreen = async (db: Database, b: Book, input: IncomeTaxInput, y = YEAR) => {
+  await b.reload();
+  const accounts = await repo.getAccounts(db, y);
+  const figuresOf = async (yy: number, inp: IncomeTaxInput) => {
+    const lines = await repo.getLines(db, yearStart(yy), yearEnd(yy));
+    const opening = (await repo.getOpening(db, yy)).byAccount;
+    const taxYears = await repo.getTaxYears(db);
+    const books = bookLines(lines, taxYears, exclusiveAccountsOf(accounts));
+    const end = closingBalances(accounts, opening, books);
+    const n = await repo.getStatementNotes(db, yy);
+    const landInterest = Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0;
+    const scale = await repo.getRealEstateScale(db, yy);
+    const filingType = await repo.filingTypeIn(db, yy);
+    return businessFigures(accounts, end, filingType, inp, yy, { scale, landInterest });
+  };
+  const { biz, familyLines } = await figuresOf(y, input);
+  const load = async (yy: number): Promise<PastIncomeTax | null> => {
+    const inp = await repo.findIncomeTaxInput(db, yy);
+    if (!inp) return null;
+    return { input: inp, biz: (await figuresOf(yy, inp)).biz };
+  };
+  const past = await carriedFromPast(y, load);
+  const carried = carriedLosses(input, y, past);
+  const r = computeIncomeTax(input, biz, y, carried);
+  const v = (no: string) => r.rows.find((x) => x.no === no)?.value ?? null;
+  const k = (key: string) => r.rows.find((x) => x.key === key)?.value ?? null;
+  return { r, v, k, biz, familyLines, carried };
+};
+
+import { accruedTaxLines, inventoryLines } from "../../../src/lib/yearEnd";
+/** 決算整理の画面（YearEndPage）の「棚卸の振替の仕訳を作る」：期首残高の棚卸資産と、保存した期末の棚卸高から */
+export const runInventory = async (db: Database, b: Book, closing: number) => {
+  await b.reload();
+  await repo.saveInventoryCount(db, YEAR, { amount: closing, rows: [] });
+  const id = (code: string) => b.accounts.find((a) => a.code === code)!.id;
+  const opening = (await repo.getOpening(db, YEAR)).byAccount[id(CODE.STOCK)] ?? 0;
+  const lines = inventoryLines(opening, closing, { openingAccount: id(CODE.OPENING_STOCK), closingAccount: id(CODE.CLOSING_STOCK), stock: id(CODE.STOCK) });
+  return repo.saveYearEndRun(db, YEAR, "inventory", lines);
+};
+/** 決算整理の画面の「未払消費税等の仕訳を作る」：申告書の ㉖ から（税込経理） */
+export const runAccruedTax = async (db: Database, b: Book) => {
+  const t = await taxReturnOf(db, b);
+  const id = (code: string) => b.accounts.find((a) => a.code === code)!.id;
+  const lines = accruedTaxLines(t.r.total, { taxes: id(CODE.TAXES), accrued: id(CODE.ACCRUED_CONSUMPTION_TAX), receivable: id(CODE.ACCRUED), misc: id(CODE.MISC_INCOME) });
+  return { id: await repo.saveYearEndRun(db, YEAR, "accrued_tax", lines), total: t.r.total };
+};
+
+import { buildWhiteStatement, familyMembers } from "../../../src/lib/whiteStatement";
+import { buildRealEstateBook } from "../../../src/lib/realEstateStatement";
+/**
+ * 所得税の e-Tax のデータ（IncomeTaxPage.prepareExport → exportXtx と同じ組み立て。白色は収支内訳書、不動産所得があれば不動産所得用も）
+ * it = incomeTaxScreen の結果
+ */
+export const incomeXtxScreen = async (
+  db: Database, b: Book, input: IncomeTaxInput, it: Awaited<ReturnType<typeof incomeTaxScreen>>, y = YEAR, numbers: Record<string, string> = { self: "123456789018" },
+) => {
+  const accounts = await repo.getAccounts(db, y);
+  const settings = await repo.getSettings(db);
+  const filingType = await repo.filingTypeIn(db, y);
+  const white = filingType === "white";
+  const lines = await repo.getLines(db, yearStart(y), yearEnd(y));
+  const opening = (await repo.getOpening(db, y)).byAccount;
+  const notes = await repo.getStatementNotes(db, y);
+  const subs = await repo.getSubAccounts(db, y);
+  const cps = await repo.getCounterparties(db);
+  const books = {
+    year: y, accounts, opening, lines, notes, assets: await repo.getAssets(db), homeUseRates: await repo.getHomeUseRates(db, y),
+    excludeEntryIds: [await repo.getHomeUseRun(db, y), await repo.getDepreciationRun(db, y)].filter((x): x is number => x !== null),
+    payeeName: (r: { counterpartyId: number | null; subId: number | null }) => (r.counterpartyId ? cps.find((c) => c.id === r.counterpartyId)?.name ?? "" : r.subId ? subs.find((x) => x.id === r.subId)?.name ?? "" : "（支払先の指定なし）"),
+    invoiceNoOf: (id: number) => cps.find((c) => c.id === id)?.invoice_no ?? "",
+    corporateNoOf: (id: number) => cps.find((c) => c.id === id)?.corporate_no ?? "",
+  };
+  const scale = await repo.getRealEstateScale(db, y);
+  const statement = buildBlueStatement({ ...books, deductionLimit: blueDeductionLimit(filingType, y), realEstateIncome: it.biz.realEstate?.incomeBeforeBlue });
+  const realEstate = it.biz.realEstate ? buildRealEstateBook({ ...books, white, scale, filingType }) : undefined;
+  const whiteSt = white ? buildWhiteStatement({ ...books, family: familyMembers(input) }) : undefined;
+  const src = {
+    year: y, filer: filerFromSettings(settings), input, result: it.r, biz: it.biz, statement, white: whiteSt, realEstate, settings,
+    bookKeeping: 2 as const, numbers, createdOn: `${y + 1}-02-20`,
+  };
+  const problems = incomeXtxProblems(src);
+  if (problems.length) return { xml: "", problems, invalid: "", statement, realEstate, whiteSt };
+  const xml = buildIncomeTaxXtx(src);
+  const fs = await import("node:fs");
+  const dir = fs.mkdtempSync(`${(await import("node:os")).tmpdir()}/domble-it-`);
+  const file = `${dir}/t.xtx`;
+  fs.writeFileSync(file, xml);
+  const p = Bun.spawnSync(["xmllint", "--noout", "--schema", new URL("../../etax/shotoku/RKO0010-250.xsd", import.meta.url).pathname, file]);
+  return { xml, problems, invalid: p.exitCode === 0 ? "" : p.stderr.toString().slice(0, 400), statement, realEstate, whiteSt };
+};

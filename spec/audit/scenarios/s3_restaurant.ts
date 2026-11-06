@@ -11,7 +11,7 @@
  * 動かし方：bun spec/audit/scenarios/s3_restaurant.ts（リポジトリの直下で）
  */
 import {
-  makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo, YEAR,
+  runInventory, runAccruedTax, taxXtxOf, makeDb, makeBook, cashEntry, voucher, runDepreciation, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo, YEAR,
   type Cmp,
 } from "./common";
 import { EMPTY_INCOME_TAX_INPUT, type IncomeTaxInput } from "../../../src/lib/incomeTax";
@@ -29,7 +29,7 @@ const M = (m: number, d: number) => `${YEAR}-${String(m).padStart(2, "0")}-${Str
 const last = (m: number) => M(m, new Date(YEAR, m, 0).getDate());
 
 // ── 設定 ──
-await repo.createAccount(db, { code: "208", name: "未払消費税等", kana: "みばらいしょうひぜいとう", category: "liability" });
+// 未払消費税等は初期科目（260）にある（前回は科目を足していた）
 await b.reload();
 await repo.saveInvoiceRegistration(db, "T5555555555555", "2023-10-01");
 await repo.saveTaxYear(db, { from_year: 2024, status: "standard", method: "inclusive", business_class: 4, taxable_from: "", deduction: "individual", voluntary_interim: 0 });
@@ -159,12 +159,9 @@ await repo.saveAsset(db, null, { name: "業務用冷蔵庫", account_id: b.acc("
 
 // ── 決算整理 ──
 await runDepreciation(db, b);
-await voucher(db, b, rates, M(12, 31), [
-  { dr: "期首商品棚卸高", drAmt: 200_000, cr: "棚卸資産", crAmt: 200_000, memo: "期首棚卸の振替" },
-  { dr: "棚卸資産", drAmt: 240_000, cr: "期末商品棚卸高", crAmt: 240_000, memo: "期末棚卸（食材）" },
-], { adjustment: true });
-const pre = await taxReturnOf(db, b);
-await voucher(db, b, rates, M(12, 31), [{ dr: "租税公課", drAmt: pre.r.total, cr: "未払消費税等", crAmt: pre.r.total, memo: "令和7年分 消費税等の未払計上" }], { adjustment: true });
+// 棚卸・未払消費税等は決算整理の画面で作る（前回は振替伝票で手入力した）
+await runInventory(db, b, 240_000);
+const accrued = await runAccruedTax(db, b);
 
 // ── 数字を出す ──
 const f = await yearFigures(db, b);
@@ -229,6 +226,9 @@ cmp(rows, "消費税：差引税額（⑨）", 691_000, t.row("first", "⑨")?.c
 cmp(rows, "消費税：譲渡割額（⑳）", 194_800, t.row("first", "⑳")?.c ?? null);
 cmp(rows, "消費税：合計税額（㉖）", 885_800, t.r.total);
 cmp(rows, "消費税：令和7年分の e-Tax データ（.xtx）", "書き出せる", t.xtx ? "出せない" : "書き出せる");
+const ctx = await taxXtxOf(db, t.r);
+cmp(rows, "消費税 xtx：手続 RSH0010（一般用）の XSD に合う", "", ctx.error || ctx.invalid);
+cmp(rows, "未払消費税等の決算整理仕訳（決算整理の画面）", 885_800, accrued.id ? accrued.total : null);
 
 // ── 所得税 ──
 const base: IncomeTaxInput = {
@@ -252,6 +252,9 @@ cmp(rows, "所得税：専従者給与の合計 (58)", 960_000, it.v("(58)"));
 // 専従者の妻を「配偶者」に入れてしまったとき（青色事業専従者は控除対象配偶者にならない：所法2条1項33号）
 const it2 = await incomeTaxOf(db, b, { ...base, spouse: { name: "山田 花子", relation: "妻", birthday: "1982-02-01", income: 310_000, disability: "none", cohabiting: true, lineal: false, familyEmployee: true } });
 cmp(rows, "所得税：専従者の妻を配偶者に入れたときの配偶者控除", 0, it2.v("㉑㉒"), "専従者給与を受けている妻は控除対象配偶者にならない（「専従者」に印）");
+// 「専従者」の印を付け忘れたとき（前回の F-3）：帳簿に専従者給与があるので知らせが出るか
+const it3 = await incomeTaxOf(db, b, { ...base, spouse: { name: "山田 花子", relation: "妻", birthday: "1982-02-01", income: 310_000, disability: "none", cohabiting: true, lineal: false, familyEmployee: false } });
+cmp(rows, "所得税：専従者の印を付け忘れたときの知らせ", "出る", it3.r.notes.some((n) => n.includes("専従者")) ? "出る" : "出ない", `配偶者控除は ${it3.v("㉑㉒")}円のまま（印が無いと domble は区別できない。知らせで直してもらう）`);
 
 // 所得税の e-Tax のデータ（申告書＋青色申告決算書）。専従者は決算書の書き込み（続柄・年齢・従事月数・仕事の内容）から
 for (const [k, v] of [["relation", "妻"], ["age", "43"], ["months", "12"], ["work", "毎日・調理補助と会計"]]) await repo.saveStatementNote(db, YEAR, `family:sub:${sHanako}:${k}`, v);
@@ -265,7 +268,7 @@ cmp(rows, "所得税の e-Tax のデータ：手続 RKO0010 の XSD に合う", 
 cmp(rows, "xtx：第3期分の納める税金 (52)（ABB00750）", "132500", xtxVal(x.xml, "ABB00750"));
 cmp(rows, "xtx：専従者給与の合計 (58)（ABB00790）", "960000", xtxVal(x.xml, "ABB00790"));
 cmp(rows, "xtx：第二表 事業専従者の氏名（ABE00020）", "山田 花子", xtxVal(x.xml, "ABE00020"));
-cmp(rows, "xtx：第二表 従事月数・程度・仕事の内容（ABE00060）", "12月・毎日・調理補助と会計", xtxVal(x.xml, "ABE00060"));
+cmp(rows, "xtx：第二表 従事月数・程度・仕事の内容（ABE00060）", "12月", xtxVal(x.xml, "ABE00060"), "青色申告者は従事月数だけ（程度・仕事の内容は白色申告者だけが書く。確定申告の手引き）。前回の期待値が古い");
 cmp(rows, "xtx：第二表 配偶者の欄（専従者の妻は書かない）", "書かない", xtxVal(x.xml, "ABY00020") ?? "書かない");
 cmp(rows, "xtx：第二表 事業専従者の生年月日（配偶者の欄に入れた生年月日から）", "昭和57年2月1日", /<ABE00030><gen:era>3<\/gen:era><gen:yy>57<\/gen:yy><gen:mm>2<\/gen:mm><gen:dd>1<\/gen:dd><\/ABE00030>/.test(x.xml) ? "昭和57年2月1日" : "書いていない");
 cmp(rows, "xtx：第二表 親族（子）の氏名（ABY00160）", "山田 一郎", xtxVal(x.xml, "ABY00160"));

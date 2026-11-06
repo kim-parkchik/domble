@@ -12,7 +12,7 @@
  * 動かし方：bun spec/audit/scenarios/s1_designer.ts（リポジトリの直下で）
  */
 import {
-  makeDb, makeBook, cashEntry, voucher, runDepreciation, runHomeUseYearEnd, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo,
+  taxXtxOf, makeDb, makeBook, cashEntry, voucher, runDepreciation, runHomeUseYearEnd, yearFigures, taxReturnOf, incomeTaxOf, incomeXtxOf, setFiler, xtxVal, cmp, printTable, repo,
   YEAR, type Cmp,
 } from "./common";
 import { EMPTY_INCOME_TAX_INPUT, type IncomeTaxInput } from "../../../src/lib/incomeTax";
@@ -141,6 +141,10 @@ cmp(rows, "消費税：差引税額（⑨）", 60_800, t.row("first", "⑨")?.c 
 cmp(rows, "消費税：納付譲渡割額（㉒）", 17_100, t.row("first", "㉒")?.c ?? null);
 cmp(rows, "消費税：合計税額（㉖）", 77_900, t.r.total);
 cmp(rows, "消費税：令和7年分の e-Tax データ（.xtx）", "書き出せる", t.xtx ? "出せない" : "書き出せる", t.xtx ?? "");
+{
+  const tx = await taxXtxOf(db, (await import("../../../src/lib/taxReturn")).twentyReturn(t.base, { businessClass: 5, interimNational: 0, interimLocal: 0, baseSales: 3_500_000, deduction: "individual" }, "一般用"));
+  cmp(rows, "消費税 xtx（2割特例・一般用）：XSD に合う", "", tx.error || tx.invalid);
+}
 cmp(rows, "消費税：中間申告（前年 ⑨ 56,000円）", "不要", t.plan.kind === "none" ? "不要" : t.plan.kind);
 
 // ── 所得税 ──
