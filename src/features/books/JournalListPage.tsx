@@ -30,10 +30,14 @@ import { TAX_CODES } from "../../constants/tax";
 import * as repo from "../../db/repo";
 import { COMMON_LABEL, departmentName, matchesDepartment, type DepartmentFilter } from "../../lib/departments";
 import { fileLabel } from "../../lib/business";
+import { getYearNotes } from "../../db/review";
+import { monthMarks, noteStatuses, type NoteStatus } from "../../lib/review";
+import { MonthCheckBar, NoteBadge, useMonthChecks } from "./EntryNotes";
 
 type DisplayRow = JournalRow;
 
-export const JournalListPage = () => {
+/** notesFocus：ホームの「未解決の付箋」から開いたとき（開くたびに増える番号。0 = 絞り込まない） */
+export const JournalListPage = ({ notesFocus = 0 }: { notesFocus?: number }) => {
   const {
     db, year, accounts, accountMap, activeAccounts, subAccounts, settings, labelOf, subMap, dataVersion, strict, counterparties, isTaxActive, taxYear, taxYears, can, readOnly,
     closedMonth, daysOff, departments,
@@ -87,6 +91,18 @@ export const JournalListPage = () => {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
+  // 付箋（仕訳ごとの状態）と、付箋での絞り込み（"" = すべて、any = 付箋のある仕訳、open = 未解決の付箋のある仕訳）
+  const [notes, setNotes] = useState<Map<number, NoteStatus>>(new Map());
+  useEffect(() => {
+    getYearNotes(db, year).then((n) => setNotes(noteStatuses(n))).catch(console.error);
+  }, [db, year, dataVersion]);
+  const [noteFilter, setNoteFilter] = useState<"" | "any" | "open">(notesFocus ? "open" : "");
+  useEffect(() => {
+    if (notesFocus) setNoteFilter("open");
+  }, [notesFocus]);
+  // 月ごとの確認済みの印と、確認したあとに変わった仕訳だけを出すとき（伝票番号）
+  const { checks, reload: reloadChecks } = useMonthChecks();
+  const [onlyIds, setOnlyIds] = useState<Set<number> | null>(null);
 
   const rows = useMemo(() => {
     const grouped = groupByEntry(lines.filter((l) => inPeriods(l, from, to)));
@@ -99,6 +115,8 @@ export const JournalListPage = () => {
       if (dateTo && ls[0].date > dateTo) continue;
       if (accountId && !ls.some((l) => l.account_id === accountId)) continue;
       if (cpId && ls[0].counterparty_id !== cpId) continue;
+      if (noteFilter && !(noteFilter === "open" ? notes.get(entryId)?.open : notes.has(entryId))) continue;
+      if (onlyIds && !onlyIds.has(entryId)) continue;
       if (deptFilter !== "all" && !ls.some((l) => matchesDepartment(l, deptFilter))) continue;
       if (taxFilter && !ls.some((l) =>
         taxFilter === "unset" ? !l.tax_code && isTaxActive(l.date)
@@ -123,7 +141,7 @@ export const JournalListPage = () => {
       out.push(...journalRowsOf(entryId, ls, { counterparty, late, reason: reasons.get(entryId) }));
     }
     return out;
-  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, deptFilter, inputPeriod, daysOff, lateOnly, taxFilter, isTaxActive, reasons]);
+  }, [lines, year, from, to, dateFrom, dateTo, accountId, q, accountMap, subMap, minAmt, maxAmt, cpId, cpMap, deptFilter, inputPeriod, daysOff, lateOnly, taxFilter, isTaxActive, reasons, noteFilter, notes, onlyIds]);
 
   // 選べる仕訳（削除済み・締めた月のものは選べない）と、表示中で選んでいるもの
   const selectable = (r: DisplayRow) => !r.deleted && Number(r.date.slice(5, 7)) > closedMonth;
@@ -224,7 +242,7 @@ export const JournalListPage = () => {
       </PageHeader>
 
       <div className="filters">
-        <PeriodTabs from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+        <PeriodTabs from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setOnlyIds(null); }} marks={monthMarks(checks)} />
         {periodNote(from, to) && <span className="badge badge-adjust period-note">{periodNote(from, to)}</span>}
         <span className="filter-label">日付</span>
         <FullDateInput value={dateFrom} onChange={setDateFrom} year={year} aria-label="取引年月日（から）" />
@@ -265,6 +283,11 @@ export const JournalListPage = () => {
           <span>〜</span>
           <input className="input" value={maxAmt} onChange={(e) => setMaxAmt(e.target.value)} placeholder="上限" inputMode="numeric" aria-label="金額の上限" />
         </div>
+        <select value={noteFilter} onChange={(e) => setNoteFilter(e.target.value as typeof noteFilter)} aria-label="付箋で絞り込み">
+          <option value="">付箋：すべて</option>
+          <option value="open">未解決の付箋がある仕訳</option>
+          <option value="any">付箋がある仕訳</option>
+        </select>
         <label className="check" title={inputPeriod ? `入力期間（${inputPeriodText(inputPeriod)}）を過ぎて登録した仕訳（入力期間は事業者設定で変えられます）` : undefined}>
           <input type="checkbox" checked={lateOnly} onChange={(e) => setLateOnly(e.target.checked)} /> 入力期間を過ぎて登録したもの
         </label>
@@ -275,6 +298,14 @@ export const JournalListPage = () => {
         )}
         <span className="filter-count">{entryCount} 件</span>
       </div>
+
+      {from === to && <MonthCheckBar month={from} checks={checks} reload={reloadChecks} onShowChanged={(ids) => setOnlyIds(new Set(ids))} />}
+      {onlyIds && (
+        <div className="month-check-bar changed">
+          <span>確認したあとに変わった仕訳（{onlyIds.size}件）だけを出しています。削除した仕訳は「削除済みも表示」で出ます。</span>
+          <button className="btn ghost sm" onClick={() => setOnlyIds(null)}>すべて出す</button>
+        </div>
+      )}
 
       {canDelete && chosen.length > 0 && (
         <div className="bulk-bar" role="region" aria-label="選んだ仕訳">
@@ -349,6 +380,7 @@ export const JournalListPage = () => {
                     {r.first && evidenceCounts.get(r.entryId) ? (
                       <span className="clip" title={`証憑 ${evidenceCounts.get(r.entryId)}件`}><Paperclip size={12} />{evidenceCounts.get(r.entryId)}</span>
                     ) : null}
+                    {r.first && <NoteBadge status={notes.get(r.entryId)} />}
                     {r.memo}
                     {r.first && r.counterparty && <span className="cp-tag">{r.counterparty}</span>}
                   </td>

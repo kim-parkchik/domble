@@ -84,12 +84,28 @@ describe("テーブルの作り直し：申告の種類", () => {
   });
 });
 
+describe("テーブルの作り直し：ユーザーの権限", () => {
+  test("権限に税理士（accountant）が無い帳簿を作り直し、ユーザーを残す", async () => {
+    const raw = new Sqlite(":memory:");
+    const isTrigger = (s: string) => s.trimStart().startsWith("CREATE TRIGGER");
+    for (const s of SCHEMA.filter((x) => !isTrigger(x))) raw.run(s);
+    // 以前の形：role の CHECK に accountant が無い
+    raw.run("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','editor','viewer'))");
+    raw.run("ALTER TABLE users ADD COLUMN memo TEXT NOT NULL DEFAULT ''");
+    raw.run("INSERT INTO users (id, name, role) VALUES (1, '事業 太郎', 'admin')");
+    expect(() => raw.run("INSERT INTO users (name, role) VALUES ('税理 一郎', 'accountant')")).toThrow(/CHECK/);
+    await rebuildTables(wrap(raw));
+    raw.run("INSERT INTO users (name, role) VALUES ('税理 一郎', 'accountant')");
+    expect(raw.query("SELECT id, name, role FROM users ORDER BY id").all()).toEqual([{ id: 1, name: "事業 太郎", role: "admin" }, { id: 2, name: "税理 一郎", role: "accountant" }]);
+  });
+});
+
 /**
  * 帳簿の形式（テーブル・列・トリガー・作り直し）の指紋と、そのときの形式の版。
  * 形式を変えてこのテストが落ちたら、constants/appConfig.ts の SCHEMA_VERSION を1つ上げ、ここの version と hash を新しい値にする
  * （古い版の domble で新しい帳簿を開いたときに、読み取り専用で開くようにするため）
  */
-const SCHEMA_FINGERPRINT = { version: 17, hash: "13f3008b321eea54" };
+const SCHEMA_FINGERPRINT = { version: 18, hash: "74306d0ca08428d4" };
 
 test("帳簿の形式を変えたら、形式の版（SCHEMA_VERSION）を上げる", () => {
   const hash = createHash("sha256").update(JSON.stringify([SCHEMA, COLUMN_MIGRATIONS, RETIRED_TRIGGERS, TABLE_REBUILDS.map((t) => t.table)])).digest("hex").slice(0, 16);

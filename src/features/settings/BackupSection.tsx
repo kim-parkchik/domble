@@ -26,7 +26,7 @@ const sizeLabel = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixe
 export const BackupSection = () => {
   const { db, filePath, readOnly, can, restoreBackup, dataVersion } = useAppContext();
   const toast = useToast();
-  const admin = can("settings") && !readOnly;
+  const admin = can("owner") && !readOnly;
   const [value, setValue] = useState("");
   const [saved, setSaved] = useState<number | null>(null);
   const [second, setSecond] = useState(getSecondBackupDir());
@@ -87,6 +87,9 @@ export const BackupSection = () => {
     const label = `${stampLabel(b.stamp)}${b.suffix ? `・${b.suffix}` : ""}`;
     const ok = await ask(
       `${label} のバックアップに戻します。\n\n` +
+        (b.legacy
+          ? "これは帳簿の識別子が入る前の名前のバックアップです。同じファイル名のほかの帳簿（ほかの事業者など）のバックアップかもしれません。中身を確かめてから戻してください（バックアップは「帳簿ファイルを開く」で読み取り専用で開けます）。\n\n"
+          : "") +
         "今の帳簿は「戻す前」の印をつけてバックアップしてから、このバックアップで置き換えます（戻したあとでも、そのバックアップに戻せます）。" +
         "このバックアップより後に入れた仕訳・証憑・設定は、今の帳簿から無くなります。" +
         (b.encrypted ? "\n\n暗号化したバックアップは、作ったときのパスワード（回復キー）で開きます。" : "") +
@@ -112,6 +115,7 @@ export const BackupSection = () => {
         帳簿を開くとき（開く前の状態）と閉じるときに、書類フォルダの「{APP_DIR_NAME}/{BACKUP_DIR_NAME}」へ丸ごと複製（.{EXT_BACKUP}）を作ります。
         2か所目を決めると、そこにも作ります（PC の故障に備えて、外付けディスクなど別の場所にしておくと安心です）。
         古いものは、直近の世代数に加えて、日ごとに1つ（{BACKUP_DAYS}日分）と月ごとに1つ（{BACKUP_MONTHS / 12}年分）を残して消します。
+        バックアップの名前には帳簿ごとの識別子が入るので、同じファイル名のほかの帳簿（税理士の PC のほかの事業者など）のバックアップとは混ざりません。
       </p>
       {readOnly ? (
         <p className="field-note">読み取り専用で開いているため、ここでは操作できません。</p>
@@ -150,7 +154,10 @@ export const BackupSection = () => {
               <tbody>
                 {rows.map((b) => (
                   <tr key={b.path} title={b.path}>
-                    <td>{stampLabel(b.stamp)}{b.suffix && <span className="badge badge-adjust">{b.suffix}</span>}</td>
+                    <td>
+                      {stampLabel(b.stamp)}{b.suffix && <span className="badge badge-adjust">{b.suffix}</span>}
+                      {b.legacy && <span className="badge badge-update" title="帳簿の識別子が入る前の名前のバックアップ。同じファイル名のほかの帳簿のものかもしれません">以前の名前</span>}
+                    </td>
                     <td>{b.second ? "2か所目" : "書類フォルダ"}</td>
                     <td className="num">{sizeLabel(b.size)}</td>
                     <td>{b.encrypted && <span className="muted"><LockKeyhole size={13} /> 暗号化</span>}</td>

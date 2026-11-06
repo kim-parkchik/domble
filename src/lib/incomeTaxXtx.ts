@@ -308,8 +308,9 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     ABI00220: yes(x.businessTax.otherPrefecture),
     // 不動産所得から差し引いた青色申告特別控除額（事業税）
     ABI00170: amount(r.blueRealEstate),
-    // 税理士署名欄（依頼している税理士等）
+    // 税理士署名欄（依頼している税理士等）と、税理士法第30条・第33条の2の書面提出
     ABS10050: ref(refs, "DAIRI_NM"), ABS10060: ref(refs, "DAIRI_TEL"),
+    ABS10020: src.filer.agent?.art30 ? { kubun: 1 } : undefined, ABS10030: src.filer.agent?.art33 ? { kubun: 1 } : undefined,
   });
 };
 

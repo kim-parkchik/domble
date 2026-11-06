@@ -818,6 +818,49 @@ export const SCHEMA: string[] = [
     PRIMARY KEY (date, kind)
   );`,
 
+  /**
+   * 税理士との受け渡し（db/handoff.ts。バトン方式：帳簿の正本はどちらか1人が持つ）
+   * kind：send = 事業者が税理士に渡した、return = 税理士が事業者に返した、receive = 事業者が受け取った（置き換えた）、cancel = 渡すのをやめた
+   * token：渡すたびに作る合言葉（受け取るとき、最後に渡したものが返ってきたかを確かめる）。file：書き出した（受け取った）ファイル
+   * local_changes：渡している間（返したあと）に、この帳簿で入れた・直した数（受け取ると消えるため、受け取る前に知らせる）
+   */
+  `CREATE TABLE IF NOT EXISTS handoffs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('send','return','receive','cancel')),
+    at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
+    user_id INTEGER REFERENCES users(id),
+    token TEXT NOT NULL DEFAULT '',
+    file TEXT NOT NULL DEFAULT '',
+    memo TEXT NOT NULL DEFAULT '',
+    local_changes INTEGER NOT NULL DEFAULT 0
+  );`,
+
+  /**
+   * 仕訳の付箋（db/review.ts）：事業者と税理士の質問・回答。帳簿そのものではないので、締めた年の仕訳にも付けられ、履歴には残さない。
+   * kind：note = 書いたこと（質問・回答）、resolve = 解決済みにした（そのあとに書くと、また未解決になる）
+   */
+  `CREATE TABLE IF NOT EXISTS entry_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER NOT NULL REFERENCES journal_entries(id),
+    kind TEXT NOT NULL DEFAULT 'note' CHECK (kind IN ('note','resolve')),
+    body TEXT NOT NULL DEFAULT '',
+    user_id INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime'))
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_entry_notes_entry ON entry_notes(entry_id);`,
+
+  /**
+   * 月ごとの確認済みの印（db/review.ts）：税理士（管理者）がその月の仕訳を確かめた。month 13 = 決算整理。
+   * 確かめたあとに入れた・直した・消した仕訳は、checked_at と仕訳の日時を比べて知らせる（印は外さない）
+   */
+  `CREATE TABLE IF NOT EXISTS month_checks (
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 13),
+    user_id INTEGER REFERENCES users(id),
+    checked_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
+    PRIMARY KEY (year, month)
+  );`,
+
   `CREATE INDEX IF NOT EXISTS idx_evidences_date ON evidences(txn_date);`,
   `CREATE INDEX IF NOT EXISTS idx_evidence_links_entry ON evidence_links(entry_id);`,
 
@@ -954,7 +997,7 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["evidences", "created_by", "INTEGER REFERENCES users(id)"],
   ["evidences", "updated_by", "INTEGER REFERENCES users(id)"],
   // ユーザーの権限（admin = 管理者、editor = 入力担当、viewer = 閲覧のみ）。権限を入れる前のユーザーは管理者
-  ["users", "role", "TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','editor','viewer'))"],
+  ["users", "role", "TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','accountant','editor','viewer'))"],
   // ユーザーの備考（担当・連絡先など。任意）
   ["users", "memo", "TEXT NOT NULL DEFAULT ''"],
   // 取引先（任意）
@@ -1044,4 +1087,14 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["bank_rule_splits", "department_id", "INTEGER"],
   // 発行したときの発行者（請求書の写し。形式の版 17）
   ["sales_docs", "issuer", "TEXT"],
+  // 帳簿の識別子（帳簿ごとに1つ。バックアップの名前・税理士との受け渡し。形式の版 18）
+  ["settings", "book_id", "TEXT"],
+  // 税理士等の利用者識別番号と、税理士法第30条・第33条の2の書面（e-Tax 用のデータ。形式の版 18）
+  ["settings", "agent_id", "TEXT NOT NULL DEFAULT ''"],
+  ["settings", "agent_art30", "INTEGER NOT NULL DEFAULT 0 CHECK (agent_art30 IN (0, 1))"],
+  ["settings", "agent_art33", "INTEGER NOT NULL DEFAULT 0 CHECK (agent_art33 IN (0, 1))"],
+  // 税理士との受け渡し：帳簿を持っている人（owner = 事業者（ふだん）、sent = 事業者の帳簿で税理士に渡している、
+  // accountant = 税理士が受け取った帳簿、returned = 税理士の手元の返したあとの帳簿）と、最後に渡したときの合言葉（db/handoff.ts。形式の版 18）
+  ["settings", "holder", "TEXT NOT NULL DEFAULT 'owner' CHECK (holder IN ('owner','sent','accountant','returned'))"],
+  ["settings", "handoff_token", "TEXT NOT NULL DEFAULT ''"],
 ];

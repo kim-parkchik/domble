@@ -15,17 +15,24 @@ import * as repo from "../../db/repo";
 import { unsavedAnchorYears } from "../../lib/closing";
 import type { Page } from "../../App";
 import { fileLabel } from "../../lib/business";
+import { getMonthChecks, getYearNotes } from "../../db/review";
+import { noteStatuses } from "../../lib/review";
+import { periodLabel as monthName } from "../../components/MonthRange";
 
 /** 次にやること（件数があるもの・時期が来たものだけ） */
 const useNextTasks = () => {
   const { db, year, taxYear, isClosed, dataVersion, strict, closings } = useAppContext();
   const { issues } = useTaxIssues();
   const withholding = useWithholding(year);
-  const [info, setInfo] = useState<{ pendingBank: number; nextOpening: boolean; holidays: Set<string> } | null>(null);
+  const [info, setInfo] = useState<{ pendingBank: number; nextOpening: boolean; holidays: Set<string>; openNotes: number; changedMonths: number[] } | null>(null);
   useEffect(() => {
     let alive = true;
-    Promise.all([repo.countPendingBankLines(db, year), repo.hasOpening(db, year + 1), repo.getHolidayData(db)])
-      .then(([pendingBank, nextOpening, h]) => alive && setInfo({ pendingBank, nextOpening, holidays: new Set(h.holidays.map((x) => x.date)) }))
+    Promise.all([repo.countPendingBankLines(db, year), repo.hasOpening(db, year + 1), repo.getHolidayData(db), getYearNotes(db, year), getMonthChecks(db, year)])
+      .then(([pendingBank, nextOpening, h, notes, checks]) => alive && setInfo({
+        pendingBank, nextOpening, holidays: new Set(h.holidays.map((x) => x.date)),
+        openNotes: [...noteStatuses(notes).values()].filter((n) => n.open).length,
+        changedMonths: checks.filter((c) => c.changed > 0).map((c) => c.month),
+      }))
       .catch(console.error);
     return () => {
       alive = false;
@@ -33,7 +40,12 @@ const useNextTasks = () => {
   }, [db, year, dataVersion]);
   if (!info) return [];
   const today = todayIso();
-  const tasks: { text: string; page: Page; tone: "todo" | "warn" }[] = [];
+  const tasks: { text: string; page: Page; tone: "todo" | "warn"; notes?: boolean }[] = [];
+  // 税理士とのやり取り：未解決の付箋と、確認済みにしたあとに仕訳が変わった月
+  if (info.openNotes > 0) tasks.push({ text: `未解決の付箋が ${info.openNotes} 件あります（質問・確認）`, page: "journal", tone: "todo", notes: true });
+  if (info.changedMonths.length > 0) {
+    tasks.push({ text: `確認済みにした月（${info.changedMonths.map(monthName).join("・")}）のあとに、仕訳が変わっています`, page: "journal", tone: "todo" });
+  }
   if (info.pendingBank > 0) tasks.push({ text: `銀行・カードの明細が ${info.pendingBank} 件、仕訳になっていません`, page: "cashbook", tone: "todo" });
   const taxToFix = taxYear.status === "exempt" ? 0 : issues.filter((i) => i.level !== "info").length;
   if (taxToFix > 0) tasks.push({ text: `消費税の確認が ${taxToFix} 件あります`, page: "tax", tone: "warn" });
@@ -68,7 +80,8 @@ const useNextTasks = () => {
   return tasks;
 };
 
-export const DashboardPage = ({ go }: { go: (p: Page) => void }) => {
+/** goNotes：仕訳日記帳を「未解決の付箋がある仕訳」で開く */
+export const DashboardPage = ({ go, goNotes }: { go: (p: Page) => void; goNotes?: () => void }) => {
   const { year, accounts, accountMap, settings } = useAppContext();
   const { lines, opening } = useYearData();
   const tasks = useNextTasks();
@@ -109,7 +122,7 @@ export const DashboardPage = ({ go }: { go: (p: Page) => void }) => {
           <ul>
             {tasks.map((t) => (
               <li key={t.text} className={t.tone}>
-                <button className="link-btn" onClick={() => go(t.page)}>{t.text}<ChevronRight size={14} /></button>
+                <button className="link-btn" onClick={() => (t.notes && goNotes ? goNotes() : go(t.page))}>{t.text}<ChevronRight size={14} /></button>
               </li>
             ))}
           </ul>

@@ -234,6 +234,13 @@ describe("還付・1月1日の住所・依頼税理士", () => {
     expect(xml).toContain('<AMC00020 IDREF="DAIRI_NM"/>');
     expect(xml).toContain('<ABS10050 IDREF="DAIRI_NM"/>');
   });
+  test("税理士法第30条・第33条の2の書面提出（ABS10020・ABS10030）と税理士等の利用者識別番号（DAIRI_ID）。XSD に合う", () => {
+    const agent = { name: "税理 一郎", address: "東京都港区2-2", phone: "03-5555-6666", userId: "9876543210987654", art30: true, art33: true };
+    const xml = buildIncomeTaxXtx(source({}, { filer: { ...filer, agent } }));
+    expect(validate(xml)).toBe("");
+    expect([val(xml, "ABS10020"), val(xml, "ABS10030")]).toEqual(["1", "1"]);
+    expect(xml).toContain('<DAIRI_ID ID="DAIRI_ID">9876543210987654</DAIRI_ID>');
+  });
 });
 
 describe("書き出せないとき・版", () => {

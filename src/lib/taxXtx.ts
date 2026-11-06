@@ -180,12 +180,15 @@ const headValues = (prefix: string, f: EtaxFiler, first: boolean, refund: boolea
   const numbers: [string, number, number][] = [
     ["ZEIMUSHO", 20, 0], ["NOZEISHA_ADR", 30, 10], ["NOZEISHA_TEL", 40, 20], ["NOZEISHA_YAGO_KN", 60, 40], ["NOZEISHA_YAGO", 70, 50],
     ["NOZEISHA_BANGO", 80, 0], ["NOZEISHA_NM_KN", 100, 70], ["NOZEISHA_NM", 110, 80], ["KAZEI_KIKAN_FROM", 130, 100], ["KAZEI_KIKAN_TO", 140, 110],
-    ["SHINKOKU_KBN", 150, 120], ["KANPU_KINYUKIKAN", 190, 0],
+    ["SHINKOKU_KBN", 150, 120], ["KANPU_KINYUKIKAN", 190, 0], ["DAIRI_NM", 210, 0], ["DAIRI_TEL", 220, 0],
   ];
   for (const [ref, one, two] of numbers) {
     const n = first ? one : two;
     if (n && refs.has(ref)) v[tag(prefix, n)] = { ref };
   }
+  // 税理士法第30条・第33条の2の書面提出有（第一表）
+  if (first && f.agent?.art30) v[tag(prefix, 230)] = { kubun: 1 };
+  if (first && f.agent?.art33) v[tag(prefix, 240)] = { kubun: 1 };
   if (first && refund && f.refund?.kind === "public" && f.myNumber) v[tag(prefix, 250)] = { kubun: 1 };
   return v;
 };

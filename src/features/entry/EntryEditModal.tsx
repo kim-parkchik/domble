@@ -3,6 +3,7 @@ import { Copy, Undo2 } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useToast } from "../../components/Toast";
 import { Modal } from "../../components/Modal";
+import { EntryNotesSection } from "../books/EntryNotes";
 import { VoucherForm } from "./VoucherForm";
 import { EntryHistoryList } from "../books/HistoryView";
 import { useAppContext } from "../../context/AppContext";
@@ -104,6 +105,7 @@ export const EntryEditModal = ({ entryId, onClose }: { entryId: number; onClose:
         </p>
       )}
       {entry && <EntryEvidenceSection entry={entry} />}
+      {entry && <EntryNotesSection entryId={entry.id} />}
 
       {strict && history.length > 0 && (
         <section className="history-section">

@@ -32,6 +32,10 @@ describe("届出", () => {
     expect(m).toContain("2027年1月1日");
     // タイムスタンプを付けないので、読み取った書類も紙の原本を保存する
     expect(m).toContain("紙の原本を保存する");
+    // 税理士との受け渡し（G-11）：正本は1つ、渡している間は入力しない、CSV で取り込み直さない
+    expect(m).toContain("7. 税理士との帳簿の受け渡し");
+    expect(m).toContain("帳簿の正本は1つとする");
+    expect(m).toContain("CSV で書き出して別の帳簿に取り込む方法は使わない");
   });
 });
 

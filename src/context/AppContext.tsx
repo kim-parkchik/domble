@@ -80,6 +80,8 @@ interface AppContextValue {
   readOnly: boolean;
   /** バックアップから戻す（今の帳簿をバックアップしてから置き換え、開き直す。label は画面に出す名前） */
   restoreBackup: (backupPath: string, label: string) => Promise<void>;
+  /** 税理士から受け取る（今の帳簿をバックアップしてから、返ってきた帳簿で置き換え、開き直す。db/handoff.ts で確かめてから） */
+  receiveBook: (returnedPath: string) => Promise<void>;
   /** データ更新の合図。仕訳を保存したら bump() を呼ぶ */
   dataVersion: number;
   bump: () => void;
@@ -104,6 +106,7 @@ interface Props {
   user: User;
   readOnly?: boolean;
   restoreBackup?: (backupPath: string, label: string) => Promise<void>;
+  receiveBook?: (returnedPath: string) => Promise<void>;
   children: ReactNode;
 }
 
@@ -111,7 +114,9 @@ const noRestore = async () => {
   throw new Error("バックアップから戻せません");
 };
 
-export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, initialSubs, user, readOnly = false, restoreBackup = noRestore, children }: Props) => {
+export const AppProvider = ({
+  db, filePath, initialSettings, initialAccounts, initialSubs, user, readOnly = false, restoreBackup = noRestore, receiveBook = noRestore, children,
+}: Props) => {
   const [users, setUsers] = useState<User[]>([user]);
   const reloadUsers = useCallback(async () => setUsers(await repo.getUsers(db)), [db]);
   useEffect(() => {
@@ -197,6 +202,7 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       strict: settings.e_book_mode === "strict",
       readOnly,
       restoreBackup,
+      receiveBook,
       accounts,
       activeAccounts: accounts.filter((a) => a.is_active),
       accountMap,
@@ -238,7 +244,7 @@ export const AppProvider = ({ db, filePath, initialSettings, initialAccounts, in
       reloadSettings,
       reloadAccounts,
     };
-  }, [db, filePath, readOnly, restoreBackup, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, departments, reloadDepartments, taxYears, reloadTaxYears, filingYears, reloadFilingYears, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
+  }, [db, filePath, readOnly, restoreBackup, receiveBook, settings, accounts, subAccounts, memoSuggestions, homeUseRates, reloadHomeUse, currentUser, users, reloadUsers, counterparties, reloadCounterparties, departments, reloadDepartments, taxYears, reloadTaxYears, filingYears, reloadFilingYears, closings, daysOff, dataVersion, bump, reloadSettings, reloadAccounts]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

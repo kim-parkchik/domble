@@ -17,6 +17,8 @@ export const TABLE_REBUILDS: { table: string; needed: (sql: string) => boolean }
   { table: "import_batches", needed: (sql) => !sql.includes("'payroll'") },
   // 申告の種類に、令和9年分からの75万円控除（blue75）を足した（filing_type の CHECK）
   { table: "filing_years", needed: (sql) => !sql.includes("'blue75'") },
+  // ユーザーの権限に、税理士（accountant）を足した（role の CHECK。role は列の追加で足した列）
+  { table: "users", needed: (sql) => sql.includes("role") && !sql.includes("'accountant'") },
 ];
 
 const createSqlOf = (table: string) => {

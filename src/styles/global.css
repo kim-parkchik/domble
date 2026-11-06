@@ -521,6 +521,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .start-sub { color: var(--muted); font-size: 13px; text-align: center; }
 .start-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 18px; }
 .start-actions .btn { justify-content: center; }
+.start-readonly { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12px; font-weight: 500; }
 .recent-files { width: 100%; margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 12px; }
 .recent-files h2 { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
 .recent-files ul { list-style: none; margin: 0; padding: 0; }
@@ -528,6 +529,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .recent-file { flex: 1; display: flex; align-items: center; gap: 8px; border: none; background: none; padding: 7px 6px; border-radius: 4px; cursor: pointer; text-align: left; min-width: 0; }
 .recent-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recent-file:hover { background: var(--accent-tint); }
+.recent-folder { margin-left: 8px; font-size: 11.5px; }
 .start-ver { margin-top: 14px; font-size: 11px; color: #9aa5b1; }
 .setup-card { width: min(560px, 100%); align-items: stretch; }
 .setup-card > svg, .setup-card .start-title, .setup-card .start-sub { align-self: center; }
@@ -823,6 +825,7 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .user-list { list-style: none; padding: 0; margin: 12px 0 0; width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .user-pick { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; cursor: pointer; font-size: 14px; color: var(--ink); text-align: left; }
 .user-pick span { flex: 1; }
+.user-pick span.badge { flex: none; }
 .user-pick:hover, .user-pick.on { border-color: var(--accent); background: var(--accent-tint); }
 .login-form { display: flex; gap: 8px; width: 100%; margin-top: 10px; }
 .login-form .input { flex: 1; }
@@ -1242,3 +1245,48 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .sales-range { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
 .sales-range .input { width: 136px; }
 .sales-range .input.num { width: 104px; }
+
+/* ログイン：この PC で初めて開く帳簿・パスワードを決める */
+.login-note { text-align: left; margin: 4px 0 8px; }
+.login-form.login-set { flex-direction: column; align-items: stretch; gap: 6px; }
+.login-form.login-set .field-note { text-align: left; margin: 0; }
+
+/* ---------- 税理士との受け渡し ---------- */
+.sheet-h svg { vertical-align: -3px; margin-right: 4px; }
+.handoff-state { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 4px; background: var(--accent-tint); color: var(--accent-dark); font-size: 13px; margin: 10px 0; }
+.handoff-state.sent, .handoff-state.returned { background: var(--warn-bg); color: var(--warn-ink); }
+.handoff-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
+.handoff-result { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.handoff-local { align-items: flex-start; }
+.handoff-local .check { color: inherit; margin-top: 8px; font-weight: 600; }
+.handoff-local .ledger { margin-top: 8px; background: #fff; }
+.handoff-entries td { white-space: normal; }
+.handoff-entries td:nth-child(-n+3), .handoff-entries td.num { white-space: nowrap; }
+.handoff-log { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.handoff-log li { padding: 7px 0; border-bottom: 1px solid var(--rule); }
+.handoff-log li .badge { margin-left: 6px; }
+.handoff-log-sub { display: flex; flex-direction: column; gap: 1px; font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+.handoff-tables { max-width: 520px; }
+
+/* ---------- 付箋・月ごとの確認済み ---------- */
+.note-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 700; color: var(--muted); margin-right: 6px; padding: 0 5px; border-radius: 3px; background: #eef1f4; }
+.note-badge.open { color: #8a5a00; background: #fff3d6; }
+.entry-notes { margin-top: 12px; border-top: 1px solid var(--rule); padding-top: 10px; }
+.entry-notes > .link-btn { display: inline-flex; align-items: center; gap: 4px; }
+.entry-notes-body { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.note-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.note-list li { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: 6px; background: #fffbea; border: 1px solid #f0e2b0; font-size: 13px; }
+.note-list li.resolve { background: transparent; border: none; padding: 0 10px; }
+.note-who { font-size: 11.5px; color: var(--muted); }
+.note-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.note-resolved { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-size: 12.5px; }
+.note-form { display: flex; flex-direction: column; gap: 6px; }
+.note-actions { display: flex; gap: 8px; }
+.month-check-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 7px 12px; margin-bottom: 10px; border-radius: 6px; background: #f3f5f7; font-size: 13px; }
+.month-check-bar > span { flex: 1; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.month-check-bar.checked { background: var(--accent-tint); color: var(--accent-dark); }
+.month-check-bar.changed { background: var(--warn-bg); color: var(--warn-ink); }
+.month-check-bar .link-btn { padding: 0 2px; }
+.month-tabs button { position: relative; }
+.month-tabs button.mark-checked::after, .month-tabs button.mark-changed::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--accent); }
+.month-tabs button.mark-changed::after { background: #d08a00; }

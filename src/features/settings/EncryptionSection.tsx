@@ -40,7 +40,7 @@ export const EncryptionSection = () => {
   }, [filePath, status?.encrypted, readOnly]);
 
   if (!status) return null;
-  const admin = can("settings") && !readOnly;
+  const admin = can("owner") && !readOnly;
   const fileName = filePath.split(/[\\/]/).pop() ?? "";
 
   const toggleRemember = async () => {

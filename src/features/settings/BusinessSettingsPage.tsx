@@ -19,6 +19,7 @@ import { isYearCompliant, scanStorageRule } from "../../lib/ebook";
 import { HolidaySection } from "./HolidaySection";
 import { EncryptionSection } from "./EncryptionSection";
 import { BackupSection } from "./BackupSection";
+import { HandoffSection } from "./HandoffSection";
 import { BookExportSection } from "./BookExportSection";
 import { CODE } from "../../constants/accounts";
 import type { FilingType, RealEstateScale, Settings } from "../../lib/types";
@@ -288,7 +289,7 @@ const FilingSection = () => {
 
 /** carryFocus：0 でなければ「翌年への繰越」の欄を見せる（画面上部のお知らせ・年の切り替えの「次の年を始める」から。開くたびに番号が変わる） */
 export const BusinessSettingsPage = ({ carryFocus = 0 }: { carryFocus?: number }) => {
-  const { db, settings, year, accounts, closings, reloadSettings, bump } = useAppContext();
+  const { db, settings, year, accounts, closings, reloadSettings, bump, can } = useAppContext();
   const { lines, opening, subOpening } = useYearData();
   const toast = useToast();
   useEffect(() => {
@@ -319,9 +320,9 @@ export const BusinessSettingsPage = ({ carryFocus = 0 }: { carryFocus?: number }
     );
     if (!ok) return;
     // 通常モードの帳簿：翌年を始めるこのときだけ、電子帳簿保存法に対応した保存方式へ切り替えるか聞く
-    // （翌年の仕訳がまだ無いときだけ。その年の初めから履歴を残せる）
+    // （翌年の仕訳がまだ無いときだけ。その年の初めから履歴を残せる。切り替えは帳簿の持ち主（事業者）だけ）
     let switched = false;
-    if (settings.e_book_mode === "standard" && (await repo.canSwitchToStrict(db, nextYear))) {
+    if (settings.e_book_mode === "standard" && can("owner") && (await repo.canSwitchToStrict(db, nextYear))) {
       switched = await ask(
         `${nextYear}年から、帳簿の保存方式を「${MODE_LABEL.strict}」に切り替えますか？\n\n` +
           `切り替えると、${nextYear}年からの仕訳・勘定科目・期首残高の訂正や削除がすべて履歴に残ります。一度切り替えると、通常には戻せません。\n` +
@@ -421,6 +422,7 @@ export const BusinessSettingsPage = ({ carryFocus = 0 }: { carryFocus?: number }
         <InputPeriodSection />
         <ScanSection />
         <HolidaySection />
+        <HandoffSection />
         <BackupSection />
         <BookExportSection />
         <EncryptionSection />

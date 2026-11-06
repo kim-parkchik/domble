@@ -45,8 +45,11 @@ export interface EtaxFiler {
   refund: RefundPlace | null;
   /** 生年月日（YYYY-MM-DD。所得税の確定申告書。無ければ空） */
   birthday: string;
-  /** 依頼している税理士等（所得税の確定申告書・決算書。無ければ null） */
-  agent: { name: string; address: string; phone: string } | null;
+  /**
+   * 依頼している税理士等（確定申告書の税理士署名欄・決算書・IT 部の代理人。無ければ null）。
+   * userId = 税理士等の利用者識別番号（代理送信するとき）、art30・art33 = 税理士法第30条・第33条の2の書面を出す
+   */
+  agent: { name: string; address: string; phone: string; userId?: string; art30?: boolean; art33?: boolean } | null;
 }
 
 /** 還付される税金の受取場所 */
@@ -124,7 +127,7 @@ export const filerProblems = (f: EtaxFiler): string[] => {
 export const ETAX_FIELDS = [
   "etax_user_id", "tax_office", "phone", "owner_kana", "business_kana", "occupation", "householder_name", "householder_relation", "jan1_address",
   "office_phone", "refund_mode", "bank_name", "bank_kind", "branch_name", "branch_kind", "deposit_kind", "account_no", "yucho_symbol", "yucho_number",
-  "office_address", "union_name", "agent_name", "agent_address", "agent_phone",
+  "office_address", "union_name", "agent_name", "agent_address", "agent_phone", "agent_id", "agent_art30", "agent_art33",
 ] as const satisfies readonly (keyof Settings)[];
 export type EtaxInfo = Pick<Settings, (typeof ETAX_FIELDS)[number]>;
 
@@ -163,6 +166,9 @@ export const normalizeEtaxInfo = (x: EtaxInfo): EtaxInfo | string => {
     agent_name: t(x.agent_name),
     agent_address: t(x.agent_address),
     agent_phone: phoneOf(x.agent_phone ?? ""),
+    agent_id: digits(x.agent_id ?? ""),
+    agent_art30: x.agent_art30 ? 1 : 0,
+    agent_art33: x.agent_art33 ? 1 : 0,
   };
   if (n.etax_user_id && !/^\d{16}$/.test(n.etax_user_id)) return "利用者識別番号は16桁の数字です";
   if (n.tax_office && !TAX_OFFICES.has(n.tax_office)) return "提出先の税務署を一覧から選んでください";
@@ -179,6 +185,7 @@ export const normalizeEtaxInfo = (x: EtaxInfo): EtaxInfo | string => {
   if (n.yucho_number && !/^\d{1,8}$/.test(n.yucho_number)) return "ゆうちょ銀行の番号は8桁までの数字です";
   if (n.union_name.length > 20) return "加入団体名は20文字までです";
   if (n.agent_phone && !splitPhone(n.agent_phone)) return "税理士等の電話番号は 03-1234-5678 のようにハイフンで区切って入れてください";
+  if (n.agent_id && !/^\d{16}$/.test(n.agent_id)) return "税理士等の利用者識別番号は16桁の数字です";
   if (n.refund_mode === "bank" && (!n.bank_name || !n.branch_name || !n.account_no)) return "還付先の金融機関名・支店名・口座番号を入れてください";
   if (n.refund_mode === "yucho" && (!n.yucho_symbol || !n.yucho_number)) return "還付先のゆうちょ銀行の記号番号を入れてください";
   return n;
@@ -212,7 +219,9 @@ export const filerFromSettings = (s: Settings): EtaxFiler => ({
   householderRelation: s.householder_relation,
   jan1Address: s.jan1_address,
   birthday: "",
-  agent: s.agent_name.trim() ? { name: s.agent_name, address: s.agent_address, phone: s.agent_phone } : null,
+  agent: s.agent_name.trim()
+    ? { name: s.agent_name, address: s.agent_address, phone: s.agent_phone, userId: s.agent_id ?? "", art30: !!s.agent_art30, art33: !!s.agent_art33 }
+    : null,
   refund: s.refund_mode === "bank"
     ? { kind: "bank", bankName: s.bank_name, bankKind: s.bank_kind, branchName: s.branch_name, branchKind: s.branch_kind, depositKind: s.deposit_kind, accountNo: s.account_no }
     : s.refund_mode === "yucho" ? { kind: "yucho", symbol: s.yucho_symbol, number: s.yucho_number }
@@ -275,9 +284,10 @@ export const itXml = (f: EtaxFiler, o: ItOptions) => {
     o.personal && f.householderRelation.trim() ? el("SETAINUSHI_ZOKU", escapeXml(f.householderRelation.trim())) : "",
     o.personal && f.occupation.trim() ? el("SHOKUGYO", escapeXml(f.occupation.trim())) : "",
     o.refund && refundAccount(f.refund) ? el("KANPU_KINYUKIKAN", refundAccount(f.refund)) : "",
-    o.personal && f.agent?.name.trim() ? el("DAIRI_NM", escapeXml(f.agent.name.trim())) : "",
-    o.personal && f.agent?.address.trim() ? el("DAIRI_ADR", escapeXml(f.agent.address.trim())) : "",
-    o.personal && agentTel ? el("DAIRI_TEL", telXml(agentTel)) : "",
+    f.agent?.userId && /^\d{16}$/.test(f.agent.userId) ? el("DAIRI_ID", f.agent.userId) : "",
+    f.agent?.name.trim() ? el("DAIRI_NM", escapeXml(f.agent.name.trim())) : "",
+    f.agent?.address.trim() ? el("DAIRI_ADR", escapeXml(f.agent.address.trim())) : "",
+    agentTel ? el("DAIRI_TEL", telXml(agentTel)) : "",
     el("TETSUZUKI", `<procedure_CD>${o.procedure}</procedure_CD><procedure_NM>${escapeXml(o.procedureName)}</procedure_NM>`),
     o.nenbun ? el("NENBUN", eraOf(`${o.nenbun}-12-31`)) : "",
     o.from ? el("KAZEI_KIKAN_FROM", warekiXml(o.from)) : "",
@@ -293,9 +303,9 @@ export const itRefs = (f: EtaxFiler, o: Pick<ItOptions, "refund" | "personal" | 
   if (o.nenbun) s.add("NENBUN");
   if (o.from || !o.nenbun) for (const k of ["KAZEI_KIKAN_FROM", "KAZEI_KIKAN_TO"]) s.add(k);
   if (o.personal && f.birthday) s.add("BIRTHDAY");
-  if (o.personal && f.agent?.name.trim()) s.add("DAIRI_NM");
-  if (o.personal && f.agent?.address.trim()) s.add("DAIRI_ADR");
-  if (o.personal && f.agent && splitPhone(f.agent.phone)) s.add("DAIRI_TEL");
+  if (f.agent?.name.trim()) s.add("DAIRI_NM");
+  if (f.agent?.address.trim()) s.add("DAIRI_ADR");
+  if (f.agent && splitPhone(f.agent.phone)) s.add("DAIRI_TEL");
   if (f.myNumber) s.add("NOZEISHA_BANGO");
   if (o.personal && f.jan1Address.trim()) s.add("ICHIGATSUIPPI_ADR");
   if (f.postalCode.replace(/-/g, "").length === 7) s.add("NOZEISHA_ZIP");

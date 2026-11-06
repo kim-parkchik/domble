@@ -250,6 +250,11 @@ export interface Settings {
   agent_name: string;
   agent_address: string;
   agent_phone: string;
+  /** 税理士等の利用者識別番号（代理送信するとき。e-Tax の IT 部 DAIRI_ID） */
+  agent_id: string;
+  /** 税理士法第30条（税務代理の権限の証書）・第33条の2（計算事項等を記載した書面）の書面を出す（1） */
+  agent_art30: number;
+  agent_art33: number;
   fiscal_year: number;
   filing_type: FilingType;
   industry: string;
@@ -259,11 +264,23 @@ export interface Settings {
   strict_from_year: number | null;
   /** 切り替えた日時 */
   strict_switched_at: string | null;
+  /** 帳簿の識別子（帳簿ごとに1つ。写し・バックアップも同じ。開いたときに無ければ作る） */
+  book_id?: string | null;
+  /** 税理士との受け渡しで、帳簿を持っている人（db/handoff.ts。無ければ owner） */
+  holder?: Holder;
+  /** 最後に渡したときの合言葉 */
+  handoff_token?: string;
   /** 確認コードを送るメールアドレス（自分あて。メールソフトを開くだけ） */
   anchor_email: string;
   /** 不動産所得（none なし ／ small 事業的規模でない ／ business 事業的規模） */
   real_estate?: RealEstateScale;
 }
+
+/**
+ * 税理士との受け渡しで、帳簿を持っている人：owner = 事業者（ふだん）、sent = 事業者の帳簿で、税理士に渡しているところ、
+ * accountant = 税理士が受け取った帳簿、returned = 税理士の手元の、事業者に返したあとの帳簿
+ */
+export type Holder = "owner" | "sent" | "accountant" | "returned";
 
 /** 期首残高: account_id → 金額（科目の正常残高側をプラスとする。補助科目の分も合算） */
 export type OpeningBalances = Record<number, number>;

@@ -34,8 +34,9 @@ export const FILE_FILTER_NAME = "domble 帳簿ファイル";
  * 15 = 2026-11-03（申告の種類：令和9年分からの75万円控除。filing_years の CHECK）
  * 16 = 2026-11-03（消費税の仮決算による中間申告：tax_interim_provisionals）
  * 17 = 2026-11-06（請求書：発行したときの発行者 sales_docs.issuer）
+ * 18 = 2026-11-06（税理士：帳簿の識別子 settings.book_id、ユーザーの権限 accountant、e-Tax の税理士等の欄、受け渡しの記録 handoffs と settings.holder・handoff_token）
  */
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

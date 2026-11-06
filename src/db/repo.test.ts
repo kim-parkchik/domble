@@ -2460,8 +2460,43 @@ describe("通常モードの仕訳の削除（journal_entries を参照する表
       .map((t) => t.name).sort();
     // entry_history は厳密モードだけ（通常モードの帳簿には行が無い）
     expect(tables).toEqual([
-      "allowance_runs", "asset_disposals", "depreciation_runs", "entry_history", "entry_reversals", "evidence_links", "home_use_runs", "journal_lines",
-      "sales_docs", "sales_payments", "year_end_runs",
+      "allowance_runs", "asset_disposals", "depreciation_runs", "entry_history", "entry_notes", "entry_reversals", "evidence_links", "home_use_runs",
+      "journal_lines", "sales_docs", "sales_payments", "year_end_runs",
     ]);
+  });
+});
+
+describe("税理士のユーザー（権限・パスワード）", () => {
+  test("税理士を足すには、操作している人（事業者）にパスワードが要る。税理士がいる帳簿ではパスワードを外せない", async () => {
+    const { db } = strict;
+    await repo.ensureUsers(db, "事業 太郎");
+    const owner = (await repo.getUsers(db))[0].id;
+    repo.setActor(owner, "admin");
+    await expect(repo.createUser(db, "税理 一郎", "", "accountant")).rejects.toThrow(/あなたのパスワードを決めてください/);
+    const editor = await repo.createUser(db, "入力 花子", "", "editor");
+    await expect(repo.setUserRole(db, editor, "accountant")).rejects.toThrow(/あなたのパスワード/);
+    await repo.setUserPassword(db, owner, "", "pass1234");
+    const acc = await repo.createUser(db, "税理 一郎", "", "accountant");
+    expect((await repo.getUsers(db)).find((u) => u.id === acc)).toMatchObject({ role: "accountant", has_password: 0 });
+    expect(repo.hasAccountant(await repo.getUsers(db))).toBe(true);
+    await expect(repo.setUserPassword(db, owner, "pass1234", "")).rejects.toThrow(/パスワードを外せません/);
+    // 税理士は初めて入るときに自分でパスワードを決める（操作する人はまだいない）
+    repo.setActor(null);
+    await repo.setUserPassword(db, acc, "", "zeiri5678");
+    expect(await repo.checkLogin(db, acc, "zeiri5678")).toBe(true);
+  });
+  test("税理士は締め・繰越などの会計の操作ができ、保存方式・暗号化・バックアップの世代数・ユーザーの管理はできない", async () => {
+    const { db } = strict;
+    await repo.ensureUsers(db, "事業 太郎");
+    const owner = (await repo.getUsers(db))[0].id;
+    repo.setActor(owner, "admin");
+    await repo.setUserPassword(db, owner, "", "pass1234");
+    const acc = await repo.createUser(db, "税理 一郎", "zeiri5678", "accountant");
+    repo.setActor(acc, "accountant");
+    await repo.closeYear(db, 2025);
+    await expect(repo.setBackupGenerations(db, 50)).rejects.toThrow(/税理士/);
+    await expect(repo.createUser(db, "だれか", "", "viewer")).rejects.toThrow(/税理士/);
+    await expect(repo.changeEncryption(db, "on", async () => 0)).rejects.toThrow(/税理士/);
+    repo.setActor(null);
   });
 });

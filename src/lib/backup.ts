@@ -10,6 +10,8 @@ export const BACKUP_DAYS = 30;
 export const BACKUP_MONTHS = 84;
 /** 戻す前に作るバックアップの名前の印 */
 export const BEFORE_RESTORE = "戻す前";
+/** 税理士から受け取る（返ってきた帳簿で置き換える）前に作るバックアップの印（これも整理で消さない） */
+export const BEFORE_RECEIVE = "受け取る前";
 
 const two = (n: number) => String(n).padStart(2, "0");
 /** バックアップ名の日時の部分（YYYYMMDD-HHMMSS） */

@@ -55,6 +55,9 @@ export const UsersPage = () => {
       <ul className="role-notes">
         {ROLES.map((r) => <li key={r}><b>{ROLE_LABEL[r]}</b>：{ROLE_NOTE[r]}</li>)}
       </ul>
+      <p className="field-note">
+        税理士に帳簿を渡すときは、先に「税理士」のユーザーを作ります（あなたのパスワードが要ります）。税理士は自分のユーザーで入り、直したことは税理士の名前で記録されます。
+      </p>
 
       <section className="sheet sheet-fill">
         <div className="table-wrap scroll-y">
@@ -140,7 +143,10 @@ const UserForm = ({ target, onClose }: { target: User | "new"; onClose: () => vo
             <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
             </select>
-            <small className="field-note">{ROLE_NOTE[role]}</small>
+            <small className="field-note">
+              {ROLE_NOTE[role]}
+              {role === "accountant" && "。税理士に帳簿を渡す前に作ります。税理士は、初めて入るときに自分でパスワードを決めます（パスワードは空のままで構いません）。税理士のユーザーがいる帳簿では、全員にパスワードが要ります"}
+            </small>
           </label>
         )}
         {isNew && (

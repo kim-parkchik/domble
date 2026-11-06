@@ -47,6 +47,7 @@ import {
   openingState, sourceLabel, stateLabel, verifyChain, type ChainRow, type ChainSource, type IntegrityIssue,
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
+import { holdMessage, type Hold } from "../lib/handoff";
 import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, MANUFACTURING_CODES, normalSideOf } from "../constants/accounts";
 import {
   assetLockError, businessRateIn, canChoose250, DISPOSAL_LABEL, disposalLines, hasLife, methodLabel, smallYearLimit, validateAsset, type AssetRate, type FixedAsset,
@@ -84,8 +85,27 @@ export const setReadOnly = (v: boolean) => {
 export const isReadOnly = () => readOnly;
 export const READ_ONLY_MESSAGE = "バックアップを読み取り専用で開いているため、変更できません";
 
-/** 書き込みの入り口の決まり。allowReadOnly：読み取り専用でもできる。perm：必要な権限（無ければ誰でも） */
-type TxOptions = { allowReadOnly?: boolean; perm?: Perm };
+/**
+ * 書き込みの入り口の決まり。allowReadOnly：読み取り専用でもできる。perm：必要な権限（無ければ誰でも）。
+ * handoff：税理士との受け渡しそのもの（渡している帳簿でも止めない）
+ */
+type TxOptions = { allowReadOnly?: boolean; perm?: Perm; handoff?: boolean };
+
+/**
+ * 税理士との受け渡しで、入れた分が正本に入らない帳簿（lib/handoff.ts の Hold。渡している事業者の帳簿・返したあとの税理士の帳簿）。
+ * 帳簿を開いたとき・渡す・返す・受け取るときに決める。権限の要る書き込み（帳簿の中身を変えるもの）は、
+ * 画面上部の「それでも入力する」（ackHandoff）を押すまで止め、押したあとは、入れた数を受け渡しの記録に数える（受け取る前に知らせる）
+ */
+let handoffHold: Hold | null = null;
+let handoffAck = false;
+export const setHandoffHold = (hold: Hold | null) => {
+  if (hold !== handoffHold) handoffAck = false;
+  handoffHold = hold;
+};
+export const ackHandoff = () => {
+  handoffAck = true;
+};
+export const handoffState = () => ({ hold: handoffHold, ack: handoffAck });
 
 export const tx = <T>(db: Database, label: string, fn: () => Promise<T>, opts: TxOptions = {}): Promise<T> => {
   if (readOnly && !opts.allowReadOnly) return Promise.reject(new Error(READ_ONLY_MESSAGE));
@@ -93,12 +113,15 @@ export const tx = <T>(db: Database, label: string, fn: () => Promise<T>, opts: T
   if (opts.perm && currentActor !== null && !can(currentRole, opts.perm)) {
     return Promise.reject(new Error(permissionMessage(currentRole ?? "viewer")));
   }
+  const held = !!handoffHold && !!opts.perm && !opts.handoff;
+  if (held && !handoffAck) return Promise.reject(new Error(holdMessage(handoffHold!)));
   const run = queue.then(async () => {
     const mark = await db.execute("INSERT INTO pending_ops (label, user_id) VALUES (?, ?)", [label, currentActor]);
     try {
       // BEGIN に失敗したとき（ほかで開いていてロックされているなど）も、目印は消す（次に開いたとき「止まった」と誤って知らせないため）
       await db.execute("BEGIN IMMEDIATE");
       const r = await fn();
+      if (held) await db.execute("UPDATE handoffs SET local_changes = local_changes + 1 WHERE id = (SELECT max(id) FROM handoffs)");
       await db.execute("COMMIT");
       return r;
     } catch (e) {
@@ -166,8 +189,8 @@ export const getSettings = async (db: Database): Promise<Settings> => {
     `SELECT business_name, owner_name, postal_code, address, invoice_no, invoice_registered_on, etax_user_id, tax_office, phone, owner_kana,
             business_kana, occupation, householder_name, householder_relation, jan1_address, office_phone, refund_mode, bank_name, bank_kind,
             branch_name, branch_kind, deposit_kind, account_no, yucho_symbol, yucho_number,
-            office_address, union_name, agent_name, agent_address, agent_phone,
-            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at, anchor_email,
+            office_address, union_name, agent_name, agent_address, agent_phone, agent_id, agent_art30, agent_art33,
+            industry, fiscal_year, filing_type, e_book_mode, strict_from_year, strict_switched_at, anchor_email, book_id, holder, handoff_token,
             COALESCE((SELECT r.scale FROM real_estate_years r WHERE r.from_year <= settings.fiscal_year ORDER BY r.from_year DESC LIMIT 1), real_estate) AS real_estate
        FROM settings WHERE id = 1`,
   );
@@ -507,7 +530,7 @@ const saveEtaxInfo_ = async (db: Database, x: EtaxInfo) => {
     `UPDATE settings SET etax_user_id = ?, tax_office = ?, phone = ?, owner_kana = ?, business_kana = ?, occupation = ?, householder_name = ?,
             householder_relation = ?, jan1_address = ?, office_phone = ?, refund_mode = ?, bank_name = ?, bank_kind = ?, branch_name = ?, branch_kind = ?,
             deposit_kind = ?, account_no = ?, yucho_symbol = ?, yucho_number = ?, office_address = ?, union_name = ?, agent_name = ?, agent_address = ?,
-            agent_phone = ? WHERE id = 1`,
+            agent_phone = ?, agent_id = ?, agent_art30 = ?, agent_art33 = ? WHERE id = 1`,
     ETAX_FIELDS.map((k) => n[k]),
   );
 };
@@ -2549,6 +2572,8 @@ const deleteEntry_ = async (db: Database, id: number, reason = "") => {
     // 請求書の仕訳・入金の仕訳なら、つなぎを外す（請求書は仕訳の無い発行済みになり、発行し直すと作り直す）
     await db.execute("UPDATE sales_docs SET entry_id = NULL WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM sales_payments WHERE entry_id = ?", [id]);
+    // 付箋も消す（仕訳が無くなるので）
+    await db.execute("DELETE FROM entry_notes WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_lines WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM journal_entries WHERE id = ?", [id]);
     return;
@@ -3793,10 +3818,23 @@ export const validateUserName = (users: User[], name: string, editingId?: number
   return null;
 };
 
+/** 税理士のユーザーがいる帳簿か（いれば、だれが操作したかを確かにするため全員にパスワードが要る） */
+export const hasAccountant = (users: Pick<User, "is_active" | "role">[]) => users.some((u) => u.is_active && u.role === "accountant");
+
+/** 税理士のユーザーを足す・税理士にするときは、操作している人（事業者）にパスワードが要る（税理士が事業者の名前で入れないように） */
+const assertActorPassword = async (db: Database) => {
+  if (currentActor === null) return;
+  const me = (await getUsers(db)).find((u) => u.id === currentActor);
+  if (me && !me.has_password) {
+    throw new Error("税理士のユーザーを足す前に、あなたのパスワードを決めてください（このユーザーの画面の自分の行の「パスワード」）。税理士があなたの名前で入れないようにするためです");
+  }
+};
+
 const createUser_ = async (db: Database, name: string, password = "", role: Role = "editor", memo = "") => {
   const err = validateUserName(await getUsers(db), name);
   if (err) throw new Error(err);
   if (!isRole(role)) throw new Error("権限が正しくありません");
+  if (role === "accountant") await assertActorPassword(db);
   if (memo.length > 200) throw new Error("備考は200文字までです");
   if (password) {
     const pe = validatePassword(password);
@@ -3845,6 +3883,8 @@ const setUserPassword_ = async (db: Database, id: number, currentPassword: strin
   if (newPassword) {
     const pe = validatePassword(newPassword);
     if (pe) throw new Error(pe);
+  } else if (hasAccountant(await getUsers(db))) {
+    throw new Error("税理士のユーザーがいる帳簿では、パスワードを外せません（だれが操作したかを確かにするため）");
   }
   await db.execute("UPDATE users SET password_hash = ? WHERE id = ?", [newPassword ? await hashPassword(newPassword) : "", id]);
   await logMaster(db, {
@@ -3870,9 +3910,10 @@ const logEncryption_ = async (db: Database, change: EncryptionChange) => {
 };
 export const changeEncryption = async <T>(db: Database, change: EncryptionChange, run: () => Promise<T>): Promise<T> => {
   if (readOnly) throw new Error(READ_ONLY_MESSAGE);
-  if (currentActor !== null && !can(currentRole, "settings")) throw new Error(permissionMessage(currentRole ?? "viewer"));
+  // 帳簿のパスワード（暗号化）は、帳簿の持ち主（事業者）だけが変えられる
+  if (currentActor !== null && !can(currentRole, "owner")) throw new Error(permissionMessage(currentRole ?? "viewer"));
   const r = await queuedRead(run);
-  await tx(db, "帳簿ファイルの暗号化の記録", () => logEncryption_(db, change), { perm: "settings" });
+  await tx(db, "帳簿ファイルの暗号化の記録", () => logEncryption_(db, change), { perm: "owner" });
   return r;
 };
 
@@ -3901,6 +3942,7 @@ const setUserRole_ = async (db: Database, id: number, role: Role) => {
   const me = (await getUsers(db)).find((u) => u.id === id);
   if (!me || me.role === role) return;
   await assertAdminRemains(db, id, { active: !!me.is_active, role });
+  if (role === "accountant") await assertActorPassword(db);
   await db.execute("UPDATE users SET role = ? WHERE id = ?", [role, id]);
   await logMaster(db, {
     target_type: "user", target_id: id, action: "change", fiscal_year: await currentYear(db), label: me.name,
@@ -3997,7 +4039,7 @@ export const saveInvoiceRegistration = inTx(saveInvoiceRegistration_, () => "登
 export const saveEtaxInfo = inTx(saveEtaxInfo_, () => "e-Tax の申告者の情報の保存", { perm: "settings" });
 export const fillTaxCodes = inTx(fillTaxCodes_, (year) => `${year}年の仕訳の税区分の一括設定`, { perm: "entry" });
 export const setFiscalYear = inTx(setFiscalYear_, (year) => `${year}年への切り替え`, { allowReadOnly: true });
-export const setBackupGenerations = inTx(setBackupGenerations_, () => "バックアップ世代数の保存", { perm: "settings" });
+export const setBackupGenerations = inTx(setBackupGenerations_, () => "バックアップ世代数の保存", { perm: "owner" });
 export const setInputPeriod = inTx(setInputPeriod_, () => "入力期間の保存", { perm: "settings" });
 export const setScanInputMethod = inTx(setScanInputMethod_, () => "スキャナ保存の入力期間の方式", { perm: "settings" });
 export const saveFetchedHolidays = inTx(saveFetchedHolidays_, () => "祝日の取得", { perm: "settings" });
@@ -4069,7 +4111,7 @@ export const setUserActive = inTx(setUserActive_, (id) => `ユーザー #${id} �
 export const ensureUsers = inTx(ensureUsers_, () => "最初のユーザーの作成");
 export const logAccess = inTx(logAccess_, (id, action) => `ユーザー #${id} の${action === "login" ? "ログイン" : "ログアウト"}`);
 export const carryForward = inTx(carryForward_, (year) => `${year}年から${year + 1}年への繰越`, { perm: "settings" });
-export const switchToStrict = inTx(switchToStrict_, (year) => `${year}年からの電子帳簿保存法への切り替え`, { perm: "settings" });
+export const switchToStrict = inTx(switchToStrict_, (year) => `${year}年からの電子帳簿保存法への切り替え`, { perm: "owner" });
 export const saveStatementNote = inTx(saveStatementNote_, (year) => `${year}年の決算書の書き込み`, { perm: "master" });
 export const saveAsset = inTx(saveAsset_, (id) => (id === null ? "固定資産の追加" : `固定資産 #${id} の変更`), { perm: "master" });
 export const deleteAsset = inTx(deleteAsset_, (id) => `固定資産 #${id} の削除`, { perm: "master" });

@@ -23,7 +23,7 @@ export const EtaxSection = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setX(saved), [savedKey]);
   const [error, setError] = useState("");
-  const set = <K extends keyof EtaxInfo>(k: K, v: string) => setX((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof EtaxInfo>(k: K, v: EtaxInfo[K]) => setX((p) => ({ ...p, [k]: v }));
   const admin = can("settings");
   const changed = JSON.stringify(x) !== savedKey;
 
@@ -138,7 +138,24 @@ export const EtaxSection = () => {
             <input className="input" value={x.agent_phone} inputMode="tel" maxLength={20} onChange={(e) => set("agent_phone", e.target.value)} disabled={!admin} />
           </label>
         </div>
-        <p className="field-note">税理士等に依頼していなければ空のままにします。依頼していれば、確定申告書の税理士署名欄と決算書の「依頼税理士等」の欄に書きます。</p>
+        <div className="field-row wrap">
+          <label className="field" style={{ maxWidth: 240 }}>
+            <span>税理士等の利用者識別番号（16桁・任意）</span>
+            <input className="input" value={x.agent_id} inputMode="numeric" maxLength={16} onChange={(e) => set("agent_id", e.target.value.replace(/[^\d]/g, ""))} disabled={!admin} />
+          </label>
+          <label className="check" style={{ alignSelf: "flex-end" }}>
+            <input type="checkbox" checked={!!x.agent_art30} onChange={(e) => set("agent_art30", e.target.checked ? 1 : 0)} disabled={!admin} />
+            税理士法第30条の書面（税務代理権限証書）を出す
+          </label>
+          <label className="check" style={{ alignSelf: "flex-end" }}>
+            <input type="checkbox" checked={!!x.agent_art33} onChange={(e) => set("agent_art33", e.target.checked ? 1 : 0)} disabled={!admin} />
+            第33条の2の書面を出す
+          </label>
+        </div>
+        <p className="field-note">
+          税理士等に依頼していなければ空のままにします。依頼していれば、所得税・消費税の確定申告書の税理士署名欄と決算書の「依頼税理士等」の欄、e-Tax 用のデータの代理人の欄に書きます。
+          税理士が自分の e-Tax で代理送信するときは、税理士等の利用者識別番号も入れます。
+        </p>
 
         <h3 className="sheet-sub">還付される税金の受取場所</h3>
         <label className="field" style={{ maxWidth: 320 }}>

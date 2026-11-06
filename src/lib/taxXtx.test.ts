@@ -57,6 +57,26 @@ describe("棚卸資産の調整（付表2-3 ⑯：DTE00200〜00220）", () => {
   });
 });
 
+describe("税理士等（IT 部の代理人・第一表の税理士署名・税理士法第30条・第33条の2）", () => {
+  const b = base({ sales: { 8: 0, 10: 2_200_000 }, purchase: { 8: 0, 10: 1_100_000 } });
+  const agent = { name: "税理 一郎", address: "東京都港区2-2", phone: "03-5555-6666", userId: "9876543210987654", art30: true, art33: true };
+  test("一般用：DAIRI_ID・DAIRI_NM・DAIRI_TEL と AAI00210・AAI00220（参照）、AAI00230・AAI00240。XSD に合う", () => {
+    const xml = buildTaxXtx(standardReturn(b, opts), { ...filer, agent }, period);
+    expect(validate(xml)).toBe("");
+    expect(xml).toContain('<DAIRI_ID ID="DAIRI_ID">9876543210987654</DAIRI_ID>');
+    expect(ref(xml, "AAI00210")).toBe("DAIRI_NM");
+    expect(ref(xml, "AAI00220")).toBe("DAIRI_TEL");
+    expect([val(xml, "AAI00230"), val(xml, "AAI00240")]).toEqual(["1", "1"]);
+  });
+  test("簡易課税用：ABH00210〜ABH00240。XSD に合う。書面を出さなければ書かない", () => {
+    const xml = buildTaxXtx(simplifiedReturn(b, opts), { ...filer, agent: { ...agent, art33: false } }, period);
+    expect(validate(xml)).toBe("");
+    expect(ref(xml, "ABH00210")).toBe("DAIRI_NM");
+    expect(val(xml, "ABH00230")).toBe("1");
+    expect(xml).not.toContain("ABH00240");
+  });
+});
+
 describe("仮決算による中間申告（申告の種類 2:中間、中間申告の場合の対象期間）", () => {
   const b = base({ sales: { 8: 1_080_000, 10: 2_200_000 }, purchase: { 8: 540_000, 10: 1_100_000 } });
   const interim = { from: "2026-07-01", to: "2026-09-30" };

@@ -10,15 +10,19 @@ interface Props {
   from: number;
   to: number;
   onChange: (from: number, to: number) => void;
+  /** 期間ごとの印（仕訳日記帳の確認済みの月。checked = 確認済み、changed = 確認したあとに変わった） */
+  marks?: Partial<Record<number, "checked" | "changed">>;
 }
+
+const MARK_LABEL = { checked: "（確認済み）", changed: "（確認したあとに変わった仕訳があります）" } as const;
 
 /**
  * 集計・帳簿の画面の期間（仕訳日記帳・総勘定元帳・残高試算表）：帳簿入力と同じ月のボタンに「決算整理前」（1月〜12月）を添える。
  * 1月〜12月 = 決算整理前、1月〜決算整理 = 決算整理後（通期）、決算整理だけ = 決算整理仕訳だけ
  */
-export const PeriodTabs = ({ from, to, onChange }: Props) => (
+export const PeriodTabs = ({ from, to, onChange, marks }: Props) => (
   <div className="period-tabs">
-    <MonthTabs from={from} to={to} onChange={onChange} />
+    <MonthTabs from={from} to={to} onChange={onChange} marks={marks} />
     <button className={`link-btn${from === 1 && to === 12 ? " on" : ""}`} onClick={() => onChange(1, 12)} title="1月〜12月（決算整理仕訳を含まない）">決算整理前</button>
   </div>
 );
@@ -30,7 +34,7 @@ export const periodLabel = (p: number) => (p === ADJUSTMENT_PERIOD ? "決算整�
  * 期間のボタン（帳簿用）。1〜12月と、12月のあとの「決算整理」（年度末の決算整理仕訳）。
  * クリックでその期間だけ、Shift + クリックかドラッグで期間をまたいだ範囲、「全期間」で 1月〜決算整理
  */
-export const MonthTabs = ({ from, to, onChange }: Props) => {
+export const MonthTabs = ({ from, to, onChange, marks }: Props) => {
   // ドラッグの起点（押している間だけ）
   const anchor = useRef<number | null>(null);
   useEffect(() => {
@@ -50,13 +54,14 @@ export const MonthTabs = ({ from, to, onChange }: Props) => {
         const on = p >= from && p <= to;
         // 選んだ範囲を1本の帯に見せるため、両端だけ角を丸める
         const edge = on ? `${p === from ? " first" : ""}${p === to ? " last" : ""}` : "";
+        const mark = marks?.[p];
         return (
           <button
             key={p}
             role="tab"
             aria-selected={on}
-            className={`${p === ADJUSTMENT_PERIOD ? "adj" : "m"}${on ? " on" : ""}${edge}`}
-            title={`${periodLabel(p)}（Shift + クリックかドラッグで、期間をまたいで選べます）`}
+            className={`${p === ADJUSTMENT_PERIOD ? "adj" : "m"}${on ? " on" : ""}${edge}${mark ? ` mark-${mark}` : ""}`}
+            title={`${periodLabel(p)}${mark ? MARK_LABEL[mark] : ""}（Shift + クリックかドラッグで、期間をまたいで選べます）`}
             onMouseDown={(e) => {
               if (e.button !== 0) return;
               if (e.shiftKey) {

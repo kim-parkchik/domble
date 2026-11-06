@@ -1,6 +1,6 @@
-import { FilePlus2, FolderOpen, FileClock, X } from "lucide-react";
+import { Eye, FilePlus2, FolderOpen, FileClock, X } from "lucide-react";
 import { useId, useState } from "react";
-import { getRecentFiles, removeRecentFile } from "../../db/database";
+import { getRecentFiles, getRecentLabels, removeRecentFile } from "../../db/database";
 import { APP_NAME } from "../../constants/appConfig";
 // @ts-ignore
 import pkg from "../../../package.json";
@@ -38,13 +38,18 @@ interface Props {
   onCreate: () => void;
   onOpen: () => void;
   onOpenPath: (path: string) => void;
+  /** 帳簿ファイルを読み取り専用（見るだけ）で開く（税理士から返ってきた帳簿を確かめる・別の PC の帳簿を見るなど） */
+  onOpenReadOnly: () => void;
   busy: boolean;
 }
 
 const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p;
 
-export const StartScreen = ({ onCreate, onOpen, onOpenPath, busy }: Props) => {
+export const StartScreen = ({ onCreate, onOpen, onOpenPath, onOpenReadOnly, busy }: Props) => {
   const [recent, setRecent] = useState(getRecentFiles());
+  const labels = getRecentLabels();
+  /** 入っているフォルダの名前（同じファイル名の帳簿を見分ける） */
+  const folderOf = (p: string) => p.split(/[\\/]/).slice(-2, -1)[0] ?? "";
 
   return (
     <div className="start">
@@ -61,6 +66,9 @@ export const StartScreen = ({ onCreate, onOpen, onOpenPath, busy }: Props) => {
             <FolderOpen size={18} /> 帳簿ファイルを開く
           </button>
         </div>
+        <button className="link-btn start-readonly" onClick={onOpenReadOnly} disabled={busy} title="帳簿ファイルには一切書き込みません（税理士から返ってきた帳簿を確かめる・ほかの PC の帳簿を見るなど）">
+          <Eye size={14} /> 見るだけで開く（読み取り専用）
+        </button>
 
         {recent.length > 0 && (
           <div className="recent-files">
@@ -70,7 +78,10 @@ export const StartScreen = ({ onCreate, onOpen, onOpenPath, busy }: Props) => {
                 <li key={p}>
                   <button className="recent-file" onClick={() => onOpenPath(p)} disabled={busy} title={p}>
                     <FileClock size={16} />
-                    <span>{fileName(p)}</span>
+                    <span>
+                      {labels[p] ? <><b>{labels[p]}</b>　</> : null}{fileName(p)}
+                      <small className="muted recent-folder">{folderOf(p)}</small>
+                    </span>
                   </button>
                   <button
                     className="icon-btn subtle"

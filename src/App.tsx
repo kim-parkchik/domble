@@ -11,11 +11,14 @@ import { Popover } from "./components/Popover";
 import { copyText } from "./lib/clipboard";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import {
-  backupNow, deviceId, NEWER_SCHEMA, openDatabase, pruneBackups, pickExistingFile, pickNewFile, pushRecentFile, readLock, removeLock, removeRecentFile,
-  restoreBackupFile, writeLock,
+  backupNow, deviceId, isKnownBook, NEWER_SCHEMA, OLDER_SCHEMA, openDatabase, pruneBackups, pickExistingFile, pickNewFile, pushRecentFile, readLock, rememberBook,
+  removeLock, removeRecentFile, restoreBackupFile, writeLock,
 } from "./db/database";
-import { BEFORE_RESTORE, isSyncedPath, lockState, type LockInfo } from "./lib/backup";
+import { BEFORE_RECEIVE, BEFORE_RESTORE, isSyncedPath, lockState, type LockInfo } from "./lib/backup";
 import { LockScreen } from "./features/start/LockScreen";
+import { UpgradeScreen } from "./features/start/UpgradeScreen";
+import { applyHold, noteReceived } from "./db/handoff";
+import { HandoffNotice } from "./features/settings/HandoffSection";
 import { EXT_BACKUP, EXT_MAIN, isBackupFile, isBookFile } from "./constants/appConfig";
 import { ROLE_LABEL, type Perm } from "./lib/permissions";
 import { isBeforeStrict, isYearCompliant } from "./lib/ebook";
@@ -129,15 +132,18 @@ interface Session {
   readOnlyReason?: string;
 }
 
-/** 開き方（読み取り専用で開く・使用中の目印を気にせず開く） */
+/** 開き方（読み取り専用で開く・使用中の目印を気にせず開く・税理士と受け渡している古い形式の帳簿を聞かずに新しくする） */
 interface LoadOptions {
   readOnly?: boolean;
   reason?: string;
   ignoreLock?: boolean;
+  allowUpgrade?: boolean;
 }
 
 /** 戻したあとに開いた帳簿へ記録するための控え（戻す → 開き直す の間だけ） */
 const RESTORED_KEY = "domble.restored";
+/** 税理士から受け取ったあとに開いた帳簿へ記録するための控え（置き換える → 開き直す の間だけ） */
+const RECEIVED_KEY = "domble.received";
 
 /**
  * 帳簿を閉じる：ログアウトを記録し、今の中身でバックアップを作って（backup。読み取り専用でなければ）、接続を閉じ、使用中の目印を消す
@@ -171,6 +177,8 @@ export default function App() {
   const [locked, setLocked] = useState<{ path: string; error: string; opts: LoadOptions } | null>(null);
   /** 使用中の目印がある帳簿で、開き方を聞いているところ */
   const [inUse, setInUse] = useState<{ path: string; lock: LockInfo; state: "self" | "other"; unlock: Unlock } | null>(null);
+  /** 税理士と受け渡している古い形式の帳簿で、新しくしてよいか聞いているところ */
+  const [upgrade, setUpgrade] = useState<{ path: string; version: number; unlock: Unlock; opts: LoadOptions } | null>(null);
 
   // 画面の操作で失敗したまま受け止められなかったもの（権限・読み取り専用・締め済みなど）は、
   // 何も起きないように見えないよう、まとめて知らせる
@@ -237,8 +245,10 @@ export default function App() {
         }
       }
       setInUse(null);
+      setUpgrade(null);
       repo.setReadOnly(readOnly);
-      const { db, triggersBefore, backupError } = await openDatabase(path, readOnly, unlock);
+      applyHold(null);
+      const { db, triggersBefore, backupError } = await openDatabase(path, readOnly, unlock, !!opts.allowUpgrade);
       // 開いたときの自動バックアップに失敗したら知らせる（ディスクの空き・書類フォルダの権限など）
       if (backupError) toast(`帳簿を開く前のバックアップを作れませんでした：${backupError}（帳簿はそのまま使えます）`, "error");
       setLocked(null);
@@ -255,6 +265,13 @@ export default function App() {
           sessionStorage.removeItem(RESTORED_KEY);
           await repo.noteRestored(db, `バックアップ（${restored.from}）から戻しました。戻す前の帳簿は ${restored.before} にあります`);
         }
+        // 税理士から受け取って置き換えたあとに開いたときは、受け取ったことを記録する（受け取った人の名前で）
+        const received = JSON.parse(sessionStorage.getItem(RECEIVED_KEY) ?? "null") as { path: string; file: string; before: string; user: number | null } | null;
+        if (received?.path === path) {
+          sessionStorage.removeItem(RECEIVED_KEY);
+          repo.setActor(received.user);
+          await noteReceived(db, received.file, received.before).finally(() => repo.setActor(null));
+        }
         interrupted = await repo.checkInterrupted(db);
         await repo.initClosings(db);
         try {
@@ -264,11 +281,13 @@ export default function App() {
         }
       }
       const settings = await repo.getSettings(db);
+      // 税理士に渡している（返した）帳簿は、「それでも入力する」まで書き込みを止める
+      if (!readOnly) applyHold(settings.holder);
       const [accounts, subs] = await Promise.all([
         repo.getAccounts(db, settings.fiscal_year),
         repo.getSubAccounts(db, settings.fiscal_year),
       ]);
-      pushRecentFile(path);
+      pushRecentFile(path, settings.business_name.trim() || settings.owner_name.trim());
       setSession({ db, path, settings, accounts, subs, user: null, interrupted, readOnly, readOnlyReason: isBackupFile(path) ? undefined : opts.reason });
     } catch (e) {
       // 新しい版の domble で使った帳簿：読み取り専用で開き直す
@@ -278,6 +297,12 @@ export default function App() {
           readOnly: true, ignoreLock: true,
           reason: "新しい版の domble で使った帳簿のため、読み取り専用で開いています。domble を最新の版に更新してから開いてください（この版で書き込むと、新しい版で入れた項目が消えるため）",
         });
+      }
+      // 税理士と受け渡している古い形式の帳簿：新しくしてよいか聞く
+      if (String(e).includes(OLDER_SCHEMA)) {
+        repo.setReadOnly(false);
+        setLocked(null);
+        return setUpgrade({ path, version: Number(String(e).split(`${OLDER_SCHEMA}:`)[1]) || 0, unlock, opts });
       }
       // 暗号化した帳簿：パスワードを聞く（違っていたら、聞き直す）
       // （使用中の目印を気にせず開く・読み取り専用で開く、の選択はパスワードのあとも引き継ぐ）
@@ -308,6 +333,22 @@ export default function App() {
     );
   }
 
+  if (!session && upgrade) {
+    return (
+      <UpgradeScreen
+        key={upgrade.path}
+        path={upgrade.path}
+        version={upgrade.version}
+        busy={busy}
+        onUpgrade={() => load(upgrade.path, false, upgrade.unlock, { ...upgrade.opts, allowUpgrade: true })}
+        onReadOnly={() => load(upgrade.path, false, upgrade.unlock, {
+          readOnly: true, ignoreLock: true, reason: "古い版の domble の形式の帳簿を、読み取り専用で開いています（帳簿ファイルは変わりません）",
+        })}
+        onBack={() => setUpgrade(null)}
+      />
+    );
+  }
+
   if (!session && locked) {
     return (
       <UnlockScreen
@@ -334,6 +375,10 @@ export default function App() {
           if (p) await load(p);
         }}
         onOpenPath={(p) => load(p)}
+        onOpenReadOnly={async () => {
+          const p = await pickExistingFile();
+          if (p) await load(p, false, {}, { readOnly: true, ignoreLock: true, reason: "読み取り専用（見るだけ）で開いています。見ることはできますが、変更はできません（帳簿ファイルには一切書き込みません）" });
+        }}
       />
     );
   }
@@ -341,6 +386,7 @@ export default function App() {
   const close = async () => {
     await endSession(session);
     repo.setReadOnly(false);
+    applyHold(null);
     setSession(null);
   };
 
@@ -400,10 +446,34 @@ export default function App() {
     await load(s.path, false, {}, { ignoreLock: true });
   };
 
+  /**
+   * 税理士から受け取る（確かめるのは事業者設定の「税理士との受け渡し」。db/handoff.ts の inspectReturned）：
+   * 今の帳簿を「受け取る前」の印つきでバックアップしてから閉じ、返ってきた帳簿で置き換えて開き直す。置き換えに失敗したら、今の帳簿のまま開き直す
+   */
+  const receiveBook = async (returnedPath: string) => {
+    const s = session;
+    const file = returnedPath.split(/[\\/]/).pop() ?? returnedPath;
+    const { written, failed } = await repo.queuedRead(() => backupNow(s.path, BEFORE_RECEIVE));
+    if (written.length === 0) throw new Error(`今の帳簿のバックアップを作れなかったため、受け取るのをやめました（${failed.join("、")}）`);
+    const user = repo.getActor();
+    await endSession(s, false);
+    repo.setReadOnly(false);
+    applyHold(null);
+    setSession(null);
+    try {
+      await restoreBackupFile(returnedPath, s.path);
+      sessionStorage.setItem(RECEIVED_KEY, JSON.stringify({ path: s.path, file, before: written[0], user }));
+      toast(`税理士から受け取りました（${file}）。受け取る前の帳簿もバックアップしてあります`);
+    } catch (e) {
+      toast(`受け取れませんでした：${String(e).replace(/^Error: /, "")}（今の帳簿のまま開き直します）`, "error");
+    }
+    await load(s.path, false, {}, { ignoreLock: true });
+  };
+
   return (
     <AppProvider
       key={session.path} db={session.db} filePath={session.path} initialSettings={session.settings} initialAccounts={session.accounts} initialSubs={session.subs}
-      user={session.user} readOnly={session.readOnly} restoreBackup={restoreBackup}
+      user={session.user} readOnly={session.readOnly} restoreBackup={restoreBackup} receiveBook={receiveBook}
     >
       <Shell onClose={close} onSwitchUser={switchUser} interrupted={session.interrupted} readOnlyReason={session.readOnlyReason} />
     </AppProvider>
@@ -455,14 +525,21 @@ const UserGate = ({ db, settings, readOnly, onLogin, onBack }: {
       if (!readOnly) await repo.ensureUsers(db, settings.owner_name);
       const list = await repo.getUsers(db);
       const active = list.filter((u) => u.is_active);
+      // ユーザーが1人でパスワードも無ければ自動で選ぶ。ただし、この PC で初めて開く帳簿（税理士が受け取った帳簿など）は選んでもらう
       if (active.length === 0 && readOnly) onLogin(VIEWER);
-      else if (active.length === 1 && !active[0].has_password) onLogin(active[0]);
+      else if (active.length === 1 && !active[0].has_password && isKnownBook(settings.book_id)) onLogin(active[0]);
       else setUsers(list);
     })().catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]);
   if (!users) return null;
-  return <LoginScreen db={db} users={users} businessName={displayName(settings)} onLogin={onLogin} onBack={onBack} />;
+  return (
+    <LoginScreen
+      db={db} users={users} businessName={displayName(settings)} onBack={onBack}
+      firstOnThisPc={!isKnownBook(settings.book_id)} requirePassword={!readOnly && repo.hasAccountant(users)}
+      onLogin={(u) => { rememberBook(settings.book_id); onLogin(u); }}
+    />
+  );
 };
 
 const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose: () => void; onSwitchUser: () => void; interrupted: string[]; readOnlyReason?: string }) => {
@@ -487,9 +564,17 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
     setPage("settings");
     setCarryFocus((n) => n + 1);
   };
+  // 仕訳日記帳を「未解決の付箋がある仕訳」で開く（ホームの次にやることから。開くたびに増やす番号）
+  const [notesFocus, setNotesFocus] = useState(0);
   const go = (p: Page) => {
     setCarryFocus(0);
+    setNotesFocus(0);
     setPage(p);
+  };
+  const goNotes = () => {
+    setCarryFocus(0);
+    setNotesFocus((n) => n + 1);
+    setPage("journal");
   };
 
   const fileName = filePath.split(/[\\/]/).pop();
@@ -607,14 +692,15 @@ const Shell = ({ onClose, onSwitchUser, interrupted, readOnlyReason }: { onClose
           </div>
         )}
         <IntegrityNotice goHistory={() => go("history")} />
+        <HandoffNotice goSettings={() => go("settings")} />
         <YearNotice goSettings={() => go("settings")} switchYear={switchYear} goCarry={goCarry} />
         <main className="content">
-          {page === "home" && <DashboardPage go={go} />}
+          {page === "home" && <DashboardPage go={go} goNotes={goNotes} />}
           {page === "cashbook" && <CashBookPage go={go} />}
           {page === "voucher" && <JournalVoucherPage />}
           {page === "sales" && <SalesDocsPage />}
           {page === "payroll" && <PayrollPage go={go} />}
-          {page === "journal" && <JournalListPage />}
+          {page === "journal" && <JournalListPage notesFocus={notesFocus} />}
           {page === "ledger" && <GeneralLedgerPage />}
           {page === "evidence" && <EvidencePage />}
           {page === "history" && <HistoryPage />}
