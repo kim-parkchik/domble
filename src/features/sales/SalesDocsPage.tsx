@@ -1,26 +1,28 @@
 /**
  * 見積書・請求書（計算は lib/salesDoc.ts、保存は repo の sales_docs・sales_payments）
- *  - 表示中の年に発行した書類の一覧（請求書・見積書の切り替え、状態と言葉で絞り込み。未入金はすべての年から）
+ *  - 表示中の年に発行した書類の一覧（請求書・見積書の切り替え、状態と言葉で絞り込み。未入金はすべての年から）。
+ *    日付（から・まで）と請求額の範囲でも探せ（日付を入れると年をまたぐ）、表示中の一覧を CSV に書き出せる（控えをデータで持つときの検索・ダウンロードの求め）
  *  - 作る・直す：宛名（取引先から）・件名・日付・明細（品名・数量・単位・単価・税率）・単価の税抜／税込・源泉徴収・振込先・備考。
  *    見積書から請求書へ写せる。下書きは削除でき、発行した書類は取り消す（理由は履歴に）
- *  - 発行：請求書は売掛金の仕訳を作る（直すと同じ仕訳を訂正）。入金は「入金」から記録するか、帳簿の仕訳（明細の取り込みなど）を選ぶ
- *  - 印刷：A4 の請求書・見積書（適格請求書の記載事項。免税の年は登録番号・消費税額を出さない）。PDF は印刷の画面から保存する
+ *  - 発行：請求書は売掛金の仕訳を作り、発行したときの発行者（名前・住所・電話・登録番号）を書類に残す。発行した請求書は直せない
+ *    （相手に渡した請求書の写し。消費税法57条の4⑥）。直すときは取り消して、新しい番号で作り直す。入金は「入金」から記録するか、帳簿の仕訳（明細の取り込みなど）を選ぶ
+ *  - 印刷：A4 の請求書・見積書（適格請求書の記載事項。免税の年は登録番号・消費税額を出さない。発行した書類は発行したときの発行者で）。PDF は印刷の画面から保存する
  */
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Ban, Copy, FilePenLine, HandCoins, Pencil, Plus, Printer, Search, Send, Settings2, Trash2, X } from "lucide-react";
+import { Ban, Copy, FileDown, FilePenLine, HandCoins, Pencil, Plus, Printer, RefreshCw, Search, Send, Settings2, Trash2, X } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { PageHeader } from "../../components/PageHeader";
 import { Modal } from "../../components/Modal";
 import { AmountInput, CounterpartyField, FullDateInput } from "../../components/Inputs";
 import { useToast } from "../../components/Toast";
 import { longDate, todayIso, yen } from "../../lib/format";
-import { displayName } from "../../lib/business";
+import { exportCsvFile } from "../../components/csvExport";
 import { inReduced1, taxYearOf } from "../../lib/tax";
 import { CODE } from "../../constants/accounts";
 import {
-  DOC_KIND_LABEL, DOC_STATE_LABEL, docState, docTotals, isReducedItem, ITEM_TAX_LABEL, ITEM_TAXES, itemTaxOn, nextDocNo, reducedItemNote, remainingOf, ROUNDING_LABEL, salesDate,
-  savedTotals,
+  DOC_KIND_LABEL, DOC_STATE_LABEL, docState, docTotals, isReducedItem, issuerOf, ITEM_TAX_LABEL, ITEM_TAXES, itemTaxOn, nextDocNo, reducedItemNote, remainingOf, ROUNDING_LABEL,
+  SALES_DOC_CSV_HEADER, salesDate, salesDocCsvRow, savedTotals,
   type DocItem, type DocKind, type DocState, type DocTotals, type ItemTax, type Rounding, type SalesDoc, type SalesPayment,
 } from "../../lib/salesDoc";
 import * as repo from "../../db/repo";
@@ -42,6 +44,8 @@ export const SalesDocsPage = () => {
   const [conf, setConf] = useState<repo.InvoiceSettings>({ invoice_bank: "", invoice_rounding: "floor", invoice_notes: "" });
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
+  // 日付（請求日・見積日）と請求額の範囲。日付を入れると、表示中の年に限らず探す
+  const [range, setRange] = useState({ from: "", to: "", min: "", max: "" });
   const [editing, setEditing] = useState<{ doc: SalesDoc | null; draft: repo.SalesDocInput } | null>(null);
   const [printing, setPrinting] = useState<SalesDoc | null>(null);
   const [paying, setPaying] = useState<SalesDoc | null>(null);
@@ -76,10 +80,18 @@ export const SalesDocsPage = () => {
   }), [docs, payments, kind]);
   const open = (s: DocState) => s === "issued" || s === "partial";
   const needle = q.trim().toLowerCase();
-  const shown = rows.filter(({ d, state }) =>
-    (filter === "open" ? kind === "invoice" && open(state) : d.issue_date.startsWith(String(year)))
+  const byDate = !!(range.from || range.to);
+  const [min, max] = [range.min === "" ? null : Number(range.min), range.max === "" ? null : Number(range.max)];
+  const shown = rows.filter(({ d, t, state }) =>
+    (filter === "open" ? kind === "invoice" && open(state) : byDate || d.issue_date.startsWith(String(year)))
+    && (!range.from || d.issue_date >= range.from) && (!range.to || d.issue_date <= range.to)
+    && (min === null || t.billed >= min) && (max === null || t.billed <= max)
     && (filter === "all" || filter === "open" || (filter === "draft" ? state === "draft" : filter === "paid" ? state === "paid" : state === "void"))
     && (!needle || [d.doc_no, d.to_name, d.subject].some((x) => x.toLowerCase().includes(needle))));
+  const exportCsv = () => exportCsvFile(
+    `${DOC_KIND_LABEL[kind]}_${byDate ? `${range.from || "初め"}〜${range.to || "今"}` : `${year}年`}.csv`, SALES_DOC_CSV_HEADER,
+    shown.map(({ d, state }) => salesDocCsvRow(d, DOC_STATE_LABEL[state])), toast,
+  );
   const receivable = rows.filter((r) => kind === "invoice" && open(r.state)).reduce((s, r) => s + r.remaining, 0);
   const overdue = rows.filter((r) => kind === "invoice" && open(r.state) && r.d.due_date && r.d.due_date < todayIso()).length;
 
@@ -89,7 +101,7 @@ export const SalesDocsPage = () => {
     withholding: 0, notes: conf.invoice_notes, bank_text: k === "invoice" ? conf.invoice_bank : "", source_id: null, revenue_account_id: null,
   });
   const inputOf = (d: SalesDoc): repo.SalesDocInput => {
-    const { id: _id, status: _s, entry_id: _e, rounding: _r, exempt: _x, ...rest } = d;
+    const { id: _id, status: _s, entry_id: _e, rounding: _r, exempt: _x, issuer: _i, ...rest } = d;
     return rest;
   };
   /** 軽減税率の明細を、新しい書類の取引日の税率（8%・1%）に合わせる */
@@ -97,6 +109,8 @@ export const SalesDocsPage = () => {
   /** 見積書から請求書を作る（下書き）。同じ書類を複製する */
   const toInvoice = (d: SalesDoc) => setEditing({ doc: null, draft: itemsOn({ ...inputOf(d), kind: "invoice", doc_no: blank("invoice").doc_no, issue_date: blank("invoice").issue_date, due_date: null, bank_text: conf.invoice_bank, source_id: d.id }) });
   const duplicate = (d: SalesDoc) => setEditing({ doc: null, draft: itemsOn({ ...inputOf(d), doc_no: blank(d.kind).doc_no, issue_date: blank(d.kind).issue_date, delivery_date: null, due_date: null, source_id: null }) });
+  /** 取り消した書類を、同じ中身（取引日・期限も）で新しい番号の下書きにする（修正した請求書） */
+  const remake = (d: SalesDoc) => setEditing({ doc: null, draft: itemsOn({ ...inputOf(d), doc_no: blank(d.kind).doc_no, issue_date: blank(d.kind).issue_date, source_id: null }) });
 
   const run = async (f: () => Promise<unknown>, done: string) => {
     try {
@@ -109,12 +123,13 @@ export const SalesDocsPage = () => {
   };
   const issue = (d: SalesDoc) => run(() => repo.issueSalesDoc(db, d.id), d.kind === "invoice" ? `${d.doc_no} を発行し、売掛金の仕訳を作りました` : `${d.doc_no} を発行しました`);
   const remove = (d: SalesDoc) => run(() => repo.deleteSalesDoc(db, d.id), `${d.doc_no} を削除しました`);
+  const repost = (d: SalesDoc) => run(() => repo.repostSalesDoc(db, d.id), `${d.doc_no} の売掛金の仕訳を作り直しました`);
 
   return (
     <div className="page">
       <PageHeader
         title="請求書・見積書"
-        note="請求書を発行すると「売掛金 ／ 売上高」の仕訳を作り（直すと同じ仕訳を訂正します）、入金を記録すると「普通預金 ／ 売掛金」を作ります。発行した書類の中身は、いつでも同じ形で印刷できます（適格請求書の写し）。"
+        note="請求書を発行すると「売掛金 ／ 売上高」の仕訳を作り、入金を記録すると「普通預金 ／ 売掛金」を作ります。発行した請求書は、相手に渡した請求書の写しとして直せず、発行したときの中身と発行者（名前・住所・登録番号）で、いつでも同じ形で印刷できます。直すときは取り消して、新しい番号で作り直します。"
       >
         <button className="btn ghost" onClick={() => setSetting(true)} disabled={!can("settings")}><Settings2 size={16} /> 設定</button>
         <button className="btn primary" onClick={() => setEditing({ doc: null, draft: blank(kind) })} disabled={!mayEdit}><Plus size={16} /> {DOC_KIND_LABEL[kind]}を作る</button>
@@ -133,6 +148,18 @@ export const SalesDocsPage = () => {
           <Search size={15} />
           <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="番号・宛名・件名で探す" />
         </label>
+        <span className="sales-range" title="日付（請求日・見積日）を入れると、表示中の年に限らず探します">
+          <input className="input" type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} aria-label="日付から" />
+          〜
+          <input className="input" type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} aria-label="日付まで" />
+        </span>
+        <span className="sales-range">
+          <input className="input num" inputMode="numeric" value={range.min} onChange={(e) => setRange({ ...range, min: e.target.value.replace(/[^\d]/g, "") })} placeholder="請求額から" aria-label="請求額から" />
+          〜
+          <input className="input num" inputMode="numeric" value={range.max} onChange={(e) => setRange({ ...range, max: e.target.value.replace(/[^\d]/g, "") })} placeholder="まで" aria-label="請求額まで" />
+        </span>
+        {(byDate || range.min || range.max) && <button className="link-btn" onClick={() => setRange({ from: "", to: "", min: "", max: "" })}>条件を消す</button>}
+        <button className="btn ghost" onClick={exportCsv} disabled={shown.length === 0} title="表示中の一覧を CSV に書き出します"><FileDown size={15} /> CSV</button>
         <span className="spacer" />
         {kind === "invoice" && (
           <span className="muted">未入金 <b>{yen(receivable)}円</b>{overdue ? <>・<span className="warn-text">支払期限を過ぎたもの {overdue} 件</span></> : null}</span>
@@ -142,7 +169,9 @@ export const SalesDocsPage = () => {
       <section className="sheet sheet-fill">
         <div className="table-wrap scroll-y">
           {shown.length === 0 ? (
-            <p className="empty-note">{filter === "open" ? "未入金の請求書はありません。" : `${year}年の${DOC_KIND_LABEL[kind]}はありません。「${DOC_KIND_LABEL[kind]}を作る」から作れます。`}</p>
+            <p className="empty-note">
+              {filter === "open" ? "未入金の請求書はありません。" : byDate || range.min || range.max ? "条件に合う書類はありません。" : `${year}年の${DOC_KIND_LABEL[kind]}はありません。「${DOC_KIND_LABEL[kind]}を作る」から作れます。`}
+            </p>
           ) : (
             <table className="ledger sales-table">
               <colgroup>
@@ -170,17 +199,26 @@ export const SalesDocsPage = () => {
                     <td className={open(state) && d.due_date && d.due_date < todayIso() ? "warn-text" : ""}>{slash(d.due_date)}</td>
                     <td>
                       <span className={`badge sales-state ${state}`}>{DOC_STATE_LABEL[state]}</span>
-                      {d.kind === "invoice" && d.status === "issued" && !d.entry_id && <span className="badge sales-state void" title="売掛金の仕訳が削除されています。直して保存すると作り直します">仕訳なし</span>}
+                      {d.kind === "invoice" && d.status === "issued" && !d.entry_id && <span className="badge sales-state void" title="売掛金の仕訳が削除されています。「仕訳を作り直す」で作り直せます">仕訳なし</span>}
                     </td>
                     <td className="row-actions sales-actions">
                       {d.status === "draft" && <button className="link-btn" onClick={() => issue(d)} disabled={!mayEdit}><Send size={14} /> 発行</button>}
                       {d.kind === "invoice" && d.status === "issued" && <button className="link-btn" onClick={() => setPaying(d)} disabled={!mayEdit}><HandCoins size={14} /> 入金</button>}
                       {d.kind === "estimate" && d.status === "issued" && state !== "converted" && <button className="link-btn" onClick={() => toInvoice(d)} disabled={!mayEdit}><FilePenLine size={14} /> 請求書へ</button>}
                       <button className="link-btn" onClick={() => setPrinting(d)} title="印刷" aria-label="印刷"><Printer size={14} /></button>
-                      {state !== "void" && <button className="link-btn" onClick={() => setEditing({ doc: d, draft: inputOf(d) })} disabled={!mayEdit} title="編集" aria-label="編集"><Pencil size={14} /></button>}
+                      {d.kind === "invoice" && d.status === "issued" && !d.entry_id && (
+                        <button className="link-btn" onClick={() => repost(d)} disabled={!mayEdit} title="売掛金の仕訳を作り直す" aria-label="仕訳を作り直す"><RefreshCw size={14} /></button>
+                      )}
+                      {(d.status === "draft" || (d.kind === "estimate" && d.status !== "void")) && (
+                        <button className="link-btn" onClick={() => setEditing({ doc: d, draft: inputOf(d) })} disabled={!mayEdit} title="編集" aria-label="編集"><Pencil size={14} /></button>
+                      )}
                       <button className="link-btn" onClick={() => duplicate(d)} disabled={!mayEdit} title="この書類を写して新しく作る" aria-label="複製"><Copy size={14} /></button>
                       {d.status === "draft" && <button className="link-btn danger" onClick={() => remove(d)} disabled={!mayEdit} title="削除" aria-label="削除"><Trash2 size={14} /></button>}
-                      {d.status === "issued" && <button className="link-btn danger" onClick={() => setVoiding(d)} disabled={!mayEdit} title="取消" aria-label="取消"><Ban size={14} /></button>}
+                      {d.status === "issued" && (
+                        <button className="link-btn danger" onClick={() => setVoiding(d)} disabled={!mayEdit} title={d.kind === "invoice" ? "取消（直すときは、取り消して作り直す）" : "取消"} aria-label="取消">
+                          <Ban size={14} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -203,7 +241,12 @@ export const SalesDocsPage = () => {
           onClose={() => setPaying(null)} onChanged={bump}
         />
       )}
-      {voiding && <VoidModal doc={voiding} onClose={() => setVoiding(null)} onDone={() => { setVoiding(null); bump(); }} />}
+      {voiding && (
+        <VoidModal
+          doc={voiding} onClose={() => setVoiding(null)}
+          onDone={(again) => { const d = voiding; setVoiding(null); bump(); if (again) remake(d); }}
+        />
+      )}
       {setting && <InvoiceSettingsModal conf={conf} onClose={() => setSetting(false)} onSaved={() => { setSetting(false); bump(); }} />}
     </div>
   );
@@ -426,8 +469,9 @@ const DocPrint = ({ doc: d, totals: t, onClose }: { doc: SalesDoc; totals: DocTo
   }, [onClose]);
   const invoice = d.kind === "invoice";
   const date = salesDate(d);
-  // 登録番号：免税の年でなく、登録日より後の取引だけ
-  const regNo = !t.exempt && settings.invoice_no && (!settings.invoice_registered_on || date >= settings.invoice_registered_on) ? settings.invoice_no : "";
+  // 発行者：発行した書類は発行したときのもの（あとで事業者設定を変えても同じ形）。下書きと、形式の版 16 までに発行した書類は今の事業者設定で
+  const from = d.issuer ?? issuerOf(settings, d, t.exempt);
+  const regNo = from.invoice_no;
   const pages: { from: number; to: number }[] = [];
   for (let i = 0; i === 0 || i < d.items.length; i += pages.length ? NEXT_ROWS : FIRST_ROWS) pages.push({ from: i, to: Math.min(d.items.length, i + (pages.length ? NEXT_ROWS : FIRST_ROWS)) });
   const reduced = d.items.some((it) => isReducedItem(it.tax)) && !t.exempt;
@@ -438,7 +482,10 @@ const DocPrint = ({ doc: d, totals: t, onClose }: { doc: SalesDoc; totals: DocTo
       <div className="pp-toolbar">
         <h2>{title} {d.doc_no}</h2>
         <div className="spacer" />
-        <span className="pp-count">{pages.length} ページ（A4 縦）。PDF は印刷の画面から保存できます</span>
+        <span className="pp-count">
+          {pages.length} ページ（A4 縦）。PDF は印刷の画面から保存できます。メールで送った PDF は、証憑に取り込んで保存してください（電子取引）
+          {d.status !== "draft" && !d.issuer && "。以前の版で発行した書類なので、発行者は今の事業者設定で出しています"}
+        </span>
         <button className="btn ghost pp-close" onClick={onClose}><X size={16} /> 閉じる</button>
         <button className="btn primary" onClick={() => window.print()}><Printer size={16} /> 印刷</button>
       </div>
@@ -467,10 +514,10 @@ const DocPrint = ({ doc: d, totals: t, onClose }: { doc: SalesDoc; totals: DocTo
                     {invoice && <div className="doc-small">取引年月日：{longDate(date)}</div>}
                   </div>
                   <div className="doc-from">
-                    <div className="doc-from-name">{displayName(settings)}</div>
-                    {settings.business_name.trim() && settings.owner_name.trim() && <div>{settings.owner_name}</div>}
-                    {(settings.office_address || settings.address) && <div className="doc-small">{settings.postal_code ? `〒${settings.postal_code} ` : ""}{settings.office_address || settings.address}</div>}
-                    {(settings.office_phone || settings.phone) && <div className="doc-small">TEL {settings.office_phone || settings.phone}</div>}
+                    <div className="doc-from-name">{from.name}</div>
+                    {from.owner && <div>{from.owner}</div>}
+                    {from.address && <div className="doc-small">{from.postal ? `〒${from.postal} ` : ""}{from.address}</div>}
+                    {from.phone && <div className="doc-small">TEL {from.phone}</div>}
                     {regNo && <div className="doc-small">登録番号 {regNo}</div>}
                   </div>
                 </div>
@@ -638,16 +685,17 @@ const PaymentModal = ({ doc: d, totals: t, payments, onClose, onChanged }: {
   );
 };
 
-const VoidModal = ({ doc: d, onClose, onDone }: { doc: SalesDoc; onClose: () => void; onDone: () => void }) => {
+const VoidModal = ({ doc: d, onClose, onDone }: { doc: SalesDoc; onClose: () => void; onDone: (again: boolean) => void }) => {
   const { db } = useAppContext();
   const toast = useToast();
   const [reason, setReason] = useState("");
+  const [again, setAgain] = useState(d.kind === "invoice");
   const [error, setError] = useState("");
   const submit = async () => {
     try {
       await repo.voidSalesDoc(db, d.id, reason);
       toast(`${d.doc_no} を取り消しました`);
-      onDone();
+      onDone(again);
     } catch (e) {
       setError(errText(e));
     }
@@ -657,11 +705,15 @@ const VoidModal = ({ doc: d, onClose, onDone }: { doc: SalesDoc; onClose: () => 
       <form className="settings-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <p className="field-note">
           取り消した書類は残り（「取消」の印）、直せなくなります。{d.kind === "invoice" ? "売掛金の仕訳は削除します（厳密モードでは削除の履歴が残ります）。" : ""}
-          相手に渡した書類を取り消すときは、正しい書類を新しく作って渡してください。
+          相手に渡した書類を取り消すときは、正しい書類を新しく作って渡してください{d.kind === "invoice" ? "（修正した請求書）" : ""}。
         </p>
         <label className="field">
           <span>取消の理由</span>
           <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={100} autoFocus placeholder="例：金額の誤り（No.2026-0005 で出し直し）" />
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={again} onChange={(e) => setAgain(e.target.checked)} />
+          取り消したあと、同じ中身で新しい番号の下書きを作る（直して発行する）
         </label>
         {error && <p className="notice" role="alert">{error}</p>}
         <div className="voucher-actions">

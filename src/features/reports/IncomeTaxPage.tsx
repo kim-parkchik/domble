@@ -39,7 +39,7 @@ import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
 import { incomeFilingLines } from "../../lib/amendment";
 import { salesDate, savedTotals } from "../../lib/salesDoc";
 import { FilingSection, useFilings } from "./FilingSection";
-import { filingNotes } from "../../lib/filing";
+import { filingNotes, lateFilingNote } from "../../lib/filing";
 
 type View = "input" | "first" | "second" | "fourth" | "medical" | "filing";
 
@@ -225,6 +225,8 @@ export const IncomeTaxPage = () => {
   // 申告の控えと修正申告（保存していない変更があるときは、今の数字を出さない）
   const filingLines = useMemo(() => (changed ? null : incomeFilingLines(result)), [changed, result]);
   const filing = useFilings("income", filingLines);
+  // 期限後申告の青色申告特別控除（10万円まで）
+  const lateNote = lateFilingNote(filingType, year, filing.due, todayIso(), filing.filings);
   const publicRefund = !filing.amendExport && (result.rows.find((r) => r.no === fieldNo(53))?.value ?? 0) > 0 && filer.refund?.kind === "public";
 
   return (
@@ -276,6 +278,7 @@ export const IncomeTaxPage = () => {
         <div className="scroll-y">
           {result.notes.map((n) => <p key={n} className="notice it-note">{n}</p>)}
           {blueNotes.map((n) => <p key={n.text} className={n.level === "warn" ? "notice it-note" : "field-note it-note"}>{n.text}</p>)}
+          {lateNote && <p className="notice it-note">{lateNote.text}</p>}
           {view === "input" ? (
             <InputView
               x={x} set={set} setX={setX} result={result} year={year} disabled={!admin} drawings={drawings.length > 0} onPick={pickFromBooks} white={white} familyLines={familyLines}

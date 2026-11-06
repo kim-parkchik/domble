@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   assetLockError, assetYears, businessRateIn, conversionOf, decliningKind, decliningProblem, decliningRates, depreciationFor, depreciationLines, disposalLines, lifeText,
   usedAssetLife, methodLabel, oldDecliningRateMil, oldStraightRateMil, smallTotalOfYear, statementLife, statementMemo, statementMethod, straightRateMil, validateAsset,
-  type FixedAsset,
+  type FixedAsset, lendingRestricted, smallYearLimit,
 } from "./depreciation";
 
 const asset = (p: Partial<FixedAsset>): FixedAsset => ({
@@ -352,4 +352,15 @@ test("中古資産の耐用年数（簡便法）：月数で計算し、1年未�
   expect(usedAssetLife(6, 30)).toBe(4);
   expect(usedAssetLife(6, 72)).toBe(2); // 全部を経過：72 × 20% = 14.4か月 → 1年 → 2年
   expect(usedAssetLife(15, 0)).toBe(15);
+});
+
+describe("少額減価償却資産の年の上限と、貸付けの資産（措置法28条の2①・No.2100 注4）", () => {
+  test("上限は 300万円。開業・廃業の年は業務を営んだ月数で割る（1か月に満たない端数は1か月）", () => {
+    expect([smallYearLimit(), smallYearLimit(12), smallYearLimit(1), smallYearLimit(7), smallYearLimit(0)]).toEqual([3_000_000, 3_000_000, 250_000, 1_750_000, 250_000]);
+  });
+  test("事業的規模でない不動産の貸付けの資産で、令和4年4月1日以後に取得したものだけ", () => {
+    const a = { income_kind: "realestate" as const, acquired_on: "2022-04-01" };
+    expect([lendingRestricted(a, false), lendingRestricted(a, true), lendingRestricted({ ...a, acquired_on: "2022-03-31" }, false), lendingRestricted({ ...a, income_kind: "business" }, false)])
+      .toEqual([true, false, false, false]);
+  });
 });

@@ -2,7 +2,7 @@
  * 申告の種類と青色申告特別控除の見直し（令和8年度税制改正。令和9年分から 75万円・65万円・10万円。財務省「令和8年度税制改正の大綱」）
  */
 import { describe, expect, test } from "bun:test";
-import { filingNotes, filingTypeProblem, filingTypesFor, isFilingType } from "./filing";
+import { filingNotes, filingTypeProblem, filingTypesFor, isFilingType, lateFilingNote } from "./filing";
 import { blueDeductionLimit, computeIncomeTax, EMPTY_INCOME_TAX_INPUT, type BusinessFigures, type IncomeTaxResult } from "./incomeTax";
 import { realEstateDeductionLimit } from "./realEstateStatement";
 
@@ -58,5 +58,19 @@ describe("知らせること", () => {
     expect(filingNotes("blue65", 2027, ok)[0].text).toContain("75万円にできます");
     expect(filingNotes("blue65", 2027, { compliant: true, filed: false })[0].text).not.toContain("75万円にできます");
     expect([filingNotes("blue10", 2027, ok), filingNotes("white", 2027, ok)]).toEqual([[], []]);
+  });
+});
+
+describe("期限後申告の青色申告特別控除（No.2072）", () => {
+  const due = "2026-03-16";
+  test("期限を過ぎて、期限内に出した確定申告の控えが無ければ知らせる（10万円・白色は知らせない）", () => {
+    expect(lateFilingNote("blue65", 2025, due, "2026-11-04", [])).toMatchObject({ level: "warn", text: expect.stringContaining("10万円までです") });
+    expect(lateFilingNote("blue55", 2025, due, "2026-11-04", [{ kind: "original", filed_on: "2026-04-10" }])!.text).toContain("期限後申告");
+    expect([lateFilingNote("blue10", 2025, due, "2026-11-04", []), lateFilingNote("white", 2025, due, "2026-11-04", [])]).toEqual([null, null]);
+  });
+  test("期限内に出した控えがある（修正申告）・まだ期限前なら知らせない", () => {
+    expect(lateFilingNote("blue65", 2025, due, "2026-11-04", [{ kind: "original", filed_on: "2026-03-16" }, { kind: "amended", filed_on: "2026-10-01" }])).toBeNull();
+    expect(lateFilingNote("blue65", 2025, due, "2026-03-16", [])).toBeNull();
+    expect(lateFilingNote("blue65", 2025, null, "2026-11-04", [])).toBeNull();
   });
 });

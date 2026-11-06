@@ -336,10 +336,21 @@ export const useInterim = (): InterimInfo | null => {
       repo.getHolidayData(db),
       repo.getTaxInterim(db, year),
       repo.getInterimProvisionals(db, year),
+      repo.getFilings(db, year - 1),
+      repo.getInventoryAdjust(db, year - 1),
+      repo.getTaxReturnInput(db, year - 1),
     ])
-      .then(([prevLines, manual, h, entered, filed]) => alive && setLoaded({
-        prev: prevTaxInfo({ year, prevLines, taxYears, manual }), holidays: new Set(h.holidays.map((x) => x.date)), entered, filed,
-      }))
+      .then(([prevLines, manual, h, entered, filed, prevFilings, inventory, prevInput]) => {
+        // 前年の消費税の申告の控え（いちばん新しいもの）の ⑨
+        const consumption = prevFilings.filter((f) => f.tax === "consumption");
+        const last = consumption[consumption.length - 1];
+        const prevFiled = last?.lines.find((l) => l.key === "net")?.value ?? null;
+        if (!alive) return;
+        setLoaded({
+          prev: prevTaxInfo({ year, prevLines, taxYears, manual, filed: prevFiled, prevExtra: { inventory, nontaxExport: prevInput.nontaxExport } }),
+          holidays: new Set(h.holidays.map((x) => x.date)), entered, filed,
+        });
+      })
       .catch(console.error);
     return () => {
       alive = false;

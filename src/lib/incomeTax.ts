@@ -772,7 +772,20 @@ const NOS = "⓪①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑�
 export const fieldNo = (n: number) => (n <= 50 ? [...NOS][n] : `(${n})`);
 
 /** carried = その年に繰り越された純損失（carriedLosses） */
-export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, year: number, carried: CarriedLoss[] = []): IncomeTaxResult => {
+/**
+ * 白色申告の年に「専従者」の印を付けた家族のうち、事業専従者の要件（その年12月31日に15歳以上・6か月を超えて従事）を満たさないことが分かる人は、
+ * 事業専従者ではないので、配偶者控除・扶養控除などの対象から外さない（所得税法57条③・⑤。事業専従者控除は収支内訳書の計算で 0 になる）
+ */
+export const whiteFamilyInput = (x: IncomeTaxInput, year: number): IncomeTaxInput => {
+  const notFamily = (r: Relative) => {
+    const age = ageAt(r.birthday, year);
+    return (age !== null && age < 15) || (r.months !== null && r.months <= 6);
+  };
+  const fix = (r: Relative): Relative => (r.familyEmployee && notFamily(r) ? { ...r, familyEmployee: false } : r);
+  return { ...x, spouse: x.spouse ? fix(x.spouse) : x.spouse, dependents: x.dependents.map(fix) };
+};
+
+export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year: number, carried: CarriedLoss[] = []): IncomeTaxResult => {
   const notes: string[] = [];
   const { rules, fallback } = rulesFor(year);
   if (fallback) {
@@ -780,6 +793,7 @@ export const computeIncomeTax = (input: IncomeTaxInput, biz: BusinessFigures, ye
   }
   const DEPENDENT_LIMIT = rules.dependentLimit;
   const white = biz.filingType === "white";
+  const input = white ? whiteFamilyInput(raw, year) : raw;
   // 青色申告特別控除は不動産所得、事業所得の順に差し引く。事業所得が無く、不動産の貸付けが事業的規模でなければ 10万円まで
   const re = biz.realEstate;
   const hasBusiness = biz.revenue !== 0 || biz.incomeBeforeBlue !== 0;

@@ -408,6 +408,7 @@ export const SCHEMA: string[] = [
     revenue_account_id INTEGER REFERENCES accounts(id),
     rounding TEXT NOT NULL DEFAULT 'floor' CHECK (rounding IN ('floor','round','ceil')), -- 保存したときの丸め方（あとで設定を変えても金額が変わらない）
     exempt INTEGER NOT NULL DEFAULT 0 CHECK (exempt IN (0, 1)),                             -- 保存したときに免税事業者の年だったか
+    issuer TEXT,                                                                             -- 発行したときの発行者（名前・住所・電話・登録番号の JSON。下書きは NULL）
     created_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
     updated_at TEXT NOT NULL DEFAULT (DATETIME('now','localtime')),
     UNIQUE (kind, doc_no)
@@ -1041,4 +1042,6 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["journal_lines", "department_id", "INTEGER REFERENCES departments(id)"],
   ["bank_rules", "department_id", "INTEGER"],
   ["bank_rule_splits", "department_id", "INTEGER"],
+  // 発行したときの発行者（請求書の写し。形式の版 17）
+  ["sales_docs", "issuer", "TEXT"],
 ];

@@ -329,6 +329,32 @@ describe("固定資産台帳・減価償却（repo）", () => {
     return { db, id, base, ids: { expense: id("減価償却費"), draw: id("事業主貸") } };
   };
 
+  test("少額減価償却資産の年の上限：開業の年は 300万円を業務を営んだ月数で割る。超える資産は登録できない（措置法28条の2①）", async () => {
+    const { db, base } = await setup();
+    const x = await repo.getIncomeTaxInput(db, 2026);
+    await repo.saveIncomeTaxInput(db, 2026, { ...x, businessTax: { ...x.businessTax, change: "open", changeDate: "2026-12-01" } });
+    expect(await repo.smallLimitOf(db, 2026)).toMatchObject({ limit: 250_000, months: 1, others: 0 });
+    const pc = { ...base, acquired_on: "2026-12-10", used_on: "2026-12-10", cost: 280_000, method: "small" as const };
+    await expect(repo.saveAsset(db, null, pc)).rejects.toThrow(/1年の上限 250,000円を超えます.*月数で割った額/);
+    const a = await repo.saveAsset(db, null, { ...pc, cost: 150_000 });
+    await expect(repo.saveAsset(db, null, { ...pc, name: "プリンタ", cost: 120_000 })).rejects.toThrow(/ほかの少額減価償却資産 150,000円/);
+    // 同じ資産を直すときは、自分の額を数えない
+    await repo.saveAsset(db, a, { ...pc, cost: 240_000 });
+    expect(await repo.smallLimitOf(db, 2026, a)).toMatchObject({ others: 0 });
+  });
+  test("事業的規模でない不動産の貸付けの資産（令和4年4月1日以後の取得）は、一括償却資産・少額減価償却資産にできない（No.2100 注4）", async () => {
+    const { db, id, base } = await setup();
+    await repo.saveRealEstate(db, "small");
+    const aircon = { ...base, name: "賃貸用エアコン", account_id: id("工具器具備品"), cost: 150_000, income_kind: "realestate" as const };
+    await expect(repo.saveAsset(db, null, { ...aircon, method: "small" })).rejects.toThrow(/事業的規模でない不動産の貸付け/);
+    await expect(repo.saveAsset(db, null, { ...aircon, method: "lump3" })).rejects.toThrow(/事業的規模でない不動産の貸付け/);
+    await repo.saveAsset(db, null, { ...aircon, method: "straight", useful_life: 6 });
+    // 令和4年3月31日以前の取得・事業所得の資産・事業的規模なら使える
+    await repo.saveAsset(db, null, { ...aircon, name: "古い給湯器", acquired_on: "2022-03-31", method: "lump3" });
+    await repo.saveAsset(db, null, { ...aircon, name: "事務所のエアコン", income_kind: "business", method: "lump3" });
+    await repo.saveRealEstate(db, "business");
+    await repo.saveAsset(db, null, { ...aircon, name: "賃貸用の給湯器", method: "lump3" });
+  });
   test("追加・変更・削除は履歴に残る。資産でない科目や上限を超えた少額減価償却資産は登録できない", async () => {
     const { db, id, base } = await setup();
     expect(id("一括償却資産")).toBeGreaterThan(0);
@@ -484,27 +510,55 @@ describe("見積書・請求書（repo）", () => {
   const linesOf = async (db: Database, entryId: number) =>
     (await repo.getEntry(db, entryId))!.lines.map((l) => [l.side, l.account_id, l.amount, l.tax_code ?? null]);
 
-  test("下書き → 発行で売掛金の仕訳（源泉徴収は事業主貸）。直すと同じ仕訳を訂正。番号は重ならない", async () => {
+  test("下書き → 発行で売掛金の仕訳（源泉徴収は事業主貸）。取引日があればその日に売上。番号は重ならない", async () => {
     const { db, id, cp, doc } = await setup();
     const docId = await repo.saveSalesDoc(db, null, doc);
-    expect((await repo.getSalesDocs(db))[0]).toMatchObject({ id: docId, status: "draft", entry_id: null });
+    expect((await repo.getSalesDocs(db))[0]).toMatchObject({ id: docId, status: "draft", entry_id: null, issuer: null });
+    // 下書きは自由に直せる（取引日があればその日に売上を立てる）
+    await repo.saveSalesDoc(db, docId, { ...doc, delivery_date: "2026-05-20" });
     await repo.issueSalesDoc(db, docId);
     const issued = (await repo.getSalesDocs(db))[0];
     expect(issued.status).toBe("issued");
-    expect((await repo.getEntry(db, issued.entry_id!))!).toMatchObject({ date: "2026-05-31", counterparty_id: cp });
+    expect((await repo.getEntry(db, issued.entry_id!))!).toMatchObject({ date: "2026-05-20", counterparty_id: cp });
     expect(await linesOf(db, issued.entry_id!)).toEqual([
       ["debit", id("売掛金"), 99_790, "none"], ["credit", id("売上高"), 110_000, "sales10"], ["debit", id("事業主貸"), 10_210, "none"],
     ]);
-    // 取引日があればその日に売上を立てる。金額を直すと同じ仕訳を訂正する
-    await repo.saveSalesDoc(db, docId, { ...doc, delivery_date: "2026-05-20", items: [{ ...doc.items[0], price: 200_000 }] });
-    const after = (await repo.getSalesDocs(db))[0];
-    expect(after.entry_id).toBe(issued.entry_id);
-    expect((await repo.getEntry(db, after.entry_id!))!.date).toBe("2026-05-20");
-    expect((await linesOf(db, after.entry_id!))[0]).toEqual(["debit", id("売掛金"), 199_580, "none"]);
     await expect(repo.saveSalesDoc(db, null, { ...doc })).rejects.toThrow(/もうあります/);
     await expect(repo.deleteSalesDoc(db, docId)).rejects.toThrow(/削除できません/);
     const h = (await repo.getMasterHistory(db)).filter((x) => x.target_type === "salesdoc");
-    expect(h.map((x) => x.action).reverse()).toEqual(["issue", "change"]);
+    expect(h.map((x) => x.action).reverse()).toEqual(["issue"]);
+  });
+
+  test("発行した請求書は直せない（交付した請求書の写し。消費税法57条の4⑥）。発行したときの発行者を残し、あとで事業者設定を変えても同じ", async () => {
+    const { db, doc } = await setup();
+    const s = await repo.getSettings(db);
+    await repo.saveSettings(db, { ...s, business_name: "山田デザイン", owner_name: "山田 太郎", address: "東京都千代田区千代田1-1" });
+    await repo.saveInvoiceRegistration(db, "T1234567890123", "2025-10-01");
+    const docId = await repo.saveSalesDoc(db, null, doc);
+    await repo.issueSalesDoc(db, docId);
+    const issued = (await repo.getSalesDocs(db))[0];
+    expect(issued.issuer).toEqual({ name: "山田デザイン", owner: "山田 太郎", postal: "", address: "東京都千代田区千代田1-1", phone: "", invoice_no: "T1234567890123" });
+    await expect(repo.saveSalesDoc(db, docId, { ...doc, items: [{ ...doc.items[0], price: 200_000 }] })).rejects.toThrow(/発行した請求書は直せません/);
+    // 事業者設定を変えても、発行した請求書の発行者は変わらない
+    await repo.saveSettings(db, { ...(await repo.getSettings(db)), address: "大阪府大阪市北区1-1" });
+    expect((await repo.getSalesDocs(db))[0].issuer!.address).toBe("東京都千代田区千代田1-1");
+    // 発行した見積書は今までどおり直せる
+    const est = await repo.saveSalesDoc(db, null, { ...doc, kind: "estimate", doc_no: "E-1", withholding: 0 });
+    await repo.issueSalesDoc(db, est);
+    await repo.saveSalesDoc(db, est, { ...doc, kind: "estimate", doc_no: "E-1", withholding: 0, subject: "直した件名" });
+  });
+
+  test("売掛金の仕訳が削除された発行済みの請求書は、仕訳を作り直せる（中身は変えない）", async () => {
+    const { db, doc } = await setup();
+    const docId = await repo.saveSalesDoc(db, null, doc);
+    await repo.issueSalesDoc(db, docId);
+    const first = (await repo.getSalesDocs(db))[0].entry_id!;
+    await repo.deleteEntry(db, first, "誤って削除");
+    expect((await repo.getSalesDocs(db))[0].entry_id).toBeNull();
+    await repo.repostSalesDoc(db, docId);
+    const again = (await repo.getSalesDocs(db))[0].entry_id!;
+    expect(again).not.toBe(first);
+    await expect(repo.repostSalesDoc(db, docId)).rejects.toThrow(/仕訳はあります/);
   });
 
   test("入金：預金 ＋ 振込手数料 ／ 売掛金。取り消すと仕訳も消す。入金があると取消できない。取消で売掛金の仕訳を削除", async () => {
@@ -2378,5 +2432,36 @@ describe("一覧の CSV 取り込み（repo）", () => {
     const h = await repo.getMasterHistory(db);
     expect(h.some((x) => x.label === "消耗品費" && x.new_value.includes("課税仕入 8%"))).toBe(true);
     expect(h.some((x) => x.target_type === "counterparty" && x.new_value.includes("登録番号 T1234567890123"))).toBe(true);
+  });
+});
+
+describe("通常モードの仕訳の削除（journal_entries を参照する表）", () => {
+  test("決算整理・固定資産台帳・振り戻しの仕訳も消せる（記録も消して、次は作り直し）", async () => {
+    const { db, raw } = makeDb("standard");
+    const accts = await repo.getAccounts(db, 2026);
+    const id = (n: string) => accts.find((a) => a.name === n)!.id;
+    const make = () => repo.createEntry(db, "2026-12-31", [
+      { row_no: 1, side: "debit", account_id: id("期末商品棚卸高"), sub_account_id: null, amount: 1_000, memo: "" },
+      { row_no: 1, side: "credit", account_id: id("棚卸資産"), sub_account_id: null, amount: 1_000, memo: "" },
+    ]);
+    const [inv, disp, orig, rev] = [await make(), await make(), await make(), await make()];
+    raw.run("INSERT INTO year_end_runs (fiscal_year, kind, entry_id) VALUES (2026, 'inventory', ?)", [inv]);
+    raw.run("INSERT INTO fixed_assets (id, name, account_id, acquired_on, used_on, cost, method, useful_life) VALUES (9, 'PC', ?, '2026-01-01', '2026-01-01', 300000, 'straight', 4)", [id("工具器具備品")]);
+    raw.run("INSERT INTO asset_disposals (asset_id, entry_id) VALUES (9, ?)", [disp]);
+    raw.run("INSERT INTO entry_reversals (entry_id, reversal_id) VALUES (?, ?)", [orig, rev]);
+    for (const e of [inv, disp, rev, orig]) await repo.deleteEntry(db, e);
+    expect(raw.query("SELECT (SELECT COUNT(*) FROM year_end_runs) + (SELECT COUNT(*) FROM asset_disposals) + (SELECT COUNT(*) FROM entry_reversals) AS n").get()).toEqual({ n: 0 });
+    expect(raw.query("SELECT COUNT(*) AS n FROM journal_entries").get()).toEqual({ n: 0 });
+  });
+  test("journal_entries を参照する表は、通常モードの削除がすべて外している（表を足したら deleteEntry_ も直す）", () => {
+    const { raw } = makeDb("standard");
+    const tables = (raw.query("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[])
+      .filter((t) => (raw.query(`PRAGMA foreign_key_list(${t.name})`).all() as { table: string }[]).some((f) => f.table === "journal_entries"))
+      .map((t) => t.name).sort();
+    // entry_history は厳密モードだけ（通常モードの帳簿には行が無い）
+    expect(tables).toEqual([
+      "allowance_runs", "asset_disposals", "depreciation_runs", "entry_history", "entry_reversals", "evidence_links", "home_use_runs", "journal_lines",
+      "sales_docs", "sales_payments", "year_end_runs",
+    ]);
   });
 });

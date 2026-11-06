@@ -1,6 +1,7 @@
 /**
  * 消費税の中間申告（純粋関数）。個人事業者・令和8年分の制度
- *  - 判定は前年の確定消費税額（第一表の ⑨ 差引税額。地方消費税は含まない）
+ *  - 判定は前年の確定消費税額（第一表の ⑨ 差引税額。地方消費税は含まない）。手で入れた額 → 前年の申告の控え（いちばん新しいもの）→ 前年の帳簿の計算
+ *    （前年の申告書タブで保存した棚卸資産の調整 ⑯・非課税資産の輸出等 ③ も入れる）の順に使う
  *      48万円以下 → 要らない（「任意の中間申告書を提出する旨の届出書」を出していれば年1回）
  *      48万円超〜400万円以下 → 年1回（⑨ × 6/12）
  *      400万円超〜4,800万円以下 → 年3回（⑨ × 3/12）
@@ -18,7 +19,7 @@
 import type { TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
 import { taxYearOf } from "./tax";
-import { buildTaxBase, computeReturn, floor100, type ReturnMethod, type ReturnOptions, type TaxBase, type TaxReturn } from "./taxReturn";
+import { buildTaxBase, computeReturn, floor100, type InventoryAdjust, type ReturnMethod, type ReturnOptions, type TaxBase, type TaxReturn } from "./taxReturn";
 
 export const INTERIM_NONE_LIMIT = 480_000;
 export const INTERIM_ONCE_LIMIT = 4_000_000;
@@ -33,8 +34,8 @@ export interface PrevTaxInfo {
   year: number;
   /** 前年の確定消費税額（⑨。分からなければ null。免税事業者だった年は 0） */
   amount: number | null;
-  /** books = 帳簿から計算、manual = 手で入れた額、exempt = 前年は免税事業者、none = 分からない */
-  source: "books" | "manual" | "exempt" | "none";
+  /** books = 帳簿から計算、filed = 前年の申告の控え、manual = 手で入れた額、exempt = 前年は免税事業者、none = 分からない */
+  source: "books" | "filed" | "manual" | "exempt" | "none";
   /** 帳簿から計算した ⑨（前年の帳簿が無い・免税事業者だったときは null） */
   fromBooks: number | null;
   /** 前年の課税区分（免税事業者なら null） */
@@ -49,6 +50,10 @@ export interface PrevTaxInput {
   taxYears: TaxYear[];
   /** 手で入れた前年の確定消費税額（無ければ null）。入っていれば帳簿の計算より優先する */
   manual: number | null;
+  /** 前年の申告の控え（消費税。いちばん新しいもの）の ⑨（無ければ null）。帳簿の計算より優先する */
+  filed?: number | null;
+  /** 前年の申告書タブで保存した棚卸資産の調整（⑯）と非課税資産の輸出等の金額（③） */
+  prevExtra?: { inventory: InventoryAdjust | null; nontaxExport: number };
 }
 
 /** 前年の ⑨ を、前年の帳簿と前年の課税区分（事業区分・控除の方式も前年のもの）で計算する */
@@ -57,10 +62,14 @@ export const prevTaxInfo = (x: PrevTaxInput): PrevTaxInfo => {
   const t = taxYearOf(x.taxYears, py);
   const method = t.status === "exempt" ? null : t.status;
   const fromBooks = method && x.prevLines.length
-    ? computeReturn(method, buildTaxBase(x.prevLines, x.taxYears), { businessClass: t.business_class, interimNational: 0, interimLocal: 0, deduction: t.deduction }).net
+    ? computeReturn(method, buildTaxBase(x.prevLines, x.taxYears), {
+      businessClass: t.business_class, interimNational: 0, interimLocal: 0, deduction: t.deduction,
+      inventory: x.prevExtra?.inventory ?? null, nontaxExport: x.prevExtra?.nontaxExport ?? 0,
+    }).net
     : null;
   const base = { year: py, fromBooks, method };
   if (x.manual !== null) return { ...base, amount: x.manual, source: "manual" };
+  if (x.filed !== undefined && x.filed !== null) return { ...base, amount: x.filed, source: "filed" };
   if (fromBooks !== null) return { ...base, amount: fromBooks, source: "books" };
   // 前年が免税事業者だったと言えるのは、前年の帳簿があるか、前年に効く消費税の設定があるとき（domble を今年から使い始めた人は分からない）
   if (!method && (x.prevLines.length > 0 || x.taxYears.some((r) => r.from_year <= py))) return { ...base, amount: 0, source: "exempt" };
@@ -216,16 +225,26 @@ export const provisionalReturn = (x: {
 export interface InterimRow extends InterimPeriod {
   /** 仮決算で申告した額（前年の実績なら null） */
   provisional: ProvisionalFiled | null;
+  /** 仮決算の申告した日が期限より後（仮決算は認められず、前年の実績で申告したものとみなされる。任意の中間申告は中間納付しない） */
+  late: boolean;
   /** 申告する中間納付税額（仮決算か前年の実績） */
   payNational: number;
   payLocal: number;
 }
 
-/** 期ごとの中間納付税額：仮決算で申告した期は保存した額、ほかは前年の実績の額 */
+/**
+ * 期ごとの中間納付税額：仮決算で申告した期は保存した額、ほかは前年の実績の額。
+ * 仮決算の申告した日が期限（休みの日なら次の日）より後なら、前年の実績で申告したものとみなされる（消法44。任意の中間申告は中間納付しない）
+ */
 export const interimRows = (plan: InterimPlan, filed: ProvisionalFiled[]): InterimRow[] =>
   plan.periods.map((p) => {
     const f = filed.find((x) => x.from === p.from && x.to === p.to) ?? null;
-    return { ...p, provisional: f, payNational: f ? f.national : p.national, payLocal: f ? f.local : p.local };
+    const late = !!f && f.filed_on > p.payBy;
+    if (late) {
+      const none = plan.kind === "voluntary";
+      return { ...p, provisional: f, late, payNational: none ? 0 : p.national, payLocal: none ? 0 : p.local };
+    }
+    return { ...p, provisional: f, late, payNational: f ? f.national : p.national, payLocal: f ? f.local : p.local };
   });
 
 /** 1年分の中間納付税額（確定申告の ⑩・㉑） */

@@ -25,7 +25,7 @@ import {
 import { normalizePostalCode, validateBusinessInfo } from "../lib/business";
 import { FILING_LABEL, filingOf, filingTypeProblem, isBlue, isFilingType } from "../lib/filing";
 import { ETAX_FIELDS, normalizeEtaxInfo, type EtaxInfo } from "../lib/etax";
-import { EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
+import { businessMonths, EMPTY_INCOME_TAX_INPUT, normalizeIncomeTaxInput, type IncomeTaxInput } from "../lib/incomeTax";
 import { autoLine, EXTRA_LINE, lineOptions, sectionOf } from "../lib/statementLines";
 import { isExclusiveOn, taxAmountProblem } from "../lib/taxExclusive";
 import type { AccountListRow, AccountListUpdate } from "../lib/masterCsv";
@@ -48,15 +48,17 @@ import {
 } from "../lib/integrity";
 import { detectFileType, fromBase64, sha256Hex, toBase64, validateEvidenceFile, validateEvidenceMeta } from "../lib/evidence";
 import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, MANUFACTURING_CODES, normalSideOf } from "../constants/accounts";
-import { assetLockError, businessRateIn, canChoose250, DISPOSAL_LABEL, disposalLines, hasLife, methodLabel, validateAsset, type AssetRate, type FixedAsset } from "../lib/depreciation";
+import {
+  assetLockError, businessRateIn, canChoose250, DISPOSAL_LABEL, disposalLines, hasLife, methodLabel, smallYearLimit, validateAsset, type AssetRate, type FixedAsset,
+} from "../lib/depreciation";
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
 import type { InventoryAdjust } from "../lib/taxReturn";
 import type { ProvisionalFiled } from "../lib/taxInterim";
 import { FILING_KIND_LABEL, FILING_TAX_LABEL, type FilingLine, type TaxFiling } from "../lib/amendment";
 import {
-  DOC_KIND_LABEL, docMemo, docProblem, invoiceEntryLines, ITEM_TAX_LABEL, paymentEntryLines, ROUNDING_LABEL, salesDate, savedTotals,
-  type DocItem, type DocTotals, type Rounding, type SalesDoc, type SalesPayment,
+  DOC_KIND_LABEL, docMemo, docProblem, invoiceEntryLines, issuerOf, ITEM_TAX_LABEL, paymentEntryLines, ROUNDING_LABEL, salesDate, savedTotals,
+  type DocIssuer, type DocItem, type DocTotals, type Rounding, type SalesDoc, type SalesPayment,
 } from "../lib/salesDoc";
 import {
   DEFAULT_BACKUP_GENERATIONS, MAX_BACKUP_GENERATIONS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
@@ -848,10 +850,10 @@ const saveInvoiceSettings_ = async (db: Database, x: InvoiceSettings) => {
   }
 };
 
-export type SalesDocInput = Omit<SalesDoc, "id" | "status" | "entry_id" | "rounding" | "exempt">;
-type SalesDocRow = Omit<SalesDoc, "items"> & { items: string; entry_live: number | null };
+export type SalesDocInput = Omit<SalesDoc, "id" | "status" | "entry_id" | "rounding" | "exempt" | "issuer">;
+type SalesDocRow = Omit<SalesDoc, "items" | "issuer"> & { items: string; issuer: string | null; entry_live: number | null };
 const SALES_DOC_COLUMNS = `d.id, d.kind, d.doc_no, d.issue_date, d.delivery_date, d.due_date, d.counterparty_id, d.to_name, d.honorific, d.to_address, d.subject, d.items,
-  d.price_mode, d.withholding, d.notes, d.bank_text, d.status, d.source_id, d.entry_id, d.revenue_account_id, d.rounding, d.exempt`;
+  d.price_mode, d.withholding, d.notes, d.bank_text, d.status, d.source_id, d.entry_id, d.revenue_account_id, d.rounding, d.exempt, d.issuer`;
 const parseDoc = (r: SalesDocRow): SalesDoc => {
   let items: DocItem[] = [];
   try {
@@ -860,9 +862,15 @@ const parseDoc = (r: SalesDocRow): SalesDoc => {
   } catch {
     /* 読めなければ空 */
   }
-  // 仕訳が削除されていれば、仕訳は無いものとして扱う（発行し直すと作り直す）
+  let issuer: DocIssuer | null = null;
+  try {
+    issuer = r.issuer ? JSON.parse(r.issuer) : null;
+  } catch {
+    /* 読めなければ今の事業者設定で印刷する */
+  }
+  // 仕訳が削除されていれば、仕訳は無いものとして扱う（「仕訳を作り直す」で作り直す）
   const { entry_live, ...rest } = r;
-  return { ...rest, items, entry_id: r.entry_id && entry_live ? r.entry_id : null };
+  return { ...rest, items, issuer, entry_id: r.entry_id && entry_live ? r.entry_id : null };
 };
 /** 見積書・請求書（発行日の新しい順） */
 export const getSalesDocs = async (db: Database): Promise<SalesDoc[]> =>
@@ -944,6 +952,10 @@ const saveSalesDoc_ = async (db: Database, id: number | null, input: SalesDocInp
   const before = await getSalesDoc(db, id);
   if (before.status === "void") throw new Error("取消した書類は直せません");
   if (before.kind !== x.kind) throw new Error("書類の種類は変えられません");
+  // 発行した請求書は、相手に渡した請求書の写しとして残すため直さない（消費税法57条の4⑥）。直すときは取り消して作り直す（修正した適格請求書）
+  if (before.kind === "invoice" && before.status !== "draft") {
+    throw new Error("発行した請求書は直せません（相手に渡した請求書の写しとして残すため）。直すときは取り消してから、新しい番号で作り直してください");
+  }
   await db.execute(
     `UPDATE sales_docs SET kind = ?, doc_no = ?, issue_date = ?, delivery_date = ?, due_date = ?, counterparty_id = ?, to_name = ?, honorific = ?, to_address = ?, subject = ?,
        items = ?, price_mode = ?, withholding = ?, notes = ?, bank_text = ?, source_id = ?, revenue_account_id = ?, rounding = ?, exempt = ?,
@@ -963,7 +975,9 @@ const saveSalesDoc_ = async (db: Database, id: number | null, input: SalesDocInp
 const issueSalesDoc_ = async (db: Database, id: number) => {
   const d = await getSalesDoc(db, id);
   if (d.status !== "draft") throw new Error("下書きの書類だけ発行できます");
-  await db.execute("UPDATE sales_docs SET status = 'issued', updated_at = DATETIME('now','localtime') WHERE id = ?", [id]);
+  // 発行したときの発行者（名前・住所・電話・登録番号）を書類に残す。あとで事業者設定を変えても、発行した書類はこの形で印刷する
+  const issuer = issuerOf(await getSettings(db), d, !!d.exempt);
+  await db.execute("UPDATE sales_docs SET status = 'issued', issuer = ?, updated_at = DATETIME('now','localtime') WHERE id = ?", [JSON.stringify(issuer), id]);
   if (d.kind === "invoice") await postInvoice(db, d);
   await logDoc(db, d, "issue", "", docText(d, await totalsOf(db, d)));
 };
@@ -977,6 +991,14 @@ const voidSalesDoc_ = async (db: Database, id: number, reason: string) => {
   if (d.entry_id) await deleteEntry_(db, d.entry_id, `${DOC_KIND_LABEL[d.kind]} ${d.doc_no} の取消：${reason.trim()}`);
   await db.execute("UPDATE sales_docs SET status = 'void', updated_at = DATETIME('now','localtime') WHERE id = ?", [id]);
   await logDoc(db, d, "void", docText(d, await totalsOf(db, d)), `取消：${reason.trim()}`);
+};
+
+/** 発行した請求書の売掛金の仕訳が削除されていたら、作り直す（請求書の中身は変えない） */
+const repostSalesDoc_ = async (db: Database, id: number) => {
+  const d = await getSalesDoc(db, id);
+  if (d.kind !== "invoice" || d.status !== "issued") throw new Error("発行済みの請求書だけ、仕訳を作り直せます");
+  if (d.entry_id) throw new Error("売掛金の仕訳はあります");
+  await postInvoice(db, d);
 };
 
 /** 下書きの削除（発行した書類は削除せず取り消す） */
@@ -2520,6 +2542,10 @@ const deleteEntry_ = async (db: Database, id: number, reason = "") => {
     await db.execute("DELETE FROM home_use_runs WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM depreciation_runs WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM allowance_runs WHERE entry_id = ?", [id]);
+    // 決算整理の画面（棚卸の振替・未払消費税等）・固定資産台帳（売却・除却）から作った仕訳と、振り戻しの組なら、その記録も消す（次は作り直しになる）
+    await db.execute("DELETE FROM year_end_runs WHERE entry_id = ?", [id]);
+    await db.execute("DELETE FROM asset_disposals WHERE entry_id = ?", [id]);
+    await db.execute("DELETE FROM entry_reversals WHERE entry_id = ? OR reversal_id = ?", [id, id]);
     // 請求書の仕訳・入金の仕訳なら、つなぎを外す（請求書は仕訳の無い発行済みになり、発行し直すと作り直す）
     await db.execute("UPDATE sales_docs SET entry_id = NULL WHERE entry_id = ?", [id]);
     await db.execute("DELETE FROM sales_payments WHERE entry_id = ?", [id]);
@@ -2734,10 +2760,25 @@ const normalizeAsset = (a: AssetInput): AssetInput => ({
   income_kind: a.income_kind === "realestate" ? "realestate" : "business",
 });
 
-const assertAsset = async (db: Database, a: AssetInput) => {
+/** その年の少額減価償却資産の上限（開業・廃業の年は月数で割る）と、ほかの少額減価償却資産の合計（id の資産は除く） */
+export const smallLimitOf = async (db: Database, year: number, id: number | null = null) => {
+  const months = businessMonths((await getIncomeTaxInput(db, year)).businessTax, year);
+  const r = await db.select<{ s: number | null }[]>(
+    "SELECT SUM(cost) AS s FROM fixed_assets WHERE method = 'small' AND substr(used_on, 1, 4) = ? AND id <> ?", [String(year), id ?? 0],
+  );
+  return { others: r[0]?.s ?? 0, limit: smallYearLimit(months), months };
+};
+
+const assertAsset = async (db: Database, a: AssetInput, id: number | null = null) => {
   const acc = await db.select<{ category: string; code: string }[]>("SELECT category, code FROM accounts WHERE id = ?", [a.account_id]);
-  // 少額減価償却資産の特例は、事業に使い始めた年が青色申告の年だけ。定率法は科目（建物など）で使えないものがある
-  const e = validateAsset(a, { blue: isBlue(await filingTypeIn(db, Number((a.used_on || a.acquired_on).slice(0, 4)))), accountCode: acc[0]?.code });
+  // 少額減価償却資産の特例は、事業に使い始めた年が青色申告の年だけで、1年の合計に上限がある。定率法は科目（建物など）で使えないものがある。
+  // 事業的規模でない不動産の貸付けの資産は、一括償却資産・少額減価償却資産にできない
+  const year = Number((a.used_on || a.acquired_on).slice(0, 4));
+  const e = validateAsset(a, {
+    blue: isBlue(await filingTypeIn(db, year)), accountCode: acc[0]?.code,
+    small: a.method === "small" ? await smallLimitOf(db, year, id) : undefined,
+    realEstateBusiness: (await getRealEstateScale(db, year)) === "business",
+  });
   if (e) throw new Error(e);
   if (acc[0]?.category !== "asset") throw new Error("資産の科目を選んでください");
 };
@@ -2749,7 +2790,7 @@ const assertAsset = async (db: Database, a: AssetInput) => {
  */
 const saveAsset_ = async (db: Database, id: number | null, input: AssetInput, year?: number) => {
   const a = normalizeAsset(input);
-  await assertAsset(db, a);
+  await assertAsset(db, a, id);
   const closed = await yearClosedYears(db);
   const fiscal_year = year ?? (await currentYear(db));
   if (id === null) {
@@ -3936,6 +3977,7 @@ export const saveSalesDoc = inTx(saveSalesDoc_, (id, x) => `${DOC_KIND_LABEL[x.k
 export const issueSalesDoc = inTx(issueSalesDoc_, (id) => `書類 #${id} の発行`, { perm: "entry" });
 export const voidSalesDoc = inTx(voidSalesDoc_, (id) => `書類 #${id} の取消`, { perm: "entry" });
 export const deleteSalesDoc = inTx(deleteSalesDoc_, (id) => `書類 #${id} の削除`, { perm: "entry" });
+export const repostSalesDoc = inTx(repostSalesDoc_, (id) => `書類 #${id} の仕訳の作り直し`, { perm: "entry" });
 export const addSalesPayment = inTx(addSalesPayment_, (id) => `請求書 #${id} の入金`, { perm: "entry" });
 export const linkSalesPayment = inTx(linkSalesPayment_, (id) => `請求書 #${id} の入金`, { perm: "entry" });
 export const removeSalesPayment = inTx(removeSalesPayment_, (id) => `入金 #${id} の取消`, { perm: "entry" });

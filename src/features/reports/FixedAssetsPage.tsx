@@ -28,7 +28,7 @@ import { CODE, FIXED_ASSET_CODES } from "../../constants/accounts";
 import { ASSET_LIVES } from "../../constants/assetLives";
 import {
   businessRateIn, canChoose250, closedYearsOf, conversionOf, decliningKind, depreciationFor, depreciationLines, DISPOSAL_LABEL, disposalLines, EXPENSE_LIMIT, hasLife, lifeText,
-  usedAssetLife, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear, validateAsset,
+  usedAssetLife, LENDING_LIMIT_FROM, LUMP3_LIMIT, METHOD_LABEL, methodLabel, OLD_STRAIGHT_UNTIL, SMALL_YEAR_LIMIT, smallLimitFor, smallTotalOfYear, validateAsset,
   type DepreciationMethod, type DisposalKind, type FixedAsset,
 } from "../../lib/depreciation";
 import type { IncomeKind } from "../../lib/types";
@@ -123,6 +123,11 @@ export const FixedAssetsPage = () => {
   const planned = useMemo(() => depreciationLines(assets, year, ids), [assets, year, ids.expense, ids.draw, ids.expenseRealEstate]); // eslint-disable-line react-hooks/exhaustive-deps
   const outdated = runId !== null && runLines !== lineKey(planned);
   const smallTotal = smallTotalOfYear(assets, year);
+  // その年の少額減価償却資産の上限（開業・廃業の年は、所得税の入力の開業・廃業の日から月数で割る）
+  const [smallCap, setSmallCap] = useState(SMALL_YEAR_LIMIT);
+  useEffect(() => {
+    repo.smallLimitOf(db, year).then((r) => setSmallCap(r.limit)).catch(console.error);
+  }, [db, year, dataVersion]);
 
   // 帳簿の残高との照合（資産の科目ごと。その年に売却・除却したものは、仕訳で帳簿から外している前提で数えない）
   const balances = useMemo(() => closingBalances(accounts, opening, lines), [accounts, opening, lines]);
@@ -281,9 +286,11 @@ export const FixedAssetsPage = () => {
             </table>
           </div>
         )}
-        {smallTotal > SMALL_YEAR_LIMIT && (
+        {smallTotal > smallCap && (
           <p className="notice">
-            {year}年に使い始めた少額減価償却資産の合計が {yen(smallTotal)} 円です。この特例で全額を経費にできるのは、1年で合計 {yen(SMALL_YEAR_LIMIT)} 円までです。
+            {year}年に使い始めた少額減価償却資産の合計が {yen(smallTotal)} 円です。この特例で全額を経費にできるのは、1年で合計 {yen(smallCap)} 円までです
+            {smallCap < SMALL_YEAR_LIMIT ? "（開業・廃業の年は、300万円を業務を営んだ月数で割った額。所得税の入力の開業・廃業の日から）" : ""}。
+            上限を超える分の資産は、定額法・定率法（20万円未満なら一括償却資産）に直してください。
           </p>
         )}
         {shownOthers.length > 0 && (
@@ -466,6 +473,8 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
   const [salePrice, setSalePrice] = useState<number | null>(asset?.sale_price ?? null);
   const [memo, setMemo] = useState(asset?.memo ?? "");
   const [kind, setKind] = useState<IncomeKind>(asset?.income_kind ?? "business");
+  // 事業的規模でない不動産の貸付けの資産（令和4年4月1日以後の取得）：10万円未満の即時の経費・一括償却・少額が使えない（保存のときにも確かめる）
+  const lending = kind === "realestate" && (settings.real_estate ?? "none") !== "business" && !!acquired && acquired >= LENDING_LIMIT_FROM;
   // 不動産所得があるとき（または不動産所得の資産のとき）だけ、所得の区分を選ぶ
   const showKind = (settings.real_estate ?? "none") !== "none" || kind === "realestate";
   const [error, setError] = useState("");
@@ -696,8 +705,14 @@ const AssetModal = ({ asset, closedYears, onClose, onSaved }: { asset: FixedAsse
             </p>
           )}
           {method === "lump3" && <p className="field-note">取得価額の 1/3 ずつを3年で経費にします（月割りしません）。</p>}
-          {method === "small" && <p className="field-note">使い始めた年に全額を経費にします（1年の合計 {yen(SMALL_YEAR_LIMIT)} 円まで）。</p>}
-          {cost !== null && cost > 0 && cost < EXPENSE_LIMIT && <p className="field-note">{yen(EXPENSE_LIMIT)} 円未満のものは、台帳に入れずに消耗品費などで経費にできます。</p>}
+          {method === "small" && (
+            <p className="field-note">使い始めた年に全額を経費にします（1年の合計 {yen(SMALL_YEAR_LIMIT)} 円まで。開業・廃業の年は、業務を営んだ月数で割った額まで）。</p>
+          )}
+          {lending ? (
+            <p className="field-note">
+              事業的規模でない不動産の貸付けに使う資産（令和4年4月1日以後の取得）は、{yen(EXPENSE_LIMIT)} 円未満のものも台帳に入れて減価償却します（一括償却資産・少額減価償却資産にもできません）。
+            </p>
+          ) : cost !== null && cost > 0 && cost < EXPENSE_LIMIT && <p className="field-note">{yen(EXPENSE_LIMIT)} 円未満のものは、台帳に入れずに消耗品費などで経費にできます。</p>}
 
           <label className="check">
             <input type="checkbox" checked={hasOpening} onChange={(e) => setHasOpening(e.target.checked)} />

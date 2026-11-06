@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import {
   ageAt, basicDeduction, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, donationDeduction, emptyRelative, EMPTY_INCOME_TAX_INPUT, fieldNo, incomeTaxOn, lifeInsuranceDeduction,
   medicalDeduction, normalizeIncomeTaxInput, pensionIncome, quakeDeduction, rulesFor, salaryIncome, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult,
-  type PastIncomeTax, businessMonths, businessPeriod, incomeAdjustment } from "./incomeTax";
+  type PastIncomeTax, businessMonths, businessPeriod, incomeAdjustment, whiteFamilyInput } from "./incomeTax";
 
 const cell = (r: IncomeTaxResult, no: string) => r.rows.find((x) => x.no === no)!.value;
 
@@ -193,6 +193,22 @@ describe("事業専従者・勤労学生", () => {
     expect([cell(r, "㉑㉒"), cell(r, "㉓"), cell(r, "⑲⑳"), cell(r, "⑮"), cell(r, "(57)")]).toEqual([0, 0, 0, 40_000, 0]);
     expect(r.second.relatives.map((x) => x.kind)).toEqual(["対象外（事業専従者）", "対象外（事業専従者）"]);
     expect(r.notes.join()).not.toMatch(/専従者」に印/);
+  });
+  test("白色申告：「専従者」の印を付けても要件（15歳以上・6か月を超えて従事）を満たさない家族は、配偶者控除・扶養控除の対象（所得税法57条③⑤）", () => {
+    const white: BusinessFigures = { revenue: 5_000_000, incomeBeforeBlue: 3_000_000, filingType: "white", familySalary: 0 };
+    const input: IncomeTaxInput = {
+      ...EMPTY_INCOME_TAX_INPUT,
+      spouse: { ...emptyRelative("妻"), birthday: "1986-05-01", familyEmployee: true, months: 5 },
+      dependents: [{ ...emptyRelative("子"), birthday: "2006-05-01", familyEmployee: true, months: 12 }],
+    };
+    const r = computeIncomeTax(input, white, 2026);
+    // 妻は5か月なので専従者でなく配偶者控除、子は12か月なので専従者（扶養控除なし）
+    expect([cell(r, "㉑㉒"), cell(r, "㉓")]).toEqual([380_000, 0]);
+    expect(r.second.relatives.map((x) => x.kind)).toEqual(["配偶者控除", "対象外（事業専従者）"]);
+    // 青色申告の年は今までどおり（専従者給与を払った人として扱う）
+    expect(cell(computeIncomeTax(input, { ...white, filingType: "blue65" }, 2026), "㉑㉒")).toBe(0);
+    // 従事月数を入れていなければ、専従者として扱う
+    expect(whiteFamilyInput({ ...input, spouse: { ...input.spouse!, months: null } }, 2026).spouse!.familyEmployee).toBe(true);
   });
   test("専従者給与があるのに、配偶者・扶養親族に専従者の印が無ければ知らせる", () => {
     const input = { ...EMPTY_INCOME_TAX_INPUT, spouse: { ...emptyRelative("妻"), birthday: "1986-05-01" } };

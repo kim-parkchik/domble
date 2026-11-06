@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   docProblem, docState, docTotals, invoiceEntryLines, itemAmount, itemTaxOn, nextDocNo, paymentCandidates, paymentEntryLines, reducedItemNote, remainingOf,
-  withholdingTax, type DocItem, type SalesDoc,
+  withholdingTax, type DocItem, type SalesDoc, issuerOf, salesDocCsvRow, salesDocItemCsvRows, SALES_DOC_CSV_HEADER,
 } from "./salesDoc";
 
 const item = (name: string, qty: number, price: number, tax: DocItem["tax"] = "10"): DocItem => ({ name, qty, unit: "式", price, tax });
@@ -131,5 +131,37 @@ describe("明細の取り込みの入金の候補", () => {
     ]);
     expect(paymentCandidates({ amount: 50_000, description: "振込" }, open).map((c) => [c.id, c.fee])).toEqual([[3, 0]]);
     expect(paymentCandidates({ amount: 10_000, description: "振込" }, open)).toEqual([]);
+  });
+});
+
+describe("発行者と CSV（交付した請求書の写し・控えのデータ）", () => {
+  const settings = {
+    business_name: "山田デザイン", owner_name: "山田 太郎", postal_code: "100-0001", address: "東京都千代田区千代田1-1", office_address: "", phone: "03-1234-5678", office_phone: "",
+    invoice_no: "T1234567890123", invoice_registered_on: "2025-10-01",
+  };
+  test("発行者：屋号と氏名・住所（事業所があれば事業所）・登録番号（免税の年と登録日より前の取引は空）", () => {
+    expect(issuerOf(settings, { issue_date: "2026-05-31", delivery_date: null }, false)).toEqual({
+      name: "山田デザイン", owner: "山田 太郎", postal: "100-0001", address: "東京都千代田区千代田1-1", phone: "03-1234-5678", invoice_no: "T1234567890123",
+    });
+    expect(issuerOf({ ...settings, office_address: "東京都港区1-1" }, { issue_date: "2026-05-31", delivery_date: null }, false).address).toBe("東京都港区1-1");
+    expect(issuerOf(settings, { issue_date: "2026-05-31", delivery_date: null }, true).invoice_no).toBe("");
+    expect(issuerOf(settings, { issue_date: "2025-10-05", delivery_date: "2025-09-30" }, false).invoice_no).toBe("");
+    expect(issuerOf({ ...settings, business_name: "" }, { issue_date: "2026-05-31", delivery_date: null }, false)).toMatchObject({ name: "山田 太郎", owner: "" });
+  });
+  test("一覧の CSV：税率ごとの対価の額と消費税額・合計・源泉徴収・差引請求額・状態・登録番号。明細の CSV は行ごと", () => {
+    const d = {
+      id: 1, kind: "invoice" as const, doc_no: "2026-0001", issue_date: "2026-05-31", delivery_date: "2026-05-20", due_date: "2026-06-30", counterparty_id: null,
+      to_name: "株式会社エー", honorific: "御中", to_address: "", subject: "制作費", price_mode: "exclusive" as const, withholding: 0, notes: "", bank_text: "",
+      status: "issued" as const, source_id: null, entry_id: null, revenue_account_id: null, rounding: "floor" as const, exempt: 0,
+      issuer: { name: "山田デザイン", owner: "", postal: "", address: "", phone: "", invoice_no: "T1234567890123" },
+      items: [{ name: "デザイン", qty: 1, unit: "式", price: 100_000, tax: "10" as const }, { name: "菓子", qty: 3, unit: "個", price: 1_234, tax: "8" as const }],
+    };
+    const row = salesDocCsvRow(d, "発行済み");
+    expect(row.length).toBe(SALES_DOC_CSV_HEADER.length);
+    expect(row).toEqual([
+      "請求書", "2026-0001", "2026-05-31", "2026-05-20", "2026-06-30", "株式会社エー 御中", "制作費",
+      100_000, 10_000, 3_702, 296, 0, 0, 0, 0, 0, 113_998, 0, 113_998, "発行済み", "T1234567890123",
+    ]);
+    expect(salesDocItemCsvRows(d)[1]).toEqual(["請求書", "2026-0001", "2026-05-31", 2, "菓子", 3, "個", 1_234, "税抜", "8%（軽減）", 3_702]);
   });
 });

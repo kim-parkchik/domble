@@ -20,7 +20,9 @@ import { BalanceSheetView, BusinessHead, StatementPage2, StatementPage3 } from "
 import { WhiteStatements } from "./WhiteStatementPages";
 import { RealEstateStatements } from "./RealEstateStatementPages";
 import { isYearCompliant } from "../../lib/ebook";
-import { filingNotes } from "../../lib/filing";
+import { filingNotes, lateFilingNote } from "../../lib/filing";
+import { todayIso } from "../../lib/format";
+import { useFilings } from "./FilingSection";
 import { accountsOfKind } from "../../lib/incomeKind";
 import { realEstateStatement } from "../../lib/realEstateStatement";
 import { ownerText } from "../../lib/printLayout";
@@ -84,7 +86,12 @@ const BlueStatements = () => {
   useEffect(() => {
     repo.getStatementNotes(db, year).then((n) => setEbookFiled(!!n["ebook:filed"])).catch(console.error);
   }, [db, year]);
-  const blueWarnings = filingNotes(filing.type, year, { compliant: isYearCompliant(settings, year), filed: ebookFiled }).filter((n) => n.level === "warn");
+  const incomeFilings = useFilings("income", null);
+  const lateNote = lateFilingNote(filing.type, year, incomeFilings.due, todayIso(), incomeFilings.filings);
+  const blueWarnings = [
+    ...filingNotes(filing.type, year, { compliant: isYearCompliant(settings, year), filed: ebookFiled }).filter((n) => n.level === "warn"),
+    ...(lateNote ? [lateNote] : []),
+  ];
   // 青色申告特別控除は不動産所得から先に差し引く
   // 不動産所得は不動産所得用の決算書と同じ計算（専従者給与は事業的規模のときだけ必要経費）
   const scale = settings.real_estate ?? "none";

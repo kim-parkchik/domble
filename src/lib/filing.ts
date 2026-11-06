@@ -13,6 +13,7 @@
  *  - 選べる種類は年で変える（filingTypesFor）。55万円を引き継いだ令和9年分以後の年は 10万円で計算し、知らせる（filingNotes）
  */
 import type { FilingType, FilingYear } from "./types";
+import { longDate } from "./format";
 
 export interface FilingOfYear {
   type: FilingType;
@@ -80,4 +81,25 @@ export const filingNotes = (type: FilingType, year: number, ebook: { compliant: 
       + (ebook.compliant ? "電子帳簿保存法の画面で、届出書を出したことにチェックがありません。" : `${year}年は電子帳簿保存法の対応外（厳密モードでない年）です。`)
       + "電子取引のデータを特定電子計算機処理システムで保存する方法（届出が要ります）で受けるときは、その条件を満たしているか確かめてください。",
   }];
+};
+
+/**
+ * 期限後申告の青色申告特別控除（No.2072）：55万円・65万円（令和9年分からは 65万円・75万円）は、法定申告期限までに出したときだけで、期限後に出すと 10万円まで。
+ * due：その年分の所得税の申告期限（休みの日なら次の日）、today：今日、filings：その年分の所得税の申告の控え（種類・申告した日）。
+ * 期限内に出した確定申告の控えがあれば何も言わない（あとの修正申告は、期限内の申告の控除のまま）
+ */
+export const lateFilingNote = (
+  type: FilingType, year: number, due: string | null, today: string, filings: { kind: string; filed_on: string }[],
+): FilingNote | null => {
+  if (!due || type === "white" || type === "blue10") return null;
+  const original = filings.find((f) => f.kind === "original");
+  if (original ? original.filed_on <= due : today <= due) return null;
+  const head = original
+    ? `${longDate(original.filed_on)}に出した確定申告は、申告期限（${longDate(due)}）の後です（期限後申告）。`
+    : `令和${year - 2018}年分の確定申告の期限（${longDate(due)}）を過ぎています。`;
+  return {
+    level: "warn",
+    text: head + "期限後に出す確定申告では、青色申告特別控除は10万円までです（55万円・65万円・75万円は、期限内に出したときだけ）。"
+      + `期限後に出すときは、事業者設定の申告の種類を ${year}年は10万円にしてください（翌年からは元の種類に戻します）。期限内に出した申告を直す修正申告なら、このままで構いません。`,
+  };
 };

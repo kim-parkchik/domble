@@ -1237,3 +1237,8 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
   .chart-tip, .chart-hover { display: none; }
   .chart, .hbar-list, .chart-table { break-inside: avoid; }
 }
+
+/* 請求書・見積書の一覧：日付・請求額の範囲 */
+.sales-range { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.sales-range .input { width: 136px; }
+.sales-range .input.num { width: 104px; }

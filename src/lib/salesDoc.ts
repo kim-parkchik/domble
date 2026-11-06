@@ -12,7 +12,7 @@
  *  - 飲食料品の税率の引下げ（令和9年4月1日〜令和11年3月31日）：明細の税に 1%（軽減）。※ の印はそのまま使える（「1%対象」の印は要らない）。
  *    締めの期間が3月と4月をまたぐ請求書は、8% と 1% の明細を1枚に並べ、税率ごとに合計する（国税庁 Q&A 問2-1・2-2）
  */
-import type { JournalLine, TaxCode } from "./types";
+import type { JournalLine, Settings, TaxCode } from "./types";
 import { inReduced1 } from "./tax";
 
 export type DocKind = "estimate" | "invoice";
@@ -94,7 +94,37 @@ export interface SalesDoc {
   /** 保存したときの丸め方と、免税事業者の年だったか（1）。あとで設定や課税区分を変えても、保存した書類の金額は変わらない */
   rounding: Rounding;
   exempt: number;
+  /** 発行したときの発行者（形式の版 16 までに発行した書類と下書きは null。印刷は今の事業者設定で作る） */
+  issuer: DocIssuer | null;
 }
+
+/**
+ * 発行者（印刷の右上。名前・住所・電話・登録番号）。発行したときの事業者設定を書類に残し、あとで設定を変えても、発行した書類はこの形で印刷する
+ * （交付した適格請求書の写しの保存。消費税法57条の4⑥）
+ */
+export interface DocIssuer {
+  /** 屋号（無ければ氏名） */
+  name: string;
+  /** 屋号があるときの氏名 */
+  owner: string;
+  postal: string;
+  address: string;
+  phone: string;
+  /** 登録番号（免税事業者の年・登録日より前の取引は空） */
+  invoice_no: string;
+}
+
+type IssuerSettings = Pick<Settings, "business_name" | "owner_name" | "postal_code" | "address" | "office_address" | "phone" | "office_phone" | "invoice_no" | "invoice_registered_on">;
+
+/** 事業者設定から発行者を作る（登録番号は、免税事業者の年でなく、登録日以後の取引のときだけ） */
+export const issuerOf = (s: IssuerSettings, d: Pick<SalesDoc, "issue_date" | "delivery_date">, exempt: boolean): DocIssuer => {
+  const business = (s.business_name ?? "").trim(), owner = (s.owner_name ?? "").trim();
+  const date = salesDate(d);
+  return {
+    name: business || owner, owner: business && owner ? owner : "", postal: s.postal_code ?? "", address: s.office_address || s.address || "", phone: s.office_phone || s.phone || "",
+    invoice_no: !exempt && s.invoice_no && (!s.invoice_registered_on || date >= s.invoice_registered_on) ? s.invoice_no : "",
+  };
+};
 
 export interface SalesPayment {
   id: number;
@@ -178,7 +208,7 @@ export const docTotals = (d: Pick<SalesDoc, "items" | "price_mode" | "withholdin
 };
 
 /** 書類の確かめ。問題があれば文言 */
-export const docProblem = (d: Omit<SalesDoc, "id" | "status" | "entry_id" | "source_id" | "rounding" | "exempt">): string | null => {
+export const docProblem = (d: Omit<SalesDoc, "id" | "status" | "entry_id" | "source_id" | "rounding" | "exempt" | "issuer">): string | null => {
   const date = /^\d{4}-\d{2}-\d{2}$/;
   if (!d.doc_no.trim()) return "番号を入れてください";
   if (!date.test(d.issue_date)) return `${d.kind === "invoice" ? "請求日" : "見積日"}を入れてください`;
@@ -287,4 +317,32 @@ export const paymentCandidates = (line: { amount: number; description: string },
     .filter((x) => x.fee >= 0 && x.fee <= FEE_LIMIT)
     .sort((a, b) => Number(b.named) - Number(a.named) || a.fee - b.fee || (a.o.due_date ?? "9999").localeCompare(b.o.due_date ?? "9999"))
     .map((x) => ({ id: x.o.id, doc_no: x.o.doc_no, to_name: x.o.to_name, fee: x.fee, named: x.named }));
+};
+
+// ────────────────────────────────────────────
+// CSV（請求書・見積書の一覧と明細。画面の CSV と「帳簿をまとめて書き出す」。控えをデータで持つときのダウンロードの求めに応じる）
+// ────────────────────────────────────────────
+
+const RATE_COLUMNS: [ItemTax, string][] = [["10", "10%"], ["8", "8%（軽減）"], ["1", "1%（軽減）"]];
+export const SALES_DOC_CSV_HEADER = [
+  "種類", "番号", "請求日・見積日", "取引年月日", "支払期限・有効期限", "宛名", "件名",
+  ...RATE_COLUMNS.flatMap(([, l]) => [`${l}対象（税抜）`, `${l}消費税額`]), "輸出免税", "非課税", "対象外", "合計（税込）", "源泉徴収税額", "差引請求額", "状態", "登録番号",
+];
+/** 書類ごとの1行。state は状態の言葉（下書き・発行済み・入金済み・取消など） */
+export const salesDocCsvRow = (d: SalesDoc, state: string): (string | number)[] => {
+  const t = savedTotals(d);
+  const g = (tax: ItemTax) => t.groups.find((x) => x.tax === tax);
+  return [
+    DOC_KIND_LABEL[d.kind], d.doc_no, d.issue_date, d.kind === "invoice" ? salesDate(d) : "", d.due_date ?? "", `${d.to_name} ${d.honorific}`.trim(), d.subject,
+    ...RATE_COLUMNS.flatMap(([tax]) => [g(tax)?.base ?? 0, g(tax)?.tax_amount ?? 0]), g("export")?.total ?? 0, g("nontax")?.total ?? 0, g("none")?.total ?? 0,
+    t.total, t.withholding, t.billed, state, d.issuer?.invoice_no ?? "",
+  ];
+};
+export const SALES_DOC_ITEM_CSV_HEADER = ["種類", "番号", "請求日・見積日", "行", "品名", "数量", "単位", "単価", "単価の扱い", "税率・区分", "金額"];
+/** 明細ごとの1行（金額は単価 × 数量。単価の税抜・税込は書類の設定） */
+export const salesDocItemCsvRows = (d: SalesDoc): (string | number)[][] => {
+  const t = savedTotals(d);
+  return d.items.map((it, i) => [
+    DOC_KIND_LABEL[d.kind], d.doc_no, d.issue_date, i + 1, it.name, it.qty, it.unit, it.price, d.price_mode === "inclusive" ? "税込" : "税抜", ITEM_TAX_LABEL[it.tax], t.amounts[i] ?? 0,
+  ]);
 };

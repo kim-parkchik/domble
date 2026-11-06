@@ -33,8 +33,9 @@ export const FILE_FILTER_NAME = "domble 帳簿ファイル";
  * 14 = 2026-11-03（見積書・請求書：sales_docs・sales_payments、設定の振込先・端数の丸め方・備考）
  * 15 = 2026-11-03（申告の種類：令和9年分からの75万円控除。filing_years の CHECK）
  * 16 = 2026-11-03（消費税の仮決算による中間申告：tax_interim_provisionals）
+ * 17 = 2026-11-06（請求書：発行したときの発行者 sales_docs.issuer）
  */
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 /** バックアップを残す世代数（帳簿ごとに事業者設定で変えられる） */
 export const DEFAULT_BACKUP_GENERATIONS = 100;

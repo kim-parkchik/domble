@@ -180,7 +180,12 @@ const ProvisionalSection = ({ row, kind }: { row: InterimRow; kind: InterimKind 
         {saved && (saved.national !== calc.national || saved.local !== calc.local) && " 申告したあとに帳簿を直したため、保存した額と今の帳簿の計算が違います。中間納付税額は、申告して保存した額です。"}
       </p>
       {calc.shortfall && <p className="warn-box">仮決算の税額がマイナス（控除不足）です。中間申告では還付を受けられないので、中間納付税額は 0円です。</p>}
-      {late && <p className="warn-box">申告した日が期限（{dateWithDay(row.payBy)}）を過ぎています。期限を過ぎてから仮決算の中間申告書は出せません。{lateText(kind, row)}</p>}
+      {late && (
+        <p className="warn-box">
+          申告した日が期限（{dateWithDay(row.payBy)}）を過ぎています。期限を過ぎてから仮決算の中間申告書は出せません。{lateText(kind, row)}
+          保存しても、中間納付税額の合計には{kind === "voluntary" ? "入れません" : "前年の実績の額を入れます"}。
+        </p>
+      )}
       {(year >= XTX_NEW_FORMS_YEAR || !!calc.base.reduced1?.lines) && (
         <p className="warn-box">
           <span>
@@ -240,7 +245,8 @@ export const TaxInterimView = ({ onOpenReturn }: { onOpenReturn: () => void }) =
 
   const sourceText = prev.source === "books" ? `帳簿から計算（${py}年の${TAX_STATUS_OPTIONS.find((o) => o.value === prev.method)?.label.replace(/^課税事業者（(.+)）$/, "$1") ?? ""}で）`
     : prev.source === "manual" ? "手で入力"
-      : prev.source === "exempt" ? `${py}年は免税事業者` : "";
+      : prev.source === "filed" ? `${py}年分の申告の控えから`
+        : prev.source === "exempt" ? `${py}年は免税事業者` : "";
 
   return (
     <div className="tax-interim-view">
@@ -248,7 +254,7 @@ export const TaxInterimView = ({ onOpenReturn }: { onOpenReturn: () => void }) =
       <dl className="kv">
         <dt>前年（{py}年）の確定消費税額（第一表の ⑨ 差引税額）</dt>
         <dd className="num">{prev.amount === null ? "分かりません" : `${yen(prev.amount)}円（${sourceText}）`}</dd>
-        {prev.source === "manual" && prev.fromBooks !== null && (
+        {(prev.source === "manual" || prev.source === "filed") && prev.fromBooks !== null && prev.fromBooks !== prev.amount && (
           <><dt className="muted">　帳簿から計算した額</dt><dd className="num muted">{yen(prev.fromBooks)}円</dd></>
         )}
         <dt>{year}年の中間申告</dt>
@@ -285,9 +291,16 @@ export const TaxInterimView = ({ onOpenReturn }: { onOpenReturn: () => void }) =
                   <td className="num">{p.no}</td>
                   <td>
                     {monthSpan(p.from, p.to)}
-                    <br /><span className={p.provisional ? "badge badge-create" : "muted"} title={p.provisional ? `${METHOD_LABEL[p.provisional.method]}で計算` : undefined}>
-                      {p.provisional ? "仮決算" : "前年の実績"}
-                    </span>
+                    <br />
+                    {p.late ? (
+                      <span className="badge badge-update" title={`仮決算の申告した日（${longDate(p.provisional!.filed_on)}）が期限より後`}>
+                        {plan.kind === "voluntary" ? "期限後（中間納付なし）" : "期限後（前年の実績）"}
+                      </span>
+                    ) : (
+                      <span className={p.provisional ? "badge badge-create" : "muted"} title={p.provisional ? `${METHOD_LABEL[p.provisional.method]}で計算` : undefined}>
+                        {p.provisional ? "仮決算" : "前年の実績"}
+                      </span>
+                    )}
                   </td>
                   <td>
                     {dateWithDay(p.payBy)}
@@ -335,7 +348,8 @@ export const TaxInterimView = ({ onOpenReturn }: { onOpenReturn: () => void }) =
 
       <h3 className="sheet-sub">前年の確定消費税額を手で入れる</h3>
       <p className="field-note">
-        {py}年の帳簿が domble に無いとき、または修正申告・更正で税額が変わったときは、{py}年分の確定申告書（第一表）の ⑨ 差引税額を入れてください。入れた額が帳簿の計算より優先します。
+        {py}年分の消費税の申告の控え（申告書タブの「申告した」）があれば、いちばん新しい控えの ⑨ を使います。無ければ {py}年の帳簿から計算します（申告書タブで保存した棚卸資産の調整・非課税資産の輸出等も入れます）。
+        帳簿も控えも無いとき、または更正などで税額が変わったときは、{py}年分の確定申告書（第一表）の ⑨ 差引税額を入れてください。入れた額がいちばん優先します。
       </p>
       <form className="field-row" onSubmit={(e) => { e.preventDefault(); save(draft === "" ? null : Number(draft)); }}>
         <label className="field" style={{ maxWidth: 260 }}>

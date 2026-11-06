@@ -138,6 +138,18 @@ export const smallLimitFor = (acquiredOn: string): number | null =>
   SMALL_LIMITS.find((x) => acquiredOn >= x.from && acquiredOn <= x.to)?.limit ?? null;
 /** 少額減価償却資産の、1年の取得価額の合計の上限 */
 export const SMALL_YEAR_LIMIT = 3_000_000;
+/**
+ * その年の少額減価償却資産の合計の上限。業務を開始した年・廃止した年は、300万円 ÷ 12 × 業務を営んだ月数（1か月に満たない端数は1か月）
+ * （措置法28条の2①。months は所得税の入力の「事業税に関する事項」の開業・廃業の日から：lib/incomeTax.ts の businessMonths）
+ */
+export const smallYearLimit = (months = 12) => (SMALL_YEAR_LIMIT / 12) * Math.min(12, Math.max(1, months));
+/**
+ * 貸付け（主要な業務として行うものを除く）の用に供した資産で、この日以後に取得したものは、10万円未満の即時の経費・一括償却資産・
+ * 少額減価償却資産の特例が使えない（国税庁 No.2100 注4、所得税法施行令138条・139条、措置法28条の2）。domble では不動産所得の規模が「事業的規模でない」年の不動産所得の資産
+ */
+export const LENDING_LIMIT_FROM = "2022-04-01";
+export const lendingRestricted = (a: Pick<FixedAsset, "income_kind" | "acquired_on">, realEstateBusiness: boolean) =>
+  a.income_kind === "realestate" && !realEstateBusiness && a.acquired_on >= LENDING_LIMIT_FROM;
 /** これ未満なら、資産にせず消耗品費などで落とせる */
 export const EXPENSE_LIMIT = 100_000;
 
@@ -503,7 +515,13 @@ export const decliningProblem = (accountCode: string, acquiredOn: string): strin
 };
 
 /** 入力の確かめ。問題があれば文言を返す（accountCode：資産の科目のコード。定率法を使えるかに使う） */
-export const validateAsset = (a: Omit<FixedAsset, "id">, opts: { blue: boolean; accountCode?: string }): string | null => {
+/**
+ * 登録・変更の前の確かめ。opts.small：使い始めた年のほかの少額減価償却資産の合計と、その年の上限（開業・廃業の年は月数で割った額）。
+ * opts.realEstateBusiness：使い始めた年の不動産所得が事業的規模か（事業的規模でない貸付けの資産は一括償却・少額にできない）
+ */
+export const validateAsset = (
+  a: Omit<FixedAsset, "id">, opts: { blue: boolean; accountCode?: string; small?: { others: number; limit: number }; realEstateBusiness?: boolean },
+): string | null => {
   if (!a.name.trim()) return "名称を入れてください";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(a.acquired_on)) return "取得日を入れてください";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(a.used_on)) return "事業に使い始めた日を入れてください";
@@ -539,6 +557,14 @@ export const validateAsset = (a: Omit<FixedAsset, "id">, opts: { blue: boolean; 
     }
   }
   if (a.method === "small" && !opts.blue) return "少額減価償却資産の特例は、青色申告のときだけ使えます";
+  if ((a.method === "small" || a.method === "lump3") && lendingRestricted(a, opts.realEstateBusiness ?? true)) {
+    return "事業的規模でない不動産の貸付けに使う資産（令和4年4月1日以後の取得）は、一括償却資産・少額減価償却資産にできません。耐用年数で減価償却してください（10万円未満のものも同じです）";
+  }
+  if (a.method === "small" && opts.small && opts.small.others + a.cost > opts.small.limit) {
+    return `${yearOf(a.used_on)}年に使い始めた少額減価償却資産の合計が、1年の上限 ${opts.small.limit.toLocaleString()}円を超えます`
+      + `（ほかの少額減価償却資産 ${opts.small.others.toLocaleString()}円${opts.small.limit < SMALL_YEAR_LIMIT ? "。開業・廃業の年は、300万円を業務を営んだ月数で割った額" : ""}）。`
+      + "この資産は、定額法・定率法（20万円未満なら一括償却資産）で登録してください";
+  }
   if (a.disposed_on && a.disposed_on < a.used_on) return "売却・除却した日は、使い始めた日より後にしてください";
   if (a.disposed_on && a.disposal_kind === "sale" && (a.sale_price == null || !Number.isInteger(a.sale_price) || a.sale_price < 0)) {
     return "売却した額（税込）を 0円以上の整数で入れてください";

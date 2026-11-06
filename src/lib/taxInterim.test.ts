@@ -92,6 +92,15 @@ describe("前年の確定消費税額", () => {
     // 課税標準額 20,000,000 × 7.8% = 1,560,000、みなし仕入率 50% → 780,000
     expect(prevTaxInfo({ year: 2026, prevLines: lines, taxYears: simplified, manual: null }).amount).toBe(780_000);
   });
+  test("前年の申告の控えがあれば、帳簿の計算より優先する（手で入れた額がいちばん優先）", () => {
+    expect(prevTaxInfo({ year: 2026, prevLines: lines, taxYears: standard, manual: null, filed: 1_092_000 })).toMatchObject({ amount: 1_092_000, source: "filed", fromBooks: 1_170_000 });
+    expect(prevTaxInfo({ year: 2026, prevLines: lines, taxYears: standard, manual: 300_000, filed: 1_092_000 })).toMatchObject({ amount: 300_000, source: "manual" });
+  });
+  test("帳簿から計算するときは、前年に保存した棚卸資産の調整（⑯）も入れる", () => {
+    const inventory = { direction: "add" as const, rows: [{ rate: 10 as const, pct: 100, amount: 1_100_000 }] };
+    // 加算 1,100,000 × 7.8/110 = 78,000 → ⑨ 1,170,000 − 78,000
+    expect(prevTaxInfo({ year: 2026, prevLines: lines, taxYears: standard, manual: null, prevExtra: { inventory, nontaxExport: 0 } }).amount).toBe(1_092_000);
+  });
   test("手で入れた額が帳簿の計算より優先する", () => {
     expect(prevTaxInfo({ year: 2026, prevLines: lines, taxYears: standard, manual: 300_000 })).toMatchObject({ amount: 300_000, source: "manual", fromBooks: 1_170_000 });
   });
@@ -147,5 +156,15 @@ describe("仮決算による中間申告", () => {
     expect(rows.map((r) => [r.payNational, r.payLocal, !!r.provisional])).toEqual([[1_500_000, 423_000, false], [1_500_000, 423_000, false], [390_000, 110_000, true]]);
     expect(interimTotal(rows)).toEqual({ national: 3_390_000, local: 956_000 });
     expect(strayProvisionals(p, filed).map((f) => f.from)).toEqual(["2026-01-01"]);
+  });
+  test("期限より後の日付で保存した仮決算は、前年の実績で申告したものとみなす（消法44）。任意の中間申告は中間納付しない", () => {
+    const p = plan(6_000_000);
+    const late: ProvisionalFiled = { from: "2026-01-01", to: "2026-03-31", method: "standard", national: 100_000, local: 28_200, filed_on: "2026-06-02" };
+    const rows = interimRows(p, [late]);
+    expect([rows[0].late, rows[0].payNational, rows[0].payLocal]).toEqual([true, 1_500_000, 423_000]);
+    expect(interimRows(p, [{ ...late, filed_on: "2026-06-01" }])[0]).toMatchObject({ late: false, payNational: 100_000 });
+    const v = plan(400_000, { voluntary: true });
+    const vRows = interimRows(v, [{ ...late, to: "2026-06-30", filed_on: "2026-09-01" }]);
+    expect([vRows[0].late, vRows[0].payNational, vRows[0].payLocal]).toEqual([true, 0, 0]);
   });
 });

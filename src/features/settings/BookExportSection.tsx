@@ -1,7 +1,8 @@
 /**
  * 帳簿をまとめて書き出す（事業者設定）
  * 年を選び、帳簿と証憑を1つのフォルダへ書き出す（税務調査での「ダウンロードの求め」、ほかのソフトへの乗り換え、控え）。
- *  - 年ごと：仕訳日記帳・総勘定元帳・残高試算表（1月〜決算整理）・固定資産台帳の CSV（各帳簿の画面の CSV と同じ形。lib/bookExport.ts）
+ *  - 年ごと：仕訳日記帳・総勘定元帳・残高試算表（1月〜決算整理）・固定資産台帳の CSV（各帳簿の画面の CSV と同じ形。lib/bookExport）、
+ *    発行した請求書・見積書の一覧と明細の CSV（下書きは除く。控えをデータで持つときのダウンロードの求め。lib/salesDoc.ts）
  *  - 厳密モード：訂正削除履歴・変更履歴・証憑の履歴の CSV（選んだ年の分）
  *  - 証憑：取引年月日が選んだ年の証憑のファイルと証憑一覧.csv（「証憑」フォルダ）
  *  - 書き出しの内容.txt：何を書き出したかと、帳簿と証憑のつながり（伝票No）
@@ -24,6 +25,7 @@ import {
 import { ASSET_CSV_HEADER, assetCsvRows, LEDGER_CSV_HEADER, TRIAL_CSV_HEADER } from "../../lib/printBooks";
 import { entryHistoryCsv, evidenceHistoryCsv, masterHistoryCsv } from "../books/HistoryPage";
 import { writeEvidenceFolder } from "../evidence/evidenceIO";
+import { DOC_STATE_LABEL, SALES_DOC_CSV_HEADER, SALES_DOC_ITEM_CSV_HEADER, salesDocCsvRow, salesDocItemCsvRows } from "../../lib/salesDoc";
 import * as repo from "../../db/repo";
 import pkg from "../../../package.json";
 
@@ -57,8 +59,8 @@ export const BookExportSection = () => {
     try {
       setBusy("書き出しています…");
       await mkdir(dir, { recursive: true });
-      const [counterparties, taxYears, assets, inputPeriod] = await Promise.all([
-        repo.getCounterparties(db), repo.getTaxYears(db), repo.getAssets(db), repo.getInputPeriod(db),
+      const [counterparties, taxYears, assets, inputPeriod, salesDocs] = await Promise.all([
+        repo.getCounterparties(db), repo.getTaxYears(db), repo.getAssets(db), repo.getInputPeriod(db), repo.getSalesDocs(db),
       ]);
       for (let y = from; y <= to; y++) {
         setBusy(`${y}年を書き出しています…`);
@@ -80,6 +82,12 @@ export const BookExportSection = () => {
         if (yearAssets.length) {
           const name = (id: number) => accounts.find((a) => a.id === id)?.name ?? "（科目なし）";
           await put(`${y}年_固定資産台帳.csv`, ASSET_CSV_HEADER, assetCsvRows(yearAssets.map(({ a, d }) => assetPrintLine(a, d, name))));
+        }
+        // 発行した請求書・見積書（請求日・見積日がその年。取り消したものも「取消」で）
+        const docs = salesDocs.filter((d) => d.status !== "draft" && d.issue_date.startsWith(String(y))).reverse();
+        if (docs.length) {
+          await put(`${y}年_請求書・見積書.csv`, SALES_DOC_CSV_HEADER, docs.map((d) => salesDocCsvRow(d, DOC_STATE_LABEL[d.status === "void" ? "void" : "issued"])));
+          await put(`${y}年_請求書・見積書の明細.csv`, SALES_DOC_ITEM_CSV_HEADER, docs.flatMap(salesDocItemCsvRows));
         }
       }
       // 履歴（厳密モード。選んだ年の分）
@@ -127,7 +135,7 @@ export const BookExportSection = () => {
     <section className="sheet">
       <h2 className="sheet-h">帳簿をまとめて書き出す</h2>
       <p className="prose">
-        選んだ年の帳簿（仕訳日記帳・総勘定元帳・残高試算表・固定資産台帳の CSV）{strict && "と訂正・削除などの履歴"}、証憑のファイルと一覧を、1つのフォルダに書き出します。
+        選んだ年の帳簿（仕訳日記帳・総勘定元帳・残高試算表・固定資産台帳の CSV）と、発行した請求書・見積書の一覧と明細{strict && "、訂正・削除などの履歴"}、証憑のファイルと一覧を、1つのフォルダに書き出します。
         税務調査で電子データの提出（ダウンロードの求め）を受けたときや、ほかのソフトへ乗り換えるとき、年ごとの控えに使えます。
       </p>
       <div className="field-row">

@@ -16,7 +16,7 @@ import type { WhiteStatement } from "./whiteStatement";
 import type { BalanceRow, RealEstateBook } from "./realEstateStatement";
 import { documentXml, filerProblems, formXml, itRefs, itXml, type EtaxFiler, type EtaxValue, type EtaxValues, type FormAttrs } from "./etax";
 import {
-  blueDeductionLimit, dependentDeduction, fieldNo, hasMedicalDetail, rulesFor, spouseDeduction, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type MedicalKind, type Relative,
+  blueDeductionLimit, dependentDeduction, fieldNo, hasMedicalDetail, rulesFor, spouseDeduction, whiteFamilyInput, type BusinessFigures, type IncomeTaxInput, type IncomeTaxResult, type MedicalKind, type Relative,
 } from "./incomeTax";
 import type { Settings } from "./types";
 import { medicalStatement, selfMedStatement, statementProblem } from "./medicalStatement";
@@ -72,16 +72,19 @@ const RELATIVE_ROWS = 4;
 const FAMILY_ROWS = 2;
 
 /** 第二表の「配偶者や親族に関する事項」に書く配偶者（事業専従者でなく、控除の対象か同一生計配偶者） */
-const spouseShown = (x: IncomeTaxInput, year: number, ownIncome: number) => {
-  const s = x.spouse;
+/** 白色申告の年は、要件を満たさない「専従者」の家族をふつうの親族として扱う（computeIncomeTax と同じ。whiteFamilyInput） */
+const familyInputOf = (x: IncomeTaxInput, year: number, white: boolean) => (white ? whiteFamilyInput(x, year) : x);
+
+const spouseShown = (raw: IncomeTaxInput, year: number, ownIncome: number, white: boolean) => {
+  const s = familyInputOf(raw, year, white).spouse;
   if (!s || s.familyEmployee) return null;
   const d = spouseDeduction(s, ownIncome, year);
   return d.kind || s.income <= rulesFor(year).rules.dependentLimit || s.income <= SPOUSE_SPECIAL_LIMIT ? { s, d } : null;
 };
 
 /** 第二表に書く親族（扶養控除・特定親族特別控除の対象と、16歳未満の扶養親族） */
-const relativesShown = (x: IncomeTaxInput, year: number) =>
-  x.dependents
+const relativesShown = (raw: IncomeTaxInput, year: number, white: boolean) =>
+  familyInputOf(raw, year, white).dependents
     .map((d, i) => ({ d, i, r: dependentDeduction(d, year) }))
     .filter((v) => v.r.kind !== "none" && v.r.kind !== "familyEmployee");
 
@@ -99,9 +102,9 @@ const familyShown = (src: Pick<IncomeTaxXtxSource, "statement" | "white">) =>
 /** 個人番号を入れてもらう人（書き出す人だけ） */
 export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" | "result" | "statement" | "white">) => {
   const out: { key: string; label: string }[] = [];
-  const sp = spouseShown(src.input, src.year, src.result.totalIncome);
+  const sp = spouseShown(src.input, src.year, src.result.totalIncome, !!src.white);
   if (sp) out.push({ key: "spouse", label: `配偶者（${sp.s.name || "氏名なし"}）` });
-  for (const { d, i } of relativesShown(src.input, src.year).slice(0, RELATIVE_ROWS)) out.push({ key: `dep${i}`, label: `${d.relation || "親族"}（${d.name || "氏名なし"}）` });
+  for (const { d, i } of relativesShown(src.input, src.year, !!src.white).slice(0, RELATIVE_ROWS)) out.push({ key: `dep${i}`, label: `${d.relation || "親族"}（${d.name || "氏名なし"}）` });
   for (const f of familyShown(src).slice(0, FAMILY_ROWS)) out.push({ key: f.key, label: `事業専従者（${f.name}）` });
   return out;
 };
@@ -127,7 +130,7 @@ export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" 
     n.push(`令和${src.year - 2018}年分の e-Tax の版はまだ domble に入っていないため、令和${INCOME_XTX_FIRST_YEAR - 2018}年分の版で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください`);
     if (src.biz?.filingType === "blue75") n.push("75万円の青色申告特別控除は、決算書の2ページの「青色申告特別控除額の計算」の65万円の欄に書いています");
   }
-  const rel = relativesShown(src.input, src.year);
+  const rel = relativesShown(src.input, src.year, !!src.white);
   if (rel.length > RELATIVE_ROWS) n.push(`第二表の親族の欄は${RELATIVE_ROWS}人分です。${rel.slice(RELATIVE_ROWS).map((v) => v.d.name).join("・")}は書いていません`);
   const fam = familyShown(src);
   if (fam.length > FAMILY_ROWS) n.push(`第二表の事業専従者の欄は${FAMILY_ROWS}人分です。${fam.slice(FAMILY_ROWS).map((v) => v.name).join("・")}は書いていません`);
@@ -241,8 +244,8 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
   const life = s.life;
   const donations = [...x.donations].filter((d) => d.amount > 0).sort((a, b) => b.amount - a.amount);
   const localSum = (...kinds: string[]) => sumOf(donations.filter((d) => kinds.includes(d.local)), (d) => d.amount);
-  const spouse = spouseShown(x, year, r.totalIncome);
-  const relatives = relativesShown(x, year).slice(0, RELATIVE_ROWS);
+  const spouse = spouseShown(x, year, r.totalIncome, !!src.white);
+  const relatives = relativesShown(x, year, !!src.white).slice(0, RELATIVE_ROWS);
   const family = familyShown(src).slice(0, FAMILY_ROWS);
   // 青色の事業専従者の生年月日は、所得税の入力で「専従者」に印を付けた同じ氏名の人から
   const birthdayOf = (f: (typeof family)[number]) =>
