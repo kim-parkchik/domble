@@ -232,7 +232,7 @@ cmp(rows, "未払消費税等の決算整理仕訳（決算整理の画面）", 
 
 // ── 所得税 ──
 const base: IncomeTaxInput = {
-  ...EMPTY_INCOME_TAX_INPUT, birthday: "1980-08-01",
+  ...EMPTY_INCOME_TAX_INPUT, outside: "none", birthday: "1980-08-01",
   socialInsurance: [{ kind: "国民健康保険", amount: 700_000 }, { kind: "国民年金（本人・妻）", amount: 420_240 }],
   dependents: [{ name: "山田 一郎", relation: "子", birthday: "2008-05-01", income: 0, disability: "none", cohabiting: true, lineal: false }],
   prepaid: 200_000,

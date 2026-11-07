@@ -30,7 +30,7 @@ await cashEntry(db, b, rates, { date: D(2026, 6, 30), book: "普通預金", coun
 await cashEntry(db, b, rates, { date: D(2026, 3, 31), book: "普通預金", counter: "外注工賃", dir: "out", amount: 1_000_000, memo: "外注", tax: "none" });
 
 const rows: Cmp[] = [];
-const base: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, birthday: "1985-01-01", socialInsurance: [{ kind: "国民健康保険", amount: 300_000 }] };
+const base: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, outside: "none", birthday: "1985-01-01", socialInsurance: [{ kind: "国民健康保険", amount: 300_000 }] };
 
 // ── 2024年（令和6年分） ──
 const in24 = base;

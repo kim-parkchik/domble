@@ -177,7 +177,7 @@ cmp(rows, "消費税 xtx：納付税額 ⑪（ABB00110 相当の値を含む）"
 
 // ── 所得税 ──
 const input: IncomeTaxInput = {
-  ...EMPTY_INCOME_TAX_INPUT, birthday: "1975-04-01",
+  ...EMPTY_INCOME_TAX_INPUT, outside: "none", birthday: "1975-04-01",
   socialInsurance: [{ kind: "国民健康保険", amount: 450_000 }, { kind: "国民年金", amount: 210_120 }],
   smallBusiness: [{ kind: "小規模企業共済", amount: 840_000 }],
 };

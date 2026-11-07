@@ -113,6 +113,9 @@ export const myNumberPersons = (src: Pick<IncomeTaxXtxSource, "input" | "year" |
 export const incomeXtxProblems = (src: Pick<IncomeTaxXtxSource, "year" | "filer" | "input" | "result" | "biz">): string[] => {
   const p: string[] = [];
   if (src.year < INCOME_XTX_FIRST_YEAR) p.push(`e-Tax のデータは令和${INCOME_XTX_FIRST_YEAR - 2018}年（${INCOME_XTX_FIRST_YEAR}年）分から書き出せます`);
+  // domble で扱わない所得・控除がある年は書き出さない（e-Taxソフト（WEB版）は読み込んだ申告書に所得を足せず、申告漏れになるため）
+  if (src.input.outside === "") p.push("入力の「domble で扱わない所得・控除」に、申告するものがあるかを答える");
+  else if (src.input.outside === "some") p.push("domble で扱わない所得・控除が無いこと（ある年は、確定申告書等作成コーナーで申告します。入力の「domble で扱わない所得・控除」を見てください）");
   const missing = filerProblems(src.filer);
   if (missing.length) p.push(`事業者設定の e-Tax の欄：${missing.join("、")}`);
   const noPayer = src.result.second.withholding.filter((r) => r.withheld > 0 && (!r.payer.trim() || !r.payerId.trim()));
@@ -130,6 +133,7 @@ export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" 
     n.push(`令和${src.year - 2018}年分の e-Tax の版はまだ domble に入っていないため、令和${INCOME_XTX_FIRST_YEAR - 2018}年分の版で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください`);
     if (src.biz?.filingType === "blue75") n.push("75万円の青色申告特別控除は、決算書の2ページの「青色申告特別控除額の計算」の65万円の欄に書いています");
   }
+  if (src.result.second.transfers.length > 2) n.push("第二表の「総合課税の譲渡所得、一時所得に関する事項」は2行です。一時所得の行は書いていません（第一表の ㋚・⑪ には入っています）");
   const rel = relativesShown(src.input, src.year, !!src.white);
   if (rel.length > RELATIVE_ROWS) n.push(`第二表の親族の欄は${RELATIVE_ROWS}人分です。${rel.slice(RELATIVE_ROWS).map((v) => v.d.name).join("・")}は書いていません`);
   const fam = familyShown(src);
@@ -205,10 +209,13 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     ABB00025: src.bookKeeping, ABB00030: amount(row("㋐")),
     // 不動産：区分2（事業と同じ記帳の区分）・収入金額 ㋒（区分1 は国外中古建物の特例で、扱わない）
     ABB00046: src.biz.realEstate ? src.bookKeeping : undefined, ABB00050: src.biz.realEstate ? row("㋒") : undefined,
+    ABB00070: amount(row("㋓")),
     ABB00075: src.result.incomeAdjust?.kubun || undefined, ABB00080: amount(row("㋔")), ABB00100: amount(row("㋕")), ABB00105: amount(row("㋖")), ABB00110: amount(row("㋗")),
+    // 総合譲渡（短期 ㋘・長期 ㋙。特別控除の後）・一時 ㋚
+    ABB00130: amount(row("㋘")), ABB00180: amount(row("㋙")), ABB00230: amount(row("㋚")),
     // 所得金額等
-    ABB00300: row("①"), ABB00340: src.biz.realEstate ? row("③") : undefined, ABB00370: amount(row("⑥")), ABB01060: amount(row("⑦")), ABB01090: amount(row("⑧")), ABB01120: amount(row("⑨")),
-    ABB01130: amount(row("⑩")), ABB00410: fourth ? undefined : row("⑫"),
+    ABB00300: row("①"), ABB00340: src.biz.realEstate ? row("③") : undefined, ABB00360: amount(row("⑤")), ABB00370: amount(row("⑥")), ABB01060: amount(row("⑦")), ABB01090: amount(row("⑧")), ABB01120: amount(row("⑨")),
+    ABB01130: amount(row("⑩")), ABB00400: amount(row("⑪")), ABB00410: fourth ? undefined : row("⑫"),
     // 所得から差し引かれる金額（医療費控除の区分 1 = セルフメディケーション税制、配偶者（特別）控除の区分1 = 配偶者特別控除、ひとり親控除の区分 = 1）
     ABB00435: medical && x.medical.kind === "self" ? 1 : undefined, ABB00440: amount(medical),
     ABB00450: amount(row("⑬")), ABB00460: amount(row("⑭")), ABB00470: amount(row("⑮")), ABB00480: amount(row("⑯")), ABB00490: amount(row("㉙")),
@@ -217,7 +224,7 @@ const firstValues = (src: IncomeTaxXtxSource, refs: Set<string>, refund: boolean
     ABB00546: row("㉔") ? specificCount : undefined, ABB00548: amount(row("㉔")),
     ABB00550: amount(row("㉕")), ABB00555: row("㉖"), ABB00560: row("㉚"),
     // 税金の計算
-    ABB00580: fourth ? undefined : row("㉛"), ABB00590: row("㉜"), ABB00650: amount(row("㉟")), ABB00670: row("㊷"), ABB01010: row("㊹"), ABB01020: row("㊺"), ABB01030: row("㊻"),
+    ABB00580: fourth ? undefined : row("㉛"), ABB00590: row("㉜"), ABB00600: amount(row("㉝")), ABB00650: amount(row("㉟")), ABB00670: row("㊷"), ABB01010: row("㊹"), ABB01020: row("㊺"), ABB01030: row("㊻"),
     ABB00710: amount(row("㊾")), ABB00720: row("㊿"), ABB00730: amount(row(fieldNo(51))), ABB00750: amount(row(fieldNo(52))), ABB00760: amount(row(fieldNo(53))),
     // 修正申告：修正区分と、修正前の第3期分の税額（還付はマイナス）・第3期分の税額の増加額
     ABA00256: src.amend ? { kubun: 1 } : undefined, ABB00765: src.amend?.before, ABB00767: src.amend?.increase,
@@ -263,6 +270,10 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     } : undefined,
     ABD00064: rest.length ? { text: "次葉" } : undefined, ABD00066: rest.length ? sumOf(rest, (w) => w.withheld) : undefined,
     ABD00070: withholding.length ? sumOf(withholding, (w) => w.withheld) : undefined,
+    // 総合課税の譲渡所得、一時所得に関する事項（2行。必要経費等・差引金額の金額は下段・上段の欄）
+    ABX00000: s.transfers.length ? {
+      rows: s.transfers.slice(0, 2).map((t) => clean({ ABX00250: text(t.kind, 10), ABX00260: amount(t.income), ABX00290: amount(t.costs), ABX00310: amount(t.gain) })),
+    } : undefined,
     ABE00010: family.length ? {
       rows: family.map((f) => clean({
         ABE00020: text(f.name, 30), ABE00025: bango(src.numbers[f.key]), ABE00030: isDate(birthdayOf(f)) ? { date: birthdayOf(f) } : undefined,
@@ -301,6 +312,7 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     } : undefined,
     // 住民税・事業税
     ABI00010: x.residentTax ? { kubun: x.residentTax === "special" ? 1 : 2 } : undefined,
+    ABI00104: amount(r.dividend.local),
     ABI00240: amount(localSum("furusato")), ABI00250: amount(localSum("community")),
     ABI00270: amount(localSum("pref", "both")), ABI00280: amount(localSum("city", "both")),
     ABI00200: x.businessTax.change ? { kubun: x.businessTax.change === "open" ? 1 : 2 } : undefined,
@@ -308,6 +320,8 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     ABI00220: yes(x.businessTax.otherPrefecture),
     // 不動産所得から差し引いた青色申告特別控除額（事業税）
     ABI00170: amount(r.blueRealEstate),
+    // 事業用資産の譲渡損失（事業税。台帳で売却した事業用の資産ごとの損失の合計）
+    ABI00180: amount(r.transfer.businessLoss),
     // 税理士署名欄（依頼している税理士等）と、税理士法第30条・第33条の2の書面提出
     ABS10050: ref(refs, "DAIRI_NM"), ABS10060: ref(refs, "DAIRI_TEL"),
     ABS10020: src.filer.agent?.art30 ? { kubun: 1 } : undefined, ABS10030: src.filer.agent?.art33 ? { kubun: 1 } : undefined,
@@ -323,14 +337,35 @@ const CARRY_TAGS: [year: string, blueYear: string, before: string, used: string,
   ["ABP00360", "ABP00380", "ABP00620", "ABP00990", "ABP01240"],
   ["ABP00400", "ABP00420", "ABP00740", "ABP01110", "ABP01360"],
 ];
+/** 第四表（一）の 1・2：経常所得と総合課税の譲渡・一時所得（domble は山林・退職・分離課税を扱わないので、第1次〜第3次通算後は同じ額） */
+const lossRows = (src: IncomeTaxXtxSource): Record<string, EtaxValue | undefined> => {
+  const { offset: o, transfer: t, occasional: g, transfers } = src.result;
+  const short = transfers.some((x) => x.term !== "long");
+  const long = transfers.some((x) => x.term === "long");
+  const occ = src.result.second.transfers.some((x) => x.kind === "一時");
+  const after = (ord: string, s: string, lg: string, oc: string) => ({
+    [ord]: o.ordinary, [s]: short ? amount(o.short) : undefined, [lg]: long ? amount(o.long) : undefined, [oc]: occ ? amount(o.occasional) : undefined,
+  });
+  return {
+    ABN00030: o.before,
+    ABN00170: short ? amount(t.net.short) : undefined, ABN00190: short ? amount(t.special.short) : undefined, ABN00200: short ? amount(t.a) : undefined,
+    ABN00330: long ? amount(t.net.long) : undefined, ABN00350: long ? amount(t.special.long) : undefined, ABN00360: long ? amount(t.b) : undefined,
+    ABN00390: occ ? amount(Math.max(0, g.gain)) : undefined, ABN00400: occ ? amount(g.special) : undefined, ABN00410: occ ? amount(g.amount) : undefined,
+    ABN00810: o.before, ABN00860: short ? amount(t.a) : undefined, ABN00890: long ? amount(t.b) : undefined, ABN00900: occ ? amount(g.amount) : undefined,
+    ...after("ABN00930", "ABN00980", "ABN01010", "ABN01020"), ...after("ABN01070", "ABN01120", "ABN01150", "ABN01160"), ...after("ABN01230", "ABN01280", "ABN01310", "ABN01320"),
+    ABN01390: o.ordinary, ABN01440: short ? amount(o.short) : undefined, ABN01470: long || occ ? amount(o.r11 - o.short) : undefined,
+    ABN01520: src.result.loss.income,
+  };
+};
+
 const fourthValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
   const l = src.result.loss;
   if (!l.fourth) return {};
   const v: Record<string, EtaxValue | undefined> = {
     ABM00010: ref(refs, "NENBUN"), ABM00020: ref(refs, "SHINKOKU_KBN"), ABM00060: ref(refs, "NOZEISHA_ADR"),
     ABM00070: ref(refs, "NOZEISHA_NM_KN"), ABM00080: ref(refs, "NOZEISHA_NM"),
-    // 1 損失額又は所得金額・2 損益の通算（通算前・第1次〜第3次通算後・損失額又は所得金額）・(81)
-    ABN00030: l.income, ABN00810: l.income, ABN00930: l.income, ABN01070: l.income, ABN01230: l.income, ABN01390: l.income, ABN01520: l.income,
+    // 1 損失額又は所得金額（A 経常所得・B 総合譲渡・一時）・2 損益の通算（通算前・第1次〜第3次通算後・損失額又は所得金額）・(81)
+    ...lossRows(src),
     ABO00010: ref(refs, "NENBUN"), ABO00020: ref(refs, "SHINKOKU_KBN"),
     // 3 翌年以後に繰り越す損失額
     ABP00020: amount(l.blueLoss),
@@ -343,6 +378,72 @@ const fourthValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     if (afterTag) v[afterTag] = c.after ?? 0;
   });
   return clean(v);
+};
+
+// ── 譲渡所得の内訳書（総合譲渡用。KOC020）・損益の通算の計算書（KOA080） ──
+/**
+ * 譲渡所得の内訳書（確定申告書付表兼計算明細書）【総合譲渡用】：譲渡した資産ごとに1面。
+ * 特別控除額は、短期・長期それぞれの特別控除を、譲渡益のある資産に上から順に当てる
+ */
+const transferPages = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const { transfers, transfer } = src.result;
+  const left = { short: transfer.special.short, long: transfer.special.long };
+  const rows = transfers.map((t) => {
+    const term = t.term === "long" ? "long" : "short";
+    const special = Math.min(left[term], Math.max(0, t.gain));
+    left[term] -= special;
+    const purchase = t.sale ? t.sale.acquisitionCost : t.cost;
+    const calc = term === "short"
+      ? { EBG00100: amount(t.price), EBG00130: amount(t.cost + t.expenses), EBG00140: t.gain, EBG00150: amount(special), EBG00160: t.gain - special }
+      : { EBG00290: amount(t.price), EBG00320: amount(t.cost + t.expenses), EBG00330: t.gain, EBG00340: amount(special), EBG00350: t.gain - special };
+    return clean({
+      EBA00000: ref(refs, "NENBUN"), EBA00010: ref(refs, "ZEIMUSHO"),
+      EBB00030: ref(refs, "NOZEISHA_ADR"), EBB00050: ref(refs, "NOZEISHA_NM_KN"), EBB00060: ref(refs, "NOZEISHA_NM"), EBB00070: ref(refs, "NOZEISHA_TEL"), EBB00080: ref(refs, "SHOKUGYO"),
+      EBC00010: ref(refs, "DAIRI_NM"), EBC00020: ref(refs, "DAIRI_TEL"),
+      EBD00020: text(t.name || "（名称なし）", 60), EBD00030: text(t.kind, 18),
+      EBD00040: t.sale ? text(t.sale.rate >= 100 ? "事業用" : `事業用（${t.sale.rate}%）`, 18) : undefined,
+      EBD00110: text(t.buyerAddress, 100), EBD00120: text(t.buyer, 100),
+      EBD00150: isDate(t.sold) ? { date: t.sold } : undefined,
+      EBD00400: amount(t.price),
+      EBE00060: isDate(t.acquired) ? { date: t.acquired } : undefined, EBE00070: amount(purchase), EBE00150: amount(purchase),
+      EBE00210: amount(purchase), EBE00220: amount(purchase - t.cost), EBE00250: amount(t.cost),
+      EBF00080: amount(t.expenses),
+      ...calc,
+    });
+  });
+  return { "KOC020-1": { rows } };
+};
+
+/** 損益の通算の計算書が要るか：総合課税の譲渡・一時所得があり、事業・不動産・総合課税の譲渡所得のどれかが赤字（確定申告の手引き） */
+const needsOffsetSheet = (src: IncomeTaxXtxSource) => {
+  const r = src.result;
+  const row = (no: string) => r.rows.find((v) => v.no === no)?.value ?? 0;
+  return (r.transfers.length > 0 || r.second.transfers.some((x) => x.kind === "一時")) && (row("①") < 0 || row("③") < 0 || r.transfer.a < 0 || r.transfer.b < 0);
+};
+
+const offsetSheetValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues => {
+  const { offset: o, transfer: t, occasional: g, transfers } = src.result;
+  const short = transfers.some((x) => x.term !== "long");
+  const long = transfers.some((x) => x.term === "long");
+  const occ = src.result.second.transfers.some((x) => x.kind === "一時");
+  const s = (v: number) => (short ? amount(v) : undefined);
+  const l = (v: number) => (long ? amount(v) : undefined);
+  const c = (v: number) => (occ ? amount(v) : undefined);
+  const after = (ord: string, st: string, lt: string, ot: string) => ({ [ord]: o.ordinary, [st]: s(o.short), [lt]: l(o.long), [ot]: c(o.occasional) });
+  return clean({
+    ARA00010: ref(refs, "NENBUN"), ARA00020: ref(refs, "NOZEISHA_NM"),
+    // 1 経常所得の損益の通算
+    ARB00010: o.before,
+    // 2 譲渡・一時所得の損益の通算：(A) 差引金額 (B) 通算後（短期・長期の内部通算） (C) 特別控除額 (D) 譲渡・一時所得の通算後
+    ARC00060: s(t.short.gain), ARC00110: l(t.long.gain),
+    ARC00350: s(t.net.short), ARC00400: l(t.net.long), ARC00410: c(Math.max(0, g.gain)),
+    ARC00480: s(t.special.short), ARC00510: l(t.special.long), ARC00520: c(g.special),
+    ARC00630: s(o.group.short), ARC00670: l(o.group.long), ARC00680: c(o.group.occasional),
+    // 3 損益の通算：(A) 通算前 (B)〜(D) 第1次〜第3次通算後（山林・退職は扱わないので同じ額） (E) 所得金額
+    ARD00020: o.before, ARD00070: s(o.group.short), ARD00120: l(o.group.long), ARD00130: c(o.group.occasional),
+    ...after("ARD00160", "ARD00210", "ARD00260", "ARD00270"), ...after("ARD00310", "ARD00360", "ARD00410", "ARD00420"), ...after("ARD00510", "ARD00560", "ARD00610", "ARD00620"),
+    ARD00710: o.ordinary, ARD00740: s(o.short), ARD00780: long || occ ? amount(o.r11 - o.short) : undefined, ARD00810: o.total,
+  });
 };
 
 // ── 青色申告決算書（KOA210） ──
@@ -1034,6 +1135,8 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
     // 事業所得が無く不動産所得だけなら、一般用は書かない
     forms: [
       { id: "KOA020", xml: formXml("KOA020", koa020, attrs) },
+      // 損益の通算の計算書（総合課税の譲渡・一時所得があり、事業などが赤字のとき）
+      ...(needsOffsetSheet(src) ? [{ id: "KOA080", xml: formXml("KOA080", offsetSheetValues(src, refs), attrs) }] : []),
       ...(white && business ? [{ id: "KOA110", xml: formXml("KOA110", whiteValues(src, refs), attrs) }] : []),
       ...(white && src.realEstate ? [{ id: "KOA130", xml: formXml("KOA130", reWhiteValues(src, refs), attrs) }] : []),
       ...(!white && business ? [{ id: "KOA210", xml: formXml("KOA210", statementValues(src, refs), attrs) }] : []),
@@ -1041,6 +1144,8 @@ export const buildIncomeTaxXtx = (src: IncomeTaxXtxSource): string => {
       // 医療費控除の明細書・セルフメディケーション税制の明細書（明細を入れて、控除があるとき）
       ...(medicalOut === "normal" ? [{ id: "KOB560", xml: formXml("KOB560", medicalValues(src, refs), attrs) }] : []),
       ...(medicalOut === "self" ? [{ id: "KOB570", xml: formXml("KOB570", selfMedValues(src, refs), attrs) }] : []),
+      // 譲渡所得の内訳書（総合譲渡用。譲渡した資産ごとに1面）
+      ...(src.result.transfers.length ? [{ id: "KOC020", xml: formXml("KOC020", transferPages(src, refs), attrs) }] : []),
     ],
   });
 };

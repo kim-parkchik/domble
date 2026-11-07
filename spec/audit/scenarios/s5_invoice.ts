@@ -129,7 +129,7 @@ cmp(rows, "請求書から入れる：エーの収入金額（税込・12通）"
 cmp(rows, "請求書から入れる：エーの源泉徴収税額", 245_040, picked.find((p) => p.payer === "株式会社エー")?.withheld ?? null);
 cmp(rows, "請求書から入れる：ビー出版の源泉徴収税額", 204_200, picked.find((p) => p.payer === "株式会社ビー出版")?.withheld ?? null);
 const input: IncomeTaxInput = {
-  ...EMPTY_INCOME_TAX_INPUT, birthday: "1990-04-01", businessWithholding: picked,
+  ...EMPTY_INCOME_TAX_INPUT, outside: "none", birthday: "1990-04-01", businessWithholding: picked,
   socialInsurance: [{ kind: "国民健康保険", amount: 300_000 }], residentTax: "self",
 };
 const it = await incomeTaxScreen(db, b, input);

@@ -37,7 +37,7 @@ await runInventory(db, b, 400_000);
 
 const rows: Cmp[] = [];
 const wife = { ...emptyRelative("妻"), name: "山田 花子", birthday: "1980-03-03", income: 0, familyEmployee: true, months: 12, work: "毎日・販売と経理" };
-const input: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, birthday: "1978-08-08", socialInsurance: [{ kind: "国民健康保険", amount: 250_000 }], spouse: wife, residentTax: "self" };
+const input: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, outside: "none", birthday: "1978-08-08", socialInsurance: [{ kind: "国民健康保険", amount: 250_000 }], spouse: wife, residentTax: "self" };
 const it = await incomeTaxScreen(db, b, input);
 await setFiler(db, { occupation: "小売業" });
 const x = await incomeXtxScreen(db, b, input, it, YEAR, { self: "123456789018", family0: "123456789018" });

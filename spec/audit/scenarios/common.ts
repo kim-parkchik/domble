@@ -301,7 +301,8 @@ export type { Account, JournalLine, HomeUseRate, IncomeTaxInput };
 // ───────── 2026-11-04 の確認で足したもの ─────────
 import { businessFigures } from "../../../src/lib/incomeTaxBooks";
 import { carriedLosses, carriedFromPast, type PastIncomeTax } from "../../../src/lib/incomeTax";
-import { bookLines, exclusiveAccountsOf } from "../../../src/lib/taxExclusive";
+import { bookLines, exclusiveAccountsOf, isExclusiveOn } from "../../../src/lib/taxExclusive";
+import { assetSalesOf } from "../../../src/lib/transfers";
 
 /** 消費税の e-Tax のデータ（TaxReturnView の書き出しと同じ：buildTaxXtx）。XSD（spec/etax/shohi の RSH0010・RSH0030）に照らした結果も返す */
 export const taxXtxOf = async (db: Database, r: Parameters<typeof buildTaxXtx>[0], o: { interim?: { from: string; to: string }; year?: number } = {}) => {
@@ -326,7 +327,7 @@ export const taxXtxOf = async (db: Database, r: Parameters<typeof buildTaxXtx>[0
 };
 
 /**
- * 所得税（IncomeTaxPage と同じ：businessFigures（白色・不動産所得も）→ carriedFromPast → computeIncomeTax）
+ * 所得税（IncomeTaxPage と同じ：businessFigures（白色・不動産所得も）＋固定資産台帳で売却した資産 → carriedFromPast → computeIncomeTax）
  * y = 年分。繰越損失は、前の年の保存した所得税の入力と帳簿から引き継ぐ（画面と同じ）
  */
 export const incomeTaxScreen = async (db: Database, b: Book, input: IncomeTaxInput, y = YEAR) => {
@@ -342,7 +343,10 @@ export const incomeTaxScreen = async (db: Database, b: Book, input: IncomeTaxInp
     const landInterest = Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0;
     const scale = await repo.getRealEstateScale(db, yy);
     const filingType = await repo.filingTypeIn(db, yy);
-    return businessFigures(accounts, end, filingType, inp, yy, { scale, landInterest });
+    const f = businessFigures(accounts, end, filingType, inp, yy, { scale, landInterest });
+    // 固定資産台帳でその年に売却した資産（総合課税の譲渡所得）
+    const sold = assetSalesOf(await repo.getAssets(db), yy, (id) => accounts.find((a) => a.id === id)?.name ?? "", (d) => isExclusiveOn(taxYears, d));
+    return { ...f, biz: { ...f.biz, assetSales: sold.sales, lumpSold: sold.lump } };
   };
   const { biz, familyLines } = await figuresOf(y, input);
   const load = async (yy: number): Promise<PastIncomeTax | null> => {

@@ -149,7 +149,7 @@ cmp(rows, "消費税：中間申告（前年 ⑨ 56,000円）", "不要", t.plan
 
 // ── 所得税 ──
 const input: IncomeTaxInput = {
-  ...EMPTY_INCOME_TAX_INPUT,
+  ...EMPTY_INCOME_TAX_INPUT, outside: "none",
   birthday: "1985-06-01",
   businessWithholding: [{ item: "デザイン料", payer: "株式会社エックス", payerId: "", income: 3_960_000, withheld: 367_560 }],
   socialInsurance: [{ kind: "国民健康保険", amount: 360_000 }, { kind: "国民年金", amount: 210_120 }],

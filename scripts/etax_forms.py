@@ -28,6 +28,8 @@ FORMS = {
     "KOA220": "shotoku/KOA220-008.xsd",  # 青色申告決算書（不動産所得用）
     "KOB560": "shotoku/KOB560-018.xsd",  # 医療費控除の明細書
     "KOB570": "shotoku/KOB570-006.xsd",  # セルフメディケーション税制の明細書
+    "KOC020": "shotoku/KOC020-008.xsd",  # 譲渡所得の内訳書（確定申告書付表兼計算明細書）【総合譲渡用】
+    "KOA080": "shotoku/KOA080-005.xsd",  # 損益の通算の計算書
 }
 
 

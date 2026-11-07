@@ -999,8 +999,15 @@ td.bar-col { display: flex; flex-direction: column; gap: 2px; justify-content: c
 .it-balance b { font-size: 15px; }
 .it-note { margin: 0 0 8px; }
 .it-section { margin-bottom: 6px; max-width: 1000px; }
+.it-outside-list { margin: 2px 0 6px; padding-left: 20px; font-size: 12.5px; color: var(--muted); }
+.it-outside-list li { margin: 1px 0; }
+.it-outside-guide { margin-top: 8px; }
+.it-outside-guide p { margin: 0 0 4px; }
+.it-outside-guide ul { margin: 0; padding-left: 20px; }
 .it-rows { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .it-table { width: 100%; }
+.it-table-wrap { width: 100%; overflow-x: auto; }
+.it-table-wrap .it-table { min-width: max-content; }
 .it-table td { padding: 3px 4px; white-space: normal; overflow: visible; }
 .it-table td.center { text-align: center; }
 .it-table .input { width: 100%; min-width: 0; }

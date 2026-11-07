@@ -46,7 +46,7 @@ const setup = async (withBusiness: boolean) => {
 };
 
 const rows: Cmp[] = [];
-const input: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, birthday: "1975-05-05", socialInsurance: [{ kind: "国民健康保険", amount: 300_000 }], residentTax: "self" };
+const input: IncomeTaxInput = { ...EMPTY_INCOME_TAX_INPUT, outside: "none", birthday: "1975-05-05", socialInsurance: [{ kind: "国民健康保険", amount: 300_000 }], residentTax: "self" };
 
 // ── 事業所得と不動産所得の両方 ──
 {

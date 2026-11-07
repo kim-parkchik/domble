@@ -3,7 +3,7 @@
 # 使い方（リポジトリの直下で）：sh spec/audit/scenarios/run_all.sh
 cd "$(dirname "$0")" || exit 1
 OUT="$(mktemp -d)"
-for s in s1_designer s2_retail s3_restaurant s4_r7_rules s5_invoice s6_interim s7_loss s8_realestate s9_white; do
+for s in s1_designer s2_retail s3_restaurant s4_r7_rules s5_invoice s6_interim s7_loss s8_realestate s9_white s10_transfer; do
   bun "$s.ts" > "$OUT/out_$s.txt" 2>&1 || echo "失敗：$s"
   grep "（一致" "$OUT/out_$s.txt" | sed "s/^/$s: /"
 done

@@ -70,7 +70,7 @@ const statement = (o: Partial<BlueStatement> = {}): BlueStatement => ({
 
 const biz: BusinessFigures = { revenue: 5_000_000, incomeBeforeBlue: 4_000_000, filingType: "blue65", familySalary: 0 };
 const source = (input: Partial<IncomeTaxInput> = {}, o: Partial<IncomeTaxXtxSource> = {}, carried: CarriedLoss[] = []): IncomeTaxXtxSource => {
-  const x = { ...EMPTY_INCOME_TAX_INPUT, birthday: "1985-06-01", ...input };
+  const x = { ...EMPTY_INCOME_TAX_INPUT, outside: "none" as const, birthday: "1985-06-01", ...input };
   const b = o.biz ?? biz;
   return {
     year: 2025, filer, input: x, result: computeIncomeTax(x, b, 2025, carried), biz: b, statement: statement(), bookKeeping: 2, numbers: {}, createdOn: "2026-02-20",
@@ -123,6 +123,63 @@ describe("令和7年分の所得税の xtx（申告書＋青色申告決算書�
   test("保険料は、給与が無ければ全部「うち年末調整等以外」", () => {
     expect(val(xml, "ABH00140")).toBe("210120");
     expect(val(xml, "ABH00580")).toBe("210120");
+  });
+});
+
+describe("配当・総合課税の譲渡・一時所得", () => {
+  const sale = {
+    assetId: 1, name: "営業車", kind: "車両運搬具", acquired: "2019-01-10", sold: "2025-06-30", rate: 70,
+    salePrice: 1_100_000, price: 770_000, acquisitionCost: 1_680_000, bookValue: 200_000, cost: 140_000, realEstate: false,
+  };
+  const src = source({
+    dividends: [{ item: "株式の配当", payer: "B証券", payerId: "東京都中央区", income: 200_000, withheld: 30_630, listed: true, localWithheld: 10_000, interest: 0, credit: "stock" }],
+    occasional: [{ item: "生命保険の満期金", payer: "A生命", payerId: "東京都千代田区", income: 2_500_000, expenses: 1_640_000, withheld: 0 }],
+  }, { biz: { ...biz, assetSales: [sale] } });
+  const xml = buildIncomeTaxXtx(src);
+  test("XSD に合う", () => expect(validate(xml)).toBe(""));
+  test("第一表：配当 ㋓⑤・総合譲渡 ㋙・一時 ㋚・⑪・配当控除 ㉝", () => {
+    const v = (no: string) => String(src.result.rows.find((r) => r.no === no)!.value);
+    // 長期（5年超）：770,000 − 140,000 − 500,000 = 130,000、一時 360,000 → ⑪ 245,000
+    expect([val(xml, "ABB00070"), val(xml, "ABB00360"), val(xml, "ABB00180"), val(xml, "ABB00230"), val(xml, "ABB00400")]).toEqual(["200000", "200000", "130000", "360000", "245000"]);
+    expect(val(xml, "ABB00130")).toBeUndefined();
+    expect(val(xml, "ABB00600")).toBe(v("㉝"));
+    expect(val(xml, "ABB00600")).toBe("20000");
+    expect(val(xml, "ABB00410")).toBe(v("⑫"));
+  });
+  test("第二表：所得の内訳に配当、総合課税の譲渡所得・一時所得の2行、住民税の配当割額控除額", () => {
+    expect(val(xml, "ABD00020")).toBe("配当");
+    expect(count(xml, "ABX00000")).toBe(2);
+    expect(xml).toContain("<ABX00250>譲渡（長期）</ABX00250><ABX00260>770000</ABX00260><ABX00270><ABX00290>140000</ABX00290></ABX00270><ABX00300><ABX00310>630000</ABX00310></ABX00300>");
+    expect(xml).toContain("<ABX00250>一時</ABX00250>");
+    expect(val(xml, "ABI00104")).toBe("10000");
+  });
+  test("譲渡所得の内訳書（総合譲渡用）：資産・譲渡価額・取得費（購入価額 − 償却費相当額）・長期の計算", () => {
+    expect(xml).toContain('<KOC020 VR="8.0" id="KOC020-1"');
+    expect(val(xml, "EBD00020")).toBe("営業車");
+    expect(val(xml, "EBD00040")).toBe("事業用（70%）");
+    expect([val(xml, "EBE00210"), val(xml, "EBE00220"), val(xml, "EBE00250")]).toEqual(["1680000", "1540000", "140000"]);
+    expect([val(xml, "EBG00290"), val(xml, "EBG00320"), val(xml, "EBG00330"), val(xml, "EBG00340"), val(xml, "EBG00350")]).toEqual(["770000", "140000", "630000", "500000", "130000"]);
+    expect(xml).not.toContain("<KOA080");
+  });
+  test("事業の赤字と譲渡益：損益の通算の計算書（KOA080）と第四表の総合譲渡の行。XSD に合う", () => {
+    const loss = source({}, { biz: { ...biz, incomeBeforeBlue: -1_000_000, assetSales: [sale] } });
+    const x2 = buildIncomeTaxXtx(loss);
+    expect(validate(x2)).toBe("");
+    // 経常 −1,000,000、長期譲渡 130,000 → 通算後 −870,000（純損失）
+    expect(loss.result.totalIncome).toBe(-870_000);
+    expect([val(x2, "ARB00010"), val(x2, "ARC00110"), val(x2, "ARC00510"), val(x2, "ARD00120"), val(x2, "ARD00160"), val(x2, "ARD00810")])
+      .toEqual(["-1000000", "630000", "500000", "130000", "-870000", "-870000"]);
+    expect([val(x2, "ABN00030"), val(x2, "ABN00330"), val(x2, "ABN00350"), val(x2, "ABN00360"), val(x2, "ABN00890"), val(x2, "ABN01390"), val(x2, "ABN01520")])
+      .toEqual(["-1000000", "630000", "500000", "130000", "130000", "-870000", "-870000"]);
+    expect(val(x2, "ABN01010")).toBeUndefined();
+    expect(val(x2, "ABP00020")).toBe("870000");
+  });
+  test("事業用の資産の売却損は、事業税の「事業用資産の譲渡損失など」", () => {
+    const loss = source({}, { biz: { ...biz, assetSales: [{ ...sale, price: 100_000 }] } });
+    const x2 = buildIncomeTaxXtx(loss);
+    expect(validate(x2)).toBe("");
+    expect(val(x2, "ABI00180")).toBe("40000");
+    expect(val(x2, "ABB00180")).toBe("-40000");
   });
 });
 
@@ -249,6 +306,9 @@ describe("書き出せないとき・版", () => {
     expect(incomeXtxProblems(source({ businessWithholding: [{ item: "報酬", payer: "", payerId: "", income: 100_000, withheld: 10_210 }] })).join()).toMatch(/支払者の名称/);
     expect(incomeXtxProblems(source({}, { year: 2024 })).join()).toMatch(/令和7年/);
     expect(incomeXtxProblems(source({}, { filer: { ...filer, userId: "" } })).join()).toMatch(/利用者識別番号/);
+    // domble で扱わない所得・控除：答えていない年・「ある」と答えた年は書き出さない
+    expect(incomeXtxProblems(source({ outside: "" })).join()).toMatch(/扱わない所得・控除」に、申告するものがあるかを答える/);
+    expect(incomeXtxProblems(source({ outside: "some" })).join()).toMatch(/確定申告書等作成コーナーで申告します/);
   });
   test("表に無い新しい年分は、いちばん新しい版で書き出して知らせる", () => {
     expect(incomeXtxVersionFor(2025)).toEqual({ version: "25.0.1", fallback: false });

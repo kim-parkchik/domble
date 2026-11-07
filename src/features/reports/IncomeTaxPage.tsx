@@ -29,13 +29,16 @@ import { MyNumberDialog } from "../../components/MyNumberDialog";
 import { CODE } from "../../constants/accounts";
 import {
   blueDeductionLimit, CARRY_LABELS, carriedFromPast, carriedLosses, computeIncomeTax, dependentDeduction, fieldNo, reiwaYear, rulesFor, DEPENDENT_KIND_LABEL, DISABILITIES,
-  DONATION_LOCALS, emptyRelative, EMPTY_INCOME_TAX_INPUT, spouseDeduction,
+  DONATION_LOCALS, emptyRelative, EMPTY_INCOME_TAX_INPUT, OUTSIDE_INCOMES, spouseDeduction,
+  DIVIDEND_CREDITS, type DividendRow,
   type CarriedLoss, type Disability, type Donation, type IncomeTaxInput, type IncomeTaxResult, type MiscRow, type PastIncomeTax, type PayerRow, type PremiumRow,
   type Relative, HEALTH_EFFORTS, MEDICAL_KINDS, hasMedicalDetail, medicalTotals, type MedicalRow, type SelfMedRow,
 } from "../../lib/incomeTax";
 import * as repo from "../../db/repo";
 import { medicalStatement, selfMedStatement, statementProblem } from "../../lib/medicalStatement";
-import { bookLines, exclusiveAccountsOf } from "../../lib/taxExclusive";
+import { bookLines, exclusiveAccountsOf, isExclusiveOn } from "../../lib/taxExclusive";
+import { assetSalesOf, emptyTransfer, type OccasionalRow, type TransferRow } from "../../lib/transfers";
+import type { FixedAsset } from "../../lib/depreciation";
 import { incomeFilingLines } from "../../lib/amendment";
 import { salesDate, savedTotals } from "../../lib/salesDoc";
 import { FilingSection, useFilings } from "./FilingSection";
@@ -82,10 +85,19 @@ export const IncomeTaxPage = () => {
     repo.getStatementNotes(db, year).then((n) => setLandInterest(Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0)).catch(console.error);
   }, [db, year, dataVersion]);
   const reScale = settings.real_estate ?? "none";
-  const { biz, familyLines } = useMemo(
-    () => businessFigures(accounts, end, filingType, x, year, { scale: reScale, landInterest }),
-    [accounts, end, filingType, x, year, reScale, landInterest],
-  );
+  // 固定資産台帳でその年に売却した資産（総合課税の譲渡所得。一括償却資産は事業所得なので知らせるだけ）
+  const [assets, setAssets] = useState<FixedAsset[]>([]);
+  useEffect(() => {
+    repo.getAssets(db).then(setAssets).catch(console.error);
+  }, [db, dataVersion]);
+  const salesOf = useMemo(() => (y: number) => {
+    const r = assetSalesOf(assets, y, (id) => accounts.find((a) => a.id === id)?.name ?? "", (d) => isExclusiveOn(taxYears, d));
+    return { assetSales: r.sales, lumpSold: r.lump };
+  }, [assets, accounts, taxYears]);
+  const { biz, familyLines } = useMemo(() => {
+    const f = businessFigures(accounts, end, filingType, x, year, { scale: reScale, landInterest });
+    return { ...f, biz: { ...f.biz, ...salesOf(year) } };
+  }, [accounts, end, filingType, x, year, reScale, landInterest, salesOf]);
 
   // 前の年から繰り越した純損失：前の年の申告（保存した所得税の入力と帳簿）から引き継ぐ。前の年の入力が無ければ null
   const [pastCarry, setPastCarry] = useState<CarriedLoss[] | null>(null);
@@ -99,13 +111,13 @@ export const IncomeTaxPage = () => {
       const li = Number((n["re:landInterest"] ?? "").replace(/[,\s円]/g, "")) || 0;
       const scale = await repo.getRealEstateScale(db, y); // 不動産所得の規模はその年のもの
       const books = bookLines(l, taxYears, exclusiveAccountsOf(accounts)); // 税抜経理の年は税抜で
-      return { input, biz: businessFigures(accounts, closingBalances(accounts, o.byAccount, books), filingTypeOf(y), input, y, { scale, landInterest: li }).biz };
+      return { input, biz: { ...businessFigures(accounts, closingBalances(accounts, o.byAccount, books), filingTypeOf(y), input, y, { scale, landInterest: li }).biz, ...salesOf(y) } };
     };
     carriedFromPast(year, load).then((v) => alive && setPastCarry(v)).catch(console.error);
     return () => {
       alive = false;
     };
-  }, [db, year, dataVersion, accounts, filingTypeOf, taxYears]);
+  }, [db, year, dataVersion, accounts, filingTypeOf, taxYears, salesOf]);
   const carried = useMemo(() => carriedLosses(x, year, pastCarry), [x, year, pastCarry]);
   const result = useMemo(() => computeIncomeTax(x, biz, year, carried), [x, biz, year, carried]);
   const fourth = result.loss.fourth;
@@ -317,7 +329,7 @@ const Amount = ({ value, onChange, disabled, label }: { value: number; onChange:
   <AmountInput value={value || null} onChange={(n) => onChange(n ?? 0)} disabled={disabled} aria-label={label} />
 );
 
-type Col<T> = { key: keyof T & string; label: string; kind: "text" | "amount" | "select"; width?: number; placeholder?: string; options?: [string, string][] };
+type Col<T> = { key: keyof T & string; label: string; kind: "text" | "amount" | "select" | "date" | "check"; width?: number; placeholder?: string; options?: [string, string][] };
 
 /** 行を足し引きできる表 */
 const RowsEditor = <T extends object>({ rows, cols, onChange, make, addLabel, disabled }: {
@@ -327,6 +339,7 @@ const RowsEditor = <T extends object>({ rows, cols, onChange, make, addLabel, di
   return (
     <div className="it-rows">
       {rows.length > 0 && (
+        <div className="it-table-wrap">
         <table className="ledger it-table">
           <thead>
             <tr>{cols.map((c) => <th key={c.key} className={c.kind === "amount" ? "num" : ""} style={c.width ? { width: c.width } : undefined}>{c.label}</th>)}<th style={{ width: 40 }} /></tr>
@@ -338,6 +351,10 @@ const RowsEditor = <T extends object>({ rows, cols, onChange, make, addLabel, di
                   <td key={c.key}>
                     {c.kind === "amount" ? (
                       <Amount value={r[c.key] as number} onChange={(n) => update(i, c.key, n)} disabled={disabled} label={c.label} />
+                    ) : c.kind === "check" ? (
+                      <input type="checkbox" checked={!!r[c.key]} onChange={(e) => update(i, c.key, e.target.checked)} disabled={disabled} aria-label={c.label} />
+                    ) : c.kind === "date" ? (
+                      <input className="input" type="date" value={r[c.key] as string} onChange={(e) => update(i, c.key, e.target.value)} disabled={disabled} aria-label={c.label} />
                     ) : c.kind === "select" ? (
                       <select className="input" value={r[c.key] as string} onChange={(e) => update(i, c.key, e.target.value)} disabled={disabled} aria-label={c.label}>
                         {c.options!.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -354,6 +371,7 @@ const RowsEditor = <T extends object>({ rows, cols, onChange, make, addLabel, di
             ))}
           </tbody>
         </table>
+        </div>
       )}
       <button type="button" className="btn ghost sm" onClick={() => onChange([...rows, make()])} disabled={disabled}><Plus size={14} /> {addLabel}</button>
     </div>
@@ -375,6 +393,39 @@ const MISC_COLS: Col<MiscRow>[] = [
   { key: "expenses", label: "必要経費", kind: "amount", width: 120 },
   { key: "withheld", label: "源泉徴収税額", kind: "amount", width: 120 },
 ];
+const DIVIDEND_COLS: Col<DividendRow>[] = [
+  { key: "item", label: "種目", kind: "text", width: 100, placeholder: "株式の配当" },
+  { key: "payer", label: "支払者の名称（銘柄）", kind: "text", width: 150 },
+  { key: "payerId", label: "法人番号又は所在地", kind: "text", width: 140 },
+  { key: "income", label: "収入金額", kind: "amount", width: 110 },
+  { key: "withheld", label: "源泉徴収税額", kind: "amount", width: 110 },
+  { key: "listed", label: "上場", kind: "check", width: 44 },
+  { key: "localWithheld", label: "配当割額", kind: "amount", width: 100 },
+  { key: "interest", label: "負債の利子", kind: "amount", width: 100 },
+  { key: "credit", label: "配当控除", kind: "select", width: 190, options: DIVIDEND_CREDITS },
+];
+const emptyDividend = (): DividendRow => ({ ...emptyPayer(), listed: true, localWithheld: 0, interest: 0, credit: "stock" });
+const TRANSFER_COLS: Col<TransferRow>[] = [
+  { key: "name", label: "資産の名称", kind: "text", width: 150 },
+  { key: "kind", label: "種類", kind: "text", width: 100, placeholder: "金地金" },
+  { key: "acquired", label: "取得日", kind: "date", width: 130 },
+  { key: "sold", label: "譲渡日", kind: "date", width: 130 },
+  { key: "price", label: "譲渡価額", kind: "amount", width: 110 },
+  { key: "cost", label: "取得費", kind: "amount", width: 110 },
+  { key: "expenses", label: "譲渡費用", kind: "amount", width: 100 },
+  { key: "luxury", label: "趣味・娯楽用", kind: "check", width: 70 },
+  { key: "buyer", label: "譲渡先", kind: "text", width: 140 },
+];
+const OCCASIONAL_COLS: Col<OccasionalRow>[] = [
+  { key: "item", label: "種目", kind: "text", width: 130, placeholder: "生命保険の満期金" },
+  { key: "payer", label: "支払者の名称", kind: "text" },
+  { key: "payerId", label: "法人番号又は所在地", kind: "text" },
+  { key: "income", label: "収入金額", kind: "amount", width: 120 },
+  { key: "expenses", label: "支出した金額", kind: "amount", width: 120 },
+  { key: "withheld", label: "源泉徴収税額", kind: "amount", width: 110 },
+];
+const emptyOccasional = (): OccasionalRow => ({ ...emptyPayer(), expenses: 0 });
+
 const PREMIUM_COLS = (placeholder: string): Col<PremiumRow>[] => [
   { key: "kind", label: "種類", kind: "text", placeholder },
   { key: "amount", label: "支払った額", kind: "amount", width: 150 },
@@ -389,6 +440,28 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, whi
   const man = (n: number) => `${n / 10_000}万円`;
   return (
   <div className="it-input">
+    <Section title="domble で扱わない所得・控除" note="毎年答えてください。答えるまで、所得税の e-Tax 用のデータは書き出せません。">
+      <p className="field-note">次のもので、{reiwaYear(year)}に申告するものはありますか。</p>
+      <ul className="it-outside-list">{OUTSIDE_INCOMES.map((t) => <li key={t}>{t}</li>)}</ul>
+      <div className="field-row wrap" role="radiogroup" aria-label="domble で扱わない所得・控除">
+        <label className="check"><input type="radio" name="it-outside" checked={x.outside === "none"} onChange={() => set("outside", "none")} disabled={disabled} /> ない</label>
+        <label className="check"><input type="radio" name="it-outside" checked={x.outside === "some"} onChange={() => set("outside", "some")} disabled={disabled} /> ある</label>
+      </div>
+      {x.outside === "some" && (
+        <div className="notice it-outside-guide">
+          <p>
+            この年は、所得税の e-Tax 用のデータを書き出しません。e-Taxソフト（WEB版）では、読み込んだ申告書にあとから所得を足せず、申告漏れになるためです。
+            国税庁の確定申告書等作成コーナーで申告書を作ってください。
+          </p>
+          <ul>
+            <li>事業所得・不動産所得は、作成コーナーの決算書・収支内訳書の入力に、domble の決算書（収支内訳書）の数字を写します（決算書の画面で印刷できます）</li>
+            <li>給与・年金・所得控除などは、この画面の第一表・第二表の数字を写せます</li>
+            <li>消費税の申告は、これまでどおり domble の e-Tax 用のデータを e-Taxソフト（WEB版）で送れます</li>
+          </ul>
+        </div>
+      )}
+    </Section>
+
     <Section title="本人">
       <div className="field-row wrap">
         <label className="field" style={{ maxWidth: 180 }}>
@@ -434,6 +507,40 @@ const InputView = ({ x, set, setX, result, year, disabled, drawings, onPick, whi
 
     <Section title="雑所得（業務・その他）" note="業務：副業の原稿料・講演料など事業と言えないもの。その他：暗号資産など。損失はほかの所得から差し引けません。">
       <RowsEditor rows={x.misc} cols={MISC_COLS} onChange={(v) => set("misc", v)} make={(): MiscRow => ({ ...emptyPayer(), kind: "business", expenses: 0 })} addLabel="雑所得を足す" disabled={disabled} />
+    </Section>
+
+    <Section
+      title="配当所得（総合課税で申告するもの）"
+      note={<>
+        総合課税で申告する配当だけを入れます。申告しない（申告不要を選ぶ）配当と、分離課税で申告する配当は入れません（分離課税は「domble で扱わない所得・控除」）。
+        上場株式等の配当を申告するときは、申告するものすべてを総合課税か分離課税のどちらかにします。特定口座の配当は年間取引報告書から入れます。
+        配当割額は住民税の分（上場株式等のとき。第二表の「配当割額控除額」）、負債の利子は株式などを買うための借入金の利子です。
+        配当控除は、課税される所得金額のうち 1,000万円を超える部分に当たる配当には半分の率で計算します（所得税額まで）。
+      </>}
+    >
+      <RowsEditor rows={x.dividends} cols={DIVIDEND_COLS} onChange={(v) => set("dividends", v)} make={emptyDividend} addLabel="配当を足す" disabled={disabled} />
+      {x.dividends.length > 0 && (
+        <p className="field-note">配当所得 {yen(result.dividend.amount)}円、配当控除 {yen(result.dividend.credit)}円{result.dividend.local ? `、住民税の配当割額控除額 ${yen(result.dividend.local)}円` : ""}</p>
+      )}
+    </Section>
+
+    <TransferSection x={x} setX={setX} result={result} disabled={disabled} />
+
+    <Section
+      title="一時所得"
+      note={<>
+        生命保険の満期金・一時金（保険料を本人が払ったもの）、損害保険の満期返戻金、懸賞・福引の賞金、競馬・競輪の払戻金など。
+        支出した金額は、その収入を得るために直接払ったもの（払った保険料、当たり馬券の購入代金など）だけです。
+        （収入 − 支出 − 特別控除 50万円まで）の 1/2 を総所得金額に入れます。損失はほかの所得から差し引けません。
+        保険料を本人以外が払った保険金は相続税・贈与税、年金で受け取るものは雑所得です。
+      </>}
+    >
+      <RowsEditor rows={x.occasional} cols={OCCASIONAL_COLS} onChange={(v) => set("occasional", v)} make={emptyOccasional} addLabel="一時所得を足す" disabled={disabled} />
+      {x.occasional.length > 0 && (
+        <p className="field-note">
+          差引金額 {signed(result.occasional.gain)}円 − 特別控除 {yen(result.occasional.special)}円 ＝ 一時所得の金額 {yen(result.occasional.amount)}円（㋚）
+        </p>
+      )}
     </Section>
 
     <CarrySection x={x} set={set} result={result} year={year} disabled={disabled} pastCarry={pastCarry} />
@@ -634,6 +741,85 @@ const RelativesEditor = ({ rows, onChange, year, ownIncome, spouse, disabled }: 
 };
 
 /** 前の年から繰り越した純損失（第四表（二）の「4 繰越損失を差し引く計算」）。前の年の申告から引き継ぐか、手で入れる */
+/**
+ * 総合課税の譲渡所得：固定資産台帳で売却した資産（譲渡費用・取得費の直し・譲渡先を入れる）と、台帳に無いもの（手で入れる）
+ */
+const TransferSection = ({ x, setX, result, disabled }: {
+  x: IncomeTaxInput; setX: (f: (p: IncomeTaxInput) => IncomeTaxInput) => void; result: IncomeTaxResult; disabled: boolean;
+}) => {
+  const fromAssets = result.transfers.filter((t) => t.sale);
+  const manual = x.transfers.filter((r) => r.assetId === null);
+  // 台帳の資産の行を直す（入力に行が無ければ作る）
+  const edit = (assetId: number, patch: Partial<TransferRow>) => setX((p) => {
+    const has = p.transfers.some((r) => r.assetId === assetId);
+    return {
+      ...p,
+      transfers: has ? p.transfers.map((r) => (r.assetId === assetId ? { ...r, ...patch } : r)) : [...p.transfers, { ...emptyTransfer(), assetId, ...patch }],
+    };
+  });
+  const rowOf = (assetId: number) => x.transfers.find((r) => r.assetId === assetId);
+  const tr = result.transfer;
+  return (
+    <Section
+      title="総合課税の譲渡所得（事業用の車・機械などを売ったとき）"
+      note={<>
+        固定資産台帳で「売却」にした資産は自動で並びます。家事と兼用する資産は事業用の部分だけです（家事用の部分は生活用動産の譲渡で非課税）。
+        取得費は売った年の期末の未償却残高（事業用の部分）で、違うときは直せます。持っていた期間が5年以内は短期、5年を超えると長期です。
+        特別控除は短期・長期あわせて 50万円（短期から）で、長期は 1/2 を総所得金額に入れます。一括償却資産・10万円未満の資産を売った額は事業所得です。
+        台帳に無いもの（金地金・ゴルフ会員権・書画骨董など）は下に足します。「趣味・娯楽用」（ゴルフ会員権・別荘・1個30万円を超える貴金属など）の損失は、ほかの所得から差し引けません。
+        土地・建物・株式の譲渡は分離課税なので、ここには入れません（「domble で扱わない所得・控除」）。
+      </>}
+    >
+      {fromAssets.length > 0 && (
+        <div className="it-table-wrap">
+        <table className="ledger it-table">
+          <thead>
+            <tr>
+              <th>資産（台帳）</th><th>取得日</th><th>売却日</th><th>期間</th><th className="num">売却額</th><th className="num">事業割合</th>
+              <th className="num">譲渡価額</th><th className="num" style={{ width: 120 }}>取得費</th><th className="num" style={{ width: 110 }}>譲渡費用</th><th style={{ width: 130 }}>譲渡先</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fromAssets.map((t) => (
+              <tr key={t.assetId}>
+                <td>{t.name}<span className="muted">（{t.kind}）</span></td>
+                <td>{t.acquired}</td>
+                <td>{t.sold}</td>
+                <td>{t.term === "long" ? "長期" : "短期"}</td>
+                <td className="num">{yen(t.sale!.salePrice)}</td>
+                <td className="num">{t.sale!.rate}%</td>
+                <td className="num">{yen(t.price)}</td>
+                <td>
+                  <AmountInput
+                    value={rowOf(t.assetId!)?.cost ?? null} placeholder={yen(t.sale!.cost)} aria-label="取得費"
+                    onChange={(n) => edit(t.assetId!, { cost: n })} disabled={disabled}
+                  />
+                </td>
+                <td><Amount value={rowOf(t.assetId!)?.expenses ?? 0} onChange={(n) => edit(t.assetId!, { expenses: n })} disabled={disabled} label="譲渡費用" /></td>
+                <td>
+                  <input className="input" value={rowOf(t.assetId!)?.buyer ?? ""} maxLength={100} aria-label="譲渡先" onChange={(e) => edit(t.assetId!, { buyer: e.target.value })} disabled={disabled} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+      )}
+      {fromAssets.length === 0 && <p className="field-note">この年に固定資産台帳で売却した資産はありません。</p>}
+      <RowsEditor
+        rows={manual} cols={TRANSFER_COLS} make={emptyTransfer} addLabel="台帳に無い譲渡を足す" disabled={disabled}
+        onChange={(v) => setX((p) => ({ ...p, transfers: [...p.transfers.filter((r) => r.assetId !== null), ...v] }))}
+      />
+      {result.transfers.length > 0 && (
+        <p className="field-note">
+          短期：差引金額 {signed(tr.short.gain)}円・特別控除 {yen(tr.special.short)}円 → ㋘ {signed(tr.a)}円。
+          長期：差引金額 {signed(tr.long.gain)}円・特別控除 {yen(tr.special.long)}円 → ㋙ {signed(tr.b)}円。
+        </p>
+      )}
+    </Section>
+  );
+};
+
 const CarrySection = ({ x, set, result, year, disabled, pastCarry }: {
   x: IncomeTaxInput; set: <K extends keyof IncomeTaxInput>(k: K, v: IncomeTaxInput[K]) => void; result: IncomeTaxResult; year: number; disabled: boolean;
   pastCarry: CarriedLoss[] | null;
@@ -718,9 +904,12 @@ const Row = ({ no, label, value, note }: { no: string; label: string; value: num
   <tr><td className="tax-form-no">{no}</td><td>{label}</td><td className="num"><b>{signed(value)}</b></td><td className="muted">{note ?? ""}</td></tr>
 );
 
-/** 第四表（損失申告用）：domble が扱う所得は経常所得だけなので、(67)・(81)・(82)・4 の繰越損失・(93) */
+/** 第四表（損失申告用）：(67) 経常所得・総合課税の譲渡・一時所得と損益の通算の後の額・(81)・(82)・4 の繰越損失・(93) */
 const FourthTable = ({ result, year }: { result: IncomeTaxResult; year: number }) => {
   const l = result.loss;
+  const o = result.offset;
+  // 総合課税の譲渡・一時所得があれば、その行と損益の通算の後の額も出す
+  const mixed = result.transfers.length > 0 || result.occasional.income > 0;
   return (
     <div className="print-area">
       <h3 className="sheet-sub">{year}年分 所得税及び復興特別所得税の確定申告書（損失申告用）第四表の数字</h3>
@@ -729,8 +918,20 @@ const FourthTable = ({ result, year }: { result: IncomeTaxResult; year: number }
         <thead><tr><th>欄</th><th>項目</th><th className="num">金額</th><th>備考</th></tr></thead>
         <tbody>
           <tr className="cat-row"><td colSpan={4}>第四表（一）　1 損失額又は所得金額・2 損益の通算</td></tr>
-          <Row no={fieldNo(67)} label="経常所得（第一表の①から⑥までの計＋⑩）" value={l.income} note="通算前・第1次〜第3次通算後・損失額又は所得金額も同じ額" />
-          <Row no={fieldNo(81)} label="損失額又は所得金額の合計額" value={l.income} note="譲渡・一時・山林・退職の所得は domble では扱いません" />
+          {mixed ? (
+            <>
+              <Row no={fieldNo(67)} label="経常所得（第一表の①から⑥までの計＋⑩）" value={o.before} note={`損益の通算の後 ${signed(o.ordinary)}円`} />
+              {result.transfers.some((t) => t.term !== "long") && <Row no="" label="総合譲渡（短期）" value={result.transfer.a} note={`損益の通算の後 ${signed(o.short)}円`} />}
+              {result.transfers.some((t) => t.term === "long") && <Row no="" label="総合譲渡（長期）" value={result.transfer.b} note={`損益の通算の後 ${signed(o.long)}円`} />}
+              {result.occasional.income > 0 && <Row no="" label="一時" value={result.occasional.amount} note={`損益の通算の後 ${signed(o.occasional)}円`} />}
+              <Row no={fieldNo(81)} label="損失額又は所得金額の合計額" value={l.income} note="長期譲渡・一時は損益の通算の後で 1/2。山林・退職・分離課税の所得は domble では扱いません" />
+            </>
+          ) : (
+            <>
+              <Row no={fieldNo(67)} label="経常所得（第一表の①から⑥までの計＋⑩）" value={l.income} note="通算前・第1次〜第3次通算後・損失額又は所得金額も同じ額" />
+              <Row no={fieldNo(81)} label="損失額又は所得金額の合計額" value={l.income} note="山林・退職・分離課税の所得は domble では扱いません" />
+            </>
+          )}
           <tr className="cat-row"><td colSpan={4}>第四表（二）　3 翌年以後に繰り越す損失額</td></tr>
           <Row no={fieldNo(82)} label="青色申告者の損失の金額" value={l.blueLoss} note={l.blueLoss ? "(81) の赤字" : undefined} />
           <tr className="cat-row"><td colSpan={4}>4 繰越損失を差し引く計算（純損失・青色の年・山林以外の所得の損失）</td></tr>
@@ -937,6 +1138,29 @@ const SecondTable = ({ result, x, familySalary, white, familyLines }: {
           </tbody>
         </table>
       ) : <p className="field-note">源泉徴収された収入はありません。</p>}
+
+      {s.transfers.length > 0 && (
+        <>
+          <h3 className="sheet-sub">総合課税の譲渡所得、一時所得に関する事項（⑪）</h3>
+          <table className="ledger tax-form-table">
+            <thead><tr><th>所得の種類</th><th className="num">収入金額</th><th className="num">必要経費等</th><th className="num">差引金額</th></tr></thead>
+            <tbody>
+              {s.transfers.map((r) => (
+                <tr key={r.kind}><td>{r.kind}</td><td className="num">{yen(r.income)}</td><td className="num">{yen(r.costs)}</td><td className="num">{signed(r.gain)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          {s.transfers.length > 2 && <p className="field-note">第二表のこの欄は2行です。3行目は e-Tax 用のデータに書けません（譲渡所得の内訳書と第一表には入ります）。</p>}
+        </>
+      )}
+
+      {(result.dividend.local > 0 || result.transfer.businessLoss > 0) && (
+        <>
+          <h3 className="sheet-sub">住民税・事業税に関する事項（譲渡・配当）</h3>
+          {result.dividend.local > 0 && <p className="it-plain">住民税：配当割額控除額 {yen(result.dividend.local)}円</p>}
+          {result.transfer.businessLoss > 0 && <p className="it-plain">事業税：事業用資産の譲渡損失など {yen(result.transfer.businessLoss)}円</p>}
+        </>
+      )}
 
       <h3 className="sheet-sub">⑬ 社会保険料控除・⑭ 小規模企業共済等掛金控除</h3>
       {[...s.socialInsurance.map((r) => ["⑬", r] as const), ...s.smallBusiness.map((r) => ["⑭", r] as const)].length ? (

@@ -4,10 +4,12 @@
  * 年分で変わる決まり（基礎控除・給与所得控除・扶養親族などの所得要件・勤労学生・生命保険料控除の特例）は INCOME_TAX_RULES の年分ごとの表に持つ。
  * 表に無い年分は、いちばん近い年分の表で計算し、そのことを notes で知らせる（決まりが定まる前の年も、仮の数字を出せるように）
  *
- * 対象：事業所得（営業等。帳簿と決算書から）・給与所得・雑所得（公的年金等・業務・その他）
+ * 対象：事業所得（営業等。帳簿と決算書から）・不動産所得・配当所得（総合課税）・給与所得・雑所得（公的年金等・業務・その他）・
+ *   総合課税の譲渡所得（固定資産台帳で売却した事業用の資産と、台帳に無いもの）・一時所得（lib/transfers.ts）
  *  - 給与所得控除は年分の表の最低保障（令和7年分 65万円、令和8・9年分 74万円と 190万円超 220万円以下の特例の段）。660万円未満は「年末調整等のための給与所得控除後の給与等の金額の表」と同じ計算
  *  - 公的年金等控除は年齢（その年12月31日現在で65歳以上か）と、公的年金等以外の合計所得金額（1,000万円・2,000万円）で決める
- *  - 雑所得の損失は雑所得の中だけで差し引く。事業所得の損失はほかの所得から差し引く（損益の通算）
+ *  - 雑所得の損失は雑所得の中だけで差し引く。配当所得の損失は 0。事業所得・不動産所得・総合課税の譲渡所得の損失はほかの所得から差し引く
+ *    （損益の通算。経常所得の損失 → 譲渡 → 一時、譲渡の損失 → 一時 → 経常所得の順。長期譲渡と一時は通算のあとで 1/2。offsetIncomes）
  * 損失申告（第四表）：青色申告の年の純損失を翌年以後3年間に繰り越し、古い年分から順に差し引く（純損失の繰越控除。lossOf）
  *  - 本年の純損失を繰り越すとき・繰越損失が翌年に残るときは第四表を使い、第一表の ⑫・㉛ は書かず ㉜ は 0（損失申告用の手引き）
  *  - 繰越損失を使い切るときは第四表を使わず、第一表の (62)「本年分で差し引く繰越損失額」に書いて ⑫ から差し引く
@@ -15,16 +17,21 @@
  *  - 白色申告の年の純損失（繰り越せるのは変動所得・被災事業用資産の損失だけ）、雑損失、前年への繰戻し還付は扱わない
  * 所得控除：社会保険料・小規模企業共済等掛金・生命保険料（令和8年分からの23歳未満の扶養親族がいる場合の特例を含む）・地震保険料・寄附金・医療費（またはセルフメディケーション税制）・
  *   寡婦・ひとり親・勤労学生・障害者・配偶者（特別）・扶養・特定親族特別控除（令和7年分から）・基礎控除
- * 税額：課税される所得金額（千円未満切り捨て）× 税率、住宅借入金等特別控除（計算明細書の額を入れる）、復興特別所得税（基準所得税額 × 2.1%。1円未満切り捨て）、
+ * 税額：課税される所得金額（千円未満切り捨て）× 税率、配当控除（dividendCredit）、住宅借入金等特別控除（計算明細書の額を入れる）、復興特別所得税（基準所得税額 × 2.1%。1円未満切り捨て）、
  *   源泉徴収税額・予定納税額を差し引いて、納める税金（百円未満切り捨て）または還付される税金
  * 事業所得：青色申告は青色申告特別控除を差し引く。白色申告は収支内訳書の所得金額（事業専従者控除の後。lib/whiteStatement.ts）をそのまま使う
  * 所得金額調整控除（No.1411。給与所得から差し引く）：(1) 給与の収入が 850万円超で、本人が特別障害者・23歳未満の扶養親族がいる・特別障害者の同一生計配偶者か扶養親族がいる
  *   ＝（収入（1,000万円まで）− 850万円）× 10%（1円未満切り上げ）、(2) 給与所得と公的年金等の雑所得の両方がある ＝ それぞれ 10万円までの合計 − 10万円。
  *   収入金額等 ㋔ の区分に (1) は 1、(2) は 2、両方は 3 を書く
- * 扱わないもの：利子・配当・譲渡・一時所得、分離課税、雑損控除、特定支出控除、配当控除などほかの税額控除、災害減免、外国税額控除
+ * 扱わないもの（OUTSIDE_INCOMES）：利子所得、分離課税（株式等・土地建物等の譲渡、上場株式等の配当、先物）、退職・山林所得、変動所得の平均課税、
+ *   雑損控除、特定支出控除、配当控除と住宅借入金等特別控除のほかの税額控除、災害減免、外国税額控除
  */
 import type { FilingType, RealEstateScale } from "./types";
 import { BLUE75_FROM } from "./filing";
+import {
+  occasionalResult, offsetIncomes, transferResult, transfersOf,
+  type AssetSale, type OccasionalRow, type OffsetResult, type Transfer, type TransferResult, type TransferRow,
+} from "./transfers";
 
 // ────────────────────────────────────────────
 // 入力（年度ごとに保存する。帳簿から出せないもの）
@@ -57,6 +64,23 @@ export interface MiscRow extends PayerRow {
   kind: "business" | "other";
   /** 必要経費 */
   expenses: number;
+}
+
+/** 配当控除の区分（所得税法92条）：株式の配当など 10%、証券投資信託の収益の分配 5%、外貨建等証券投資信託 2.5%（課税総所得金額等の1,000万円を超える部分はその半分）、対象外 */
+export type DividendCredit = "stock" | "fund" | "foreign" | "none";
+export const DIVIDEND_CREDITS: [DividendCredit, string][] = [
+  ["stock", "株式の配当など（10%）"], ["fund", "証券投資信託の分配（5%）"], ["foreign", "外貨建等証券投資信託（2.5%）"], ["none", "対象外（外国株式・J-REIT など）"],
+];
+
+/** 配当（総合課税で申告するもの） */
+export interface DividendRow extends PayerRow {
+  /** 上場株式等（特定口座・証券会社の口座で、住民税の配当割が差し引かれているもの） */
+  listed: boolean;
+  /** 配当割額（住民税。第二表の「配当割額控除額」） */
+  localWithheld: number;
+  /** 元本を取得するための負債の利子（その年に払ったもののうち、元本を持っていた期間の分） */
+  interest: number;
+  credit: DividendCredit;
 }
 
 /** 保険料など（種類ごと） */
@@ -144,7 +168,26 @@ export interface CarriedLoss {
 /** 繰越損失の行の名前（[3年前, 2年前, 前年]） */
 export const CARRY_LABELS = ["3年前", "2年前", "前年"] as const;
 
+/**
+ * domble で扱わない所得・控除（入力の画面に並べる例）。申告するものがある年は、所得税の e-Tax 用のデータを書き出さず、
+ * 確定申告書等作成コーナーで申告してもらう（e-Taxソフト（WEB版）は読み込んだ申告書に所得を足せないため）
+ */
+export const OUTSIDE_INCOMES = [
+  "株式・投資信託などの譲渡（源泉徴収ありの特定口座で、申告しないものは除く）",
+  "上場株式等の配当を、分離課税で申告するもの",
+  "土地・建物などの売却",
+  "先物取引・FX・暗号資産の先物などの分離課税のもの",
+  "退職所得・山林所得、国外で受け取った利子",
+  "変動所得・臨時所得の平均課税（原稿料・印税などで選ぶとき）",
+  "雑損控除（災害・盗難）、外国税額控除、政党等寄附金などの税額控除",
+] as const;
+
 export interface IncomeTaxInput {
+  /**
+   * domble で扱わない所得・控除（OUTSIDE_INCOMES）で、この年に申告するものがあるか。
+   * "" = まだ答えていない、none = ない、some = ある（所得税の e-Tax 用のデータは書き出さない）
+   */
+  outside: "" | "none" | "some";
   /** 本人の生年月日（YYYY-MM-DD。公的年金等控除の年齢に使う） */
   birthday: string;
   /** 翌年1月1日の住所（今の住所と違うときだけ。年分ごと） */
@@ -160,6 +203,12 @@ export interface IncomeTaxInput {
   /** 公的年金等（源泉徴収票の支払金額・源泉徴収税額） */
   pensions: PayerRow[];
   misc: MiscRow[];
+  /** 配当（総合課税で申告するもの。申告しない・分離課税にするものは入れない） */
+  dividends: DividendRow[];
+  /** 総合課税の譲渡（固定資産台帳で売却した資産の譲渡費用・譲渡先と、台帳に無い資産） */
+  transfers: TransferRow[];
+  /** 一時所得 */
+  occasional: OccasionalRow[];
   socialInsurance: PremiumRow[];
   smallBusiness: PremiumRow[];
   /** 生命保険料（その年に払った額。剰余金・割戻金を差し引いた額） */
@@ -201,8 +250,8 @@ export const emptyRelative = (relation = ""): Relative => ({
 });
 
 export const EMPTY_INCOME_TAX_INPUT: IncomeTaxInput = {
-  birthday: "", jan1Address: "", widow: "none", student: false, disability: "none",
-  businessWithholding: [], salaries: [], pensions: [], misc: [],
+  outside: "", birthday: "", jan1Address: "", widow: "none", student: false, disability: "none",
+  businessWithholding: [], salaries: [], pensions: [], misc: [], dividends: [], transfers: [], occasional: [],
   socialInsurance: [], smallBusiness: [],
   life: { newLife: 0, oldLife: 0, newPension: 0, oldPension: 0, care: 0 },
   quake: { quake: 0, oldLong: 0 },
@@ -277,6 +326,7 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
   const changeDate = change ? text(biz.changeDate, 10) : "";
   if (changeDate && !isIsoDate(changeDate)) problems.push("事業税の開業・廃業の日付が正しくありません");
   const out: IncomeTaxInput = {
+    outside: x.outside === "none" || x.outside === "some" ? x.outside : "",
     birthday: date(x.birthday, "本人"),
     jan1Address: text(x.jan1Address),
     widow: x.widow === "widow" || x.widow === "single_parent" ? x.widow : "none",
@@ -287,6 +337,29 @@ export const normalizeIncomeTaxInput = (raw: unknown): IncomeTaxInput | string =
     pensions: list(x.pensions, (r: Partial<PayerRow>, i) => payer(r, `公的年金等 ${i + 1}行目`)),
     misc: list(x.misc, (r: Partial<MiscRow>, i) => ({
       ...payer(r, `雑所得 ${i + 1}行目`), kind: r.kind === "business" ? "business" as const : "other" as const, expenses: amount(r.expenses, `雑所得 ${i + 1}行目の必要経費`),
+    })),
+    dividends: list(x.dividends, (r: Partial<DividendRow>, i) => ({
+      ...payer(r, `配当 ${i + 1}行目`), listed: !!r.listed, localWithheld: amount(r.localWithheld, `配当 ${i + 1}行目の配当割額`),
+      interest: amount(r.interest, `配当 ${i + 1}行目の負債の利子`), credit: DIVIDEND_CREDITS.some(([k]) => k === r.credit) ? r.credit! : "stock",
+    })),
+    transfers: list(x.transfers, (r: Partial<TransferRow>, i) => {
+      const label = `譲渡 ${i + 1}行目`;
+      const day = (v: unknown, what: string) => {
+        const t = text(v, 10);
+        if (t && !isIsoDate(t)) problems.push(`${label}の${what}が正しくありません`);
+        return t;
+      };
+      return {
+        assetId: Number.isInteger(r.assetId) ? r.assetId! : null, name: text(r.name), kind: text(r.kind, 40),
+        acquired: day(r.acquired, "取得日"), sold: day(r.sold, "譲渡日"), price: amount(r.price, `${label}の譲渡価額`),
+        cost: r.cost === null || r.cost === undefined || (r.cost as unknown) === "" ? null : amount(r.cost, `${label}の取得費`),
+        expenses: amount(r.expenses, `${label}の譲渡費用`), luxury: !!r.luxury, buyer: text(r.buyer), buyerAddress: text(r.buyerAddress),
+      };
+    }),
+    occasional: list(x.occasional, (r: Partial<OccasionalRow>, i) => ({
+      item: text(r.item), payer: text(r.payer), payerId: text(r.payerId),
+      income: amount(r.income, `一時所得 ${i + 1}行目の収入金額`), expenses: amount(r.expenses, `一時所得 ${i + 1}行目の支出した金額`),
+      withheld: amount(r.withheld, `一時所得 ${i + 1}行目の源泉徴収税額`),
     })),
     socialInsurance: list(x.socialInsurance, (r: Partial<PremiumRow>, i) => ({ kind: text(r.kind), amount: amount(r.amount, `社会保険料 ${i + 1}行目`) })),
     smallBusiness: list(x.smallBusiness, (r: Partial<PremiumRow>, i) => ({ kind: text(r.kind), amount: amount(r.amount, `小規模企業共済等掛金 ${i + 1}行目`) })),
@@ -372,15 +445,15 @@ export type FormVersion = "r5" | "r6" | "r7";
 /** 第一表の欄番号（様式の版ごと。⑬〜㉓ は同じ。令和7年分から特定親族特別控除 ㉔ が入り、そのあとが1つずつずれる） */
 const FORM_NOS: Record<FormVersion, Record<string, number>> = {
   r7: {
-    basic: 25, subtotal: 26, casualty: 27, medical: 28, donation: 29, deductions: 30, taxable: 31, taxOn: 32, housing: 35, diff: 42, disaster: 43, base: 44,
+    dividend: 33, basic: 25, subtotal: 26, casualty: 27, medical: 28, donation: 29, deductions: 30, taxable: 31, taxOn: 32, housing: 35, diff: 42, disaster: 43, base: 44,
     recon: 45, total: 46, withheld: 49, declared: 50, prepaid: 51, pay: 52, refund: 53, pensionOther: 56, spouseIncome: 57, familySalary: 58, blue: 59, miscWithheld: 60, carry: 62,
   },
   r6: {
-    basic: 24, subtotal: 25, casualty: 26, medical: 27, donation: 28, deductions: 29, taxable: 30, taxOn: 31, housing: 34, diff: 41, disaster: 42, reTax: 43, flatCut: 44,
+    dividend: 32, basic: 24, subtotal: 25, casualty: 26, medical: 27, donation: 28, deductions: 29, taxable: 30, taxOn: 31, housing: 34, diff: 41, disaster: 42, reTax: 43, flatCut: 44,
     base: 45, recon: 46, total: 47, withheld: 50, declared: 51, prepaid: 52, pay: 53, refund: 54, pensionOther: 57, spouseIncome: 58, familySalary: 59, blue: 60, miscWithheld: 61, carry: 63,
   },
   r5: {
-    basic: 24, subtotal: 25, casualty: 26, medical: 27, donation: 28, deductions: 29, taxable: 30, taxOn: 31, housing: 34, diff: 41, disaster: 42, base: 43,
+    dividend: 32, basic: 24, subtotal: 25, casualty: 26, medical: 27, donation: 28, deductions: 29, taxable: 30, taxOn: 31, housing: 34, diff: 41, disaster: 42, base: 43,
     recon: 44, total: 45, withheld: 48, declared: 49, prepaid: 50, pay: 51, refund: 52, pensionOther: 55, spouseIncome: 56, familySalary: 57, blue: 58, miscWithheld: 59, carry: 61,
   },
 };
@@ -609,6 +682,22 @@ const disabilityAmount = (d: Disability, cohabiting: boolean) => (d === "special
 // ────────────────────────────────────────────
 
 /** 課税される所得金額（千円未満切り捨て済み）に対する税額 */
+/**
+ * 配当控除（所得税法92条。確定申告の手引き「配当控除」）。課税総所得金額等のうち 1,000万円を超える部分に当たる配当所得は半分の率。
+ * 配当所得は、外貨建等証券投資信託・証券投資信託・株式の配当などの順に、上の段にあるものとして 1,000万円を超える部分に当てる。1円未満切り捨て
+ */
+export const dividendCredit = (amounts: { stock: number; fund: number; foreign: number }, taxable: number) => {
+  const RATES = { foreign: [250, 125], fund: [500, 250], stock: [1000, 500] } as const; // 1万分の
+  let over = Math.max(0, taxable - 10_000_000);
+  let t = 0;
+  for (const k of ["foreign", "fund", "stock"] as const) {
+    const high = Math.min(over, amounts[k]);
+    over -= high;
+    t += (amounts[k] - high) * RATES[k][0] + high * RATES[k][1];
+  }
+  return Math.floor(t / 10_000);
+};
+
 export const incomeTaxOn = (taxable: number) => {
   if (taxable <= 0) return 0;
   // [上限, 税率（%）, 控除額]
@@ -643,6 +732,10 @@ export interface BusinessFigures {
   familySalary: number;
   /** 不動産所得（不動産所得の科目に金額があるか、事業者設定で「あり」のとき） */
   realEstate?: RealEstateFigures;
+  /** 固定資産台帳でその年に売却した資産（総合課税の譲渡所得。lib/transfers.ts の assetSalesOf） */
+  assetSales?: AssetSale[];
+  /** その年に売却した一括償却資産の名前（譲渡所得ではなく事業所得なので、知らせるだけ） */
+  lumpSold?: string[];
 }
 
 /** 帳簿と不動産所得用の決算書から出す不動産所得の数字 */
@@ -680,6 +773,8 @@ export interface IncomeTaxResult {
     quake: IncomeTaxInput["quake"];
     donations: IncomeTaxInput["donations"];
     relatives: { name: string; relation: string; birthday: string; kind: string; disability: Disability; cohabiting: boolean }[];
+    /** 総合課税の譲渡所得、一時所得に関する事項（所得の種類・収入金額・必要経費等・差引金額） */
+    transfers: { kind: "譲渡（短期）" | "譲渡（長期）" | "一時"; income: number; costs: number; gain: number }[];
   };
   /** 合計所得金額（純損失の繰越控除の前。繰越控除が無ければ ⑫） */
   totalIncome: number;
@@ -687,6 +782,13 @@ export interface IncomeTaxResult {
   loss: LossResult;
   /** 不動産所得から差し引いた青色申告特別控除額（第二表の事業税の欄） */
   blueRealEstate: number;
+  /** 総合課税の譲渡（台帳の売却と手で入れたものを合わせたもの）・譲渡所得・一時所得・損益の通算 */
+  transfers: Transfer[];
+  transfer: TransferResult;
+  occasional: ReturnType<typeof occasionalResult>;
+  offset: OffsetResult & { before: number };
+  /** 配当（収入金額 ㋓、配当所得 ⑤、配当控除、住民税の配当割額控除額） */
+  dividend: { income: number; amount: number; credit: number; local: number };
   /** 所得金額調整控除（kubun = 収入金額等 ㋔ の区分。無ければ 0） */
   incomeAdjust: { first: number; second: number; total: number; kubun: number };
   /** 納める税金（＋）・還付される税金（−） */
@@ -708,7 +810,7 @@ export interface CarryRow {
 export interface LossResult {
   /** 第四表（損失申告用）を使うか（本年の純損失を繰り越すとき、または繰越損失が翌年に残るとき） */
   fourth: boolean;
-  /** (67)・(81) 経常所得の損失額又は所得金額（domble は譲渡・一時・山林・退職を扱わないので、損益の通算の前後で同じ額） */
+  /** (81) 損失額又は所得金額の合計額（損益の通算の後。総合課税の譲渡・一時所得が無ければ (67) 経常所得と同じ額） */
   income: number;
   /** (82) 青色申告者の損失の金額（本年の純損失。白色申告の年は 0） */
   blueLoss: number;
@@ -793,7 +895,14 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
   }
   const DEPENDENT_LIMIT = rules.dependentLimit;
   const white = biz.filingType === "white";
-  const input = white ? whiteFamilyInput(raw, year) : raw;
+  const base = white ? whiteFamilyInput(raw, year) : raw;
+  // 足したまま何も入れていない行（配当・一時所得・台帳に無い譲渡）は無いものとする
+  const input: IncomeTaxInput = {
+    ...base,
+    dividends: base.dividends.filter((r) => r.income || r.withheld || r.interest),
+    occasional: base.occasional.filter((r) => r.income || r.expenses || r.withheld),
+    transfers: base.transfers.filter((r) => r.assetId !== null || r.name.trim() || r.price || r.cost || r.expenses),
+  };
   // 青色申告特別控除は不動産所得、事業所得の順に差し引く。事業所得が無く、不動産の貸付けが事業的規模でなければ 10万円まで
   const re = biz.realEstate;
   const hasBusiness = biz.revenue !== 0 || biz.incomeBeforeBlue !== 0;
@@ -820,8 +929,15 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
   const r6First = salaryAfter - incomeAdjustment(salaryIn, salaryAfter, 0, adjustQualifies).first;
   const r8 = sum(input.misc.filter((r) => r.kind === "business").map((r) => r.income - r.expenses));
   const r9 = sum(input.misc.filter((r) => r.kind === "other").map((r) => r.income - r.expenses));
-  // 公的年金等以外の合計所得金額（雑所得の損失はほかの所得から引けない）
-  const other = r1 + r3 + r6First + Math.max(r8 + r9, 0);
+  // 配当所得 ⑤（収入 − 元本を取得するための負債の利子。損失は 0）
+  const dividendIn = sum(input.dividends.map((r) => r.income));
+  const r5 = Math.max(0, sum(input.dividends.map((r) => r.income - r.interest)));
+  // 総合課税の譲渡所得（台帳で売却した資産と、手で入れたもの）・一時所得（lib/transfers.ts）
+  const transfers = transfersOf(input.transfers, biz.assetSales ?? []);
+  const transfer = transferResult(transfers);
+  const occasional = occasionalResult(input.occasional);
+  // 公的年金等以外の合計所得金額（雑所得の損失はほかの所得から引けない。総合課税の譲渡・一時とは損益の通算をする）
+  const other = offsetIncomes(r1 + r3 + r5 + r6First + Math.max(r8 + r9, 0), transfer.a, transfer.b, occasional.amount).total;
   const age = ageAt(input.birthday, year);
   if (pensionIn > 0 && age === null) notes.push("公的年金等の控除額は、本人の生年月日が分からないため65歳未満として計算しています。");
   const r7 = pensionIncome(pensionIn, (age ?? 0) >= 65, other);
@@ -831,8 +947,19 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
     notes.push(`所得金額調整控除 ${adjust.total.toLocaleString()}円を給与所得から差し引いています（${[adjust.first ? `給与の収入が850万円超で${input.disability === "special" ? "本人が特別障害者" : youngDependent ? "23歳未満の扶養親族がいる" : "特別障害者の配偶者・扶養親族がいる"} ${adjust.first.toLocaleString()}円` : "", adjust.second ? `給与所得と公的年金等の雑所得の両方がある ${adjust.second.toLocaleString()}円` : ""].filter(Boolean).join("・")}。収入金額等 ㋔ の区分 ${adjust.kubun}）。`);
   }
   const r10 = Math.max(r7 + r8 + r9, 0);
-  // 合計所得金額（繰越控除の前）
-  const r12 = r1 + r3 + r6 + r10;
+  // 損益の通算（経常所得と総合課税の譲渡・一時所得）。合計所得金額（繰越控除の前）
+  const ordinary = r1 + r3 + r5 + r6 + r10;
+  const offset = offsetIncomes(ordinary, transfer.a, transfer.b, occasional.amount);
+  const r12 = offset.total;
+  const hasTransfer = transfers.length > 0;
+  const hasOccasional = input.occasional.length > 0;
+  const crossOffset = (hasTransfer || hasOccasional) && (offset.ordinary !== ordinary || (transfer.a + transfer.b < 0 && offset.transferLoss !== transfer.a + transfer.b));
+  const lumps = biz.lumpSold ?? [];
+  if (lumps.length) notes.push(`一括償却資産（${lumps.join("・")}）を売った額は、譲渡所得ではなく事業所得の収入です（雑収入などで帳簿に入れてください。国税庁 No.3105）。`);
+  const noTerm = transfers.filter((t) => !t.term);
+  if (noTerm.length) notes.push(`取得日か譲渡日の無い譲渡（${noTerm.map((t) => t.name || "名称なし").join("・")}）は、短期として計算しています。`);
+  if (transfer.ignored) notes.push(`生活に通常必要でない資産の譲渡損失のうち ${transfer.ignored.toLocaleString()}円は、ほかの所得から差し引けないので無いものとしています（所得税法69条②）。`);
+  if (crossOffset) notes.push("事業などの損失と、総合課税の譲渡所得・一時所得を差し引いています（損益の通算）。⑪・⑫ は損益の通算の後の額です（損益の通算の計算書）。");
   // 純損失の繰越控除。total = 総所得金額等（繰越控除の後。医療費控除・寄附金控除に使う）
   const loss = lossOf(r12, carried, year, white);
   const total = loss.forDeductions;
@@ -890,8 +1017,11 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
   // 税金の計算
   const r31 = Math.max(floorTo(total - r30, 1000), 0);
   const r32 = incomeTaxOn(r31);
-  const r35 = Math.min(input.housingLoan, r32);
-  const r42 = r32 - r35;
+  // 配当控除（所得税額まで）。配当所得の区分ごとの額（負債の利子を差し引いた額）
+  const creditOf = (k: DividendCredit) => Math.max(0, sum(input.dividends.filter((r) => r.credit === k).map((r) => r.income - r.interest)));
+  const r33 = Math.min(r32, dividendCredit({ stock: creditOf("stock"), fund: creditOf("fund"), foreign: creditOf("foreign") }, r31));
+  const r35 = Math.min(input.housingLoan, r32 - r33);
+  const r42 = r32 - r33 - r35;
   const r43 = r42; // 再差引所得税額（災害減免額は扱わない）
   // 令和6年分の定額減税（令和6年分特別税額控除）：本人と、同一生計配偶者・扶養親族（16歳未満を含む。事業専従者を除く）1人につき 3万円。合計所得金額 1,805万円以下
   const flatPeople = rules.flatCut && r12 <= 18_050_000
@@ -905,9 +1035,12 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
   const r46 = r44 + r45;
   const withholding = [
     ...input.businessWithholding.map((r) => ({ kind: "事業（営業等）", ...r })),
+    ...input.dividends.map((r) => ({ kind: "配当", item: r.item, payer: r.payer, payerId: r.payerId, income: r.income, withheld: r.withheld })),
     ...input.salaries.map((r) => ({ kind: "給与", ...r })),
     ...input.pensions.map((r) => ({ kind: "雑（公的年金等）", ...r })),
     ...input.misc.map((r) => ({ kind: r.kind === "business" ? "雑（業務）" : "雑（その他）", item: r.item, payer: r.payer, payerId: r.payerId, income: r.income, withheld: r.withheld })),
+    // 一時所得は源泉徴収されたものだけ（確定申告の手引き）
+    ...input.occasional.filter((r) => r.withheld > 0).map((r) => ({ kind: "一時", item: r.item, payer: r.payer, payerId: r.payerId, income: r.income, withheld: r.withheld })),
   ];
   const r49 = sum(withholding.map((r) => r.withheld));
   const diff = r46 - r49;
@@ -928,18 +1061,30 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
     { no: "", label: "収入金額等", value: null, head: true },
     { no: "㋐", label: "事業（営業等）", value: biz.revenue, note: white ? "収支内訳書の収入金額の計（売上・家事消費・その他の収入）" : "決算書の売上（収入）金額（家事消費・雑収入を含む）" },
     ...(re ? [{ no: "㋒", label: "不動産", value: re.revenue, note: white ? "収支内訳書（不動産所得用）の収入金額の計" : "決算書（不動産所得用）の収入金額の計" }] : []),
+    ...(input.dividends.length ? [{ no: "㋓", label: "配当", value: dividendIn }] : []),
     { no: "㋔", label: "給与", value: salaryIn },
     { no: "㋕", label: "雑（公的年金等）", value: pensionIn },
     { no: "㋖", label: "雑（業務）", value: miscBizIn },
     { no: "㋗", label: "雑（その他）", value: miscOtherIn },
+    ...(hasTransfer
+      ? [
+        { no: "㋘", label: "総合譲渡（短期）", value: transfer.a, note: transfer.special.short ? `特別控除 ${transfer.special.short.toLocaleString()}円を差し引いた額` : undefined },
+        { no: "㋙", label: "総合譲渡（長期）", value: transfer.b, note: transfer.special.long ? `特別控除 ${transfer.special.long.toLocaleString()}円を差し引いた額` : undefined },
+      ]
+      : []),
+    ...(hasOccasional ? [{ no: "㋚", label: "一時", value: occasional.amount, note: occasional.special ? `特別控除 ${occasional.special.toLocaleString()}円を差し引いた額` : undefined }] : []),
     { no: "", label: "所得金額等", value: null, head: true },
     { no: "①", label: "事業（営業等）", value: r1, key: "business", note: white ? "収支内訳書の所得金額（事業専従者控除の後）" : `青色申告特別控除 ${(blue - blueRealEstate).toLocaleString()}円を差し引いた額` },
     ...(re ? [{ no: "③", label: "不動産", value: r3, key: "realestate", note: white ? "収支内訳書（不動産所得用）の所得金額" : `青色申告特別控除 ${blueRealEstate.toLocaleString()}円を差し引いた額（不動産所得から先に差し引く）` }] : []),
+    ...(input.dividends.length ? [{ no: "⑤", label: "配当", value: r5, note: "収入金額から元本を取得するための負債の利子を差し引いた額（損失は 0）" }] : []),
     { no: "⑥", label: "給与", value: r6, note: adjust.total ? `給与所得控除後の金額 ${salaryAfter.toLocaleString()}円から所得金額調整控除 ${adjust.total.toLocaleString()}円を差し引いた額（区分 ${adjust.kubun}）` : `給与所得控除後の金額（${reiwaYear(rules.year)}）` },
     { no: "⑦", label: "雑（公的年金等）", value: r7, note: pensionIn ? `公的年金等控除（${(age ?? 0) >= 65 ? "65歳以上" : "65歳未満"}）後の金額` : undefined },
     { no: "⑧", label: "雑（業務）", value: r8 },
     { no: "⑨", label: "雑（その他）", value: r9 },
     { no: "⑩", label: "⑦から⑨までの計", value: r10, note: r7 + r8 + r9 < 0 ? "雑所得の損失はほかの所得から差し引けないので 0" : undefined },
+    ...(hasTransfer || hasOccasional
+      ? [{ no: "⑪", label: "総合譲渡・一時（㋘＋{(㋙＋㋚)×½}）", value: offset.r11, key: "transferOccasional", note: crossOffset ? "損益の通算の後の額" : undefined }]
+      : []),
     {
       no: "⑫", label: "合計", value: r12Shown, key: "total",
       note: loss.fourth ? "第四表を使うので書きません（第四表の (81)）" : loss.used ? `本年分で差し引く繰越損失額 ${loss.used.toLocaleString()}円（${fieldNo(FORM_NOS[rules.form].carry)}）を差し引いた額` : undefined,
@@ -965,6 +1110,7 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
       note: loss.fourth ? "第四表を使うので書きません" : "千円未満切り捨て",
     },
     { no: N("taxOn"), label: `上の${N("taxable")}に対する税額`, value: r32, note: loss.fourth ? "第四表を使うので 0" : undefined },
+    ...(input.dividends.length ? [{ no: N("dividend"), label: "配当控除", value: r33, key: "dividendCredit" }] : []),
     { no: N("housing"), label: "住宅借入金等特別控除", value: r35 },
     { no: N("diff"), label: "差引所得税額", value: r42 },
     ...(rules.form === "r6"
@@ -988,7 +1134,7 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
     { no: N("spouseIncome"), label: "配偶者の合計所得金額", value: input.spouse && spouse.kind ? input.spouse.income : 0 },
     { no: N("familySalary"), label: "専従者給与（控除）額の合計額", value: biz.familySalary + (re && re.scale === "business" ? re.familySalary : 0) },
     { no: N("blue"), label: "青色申告特別控除額", value: blue },
-    { no: N("miscWithheld"), label: "雑所得・一時所得等の源泉徴収税額の合計額", value: sum([...input.pensions, ...input.misc].map((r) => r.withheld)) },
+    { no: N("miscWithheld"), label: "雑所得・一時所得等の源泉徴収税額の合計額", value: sum([...input.pensions, ...input.misc, ...input.occasional].map((r) => r.withheld)) },
     {
       no: N("carry"), label: "本年分で差し引く繰越損失額", value: loss.fourth ? 0 : loss.used,
       note: loss.fourth && loss.used ? `第四表を使うので書きません（第四表で ${loss.used.toLocaleString()}円を差し引きます）` : undefined,
@@ -1005,7 +1151,14 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
     second: {
       withholding: withholding.filter((r) => r.income || r.withheld),
       socialInsurance: input.socialInsurance, smallBusiness: input.smallBusiness, life: input.life, quake: input.quake, donations: input.donations, relatives,
+      transfers: [
+        ...(transfers.some((t) => t.term !== "long") ? [{ kind: "譲渡（短期）" as const, ...transfer.short }] : []),
+        ...(transfers.some((t) => t.term === "long") ? [{ kind: "譲渡（長期）" as const, ...transfer.long }] : []),
+        ...(hasOccasional ? [{ kind: "一時" as const, income: occasional.income, costs: occasional.costs, gain: occasional.gain }] : []),
+      ],
     },
+    transfers, transfer, occasional, offset: { ...offset, before: ordinary },
+    dividend: { income: dividendIn, amount: r5, credit: r33, local: sum(input.dividends.filter((r) => r.listed).map((r) => r.localWithheld)) },
     totalIncome: r12,
     blueRealEstate,
     incomeAdjust: adjust,
