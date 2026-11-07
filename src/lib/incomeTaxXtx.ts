@@ -70,6 +70,8 @@ export interface IncomeTaxXtxSource {
 const SPOUSE_SPECIAL_LIMIT = 1_330_000;
 const RELATIVE_ROWS = 4;
 const FAMILY_ROWS = 2;
+/** 第二表の「総合課税の譲渡所得、一時所得に関する事項」の行数 */
+const TRANSFER_ROWS = 2;
 
 /** 第二表の「配偶者や親族に関する事項」に書く配偶者（事業専従者でなく、控除の対象か同一生計配偶者） */
 /** 白色申告の年は、要件を満たさない「専従者」の家族をふつうの親族として扱う（computeIncomeTax と同じ。whiteFamilyInput） */
@@ -133,7 +135,7 @@ export const incomeXtxNotices = (src: Pick<IncomeTaxXtxSource, "year" | "input" 
     n.push(`令和${src.year - 2018}年分の e-Tax の版はまだ domble に入っていないため、令和${INCOME_XTX_FIRST_YEAR - 2018}年分の版で書き出します。e-Tax で読み込めないときは、ソフトの更新を待ってください`);
     if (src.biz?.filingType === "blue75") n.push("75万円の青色申告特別控除は、決算書の2ページの「青色申告特別控除額の計算」の65万円の欄に書いています");
   }
-  if (src.result.second.transfers.length > 2) n.push("第二表の「総合課税の譲渡所得、一時所得に関する事項」は2行です。一時所得の行は書いていません（第一表の ㋚・⑪ には入っています）");
+  if (src.result.second.transfers.length > TRANSFER_ROWS) n.push("第二表の「総合課税の譲渡所得、一時所得に関する事項」は2行のため、3行目（一時）は2枚目の第二表に書いています。e-Taxソフトで読み込んだら、第二表が2枚あることを確かめてください");
   const rel = relativesShown(src.input, src.year, !!src.white);
   if (rel.length > RELATIVE_ROWS) n.push(`第二表の親族の欄は${RELATIVE_ROWS}人分です。${rel.slice(RELATIVE_ROWS).map((v) => v.d.name).join("・")}は書いていません`);
   const fam = familyShown(src);
@@ -259,9 +261,19 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     f.birthday || ([x.spouse, ...x.dependents].find((p): p is Relative => !!p && p.familyEmployee && p.name.trim() === f.name.trim())?.birthday ?? "");
   const studentOk = x.student && (r.rows.find((v) => v.no === "⑲⑳")?.value ?? 0) > 0;
   const widowOk = (r.rows.find((v) => v.no === "⑰⑱")?.value ?? 0) > 0;
-  return clean({
+  const header = {
     ABC00010: ref(refs, "NENBUN"), ABC00015: ref(refs, "SHINKOKU_KBN"), ABC00040: ref(refs, "NOZEISHA_ADR"), ABC00050: ref(refs, "NOZEISHA_YAGO"),
     ABC00060: ref(refs, "NOZEISHA_NM_KN"), ABC00070: ref(refs, "NOZEISHA_NM"),
+  };
+  // 総合課税の譲渡所得、一時所得に関する事項は2行。3行目（短期・長期・一時がそろう年の一時）は2枚目の第二表に、見出しと一緒に書く
+  // （確定申告の手引きの記載例：書ききれない欄は分けて書く。e-Tax の第二表（KOA020-2）はくり返せる）
+  const transferRows = (rows: typeof s.transfers) => (rows.length ? {
+    rows: rows.map((t) => clean({ ABX00250: text(t.kind, 10), ABX00260: amount(t.income), ABX00290: amount(t.costs), ABX00310: amount(t.gain) })),
+  } : undefined);
+  const morePages = Array.from({ length: Math.ceil(Math.max(0, s.transfers.length - TRANSFER_ROWS) / TRANSFER_ROWS) }, (_, i) =>
+    clean({ ...header, ABX00000: transferRows(s.transfers.slice(TRANSFER_ROWS * (i + 1), TRANSFER_ROWS * (i + 2))) }));
+  const first = clean({
+    ...header,
     ABD00010: withholding.length ? {
       rows: withholding.slice(0, 4).map((w) => clean({
         ABD00020: text(w.kind, 10), ABD00025: text(w.item, 10), ABD00030: text(w.payerId, 100), ABD00040: text(w.payer, 100),
@@ -270,10 +282,8 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     } : undefined,
     ABD00064: rest.length ? { text: "次葉" } : undefined, ABD00066: rest.length ? sumOf(rest, (w) => w.withheld) : undefined,
     ABD00070: withholding.length ? sumOf(withholding, (w) => w.withheld) : undefined,
-    // 総合課税の譲渡所得、一時所得に関する事項（2行。必要経費等・差引金額の金額は下段・上段の欄）
-    ABX00000: s.transfers.length ? {
-      rows: s.transfers.slice(0, 2).map((t) => clean({ ABX00250: text(t.kind, 10), ABX00260: amount(t.income), ABX00290: amount(t.costs), ABX00310: amount(t.gain) })),
-    } : undefined,
+    // 総合課税の譲渡所得、一時所得に関する事項（必要経費等・差引金額の金額は下段・上段の欄）
+    ABX00000: transferRows(s.transfers.slice(0, TRANSFER_ROWS)),
     ABE00010: family.length ? {
       rows: family.map((f) => clean({
         ABE00020: text(f.name, 30), ABE00025: bango(src.numbers[f.key]), ABE00030: isDate(birthdayOf(f)) ? { date: birthdayOf(f) } : undefined,
@@ -326,6 +336,7 @@ const secondValues = (src: IncomeTaxXtxSource, refs: Set<string>): EtaxValues =>
     ABS10050: ref(refs, "DAIRI_NM"), ABS10060: ref(refs, "DAIRI_TEL"),
     ABS10020: src.filer.agent?.art30 ? { kubun: 1 } : undefined, ABS10030: src.filer.agent?.art33 ? { kubun: 1 } : undefined,
   });
+  return { "KOA020-2": { rows: [first, ...morePages] } };
 };
 
 /**

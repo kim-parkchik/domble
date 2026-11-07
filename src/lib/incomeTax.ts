@@ -1039,8 +1039,8 @@ export const computeIncomeTax = (raw: IncomeTaxInput, biz: BusinessFigures, year
     ...input.salaries.map((r) => ({ kind: "給与", ...r })),
     ...input.pensions.map((r) => ({ kind: "雑（公的年金等）", ...r })),
     ...input.misc.map((r) => ({ kind: r.kind === "business" ? "雑（業務）" : "雑（その他）", item: r.item, payer: r.payer, payerId: r.payerId, income: r.income, withheld: r.withheld })),
-    // 一時所得は源泉徴収されたものだけ（確定申告の手引き）
-    ...input.occasional.filter((r) => r.withheld > 0).map((r) => ({ kind: "一時", item: r.item, payer: r.payer, payerId: r.payerId, income: r.income, withheld: r.withheld })),
+    // 一時所得は源泉徴収が無くても所得の内訳に書く（令和7年分 確定申告の手引き「総合課税の譲渡所得・一時所得」）
+    ...input.occasional.map((r) => ({ kind: "一時", item: r.item, payer: r.payer, payerId: r.payerId, income: r.income, withheld: r.withheld })),
   ];
   const r49 = sum(withholding.map((r) => r.withheld));
   const diff = r46 - r49;

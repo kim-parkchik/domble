@@ -87,7 +87,8 @@ describe("所得税の計算", () => {
       { kind: "譲渡（長期）", income: 770_000, costs: 136_920, gain: 633_080 },
       { kind: "一時", income: 2_500_000, costs: 1_640_000, gain: 860_000 },
     ]);
-    expect(r.second.withholding).toEqual([]);
+    // 一時所得は源泉徴収が無くても所得の内訳に書く（令和7年分 確定申告の手引き）
+    expect(r.second.withholding).toEqual([{ kind: "一時", item: "生命保険の満期金", payer: "A生命", payerId: "東京都", income: 2_500_000, withheld: 0 }]);
   });
 
   test("事業の赤字と譲渡益：損益の通算のあとの ⑪・⑫。純損失は青色なら繰り越す", () => {

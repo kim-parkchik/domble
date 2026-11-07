@@ -1150,7 +1150,7 @@ const SecondTable = ({ result, x, familySalary, white, familyLines }: {
               ))}
             </tbody>
           </table>
-          {s.transfers.length > 2 && <p className="field-note">第二表のこの欄は2行です。3行目は e-Tax 用のデータに書けません（譲渡所得の内訳書と第一表には入ります）。</p>}
+          {s.transfers.length > 2 && <p className="field-note">第二表のこの欄は2行のため、3行目は2枚目の第二表に書きます（e-Tax 用のデータも2枚目の第二表に書きます）。</p>}
         </>
       )}
 

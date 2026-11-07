@@ -146,8 +146,12 @@ describe("配当・総合課税の譲渡・一時所得", () => {
     expect(val(xml, "ABB00600")).toBe("20000");
     expect(val(xml, "ABB00410")).toBe(v("⑫"));
   });
-  test("第二表：所得の内訳に配当、総合課税の譲渡所得・一時所得の2行、住民税の配当割額控除額", () => {
+  test("第二表：所得の内訳に配当と一時（源泉徴収が無くても）、総合課税の譲渡所得・一時所得の2行、住民税の配当割額控除額", () => {
     expect(val(xml, "ABD00020")).toBe("配当");
+    expect(count(xml, "ABD00010")).toBe(2);
+    expect(xml).toContain("<ABD00020>一時</ABD00020><ABD00025>生命保険の満期金</ABD00025><ABD00030>東京都千代田区</ABD00030><ABD00040>A生命</ABD00040><ABD00050>2500000</ABD00050><ABD00060>0</ABD00060>");
+    expect(val(xml, "ABD00070")).toBe("30630");
+    expect(count(xml, "KOA020-2")).toBe(1);
     expect(count(xml, "ABX00000")).toBe(2);
     expect(xml).toContain("<ABX00250>譲渡（長期）</ABX00250><ABX00260>770000</ABX00260><ABX00270><ABX00290>140000</ABX00290></ABX00270><ABX00300><ABX00310>630000</ABX00310></ABX00300>");
     expect(xml).toContain("<ABX00250>一時</ABX00250>");
@@ -173,6 +177,24 @@ describe("配当・総合課税の譲渡・一時所得", () => {
       .toEqual(["-1000000", "630000", "500000", "130000", "130000", "-870000", "-870000"]);
     expect(val(x2, "ABN01010")).toBeUndefined();
     expect(val(x2, "ABP00020")).toBe("870000");
+  });
+  test("短期・長期・一時の3行：3行目（一時）は2枚目の第二表に、氏名などの見出しと一緒に書く。XSD に合う", () => {
+    const pc = { ...sale, assetId: 2, name: "パソコン", kind: "工具器具備品", acquired: "2023-01-10", rate: 100, salePrice: 300_000, price: 300_000, acquisitionCost: 400_000, bookValue: 100_000, cost: 100_000 };
+    const three = source({ occasional: src.input.occasional }, { biz: { ...biz, assetSales: [sale, pc] } });
+    expect(three.result.second.transfers.map((t) => t.kind)).toEqual(["譲渡（短期）", "譲渡（長期）", "一時"]);
+    const x3 = buildIncomeTaxXtx(three);
+    expect(validate(x3)).toBe("");
+    const pages = [...x3.matchAll(/<KOA020-2>(.*?)<\/KOA020-2>/g)].map((m) => m[1]);
+    expect(pages.length).toBe(2);
+    expect([...pages[0].matchAll(/<ABX00250>([^<]*)</g)].map((m) => m[1])).toEqual(["譲渡（短期）", "譲渡（長期）"]);
+    // 2枚目：見出し（年分・申告の種類・住所・氏名など）と一時の行だけ。所得の内訳とその合計（初葉のみ）は書かない
+    expect(pages[1]).toStartWith('<ABC00000><ABC00010 IDREF="NENBUN"/>');
+    expect(pages[1]).toContain('<ABC00070 IDREF="NOZEISHA_NM"/>');
+    expect(pages[1]).toContain("<ABX00000><ABX00250>一時</ABX00250><ABX00260>2500000</ABX00260><ABX00270><ABX00290>1640000</ABX00290></ABX00270><ABX00300><ABX00310>860000</ABX00310></ABX00300></ABX00000>");
+    expect(pages[1]).not.toContain("<ABD00000>");
+    expect(pages[1]).not.toContain("<ABI00000>");
+    expect(incomeXtxNotices(three).join()).toMatch(/2枚目の第二表/);
+    expect(incomeXtxNotices(src).join()).not.toMatch(/2枚目の第二表/);
   });
   test("事業用の資産の売却損は、事業税の「事業用資産の譲渡損失など」", () => {
     const loss = source({}, { biz: { ...biz, assetSales: [{ ...sale, price: 100_000 }] } });

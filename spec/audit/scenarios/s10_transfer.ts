@@ -15,7 +15,8 @@
  *  - ⑫ ＝ 4,248,901 ＋ 200,000 ＋ 275,250 ＝ 4,724,151円。基礎控除（令和7年分・489万円以下）680,000円、社会保険料 400,000円
  *      課税される所得金額 3,644,000円 → 税額 728,800 − 427,500 ＝ 301,300円 − 配当控除 20,000 ＝ 281,300円、
  *      復興 5,907円 → 287,207円 − 源泉 30,630 ＝ 256,577 → 納める税金 256,500円
- *  - e-Tax のデータ：第一表・第二表・譲渡所得の内訳書（総合譲渡用。資産ごと）が XSD に合う
+ *  - e-Tax のデータ：第一表・第二表・譲渡所得の内訳書（総合譲渡用。資産ごと）が XSD に合う。
+ *      第二表の譲渡・一時の欄は2行のため、3行目（一時）は2枚目の第二表に書く。一時所得は源泉徴収が無くても所得の内訳に書く
  * 動かし方：bun s10_transfer.ts
  */
 import { makeDb, makeBook, cashEntry, runDepreciation, incomeTaxScreen, incomeXtxScreen, setFiler, xtxVal, cmp, printTable, repo, YEAR, type Cmp } from "./common";
@@ -81,7 +82,10 @@ cmp(rows, "e-Tax ㋙・㋚・⑪・㉝（ABB00180・ABB00230・ABB00400・ABB006
 cmp(rows, "e-Tax 譲渡所得の内訳書は資産ごとに1面（2面）", 2, x.xml.split("<KOC020-1>").length - 1);
 cmp(rows, "e-Tax 内訳書：営業車の長期の計算（収入・必要経費・差引・特別控除・譲渡所得）", "800000/22000/778000/500000/278000",
   [xtxVal(x.xml, "EBG00290"), xtxVal(x.xml, "EBG00320"), xtxVal(x.xml, "EBG00330"), xtxVal(x.xml, "EBG00340"), xtxVal(x.xml, "EBG00350")].join("/"));
-cmp(rows, "e-Tax 第二表の譲渡・一時の欄は2行（短期・長期。一時は書けないので知らせる）", 2, x.xml.split("<ABX00000>").length - 1);
+cmp(rows, "e-Tax 第二表は2枚（譲渡・一時の欄は2行のため、3行目の一時は2枚目）", 2, x.xml.split("<KOA020-2>").length - 1);
+cmp(rows, "e-Tax 第二表の譲渡・一時の行（短期・長期／一時）", "譲渡（短期）/譲渡（長期） → 一時",
+  [...x.xml.matchAll(/<KOA020-2>(.*?)<\/KOA020-2>/g)].map((m) => [...m[1].matchAll(/<ABX00250>([^<]*)</g)].map((v) => v[1]).join("/")).join(" → "));
+cmp(rows, "e-Tax 第二表の所得の内訳：配当と一時（源泉徴収が無くても書く）", "配当/一時", [...x.xml.matchAll(/<ABD00020>([^<]*)</g)].map((m) => m[1]).join("/"));
 cmp(rows, "e-Tax 事業税 事業用資産の譲渡損失など（ABI00180）", "87500", xtxVal(x.xml, "ABI00180"));
 
 printTable("例9 事業用の資産を売った年（総合課税の譲渡・一時所得・配当）", rows);
