@@ -10,7 +10,7 @@ import { buildMonthly, closingBalances, groupByEntry, openingDifference, summari
 import { longDate, shortDate, todayIso, yen } from "../../lib/format";
 import { consumptionTaxDeadline, daysUntil, incomeTaxDeadline } from "../../lib/deadlines";
 import { useTaxIssues } from "../reports/TaxPage";
-import { periodLabel, useWithholding } from "../payroll/useWithholding";
+import { periodTitle, useWithholding } from "../payroll/useWithholding";
 import * as repo from "../../db/repo";
 import { unsavedAnchorYears } from "../../lib/closing";
 import type { Page } from "../../App";
@@ -51,12 +51,12 @@ const useNextTasks = () => {
   if (taxToFix > 0) tasks.push({ text: `消費税の確認が ${taxToFix} 件あります`, page: "tax", tone: "warn" });
   // 源泉所得税の納付（前の年の7〜12月分・12月分も。期限の30日前から、納め終わるまで）
   for (const [y, ps] of withholding ? [[year - 1, withholding.previous], [year, withholding.periods]] as const : []) {
-    for (const p of ps) {
+    for (const p of [...ps].sort((a, b) => a.due.localeCompare(b.due))) {
       if (p.total <= 0 || p.status === "paid") continue;
       const left = daysUntil(today, p.due);
       if (left > 30) continue;
       tasks.push({
-        text: `源泉所得税（${y !== year ? `${y}年` : ""}${periodLabel(p)} ${yen(p.total - p.paid)}円）の納付は ${longDate(p.due)} まで${left < 0 ? "（過ぎています）" : `（あと${left}日）`}`,
+        text: `源泉所得税（${y !== year ? `${y}年` : ""}${periodTitle(p)} ${yen(p.total - p.paid)}円）の納付は ${longDate(p.due)} まで${left < 0 ? "（過ぎています）" : `（あと${left}日）`}`,
         page: "payroll", tone: left < 0 ? "warn" : "todo",
       });
     }

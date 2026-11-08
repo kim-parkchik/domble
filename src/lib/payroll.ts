@@ -4,7 +4,9 @@
  *  - 給与の CSV：1行 = 1人の1回の支給（支給日・区分・氏名・総支給額・通勤手当・社会保険料・所得税・住民税・その他の控除・差引支給額）。
  *    見出しの名前で列を探し（ほかの給与ソフトの CSV は列を選び直せる）、1行を1つの仕訳にする（payrollEntryLines）
  *  - 決算書の給料賃金・専従者給与の内訳：人ごとの賞与・源泉徴収税額・従事月数を帳簿から（payrollFigures）
- *  - 源泉所得税の納付：期間（毎月／納期の特例）ごとの預かった額・期限・納めたか、納付書（所得税徴収高計算書）に書く数字（withholdingPeriods）
+ *  - 源泉所得税の納付：期間（毎月／納期の特例）ごとの預かった額・期限・納めたか、納付書（所得税徴収高計算書）に書く数字（withholdingPeriods）。
+ *    給与・賞与・税理士等の報酬は「給与所得・退職所得等」の納付書（納期の特例あり）、それ以外の報酬・料金（原稿料・デザイン料など）は
+ *    「報酬・料金等」の納付書で、いつも支払った月の翌月10日まで（国税庁 No.2505）
  * 人は、仕訳の取引先（無ければ給料賃金の補助科目）で分ける（決算書の内訳と同じ。lib/statements.ts の payeeBreakdown）
  */
 import type { Account, Counterparty, JournalLine } from "./types";
@@ -36,9 +38,15 @@ export interface PayrollSettings {
   family: string[];
   /** 源泉所得税の納期の特例の承認を受けているか */
   special: boolean;
+  /** 報酬・料金等で預かった源泉所得税の科目（任意。給与と別の補助科目にするとき。無ければ tax で数える） */
+  feeTax: AccountRef | null;
+  /** 税理士等の報酬の取引先（税理士・弁護士・司法書士など。所得税法204条1項2号。給与と同じ納付書で、納期の特例も使える） */
+  advisors: number[];
 }
 
-export const EMPTY_PAYROLL_SETTINGS: PayrollSettings = { tax: null, resident: null, social: null, other: null, bank: null, commute: null, family: [], special: false };
+export const EMPTY_PAYROLL_SETTINGS: PayrollSettings = {
+  tax: null, resident: null, social: null, other: null, bank: null, commute: null, family: [], special: false, feeTax: null, advisors: [],
+};
 
 const sameRef = (a: AccountRef | null, b: AccountRef | null) => !!a && !!b && a.account_id === b.account_id && (a.sub_account_id ?? null) === (b.sub_account_id ?? null);
 
@@ -55,6 +63,8 @@ export const parsePayrollSettings = (json: string | null | undefined): PayrollSe
       commute: Number.isInteger(v.commute) ? v.commute! : null,
       family: Array.isArray(v.family) ? v.family.filter((x): x is string => typeof x === "string" && !!x.trim()) : [],
       special: v.special === true,
+      feeTax: ref(v.feeTax),
+      advisors: Array.isArray(v.advisors) ? [...new Set(v.advisors.filter((x): x is number => Number.isInteger(x)))] : [],
     };
   } catch {
     return { ...EMPTY_PAYROLL_SETTINGS };
@@ -67,6 +77,10 @@ export const payrollSettingsProblem = (s: PayrollSettings): string | null => {
     return "源泉所得税は、住民税・社会保険料・その他の控除と別の科目（預り金の補助科目など）にしてください";
   }
   if (s.bank && [s.tax, s.resident, s.social, s.other].some((r) => sameRef(r, s.bank))) return "支払う口座は、預かる科目と別にしてください";
+  if (s.feeTax && sameRef(s.feeTax, s.tax)) return "報酬・料金等の源泉所得税を給与と同じ科目にするときは、決めなくてかまいません（「使わない」にしてください）";
+  if (s.feeTax && [s.resident, s.social, s.other, s.bank].some((r) => sameRef(r, s.feeTax))) {
+    return "報酬・料金等の源泉所得税は、住民税・社会保険料・その他の控除・支払う口座と別の科目にしてください";
+  }
   return null;
 };
 
@@ -302,19 +316,35 @@ export const payrollFigures = (
 // 源泉所得税の納付
 // ────────────────────────────────────────────
 
-/** 納付書の1つの区分（俸給・給料等／賞与）の数字 */
+/** 納付書の種類：給与所得・退職所得等（給与・賞与・税理士等の報酬。納期の特例あり）／報酬・料金等（それ以外の報酬・料金。いつも翌月10日） */
+export type WithholdingSlip = "salary" | "fees";
+export const SLIP_NAME: Record<WithholdingSlip, string> = { salary: "給与所得・退職所得等の所得税徴収高計算書", fees: "報酬・料金等の所得税徴収高計算書" };
+
+/** 1回の支払い（税理士等の報酬・報酬・料金等の内訳） */
+export interface WithholdingItem {
+  date: string;
+  counterparty_id: number | null;
+  /** 支払った額（源泉徴収する前。仕訳の借方の合計で、消費税を含む） */
+  amount: number;
+  tax: number;
+}
+
+/** 納付書の1つの区分（俸給・給料等／賞与／税理士等の報酬／報酬・料金等）の数字 */
 export interface WithholdingClass {
   /** 支払年月日（最初と最後。同じなら1つ） */
   firstDate: string | null;
   lastDate: string | null;
   /** 人員（実人員。納期の特例では月ごとの実人員の合計） */
   people: number;
-  /** 支給額（給料賃金・専従者給与の額。非課税の通勤手当は別の科目なので入らない） */
+  /** 支給額（給与・賞与は給料賃金・専従者給与の額で、非課税の通勤手当は別の科目なので入らない。報酬は源泉徴収する前の支払った額） */
   amount: number;
   tax: number;
+  /** 報酬の支払いの内訳（給与・賞与では空） */
+  items: WithholdingItem[];
 }
 
 export interface WithholdingPeriod {
+  slip: WithholdingSlip;
   /** 支払った月の範囲（1〜12） */
   fromMonth: number;
   toMonth: number;
@@ -322,77 +352,136 @@ export interface WithholdingPeriod {
   due: string;
   salary: WithholdingClass;
   bonus: WithholdingClass;
-  /** 給与以外で預かった源泉所得税（報酬など） */
-  other: number;
+  /** 税理士等の報酬（給与の設定で選んだ取引先。給与所得・退職所得等の納付書の「税理士等の報酬」欄） */
+  advisor: WithholdingClass;
+  /** 報酬・料金等（原稿料・デザイン料など。slip が fees の期間だけ） */
+  fees: WithholdingClass;
   /** 預かった源泉所得税の合計 */
   total: number;
-  /** 納めた額（期首の未納と前の期間から順に当てる） */
+  /** 納めた額（期首の未納と、期限の早い期間から順に当てる） */
   paid: number;
   status: "none" | "paid" | "partial" | "unpaid";
 }
 
-const emptyClass = (): WithholdingClass => ({ firstDate: null, lastDate: null, people: 0, amount: 0, tax: 0 });
+const emptyClass = (): WithholdingClass => ({ firstDate: null, lastDate: null, people: 0, amount: 0, tax: 0, items: [] });
+
+export interface WithholdingOptions {
+  /** 給料賃金・専従者給与の科目 */
+  salaryAccountIds: number[];
+  /** 給与の設定のうち、源泉所得税の科目（報酬・料金等を分けていればその科目も）・税理士等の取引先・納期の特例 */
+  settings: Pick<PayrollSettings, "tax" | "feeTax" | "advisors" | "special">;
+  /** 給与の CSV で賞与として取り込んだ仕訳 */
+  bonusEntryIds: ReadonlySet<number>;
+  holidays: ReadonlySet<string>;
+  /** その年の初めの未納（源泉所得税の科目の期首残高。報酬・料金等の科目を分けていればその期首残高も）。納めた額はまずここに当てる */
+  carried?: { tax: number; feeTax: number };
+}
+
+/** 給与以外で源泉所得税を預かった仕訳の取引先（給与の設定で税理士等を選ぶ候補） */
+export const withholdingPayees = (lines: FlatLine[], salaryAccountIds: number[], s: Pick<PayrollSettings, "tax" | "feeTax">): number[] => {
+  const out = new Set<number>();
+  for (const [, ls] of groupEntries(lines)) {
+    if (ls.some((l) => salaryAccountIds.includes(l.account_id) && l.side === "debit")) continue;
+    if (withheldIn(ls, s.tax) + withheldIn(ls, s.feeTax) <= 0) continue;
+    const cp = entryPayee(ls, s);
+    if (cp !== null) out.add(cp);
+  }
+  return [...out];
+};
+
+/** 報酬の仕訳の取引先（源泉所得税の行 → ほかの行の順に探す） */
+const entryPayee = (ls: FlatLine[], s: Pick<PayrollSettings, "tax" | "feeTax">) =>
+  ls.find((l) => (lineRef(l, s.tax) || lineRef(l, s.feeTax)) && l.counterparty_id)?.counterparty_id ?? ls.find((l) => l.counterparty_id)?.counterparty_id ?? null;
 
 /**
- * その年の源泉所得税の納付の期間（毎月：翌月10日まで／納期の特例：1〜6月分は7月10日、7〜12月分は翌年1月20日まで）
+ * その年の源泉所得税の納付の期間。
+ *  - 給与所得・退職所得等（給料賃金・専従者給与の仕訳と、税理士等の取引先への報酬）：毎月なら翌月10日まで、納期の特例なら1〜6月分は7月10日・7〜12月分は翌年1月20日まで
+ *  - 報酬・料金等（給与以外で源泉所得税を預かった仕訳のうち、税理士等の取引先でないもの・取引先の無いもの）：納期の特例があっても、支払った月の翌月10日まで
+ * 納めた額（源泉所得税の科目の借方で、給与の仕訳でないもの）は科目ごとに、その年の初めの未納 → 期限の早い期間の順に当てる
+ * （同じ科目で納めた額は、どちらの納付書の分かを仕訳から分けられないため）
  * @param lines その年と翌年の仕訳（翌年の納付も見る）
- * @param carried その年の初めの未納（源泉所得税の科目の期首残高）。納めた額はまずここに当てる
  */
-export const withholdingPeriods = (
-  lines: FlatLine[], year: number, salaryAccountIds: number[], tax: AccountRef, bonusEntryIds: ReadonlySet<number>, special: boolean,
-  holidays: ReadonlySet<string>, carried = 0,
-): WithholdingPeriod[] => {
-  const ranges = special ? [[1, 6], [7, 12]] : Array.from({ length: 12 }, (_, i) => [i + 1, i + 1]);
-  const periods: WithholdingPeriod[] = ranges.map(([from, to]) => ({
-    fromMonth: from, toMonth: to,
-    due: special ? (from === 1 ? nextWeekday(`${year}-07-10`, holidays) : nextWeekday(`${year + 1}-01-20`, holidays))
-      : nextWeekday(to === 12 ? `${year + 1}-01-10` : `${year}-${String(to + 1).padStart(2, "0")}-10`, holidays),
-    salary: emptyClass(), bonus: emptyClass(), other: 0, total: 0, paid: 0, status: "none",
-  }));
-  const periodOf = (date: string) => periods.find((p) => Number(date.slice(5, 7)) >= p.fromMonth && Number(date.slice(5, 7)) <= p.toMonth)!;
-  // 月ごと・区分ごとの実人員（納期の特例では月ごとの実人員を足す）
-  const peopleByMonth = new Map<string, Set<string>>();
-  let payments = 0;
+export const withholdingPeriods = (lines: FlatLine[], year: number, o: WithholdingOptions): WithholdingPeriod[] => {
+  const { tax, feeTax, advisors, special } = o.settings;
+  const due = (date: string) => nextWeekday(date, o.holidays);
+  const monthlyDue = (m: number) => due(m === 12 ? `${year + 1}-01-10` : `${year}-${String(m + 1).padStart(2, "0")}-10`);
+  const make = (slip: WithholdingSlip, from: number, to: number, d: string): WithholdingPeriod => ({
+    slip, fromMonth: from, toMonth: to, due: d, salary: emptyClass(), bonus: emptyClass(), advisor: emptyClass(), fees: emptyClass(), total: 0, paid: 0, status: "none",
+  });
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const salaryPeriods = special
+    ? [make("salary", 1, 6, due(`${year}-07-10`)), make("salary", 7, 12, due(`${year + 1}-01-20`))]
+    : months.map((m) => make("salary", m, m, monthlyDue(m)));
+  const feePeriods = months.map((m) => make("fees", m, m, monthlyDue(m)));
+  const periodOf = (ps: WithholdingPeriod[], date: string) => ps.find((p) => Number(date.slice(5, 7)) >= p.fromMonth && Number(date.slice(5, 7)) <= p.toMonth)!;
+  /** 期間ごとの、科目ごとに預かった額（[源泉所得税の科目, 報酬・料金等の科目]） */
+  const parts = new Map<WithholdingPeriod, [number, number]>([...salaryPeriods, ...feePeriods].map((p) => [p, [0, 0]]));
+  // 区分・月ごとの実人員（納期の特例では月ごとの実人員を足す）
+  const people = new Map<WithholdingClass, Map<string, Set<string>>>();
+  const count = (c: WithholdingClass, date: string, key: string) => {
+    const byMonth = people.get(c) ?? new Map<string, Set<string>>();
+    const set = byMonth.get(date.slice(0, 7)) ?? new Set<string>();
+    set.add(key);
+    byMonth.set(date.slice(0, 7), set);
+    people.set(c, byMonth);
+    if (!c.firstDate || date < c.firstDate) c.firstDate = date;
+    if (!c.lastDate || date > c.lastDate) c.lastDate = date;
+  };
+  const add = (p: WithholdingPeriod, onTax: number, onFee: number) => {
+    const x = parts.get(p)!;
+    x[0] += onTax;
+    x[1] += onFee;
+    p.total += onTax + onFee;
+  };
+  const payments = [0, 0];
   const yearStart = `${year}-01-01`;
   for (const [id, ls] of groupEntries(lines)) {
     const date = ls[0].date;
-    const withheld = withheldIn(ls, tax);
-    const pay = ls.filter((l) => salaryAccountIds.includes(l.account_id) && l.side === "debit");
+    const onTax = withheldIn(ls, tax);
+    const onFee = feeTax ? withheldIn(ls, feeTax) : 0;
+    const pay = ls.filter((l) => o.salaryAccountIds.includes(l.account_id) && l.side === "debit");
     // 納付：源泉所得税の科目の借方で、給与の仕訳でないもの（その年の初めから）
-    if (!pay.length && withheld < 0 && date >= yearStart) payments += -withheld;
+    if (!pay.length && date >= yearStart) {
+      if (onTax < 0) payments[0] += -onTax;
+      if (onFee < 0) payments[1] += -onFee;
+    }
     if (date.slice(0, 4) !== String(year)) continue;
-    const p = periodOf(date);
     if (!pay.length) {
-      if (withheld > 0) {
-        p.other += withheld;
-        p.total += withheld;
-      }
+      if (Math.max(0, onTax) + Math.max(0, onFee) <= 0) continue;
+      const cp = entryPayee(ls, o.settings);
+      const isAdvisor = cp !== null && advisors.includes(cp);
+      const p = periodOf(isAdvisor ? salaryPeriods : feePeriods, date);
+      const c = isAdvisor ? p.advisor : p.fees;
+      const withheld = Math.max(0, onTax) + Math.max(0, onFee);
+      const amount = ls.filter((l) => l.side === "debit" && !lineRef(l, tax) && !lineRef(l, feeTax)).reduce((t, l) => t + l.amount, 0);
+      c.amount += amount;
+      c.tax += withheld;
+      c.items.push({ date, counterparty_id: cp, amount, tax: withheld });
+      add(p, Math.max(0, onTax), Math.max(0, onFee));
+      count(c, date, cp !== null ? `cp:${cp}` : `entry:${id}`);
       continue;
     }
-    const c = bonusEntryIds.has(id) ? p.bonus : p.salary;
+    const p = periodOf(salaryPeriods, date);
+    const c = o.bonusEntryIds.has(id) ? p.bonus : p.salary;
     c.amount += pay.reduce((t, l) => t + l.amount, 0);
-    c.tax += withheld;
-    p.total += withheld;
-    if (!c.firstDate || date < c.firstDate) c.firstDate = date;
-    if (!c.lastDate || date > c.lastDate) c.lastDate = date;
-    const k = `${bonusEntryIds.has(id) ? "b" : "s"}:${date.slice(0, 7)}`;
-    const set = peopleByMonth.get(k) ?? new Set<string>();
-    for (const l of pay) set.add(payeeKey(l));
-    peopleByMonth.set(k, set);
+    c.tax += onTax;
+    add(p, onTax, 0);
+    for (const l of pay) count(c, date, payeeKey(l));
   }
-  for (const [k, set] of peopleByMonth) {
-    const [cls, ym] = k.split(":");
-    const p = periodOf(`${ym}-01`);
-    (cls === "b" ? p.bonus : p.salary).people += set.size;
+  for (const [c, byMonth] of people) c.people = [...byMonth.values()].reduce((t, set) => t + set.size, 0);
+  // 納めた額を、科目ごとに期首の未納 → 期限の早い期間の順に当てる（期限が同じなら給与所得・退職所得等から）
+  const byDue = [...salaryPeriods, ...feePeriods].sort((a, b) => a.due.localeCompare(b.due) || (a.slip === b.slip ? a.fromMonth - b.fromMonth : a.slip === "salary" ? -1 : 1));
+  const carried = [o.carried?.tax ?? 0, o.carried?.feeTax ?? 0];
+  for (const i of [0, 1]) {
+    let left = Math.max(0, payments[i] - Math.max(0, carried[i]));
+    for (const p of byDue) {
+      const x = Math.min(parts.get(p)![i], left);
+      p.paid += x;
+      left -= x;
+    }
   }
-  // 納めた額を、期首の未納 → 期間の順に当てる
-  let left = Math.max(0, payments - Math.max(0, carried));
-  for (const p of periods) {
-    p.paid = Math.min(p.total, left);
-    left -= p.paid;
-    p.status = p.total <= 0 ? "none" : p.paid >= p.total ? "paid" : p.paid > 0 ? "partial" : "unpaid";
-  }
-  return periods;
+  for (const p of byDue) p.status = p.total <= 0 ? "none" : p.paid >= p.total ? "paid" : p.paid > 0 ? "partial" : "unpaid";
+  return [...salaryPeriods, ...feePeriods];
 };
 
 /** 納付書の「年度」（会計年度：4月〜翌年3月。令和8年4月〜令和9年3月に納めるなら 508） */

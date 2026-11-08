@@ -1193,7 +1193,10 @@ describe("給与（repo）", () => {
     expect((await repo.getSubAccounts(db, 2026)).filter((x) => x.account_id === id("預り金"))).toHaveLength(3);
     await repo.savePayrollSettings(db, { ...s, family: ["山田 花子"], special: true });
     expect((await repo.getMasterHistory(db))[0]).toMatchObject({ label: "給与の設定" });
+    expect((await repo.getMasterHistory(db))[0].new_value).toContain("税理士等の報酬の取引先：なし");
     await expect(repo.savePayrollSettings(db, { ...s, resident: s.tax })).rejects.toThrow(/別の科目/);
+    await expect(repo.savePayrollSettings(db, { ...s, advisors: [99_999] })).rejects.toThrow(/税理士等の報酬の取引先が見つかりません/);
+    await expect(repo.savePayrollSettings(db, { ...s, feeTax: { account_id: id("預り金"), sub_account_id: 99_999 } })).rejects.toThrow(/見つかりません/);
 
     const ids = await repo.importPayroll(db, [
       row(2, "2026-01-25", "salary", "佐藤 一郎", 150_000, 3_000, 20_000),

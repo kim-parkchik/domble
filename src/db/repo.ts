@@ -2398,9 +2398,12 @@ const payrollSettingsText = async (db: Database, s: PayrollSettings) => {
   const accounts = new Map((await getAccounts(db, year)).map((a) => [a.id, a.name]));
   const subs = new Map((await getSubAccounts(db, year)).map((x) => [x.id, x.name]));
   const ref = (r: AccountRef | null) => (r ? `${accounts.get(r.account_id) ?? "?"}${r.sub_account_id ? `（${subs.get(r.sub_account_id) ?? "?"}）` : ""}` : "なし");
+  const cps = new Map((await getCounterparties(db)).map((c) => [c.id, c.name]));
   return [
-    `源泉所得税：${ref(s.tax)}`, `住民税：${ref(s.resident)}`, `社会保険料：${ref(s.social)}`, `その他の控除：${ref(s.other)}`, `支払う口座：${ref(s.bank)}`,
+    `源泉所得税：${ref(s.tax)}`, `報酬・料金等の源泉所得税：${s.feeTax ? ref(s.feeTax) : "源泉所得税と同じ"}`,
+    `住民税：${ref(s.resident)}`, `社会保険料：${ref(s.social)}`, `その他の控除：${ref(s.other)}`, `支払う口座：${ref(s.bank)}`,
     `通勤手当：${s.commute ? accounts.get(s.commute) ?? "?" : "なし"}`, `専従者：${s.family.join("・") || "なし"}`, `納期の特例：${s.special ? "あり" : "なし"}`,
+    `税理士等の報酬の取引先：${s.advisors.map((id) => cps.get(id) ?? "?").join("・") || "なし"}`,
   ].join("、");
 };
 
@@ -2411,11 +2414,13 @@ const savePayrollSettings_ = async (db: Database, s: PayrollSettings) => {
   const year = await currentYear(db);
   const accounts = new Set((await getAccounts(db, year)).map((a) => a.id));
   const subs = new Map((await getSubAccounts(db, year)).map((x) => [x.id, x.account_id]));
-  for (const r of [next.tax, next.resident, next.social, next.other, next.bank]) {
+  for (const r of [next.tax, next.feeTax, next.resident, next.social, next.other, next.bank]) {
     if (!r) continue;
     if (!accounts.has(r.account_id) || (r.sub_account_id !== null && subs.get(r.sub_account_id) !== r.account_id)) throw new Error("給与の設定の科目・補助科目が見つかりません");
   }
   if (next.commute !== null && !accounts.has(next.commute)) throw new Error("通勤手当の科目が見つかりません");
+  const cps = new Set((await getCounterparties(db)).map((c) => c.id));
+  if (next.advisors.some((id) => !cps.has(id))) throw new Error("税理士等の報酬の取引先が見つかりません");
   const before = await getPayrollSettings(db);
   if (JSON.stringify(before) === JSON.stringify(next)) return;
   await db.execute("UPDATE settings SET payroll_settings = ? WHERE id = 1", [JSON.stringify(next)]);

@@ -1079,7 +1079,7 @@ export const COLUMN_MIGRATIONS: [string, string, string][] = [
   // 不動産所得：none なし ／ small 事業的規模でない ／ business 事業的規模
   ["settings", "real_estate", "TEXT NOT NULL DEFAULT 'none' CHECK (real_estate IN ('none','small','business'))"],
   ["tax_years", "voluntary_interim", "INTEGER NOT NULL DEFAULT 0 CHECK (voluntary_interim IN (0, 1))"],
-  // 給与の設定（預かる科目・支払う口座・通勤手当の科目・専従者・源泉所得税の納期の特例。JSON。lib/payroll.ts の PayrollSettings）
+  // 給与の設定（預かる科目・支払う口座・通勤手当の科目・専従者・源泉所得税の納期の特例・税理士等の報酬の取引先・報酬・料金等の源泉所得税の科目。JSON。lib/payroll.ts の PayrollSettings）
   ["settings", "payroll_settings", "TEXT NOT NULL DEFAULT ''"],
   // 部門（任意。NULL = 共通・部門なし）：仕訳の明細、明細のルールとその分け方
   ["journal_lines", "department_id", "INTEGER REFERENCES departments(id)"],

@@ -2,11 +2,12 @@
  * 給与
  * 給与の計算（源泉徴収税額表・年末調整・源泉徴収票・法定調書）は給与計算ソフトで行い、ここではその結果を帳簿にして使う（lib/payroll.ts）
  *  - 給与の CSV の取り込み（PayrollImportModal）と、CSV のひな形
- *  - 源泉所得税の納付：期間（毎月／納期の特例）ごとの預かった額・期限・納めたか、納付書（所得税徴収高計算書）に書く数字
+ *  - 源泉所得税の納付：期間（毎月／納期の特例）ごとの預かった額・期限・納めたか、納付書（所得税徴収高計算書）に書く数字。
+ *    給与・賞与・税理士等の報酬（給与所得・退職所得等）と、それ以外の報酬・料金（報酬・料金等。いつも翌月10日）を分けて出す
  *  - 人ごとの年間の集計（給与・賞与・源泉所得税。決算書の給料賃金・専従者給与の内訳と同じ数え方）
- *  - 給与の設定（預かる科目・支払う口座・通勤手当の科目・専従者・納期の特例）
+ *  - 給与の設定（預かる科目・支払う口座・通勤手当の科目・専従者・納期の特例・税理士等の報酬の取引先）
  */
-import { useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { Copy, FileDown, Save, Upload, Wand2 } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -19,7 +20,8 @@ import { toCsv } from "../../lib/csv";
 import { daysUntil } from "../../lib/deadlines";
 import { payeeBreakdown } from "../../lib/statements";
 import {
-  fiscalYearCode, PAYROLL_CSV_HEADER, payrollFigures, payrollSettingsProblem, type AccountRef, type PayrollSettings, type WithholdingClass, type WithholdingPeriod,
+  fiscalYearCode, PAYROLL_CSV_HEADER, payrollFigures, payrollSettingsProblem, salaryAccountIdsOf, SLIP_NAME, withholdingPayees,
+  type AccountRef, type PayrollSettings, type WithholdingClass, type WithholdingPeriod,
 } from "../../lib/payroll";
 import { CODE } from "../../constants/accounts";
 import { usePayeeName } from "../reports/StatementPages";
@@ -42,30 +44,39 @@ const statusOf = (p: WithholdingPeriod, today: string): { text: string; tone: st
 };
 
 /** 納付書（所得税徴収高計算書）に書く数字 */
-const slipText = (p: WithholdingPeriod, special: boolean, year: number) => {
+const slipText = (p: WithholdingPeriod, special: boolean, year: number, payee: (id: number | null) => string) => {
+  const range = special && p.slip === "salary";
   const cls = (label: string, c: WithholdingClass) =>
     c.tax || c.amount
-      ? `${label}：支払年月日 ${special && c.firstDate !== c.lastDate ? `${ymd(c.firstDate)}〜${ymd(c.lastDate)}` : ymd(c.lastDate)}　人員 ${c.people}人　支給額 ${yen(c.amount)}円　税額 ${yen(c.tax)}円`
+      ? `${label}：支払年月日 ${range && c.firstDate !== c.lastDate ? `${ymd(c.firstDate)}〜${ymd(c.lastDate)}` : ymd(c.lastDate)}　人員 ${c.people}人　支給額 ${yen(c.amount)}円　税額 ${yen(c.tax)}円`
       : `${label}：なし`;
+  const items = (c: WithholdingClass) => c.items.map((x) => `　${ymd(x.date)}　${payee(x.counterparty_id)}　支払った額 ${yen(x.amount)}円　税額 ${yen(x.tax)}円`);
+  const head = [`年度：${fiscalYearCode(p.due)}`, `納期等の区分：${range ? `自 ${reiwa(`${year}-01-01`)}${p.fromMonth}月 至 ${reiwa(`${year}-01-01`)}${p.toMonth}月` : `${reiwa(`${year}-01-01`)}${p.fromMonth}月分`}`];
+  const tail = [`本税：${yen(p.total)}円`, `納期限：${longDate(p.due)}`];
+  if (p.slip === "fees") {
+    return [
+      SLIP_NAME.fees, ...head,
+      `人員 ${p.fees.people}人　支払金額 ${yen(p.fees.amount)}円　税額 ${yen(p.fees.tax)}円（区分（原稿料・デザイン料など）ごとに分けて書きます）`,
+      "支払いの内訳：", ...items(p.fees), ...tail,
+    ].join("\n");
+  }
   return [
-    `給与所得・退職所得等の所得税徴収高計算書（${special ? "納期特例用" : "一般用"}）`,
-    `年度：${fiscalYearCode(p.due)}`,
-    `納期等の区分：${special ? `自 ${reiwa(`${year}-01-01`)}${p.fromMonth}月 至 ${reiwa(`${year}-01-01`)}${p.toMonth}月` : `${reiwa(`${year}-01-01`)}${p.fromMonth}月分`}`,
+    `${SLIP_NAME.salary}（${special ? "納期特例用" : "一般用"}）`, ...head,
     cls("俸給・給料等", p.salary),
     cls("賞与", p.bonus),
-    ...(p.other ? [`給与以外で預かった源泉所得税（報酬など）：${yen(p.other)}円`] : []),
-    `本税：${yen(p.total)}円`,
-    `納期限：${longDate(p.due)}`,
+    cls("税理士等の報酬", p.advisor),
+    ...(p.advisor.items.length ? ["税理士等の報酬の内訳：", ...items(p.advisor)] : []),
+    ...tail,
   ].join("\n");
 };
 
 export const PayrollPage = ({ go }: { go: (p: Page) => void }) => {
-  const { year, accounts, can, readOnly } = useAppContext();
+  const { year, accounts, subAccounts, counterparties, can, readOnly } = useAppContext();
   const toast = useToast();
   const w = useWithholding(year);
   const payeeName = usePayeeName();
   const [importing, setImporting] = useState(false);
-  const [slip, setSlip] = useState<number | null>(null);
+  const [slip, setSlip] = useState<string | null>(null);
   const settingsRef = useRef<HTMLElement>(null);
   const today = todayIso();
 
@@ -80,11 +91,33 @@ export const PayrollPage = ({ go }: { go: (p: Page) => void }) => {
     });
   }, [w, year, accounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 期限が来ている前の年の期間（7〜12月分・12月分）も、その年の画面に出す
-  const shown = w ? [
+  // 期限が来ている前の年の期間（7〜12月分・12月分）も、その年の画面に出す。報酬・料金等は預かった月だけ
+  const all = w ? [
     ...w.previous.filter((p) => p.due.startsWith(`${year}-`) && p.status !== "none").map((p) => ({ p, y: year - 1 })),
-    ...w.periods.map((p) => ({ p, y: year })),
+    ...w.periods.filter((p) => p.slip === "salary" || p.total > 0).map((p) => ({ p, y: year })),
   ] : [];
+  const shownSalary = all.filter((x) => x.p.slip === "salary");
+  const shownFees = all.filter((x) => x.p.slip === "fees");
+  const keyOf = ({ p, y }: { p: WithholdingPeriod; y: number }) => `${p.slip}-${y}-${p.fromMonth}`;
+  const opened = all.find((x) => keyOf(x) === slip);
+  const cpName = (id: number | null) => (id === null ? "（取引先なし）" : counterparties.find((c) => c.id === id)?.name ?? "?");
+  // 給与の設定で税理士等として選べる取引先（給与以外で源泉所得税を預かった仕訳の取引先）
+  const payeeChoices = useMemo(() => (w ? withholdingPayees(w.lines, salaryAccountIdsOf(accounts, SALARY_CODES), w.settings) : []), [w, accounts]);
+  const row = ({ p, y }: { p: WithholdingPeriod; y: number }, cells: ReactNode) => {
+    const st = statusOf(p, today);
+    const k = keyOf({ p, y });
+    return (
+      <tr key={k}>
+        <td>{y !== year ? `${y}年` : ""}{periodLabel(p)}</td>
+        <td>{ymd(p.due)}</td>
+        {cells}
+        <td className="num">{yen(p.total, { blankZero: true })}</td>
+        <td className="num">{yen(p.paid, { blankZero: true })}</td>
+        <td><span className={`yearend-chip ${st.tone}`}>{st.text}</span></td>
+        <td>{p.total > 0 && <button className="link-btn" onClick={() => setSlip(slip === k ? null : k)}>納付書の数字</button>}</td>
+      </tr>
+    );
+  };
 
   const saveTemplate = async () => {
     const path = await save({ defaultPath: "給与の取り込み_ひな形.csv", filters: [{ name: "CSV", extensions: ["csv"] }] });
@@ -121,53 +154,65 @@ export const PayrollPage = ({ go }: { go: (p: Page) => void }) => {
         ) : (
           <>
             <p className="prose">
-              給料賃金・専従者給与の仕訳で預かった源泉所得税（{refName(accounts, w.settings.tax)}）を、支払った月で{w.settings.special ? "半年" : "月"}ごとにまとめます。
-              納めた額（源泉所得税の科目の借方）は、前の年からの未納 → 古い期間から順に当てます。
+              給料賃金・専従者給与の仕訳と、給与以外で源泉所得税（{[w.settings.tax, w.settings.feeTax].filter(Boolean).map((r) => refName(accounts, subAccounts, r)).join("・")}）を預かった仕訳を、支払った月でまとめます。
+              税理士・弁護士・司法書士などの報酬（給与の設定で選んだ取引先）は給与と同じ納付書で{w.settings.special ? "半年ごとに" : "毎月"}、
+              それ以外の報酬・料金（原稿料・デザイン料など）は「報酬・料金等」の納付書で、支払った月の翌月10日までに納めます{w.settings.special && "（納期の特例はありません）"}。
+              納めた額（源泉所得税の科目の借方）は、前の年からの未納 → 期限の早い期間の順に当てます{w.settings.feeTax ? "（科目ごとに）" : ""}。
               {w.carried > 0 && `${year}年の初めの未納は ${yen(w.carried)}円です。`}
             </p>
+            <h3 className="sheet-sub">給与・賞与・税理士等の報酬（給与所得・退職所得等の所得税徴収高計算書）</h3>
             <div className="table-wrap">
               <table className="ledger withholding-table">
                 <thead>
                   <tr>
-                    <th>支払った月</th><th>期限</th><th className="num">給与</th><th className="num">賞与</th><th className="num">給与以外</th>
+                    <th>支払った月</th><th>期限</th><th className="num">給与</th><th className="num">賞与</th><th className="num">税理士等の報酬</th>
                     <th className="num">預かった額</th><th className="num">納めた額</th><th>状態</th><th />
                   </tr>
                 </thead>
                 <tbody>
-                  {shown.map(({ p, y }, i) => {
-                    const st = statusOf(p, today);
-                    return (
-                      <tr key={`${y}-${p.fromMonth}`}>
-                        <td>{y !== year ? `${y}年` : ""}{periodLabel(p)}</td>
-                        <td>{ymd(p.due)}</td>
-                        <td className="num">{yen(p.salary.tax, { blankZero: true })}</td>
-                        <td className="num">{yen(p.bonus.tax, { blankZero: true })}</td>
-                        <td className="num">{yen(p.other, { blankZero: true })}</td>
-                        <td className="num">{yen(p.total, { blankZero: true })}</td>
-                        <td className="num">{yen(p.paid, { blankZero: true })}</td>
-                        <td><span className={`yearend-chip ${st.tone}`}>{st.text}</span></td>
-                        <td>{p.total > 0 && <button className="link-btn" onClick={() => setSlip(slip === i ? null : i)}>納付書の数字</button>}</td>
-                      </tr>
-                    );
-                  })}
+                  {shownSalary.map((x) => row(x, <>
+                    <td className="num">{yen(x.p.salary.tax, { blankZero: true })}</td>
+                    <td className="num">{yen(x.p.bonus.tax, { blankZero: true })}</td>
+                    <td className="num">{yen(x.p.advisor.tax, { blankZero: true })}</td>
+                  </>))}
                 </tbody>
               </table>
             </div>
-            {slip !== null && shown[slip] && (
+            <h3 className="sheet-sub">報酬・料金等（原稿料・デザイン料など。報酬・料金等の所得税徴収高計算書）</h3>
+            {shownFees.length === 0 ? <p className="muted">給与以外で源泉所得税を預かった報酬・料金（税理士等の報酬を除く）はありません。</p> : (
+              <div className="table-wrap">
+                <table className="ledger withholding-table">
+                  <thead>
+                    <tr>
+                      <th>支払った月</th><th>期限</th><th className="num">人員</th><th className="num">支払った額</th>
+                      <th className="num">預かった額</th><th className="num">納めた額</th><th>状態</th><th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shownFees.map((x) => row(x, <>
+                      <td className="num">{x.p.fees.people || ""}</td>
+                      <td className="num">{yen(x.p.fees.amount, { blankZero: true })}</td>
+                    </>))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {opened && (
               <div className="slip-box">
-                <pre>{slipText(shown[slip].p, w.settings.special, shown[slip].y)}</pre>
+                <pre>{slipText(opened.p, w.settings.special, opened.y, cpName)}</pre>
                 <button
                   className="btn ghost sm"
-                  onClick={async () => toast(await copyText(slipText(shown[slip].p, w.settings.special, shown[slip].y)) ? "コピーしました" : "コピーできませんでした")}
+                  onClick={async () => toast(await copyText(slipText(opened.p, w.settings.special, opened.y, cpName)) ? "コピーしました" : "コピーできませんでした")}
                 >
                   <Copy size={14} /> コピー
                 </button>
               </div>
             )}
             <p className="field-note">
-              人員は、支払った人の数です（納期の特例では、月ごとの人数の合計）。支給額は給料賃金・専従者給与の額で、非課税の通勤手当（別の科目）は入りません。
-              給与以外で預かった源泉所得税のうち、税理士・弁護士・司法書士などの報酬は同じ納付書の「税理士等の報酬」の欄に書きます。
-              それ以外の報酬・料金（原稿料・デザイン料など）は「報酬・料金等の所得税徴収高計算書」で、支払った月の翌月10日までに納めます（納期の特例はありません）。
+              人員は、支払った人の数です（納期の特例では、月ごとの人数の合計）。給与・賞与の支給額は給料賃金・専従者給与の額で、非課税の通勤手当（別の科目）は入りません。
+              税理士等の報酬と報酬・料金等の支払った額は、源泉徴収する前の額（仕訳の借方の合計。消費税を含む）です。源泉所得税は、仕訳の日付（支払った日）の月で数えます。
+              司法書士・土地家屋調査士・海事代理士の報酬は、納付書の「摘要」欄にも人員・支給額・税額を書きます。
+              税理士等の報酬は、給与の設定で取引先を選んだものだけです。選んでいない取引先と、取引先の無い仕訳は、報酬・料金等として数えます。
             </p>
           </>
         )}
@@ -196,14 +241,18 @@ export const PayrollPage = ({ go }: { go: (p: Page) => void }) => {
         </p>
       </section>
 
-      <PayrollSettingsSection ref={settingsRef} settings={w?.settings ?? null} />
+      <PayrollSettingsSection ref={settingsRef} settings={w?.settings ?? null} payees={payeeChoices} />
 
       {importing && w && <PayrollImportModal settings={w.settings} onClose={() => setImporting(false)} onSettings={openSettings} />}
     </div>
   );
 };
 
-const refName = (accounts: { id: number; name: string }[], r: AccountRef | null) => (r ? accounts.find((a) => a.id === r.account_id)?.name ?? "" : "");
+const refName = (accounts: { id: number; name: string }[], subs: { id: number; name: string }[], r: AccountRef | null) => {
+  if (!r) return "";
+  const sub = r.sub_account_id ? subs.find((x) => x.id === r.sub_account_id)?.name : null;
+  return `${accounts.find((a) => a.id === r.account_id)?.name ?? ""}${sub ? `（${sub}）` : ""}`;
+};
 
 /** 科目と補助科目を選ぶ */
 const RefSelect = ({ label, value, onChange, disabled, allowNone = true }: {
@@ -237,8 +286,8 @@ const RefSelect = ({ label, value, onChange, disabled, allowNone = true }: {
 };
 
 /** 給与の設定 */
-const PayrollSettingsSection = ({ settings, ref }: { settings: PayrollSettings | null; ref: Ref<HTMLElement> }) => {
-  const { db, activeAccounts, can, readOnly, bump, reloadAccounts } = useAppContext();
+const PayrollSettingsSection = ({ settings, payees, ref }: { settings: PayrollSettings | null; payees: number[]; ref: Ref<HTMLElement> }) => {
+  const { db, activeAccounts, counterparties, can, readOnly, bump, reloadAccounts } = useAppContext();
   const toast = useToast();
   const [s, setS] = useState<PayrollSettings | null>(settings);
   const [family, setFamily] = useState("");
@@ -251,6 +300,11 @@ const PayrollSettingsSection = ({ settings, ref }: { settings: PayrollSettings |
   const changed = !!next && JSON.stringify(next) !== JSON.stringify(settings);
   const problem = next ? payrollSettingsProblem(next) : null;
   const set = <K extends keyof PayrollSettings>(k: K, v: PayrollSettings[K]) => setS((x) => (x ? { ...x, [k]: v } : x));
+  // 給与以外で源泉所得税を預かった仕訳の取引先と、もう選んでいる取引先
+  const advisorChoices = [...new Set([...payees, ...(s?.advisors ?? [])])]
+    .map((id) => counterparties.find((c) => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => !!c)
+    .sort((a, b) => (a.kana || a.name).localeCompare(b.kana || b.name, "ja"));
 
   const saveIt = async () => {
     if (!next) return;
@@ -287,6 +341,7 @@ const PayrollSettingsSection = ({ settings, ref }: { settings: PayrollSettings |
       {s && (
         <div className="payroll-settings">
           <RefSelect label="源泉所得税" value={s.tax} onChange={(v) => set("tax", v)} disabled={disabled} />
+          <RefSelect label="報酬・料金等の源泉所得税（給与と別の科目にするときだけ）" value={s.feeTax} onChange={(v) => set("feeTax", v)} disabled={disabled} />
           <RefSelect label="住民税" value={s.resident} onChange={(v) => set("resident", v)} disabled={disabled} />
           <RefSelect label="社会保険料（本人負担分）" value={s.social} onChange={(v) => set("social", v)} disabled={disabled} />
           <RefSelect label="その他の控除" value={s.other} onChange={(v) => set("other", v)} disabled={disabled} />
@@ -306,6 +361,28 @@ const PayrollSettingsSection = ({ settings, ref }: { settings: PayrollSettings |
             <input type="checkbox" checked={s.special} disabled={disabled} onChange={(e) => set("special", e.target.checked)} />
             源泉所得税の納期の特例の承認を受けている（1〜6月分は7月10日、7〜12月分は翌年1月20日までに納める。給与を払う人が常に10人未満で、税務署に申請して承認を受けた事業者）
           </label>
+          <div className="field payroll-wide">
+            <span>税理士等の報酬の取引先（給与と同じ納付書の「税理士等の報酬」欄で納め、納期の特例も使える）</span>
+            {advisorChoices.length === 0 ? (
+              <p className="muted">給与以外で源泉所得税を預かった仕訳の取引先が、ここに出ます（まだありません）。</p>
+            ) : (
+              <div className="payroll-advisors">
+                {advisorChoices.map((c) => (
+                  <label key={c.id} className="check">
+                    <input
+                      type="checkbox" checked={s.advisors.includes(c.id)} disabled={disabled}
+                      onChange={(e) => set("advisors", e.target.checked ? [...s.advisors, c.id] : s.advisors.filter((x) => x !== c.id))}
+                    />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="field-note">
+              弁護士・税理士・公認会計士・社会保険労務士・司法書士・弁理士・土地家屋調査士・不動産鑑定士・建築士・測量士・技術士・海事代理士など（所得税法204条1項2号）の報酬です。
+              選んでいない取引先の報酬（原稿料・デザイン料・講演料など）は「報酬・料金等」として、納期の特例があっても支払った月の翌月10日までに納めます。
+            </p>
+          </div>
         </div>
       )}
       {problem && <p className="warn-box">{problem}</p>}
