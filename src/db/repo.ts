@@ -58,8 +58,8 @@ import type { InventoryAdjust } from "../lib/taxReturn";
 import type { ProvisionalFiled } from "../lib/taxInterim";
 import { FILING_KIND_LABEL, FILING_TAX_LABEL, type FilingLine, type TaxFiling } from "../lib/amendment";
 import {
-  DOC_KIND_LABEL, docMemo, docProblem, invoiceEntryLines, issuerOf, ITEM_TAX_LABEL, paymentEntryLines, ROUNDING_LABEL, salesDate, savedTotals,
-  type DocIssuer, type DocItem, type DocTotals, type Rounding, type SalesDoc, type SalesPayment,
+  DOC_KIND_LABEL, docMemo, docProblem, invoiceEntryLines, isFeeTreatment, issuerOf, ITEM_TAX_LABEL, paymentEntryLines, paymentProblem, remainingOf, ROUNDING_LABEL, salesDate, savedTotals,
+  type DocIssuer, type DocItem, type DocTotals, type FeeTreatment, type Rounding, type SalesDoc, type SalesPayment,
 } from "../lib/salesDoc";
 import {
   DEFAULT_BACKUP_GENERATIONS, MAX_BACKUP_GENERATIONS, MAX_SUB_ACCOUNTS_PER_ACCOUNT,
@@ -1033,43 +1033,75 @@ const deleteSalesDoc_ = async (db: Database, id: number) => {
 };
 
 /** 入金を記録する（入金の仕訳を作る）。fee = 差し引かれた振込手数料 */
-const addSalesPayment_ = async (db: Database, docId: number, p: { paid_on: string; amount: number; fee: number; bankAccountId: number; feeAccountId: number }) => {
+/** 請求書の入金の残り（差引請求額 − 入金の合計） */
+const docRemaining = async (db: Database, d: SalesDoc) =>
+  remainingOf(savedTotals(d).billed, (await getSalesPayments(db)).filter((p) => p.doc_id === d.id));
+
+/**
+ * 入金を記録する（預金 ＋ 振込手数料 ／ 売掛金 の仕訳を作る）。受け取った額 ＋ 振込手数料 が残りを超えるときは記録しない。
+ * feeAs = 差し引かれた振込手数料の扱い（売上の値引き・支払手数料。lib/salesDoc.ts の FeeTreatment）。feeAccountId は支払手数料にするときの科目
+ */
+const addSalesPayment_ = async (
+  db: Database, docId: number, p: { paid_on: string; amount: number; fee: number; feeAs: FeeTreatment; bankAccountId: number; feeAccountId: number },
+) => {
   const d = await getSalesDoc(db, docId);
   if (d.kind !== "invoice" || d.status !== "issued") throw new Error("発行済みの請求書だけ入金を記録できます");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.paid_on)) throw new Error("入金日を入れてください");
   if (!Number.isInteger(p.amount) || p.amount <= 0 || !Number.isInteger(p.fee) || p.fee < 0) throw new Error("金額は整数で入れてください");
-  const { receivable } = await invoiceIds(db, d);
+  if (p.fee > 0 && !isFeeTreatment(p.feeAs)) throw new Error("振込手数料の扱いを選んでください");
+  const problem = paymentProblem(p.amount + p.fee, await docRemaining(db, d));
+  if (problem) throw new Error(problem);
+  const ids = await invoiceIds(db, d);
+  if (p.fee > 0 && p.feeAs !== "discount" && !p.feeAccountId) throw new Error("振込手数料の科目を選んでください");
   const memo = `${docMemo(d)} の入金`;
-  const entryId = await createEntry_(db, p.paid_on, paymentEntryLines({ amount: p.amount, fee: p.fee, memo }, { bank: p.bankAccountId, receivable, fee: p.feeAccountId }), d.counterparty_id, memo);
+  const lines = paymentEntryLines(
+    { amount: p.amount, fee: p.fee, memo, feeAs: p.feeAs }, { bank: p.bankAccountId, receivable: ids.receivable, fee: p.feeAccountId, revenue: ids.revenue }, savedTotals(d),
+  );
+  const entryId = await createEntry_(db, p.paid_on, lines, d.counterparty_id, memo);
   await db.execute("INSERT INTO sales_payments (doc_id, entry_id, paid_on, amount, created) VALUES (?, ?, ?, ?, 1)", [docId, entryId, p.paid_on, p.amount + p.fee]);
   await logDoc(db, d, "change", "", `入金 ${p.paid_on} ${(p.amount + p.fee).toLocaleString()}円（仕訳 No.${entryId}）`);
   return entryId;
 };
 /**
  * 入金にできる帳簿の仕訳（明細の取り込みなどで作った、売掛金を減らす仕訳）：請求書と同じ取引先で、請求書の売上の日より後のもの。
- * もう入金にした仕訳と、請求書の仕訳は除く。amount = 売掛金を減らした額
+ * 請求書の仕訳は除く。amount = 売掛金を減らした額のうち、まだ請求書の入金にしていない額（1つの振込で2つの請求書を払ったときは、残りを別の請求書に当てられる）
  */
 export const receivableCredits = async (db: Database, docId: number) => {
   const d = await getSalesDoc(db, docId);
   const { receivable } = await invoiceIds(db, d);
   return db.select<{ entry_id: number; date: string; description: string; amount: number }[]>(
-    `SELECT e.id AS entry_id, e.date, e.description, SUM(l.amount) AS amount FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id
-      WHERE e.is_deleted = 0 AND l.side = 'credit' AND l.account_id = ? AND e.date >= ?
-        AND COALESCE(e.counterparty_id, 0) = COALESCE(?, 0)
-        AND e.id NOT IN (SELECT entry_id FROM sales_payments WHERE entry_id IS NOT NULL)
-        AND e.id NOT IN (SELECT entry_id FROM sales_docs WHERE entry_id IS NOT NULL)
-      GROUP BY e.id ORDER BY e.date, e.id`,
+    `SELECT * FROM (
+       SELECT e.id AS entry_id, e.date, e.description,
+              SUM(l.amount) - COALESCE((SELECT SUM(p.amount) FROM sales_payments p WHERE p.entry_id = e.id), 0) AS amount
+         FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id
+        WHERE e.is_deleted = 0 AND l.side = 'credit' AND l.account_id = ? AND e.date >= ?
+          AND COALESCE(e.counterparty_id, 0) = COALESCE(?, 0)
+          AND e.id NOT IN (SELECT entry_id FROM sales_docs WHERE entry_id IS NOT NULL)
+        GROUP BY e.id
+     ) WHERE amount > 0 ORDER BY date, entry_id`,
     [receivable, salesDate(d), d.counterparty_id],
   );
 };
 
-/** 帳簿にある仕訳（明細の取り込みなど）を入金にする。amount = 売掛金から消す額 */
+/**
+ * 帳簿にある仕訳（明細の取り込みなど）を入金にする。amount = 売掛金から消す額。
+ * 仕訳で売掛金を減らした額のうち、まだ入金にしていない額まで、かつ請求書の残りまで（超えるときは止める。同じ請求書に明細を2つ当てたときも）
+ */
 const linkSalesPayment_ = async (db: Database, docId: number, entryId: number, amount: number) => {
   const d = await getSalesDoc(db, docId);
   if (d.kind !== "invoice" || d.status !== "issued") throw new Error("発行済みの請求書だけ入金にできます");
   const e = await getEntry(db, entryId);
   if (!e || e.is_deleted) throw new Error("仕訳が見つかりません");
-  if ((await getSalesPayments(db)).some((p) => p.entry_id === entryId)) throw new Error("この仕訳はもう入金にしています");
+  if (!Number.isInteger(amount) || amount <= 0) throw new Error("入金の額は正の整数で入れてください");
+  const { receivable } = await invoiceIds(db, d);
+  const credited = e.lines.filter((l) => l.side === "credit" && l.account_id === receivable).reduce((s, l) => s + l.amount, 0);
+  const linked = (await getSalesPayments(db)).filter((p) => p.entry_id === entryId).reduce((s, p) => s + p.amount, 0);
+  if (credited - linked <= 0) throw new Error("この仕訳はもう入金にしています");
+  if (amount > credited - linked) {
+    throw new Error(`入金の額（${amount.toLocaleString()}円）が、この仕訳で売掛金を減らした額のうち、まだ入金にしていない額（${(credited - linked).toLocaleString()}円）を超えています`);
+  }
+  const problem = paymentProblem(amount, await docRemaining(db, d));
+  if (problem) throw new Error(`請求書 ${d.doc_no}：${problem}`);
   await db.execute("INSERT INTO sales_payments (doc_id, entry_id, paid_on, amount, created) VALUES (?, ?, ?, ?, 0)", [docId, entryId, e.date, amount]);
   await logDoc(db, d, "change", "", `入金 ${e.date} ${amount.toLocaleString()}円（仕訳 No.${entryId}）`);
 };

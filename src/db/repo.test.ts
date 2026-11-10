@@ -565,9 +565,13 @@ describe("見積書・請求書（repo）", () => {
     const { db, id, doc } = await setup();
     const docId = await repo.saveSalesDoc(db, null, doc);
     await repo.issueSalesDoc(db, docId);
-    const payEntry = await repo.addSalesPayment(db, docId, { paid_on: "2026-06-30", amount: 99_130, fee: 660, bankAccountId: id("普通預金"), feeAccountId: id("支払手数料") });
-    // 税区分は科目の初期値（振込手数料は課税仕入）
-    expect(await linesOf(db, payEntry)).toEqual([["debit", id("普通預金"), 99_130, "none"], ["credit", id("売掛金"), 99_790, "none"], ["debit", id("支払手数料"), 660, "purchase10"]]);
+    // 入金と振込手数料の合計が残りを超えるときは止める（A-04）
+    const pay = { paid_on: "2026-06-30", amount: 99_130, fee: 660, feeAs: "discount" as const, bankAccountId: id("普通預金"), feeAccountId: id("支払手数料") };
+    await expect(repo.addSalesPayment(db, docId, { ...pay, amount: 2_000_000 })).rejects.toThrow(/残りの額（99,790円）を超えています/);
+    const payEntry = await repo.addSalesPayment(db, docId, pay);
+    // 差し引かれた振込手数料は、初期値の売上の値引き：売上高の借方に、請求書と同じ税率の売上の返還（F-01）
+    expect(await linesOf(db, payEntry)).toEqual([["debit", id("普通預金"), 99_130, "none"], ["credit", id("売掛金"), 99_790, "none"], ["debit", id("売上高"), 660, "sales10"]]);
+    await expect(repo.addSalesPayment(db, docId, { ...pay, amount: 1, fee: 0 })).rejects.toThrow(/残りの額（0円）/);
     expect((await repo.getSalesPayments(db)).map((p) => [p.doc_id, p.amount])).toEqual([[docId, 99_790]]);
     await expect(repo.voidSalesDoc(db, docId, "誤り")).rejects.toThrow(/入金があります/);
     const [p] = await repo.getSalesPayments(db);
@@ -580,6 +584,39 @@ describe("見積書・請求書（repo）", () => {
     expect((await repo.getSalesDocs(db))[0]).toMatchObject({ status: "void", entry_id: null });
     expect((await repo.getEntry(db, entryId))!.is_deleted).toBe(1);
     await expect(repo.saveSalesDoc(db, docId, doc)).rejects.toThrow(/取消した書類/);
+  });
+
+  test("振込手数料を支払手数料にする：課税仕入 10%、インボイス区分は選んだもの（得意先は手数料を売った人ではない）", async () => {
+    const { db, id, doc } = await setup("standard");
+    const docId = await repo.saveSalesDoc(db, null, doc);
+    await repo.issueSalesDoc(db, docId);
+    const pay = { paid_on: "2026-06-30", amount: 49_000, fee: 660, bankAccountId: id("普通預金"), feeAccountId: id("支払手数料") };
+    const kinds = async (e: number) => (await repo.getEntry(db, e))!.lines.filter((l) => l.amount === 660).map((l) => [l.account_id, l.tax_code, l.invoice_kind]);
+    expect(await kinds(await repo.addSalesPayment(db, docId, { ...pay, feeAs: "fee_none" }))).toEqual([[id("支払手数料"), "purchase10", "none"]]);
+    expect(await kinds(await repo.addSalesPayment(db, docId, { ...pay, amount: 49_470, feeAs: "fee_qualified" }))).toEqual([[id("支払手数料"), "purchase10", "qualified"]]);
+    expect((await repo.getSalesPayments(db)).reduce((s, p) => s + p.amount, 0)).toBe(99_790);
+  });
+
+  test("帳簿の仕訳を入金にする：仕訳で売掛金を減らした額のうち、まだ当てていない額まで、請求書の残りまで（1つの振込で2つの請求書）", async () => {
+    const { db, id, cp, doc } = await setup("standard");
+    const a = await repo.saveSalesDoc(db, null, doc);
+    await repo.issueSalesDoc(db, a);
+    const b = await repo.saveSalesDoc(db, null, { ...doc, doc_no: "2026-0002" });
+    await repo.issueSalesDoc(db, b);
+    // 2通分 199,580円をまとめて振り込まれた仕訳
+    const entry = await repo.createEntry(db, "2026-06-30", [
+      { row_no: 1, side: "debit", account_id: id("普通預金"), sub_account_id: null, amount: 199_580, memo: "入金" },
+      { row_no: 1, side: "credit", account_id: id("売掛金"), sub_account_id: null, amount: 199_580, memo: "入金" },
+    ], cp);
+    expect((await repo.receivableCredits(db, a)).map((c) => [c.entry_id, c.amount])).toEqual([[entry, 199_580]]);
+    await expect(repo.linkSalesPayment(db, a, entry, 199_580)).rejects.toThrow(/請求書 2026-0001：.*残りの額（99,790円）を超えています/);
+    await repo.linkSalesPayment(db, a, entry, 99_790);
+    // 残りの 99,790円は、もう1通に当てられる
+    expect((await repo.receivableCredits(db, b)).map((c) => [c.entry_id, c.amount])).toEqual([[entry, 99_790]]);
+    await expect(repo.linkSalesPayment(db, b, entry, 100_000)).rejects.toThrow(/まだ入金にしていない額（99,790円）を超えています/);
+    await repo.linkSalesPayment(db, b, entry, 99_790);
+    expect(await repo.receivableCredits(db, b)).toEqual([]);
+    await expect(repo.linkSalesPayment(db, b, entry, 1)).rejects.toThrow(/もう入金/);
   });
 
   test("明細の取り込みで入金にする（仕訳はそのまま。入金を取り消してもつなぎを外すだけ）。通常モードで仕訳を削除すると、つなぎも外れる", async () => {

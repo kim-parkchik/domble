@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
-  docProblem, docState, docTotals, invoiceEntryLines, itemAmount, itemTaxOn, nextDocNo, paymentCandidates, paymentEntryLines, reducedItemNote, remainingOf,
+  docProblem, docState, docTotals, feeDiscountParts, invoiceEntryLines, itemAmount, itemTaxOn, nextDocNo, paymentCandidates, paymentEntryLines, paymentProblem, reducedItemNote, remainingOf,
   withholdingTax, type DocItem, type SalesDoc, issuerOf, salesDocCsvRow, salesDocItemCsvRows, SALES_DOC_CSV_HEADER,
 } from "./salesDoc";
 
@@ -85,8 +85,43 @@ describe("仕訳", () => {
   test("免税の年は税区分を付けない。入金：預金 ＋ 振込手数料 ／ 売掛金", () => {
     const t = docTotals(doc([item("a", 1, 30_000)]), "floor", true);
     expect(invoiceEntryLines({ kind: "invoice", doc_no: "1", subject: "" }, t, ids).map((l) => l.tax_code ?? null)).toEqual([null, null]);
-    expect(paymentEntryLines({ amount: 99_130, fee: 660, memo: "入金" }, { bank: 103, receivable: 111, fee: 620 }).map((l) => [l.row_no, l.side, l.account_id, l.amount]))
-      .toEqual([[1, "debit", 103, 99_130], [1, "credit", 111, 99_790], [2, "debit", 620, 660]]);
+    // 免税の年の請求書の振込手数料を売上の値引きにしても、売上の返還にはしない（対象外）
+    expect(paymentEntryLines({ amount: 29_340, fee: 660, memo: "入金", feeAs: "discount" }, { bank: 103, receivable: 111, fee: 620, revenue: 401 }, t)
+      .map((l) => [l.row_no, l.side, l.account_id, l.amount, l.tax_code ?? null]))
+      .toEqual([[1, "debit", 103, 29_340, null], [1, "credit", 111, 30_000, null], [2, "debit", 401, 660, "none"]]);
+  });
+});
+
+describe("入金と振込手数料", () => {
+  const ids = { bank: 103, receivable: 111, fee: 620, revenue: 401 };
+  const row = (l: ReturnType<typeof paymentEntryLines>[number]) => [l.row_no, l.side, l.account_id, l.amount, l.tax_code ?? null, l.invoice_kind ?? null];
+  const t = docTotals(doc([item("デザイン料", 1, 100_000)], { withholding: 1 }), "floor", false);
+
+  test("売上の値引き（初期値）：売上の科目の借方に、請求書と同じ税率の売上の返還", () => {
+    expect(paymentEntryLines({ amount: 99_130, fee: 660, memo: "入金", feeAs: "discount" }, ids, t).map(row))
+      .toEqual([[1, "debit", 103, 99_130, null, null], [1, "credit", 111, 99_790, null, null], [2, "debit", 401, 660, "sales10", null]]);
+    // 手数料が無ければ2行だけ
+    expect(paymentEntryLines({ amount: 99_790, fee: 0, memo: "入金", feeAs: "discount" }, ids, t)).toHaveLength(2);
+  });
+
+  test("支払手数料：課税仕入 10%。インボイス区分は選んだもの（控除しない・適格）", () => {
+    expect(paymentEntryLines({ amount: 99_130, fee: 660, memo: "入金", feeAs: "fee_none" }, ids, t).map(row)[2]).toEqual([2, "debit", 620, 660, "purchase10", "none"]);
+    expect(paymentEntryLines({ amount: 99_130, fee: 660, memo: "入金", feeAs: "fee_qualified" }, ids, t).map(row)[2]).toEqual([2, "debit", 620, 660, "purchase10", "qualified"]);
+  });
+
+  test("税率が2つ以上の請求書：税込の額の割合で分け、端数は大きい区分へ", () => {
+    // 10% 110,000・8% 54,000：660 × 110/164 = 442.6… → 442（端数 1円を足して 443）、660 × 54/164 = 217.3… → 217
+    const mixed = docTotals(doc([item("a", 1, 100_000), item("b", 1, 50_000, "8")]), "floor", false);
+    expect(feeDiscountParts(660, mixed)).toEqual([{ tax_code: "sales10", amount: 443 }, { tax_code: "sales8", amount: 217 }]);
+    expect(paymentEntryLines({ amount: 163_340, fee: 660, memo: "入金", feeAs: "discount" }, ids, mixed).map((l) => [l.row_no, l.amount, l.tax_code]).slice(2))
+      .toEqual([[2, 443, "sales10"], [3, 217, "sales8"]]);
+    expect(feeDiscountParts(0, mixed)).toEqual([]);
+  });
+
+  test("入金と振込手数料の合計が残りを超えるときは止める", () => {
+    expect(paymentProblem(99_790, 99_790)).toBeNull();
+    expect(paymentProblem(2_000_000, 99_790)).toMatch(/2,000,000円.*残りの額（99,790円）を超えています/);
+    expect(paymentProblem(100, 0)).toMatch(/残りの額（0円）/);
   });
 });
 

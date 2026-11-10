@@ -7,7 +7,8 @@
  *    100万円を超える部分は 20.42%（1円未満切り捨て。国税庁 No.2795・No.2798）。差引請求額 ＝ 合計 − 源泉徴収税額
  *  - 仕訳（請求書を発行したとき）：売掛金（差引請求額）＋ 事業主貸（源泉徴収税額） ／ 売上の科目（税率ごとに税込の額。税区分つき）。
  *    税抜経理の年は、税率ごとの消費税額を仕訳の消費税額にする（請求書の額と合わせる）
- *  - 入金：預金（受け取った額）＋ 振込手数料（差し引かれた額） ／ 売掛金。差引請求額から入金の合計を引いた残りで、入金済みを決める
+ *  - 入金：預金（受け取った額）＋ 振込手数料（差し引かれた額） ／ 売掛金。差引請求額から入金の合計を引いた残りで、入金済みを決める。
+ *    入金の合計が差引請求額を超える記録はしない。差し引かれた振込手数料は、売上の値引き（初期値）か支払手数料（FeeTreatment）
  *  - 明細の取り込みの入金の候補：入金の額が残りと同じか、残りより振込手数料の分（1,000円まで）だけ少ない請求書
  *  - 飲食料品の税率の引下げ（令和9年4月1日〜令和11年3月31日）：明細の税に 1%（軽減）。※ の印はそのまま使える（「1%対象」の印は要らない）。
  *    締めの期間が3月と4月をまたぐ請求書は、8% と 1% の明細を1枚に並べ、税率ごとに合計する（国税庁 Q&A 問2-1・2-2）
@@ -266,14 +267,68 @@ export const invoiceEntryLines = (
   return out;
 };
 
-/** 入金の仕訳の明細：預金（受け取った額）＋ 振込手数料（差し引かれた額） ／ 売掛金 */
-export const paymentEntryLines = (
-  p: { amount: number; fee: number; memo: string }, ids: { bank: number; receivable: number; fee: number },
-): JournalLine[] => [
-  { row_no: 1, side: "debit", account_id: ids.bank, sub_account_id: null, amount: p.amount, memo: p.memo },
-  { row_no: 1, side: "credit", account_id: ids.receivable, sub_account_id: null, amount: p.amount + p.fee, memo: p.memo },
-  ...(p.fee > 0 ? [{ row_no: 2, side: "debit" as const, account_id: ids.fee, sub_account_id: null, amount: p.fee, memo: `${p.memo}（振込手数料）` }] : []),
+/**
+ * 相手が差し引いて振り込んだ振込手数料（売り手が負担する分）の扱い（国税庁 インボイス制度の Q&A：売上値引きか支払手数料のどちらか）
+ *  - discount：売上の値引き（対価の返還等）。売上の科目の借方に、請求書と同じ税率の売上の返還で入れる。税込1万円未満なら返還インボイスは要らない（消法57の4③）
+ *  - fee_none・fee_qualified：支払手数料（課税仕入 10%）。仕訳の取引先は得意先なので、インボイス区分は選ぶ
+ *    （金融機関のインボイスと、得意先からの立替金精算書などがあれば「適格」、無ければ「控除しない」）
+ */
+export type FeeTreatment = "discount" | "fee_none" | "fee_qualified";
+export const FEE_TREATMENTS: { value: FeeTreatment; label: string }[] = [
+  { value: "discount", label: "売上の値引き（売上の返還）" },
+  { value: "fee_none", label: "支払手数料（課税仕入・控除しない）" },
+  { value: "fee_qualified", label: "支払手数料（課税仕入・適格）" },
 ];
+export const isFeeTreatment = (v: unknown): v is FeeTreatment => FEE_TREATMENTS.some((x) => x.value === v);
+/** 返還インボイスが要らない対価の返還等の上限（税込1万円未満） */
+export const SMALL_RETURN_LIMIT = 10_000;
+
+/**
+ * 売上の値引きにする振込手数料を、請求書の税率・区分ごとに分ける（税込の額の割合。端数は最後に大きい区分へ）。
+ * 免税の年の請求書は、売上の返還にしない（対象外）
+ */
+export const feeDiscountParts = (fee: number, t: Pick<DocTotals, "groups" | "exempt">): { tax_code: TaxCode; amount: number }[] => {
+  const gs = t.groups.filter((g) => g.total > 0);
+  if (fee <= 0) return [];
+  if (t.exempt || gs.length === 0) return [{ tax_code: "none", amount: fee }];
+  const sum = gs.reduce((s, g) => s + g.total, 0);
+  const parts = gs.map((g) => ({ tax_code: ITEM_TAX_CODE[g.tax], amount: Math.floor((fee * g.total) / sum), total: g.total }));
+  const rest = fee - parts.reduce((s, p) => s + p.amount, 0);
+  const big = parts.reduce((m, p, i) => (p.total > parts[m].total ? i : m), 0);
+  parts[big].amount += rest;
+  return parts.filter((p) => p.amount > 0).map(({ tax_code, amount }) => ({ tax_code, amount }));
+};
+
+/**
+ * 入金の仕訳の明細：預金（受け取った額）＋ 振込手数料（差し引かれた額） ／ 売掛金。
+ * 振込手数料は、売上の値引き（売上の科目・売上の返還）か支払手数料（課税仕入 10%・選んだインボイス区分）
+ */
+export const paymentEntryLines = (
+  p: { amount: number; fee: number; memo: string; feeAs: FeeTreatment },
+  ids: { bank: number; receivable: number; fee: number; revenue: number },
+  t: Pick<DocTotals, "groups" | "exempt">,
+): JournalLine[] => {
+  const feeMemo = `${p.memo}（振込手数料）`;
+  const feeLines: JournalLine[] = p.fee <= 0 ? []
+    : p.feeAs === "discount"
+      ? feeDiscountParts(p.fee, t).map((x) => ({ row_no: 0, side: "debit" as const, account_id: ids.revenue, sub_account_id: null, amount: x.amount, memo: feeMemo, tax_code: x.tax_code }))
+      : [{
+        row_no: 0, side: "debit" as const, account_id: ids.fee, sub_account_id: null, amount: p.fee, memo: feeMemo,
+        tax_code: "purchase10" as const, invoice_kind: p.feeAs === "fee_qualified" ? "qualified" as const : "none" as const,
+      }];
+  return [
+    { row_no: 1, side: "debit", account_id: ids.bank, sub_account_id: null, amount: p.amount, memo: p.memo },
+    { row_no: 1, side: "credit", account_id: ids.receivable, sub_account_id: null, amount: p.amount + p.fee, memo: p.memo },
+    ...feeLines.map((l, i) => ({ ...l, row_no: i + 2 })),
+  ];
+};
+
+/** 入金の額の確かめ（受け取った額 ＋ 振込手数料が、残りの額を超えないか）。問題が無ければ null */
+export const paymentProblem = (applied: number, remaining: number): string | null =>
+  applied > remaining
+    ? `入金と振込手数料の合計（${applied.toLocaleString()}円）が、残りの額（${Math.max(0, remaining).toLocaleString()}円）を超えています。` +
+      "多く受け取った分は、残りの額で入金にしたあと、振替伝票で前受金・仮受金などにしてください"
+    : null;
 
 /** 入金の残り（差引請求額 − 入金の合計） */
 export const remainingOf = (billed: number, payments: Pick<SalesPayment, "amount">[]) => billed - payments.reduce((s, p) => s + p.amount, 0);

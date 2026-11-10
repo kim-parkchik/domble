@@ -3,8 +3,8 @@
  * 何を確かめるか：
  *  - 「請求書・見積書」の画面：請求書（税抜の単価・源泉徴収あり）を発行 → 売掛金＋事業主貸（源泉徴収税額）／売上高 の仕訳
  *  - 100万円を超える報酬の源泉徴収（100万円まで 10.21%、超える部分 20.42%）
- *  - 入金の記録（振込手数料を差し引かれた入金）・取消した請求書・源泉徴収の無い請求書（税込の単価）
- *  - 決算書（売上・売掛金・支払手数料）→ 消費税（2割特例）→ 所得税（「請求書から入れる」で第二表の所得の内訳と ㊾）→ e-Tax（所得税・消費税）
+ *  - 入金の記録（振込手数料を差し引かれた入金。手数料は画面の初期値の「売上の値引き」＝売上の返還）・取消した請求書・源泉徴収の無い請求書（税込の単価）
+ *  - 決算書（売上・売掛金。振込手数料の値引きは売上から差し引く）→ 消費税（2割特例。⑤ 返還等対価に係る税額）→ 所得税（「請求書から入れる」で第二表の所得の内訳と ㊾）→ e-Tax（所得税・消費税）
  * 動かし方：bun s5_invoice.ts
  */
 import {
@@ -43,7 +43,7 @@ const docBase = (o: Partial<SalesDoc>) => ({
 });
 const bank = b.acc("普通預金"), fee = b.acc("支払手数料");
 
-// エー：毎月 デザイン料 200,000円（税抜）。翌月25日に、振込手数料 440円を差し引いて入金。12月分は年末に売掛金
+// エー：毎月 デザイン料 200,000円（税抜）。翌月25日に、振込手数料 440円を差し引いて入金（売上の値引き。2026-11-10 に F-01 で初期値を変えた）。12月分は年末に売掛金
 const aDocs: number[] = [];
 for (let m = 1; m <= 12; m++) {
   const id = await repo.saveSalesDoc(db, null, docBase({
@@ -52,7 +52,7 @@ for (let m = 1; m <= 12; m++) {
   }));
   await repo.issueSalesDoc(db, id);
   aDocs.push(id);
-  if (m <= 11) await repo.addSalesPayment(db, id, { paid_on: M(m + 1, 25), amount: 200_000 + 20_000 - 20_420 - 440, fee: 440, bankAccountId: bank, feeAccountId: fee });
+  if (m <= 11) await repo.addSalesPayment(db, id, { paid_on: M(m + 1, 25), amount: 200_000 + 20_000 - 20_420 - 440, fee: 440, feeAs: "discount", bankAccountId: bank, feeAccountId: fee });
 }
 // ビー出版：100万円を超える報酬（6月）。源泉徴収 = 1,000,000 × 10.21% + 500,000 × 20.42% = 204,200
 const bId = await repo.saveSalesDoc(db, null, docBase({
@@ -60,14 +60,14 @@ const bId = await repo.saveSalesDoc(db, null, docBase({
   subject: "書籍の装丁一式", items: [{ name: "装丁デザイン", qty: 1, unit: "式", price: 1_200_000, tax: "10" }, { name: "イラスト", qty: 6, unit: "点", price: 50_000, tax: "10" }],
 }));
 await repo.issueSalesDoc(db, bId);
-await repo.addSalesPayment(db, bId, { paid_on: M(7, 31), amount: 1_650_000 - 204_200, fee: 0, bankAccountId: bank, feeAccountId: fee });
+await repo.addSalesPayment(db, bId, { paid_on: M(7, 31), amount: 1_650_000 - 204_200, fee: 0, feeAs: "discount", bankAccountId: bank, feeAccountId: fee });
 // シー商店：源泉徴収の無い請求書（税込の単価）
 const cId = await repo.saveSalesDoc(db, null, docBase({
   doc_no: `${YEAR}-0102`, issue_date: M(9, 15), counterparty_id: C, to_name: "シー商店", price_mode: "inclusive", withholding: 0,
   subject: "ロゴ", items: [{ name: "ロゴ制作", qty: 1, unit: "式", price: 330_000, tax: "10" }],
 }));
 await repo.issueSalesDoc(db, cId);
-await repo.addSalesPayment(db, cId, { paid_on: M(10, 15), amount: 330_000, fee: 0, bankAccountId: bank, feeAccountId: fee });
+await repo.addSalesPayment(db, cId, { paid_on: M(10, 15), amount: 330_000, fee: 0, feeAs: "discount", bankAccountId: bank, feeAccountId: fee });
 // 発行して取り消した請求書（金額の誤り）
 const vId = await repo.saveSalesDoc(db, null, docBase({
   doc_no: `${YEAR}-0103`, issue_date: M(10, 1), counterparty_id: C, to_name: "シー商店", withholding: 0,
@@ -97,19 +97,23 @@ cmp(rows, "取消した請求書：仕訳が消える", "消える", voided.entr
 cmp(rows, "試算表：売掛金（期末。12月分のエー）", 199_580, f.tbRow("売掛金").balance);
 cmp(rows, "試算表：普通預金（期末）", 1_000_000 + (199_140 * 11) + 1_445_800 + 330_000 - 132_000 - 300_000 - 165_000, f.tbRow("普通預金").balance);
 cmp(rows, "試算表：事業主貸（源泉徴収 449,240 ＋ 国保 300,000）", 749_240, f.tbRow("事業主貸").balance);
-cmp(rows, "決算書：売上（収入）金額", 4_620_000, f.pl.revenue);
-cmp(rows, "決算書：支払手数料（振込手数料 440 × 11）", 4_840, ex("支払手数料"));
-cmp(rows, "決算書：経費計", 4_840 + 132_000 + 165_000, f.pl.expenses);
+cmp(rows, "決算書：売上（収入）金額（4,620,000 − 振込手数料の値引き 440 × 11）", 4_615_160, f.pl.revenue);
+cmp(rows, "決算書：支払手数料（振込手数料は売上の値引きにしたので無い）", "無い", ex("支払手数料") ? ex("支払手数料")!.toLocaleString() : "無い");
+cmp(rows, "入金の振込手数料：売上高の借方・課税売上 10%（売上の返還）が 11 行", 11,
+  f.lines.filter((l) => l.side === "debit" && l.account_id === b.acc("売上高") && l.tax_code === "sales10" && l.amount === 440).length);
+cmp(rows, "決算書：経費計", 132_000 + 165_000, f.pl.expenses);
 cmp(rows, "決算書：青色申告特別控除前の所得金額", 4_318_160, f.pl.income);
-cmp(rows, "決算書2頁：12月の売上", 220_000, f.monthly.sales[11]);
-cmp(rows, "決算書2頁：6月の売上（ビー出版）", 1_870_000, f.monthly.sales[5]);
+cmp(rows, "決算書2頁：12月の売上（220,000 − 11月分の手数料 440）", 219_560, f.monthly.sales[11]);
+cmp(rows, "決算書2頁：6月の売上（ビー出版 1,650,000 ＋ エー 220,000 − 440）", 1_869_560, f.monthly.sales[5]);
 
 // 消費税（2割特例）
 const t = await taxReturnOf(db, b, "twenty");
 cmp(rows, "消費税：課税標準額 ①（4,620,000 × 100/110）", 4_200_000, t.row("first", "①")?.c ?? null);
 cmp(rows, "消費税：消費税額 ②", 327_600, t.row("first", "②")?.c ?? null);
-cmp(rows, "消費税：差引税額 ⑨（327,600 × 20% → 百円未満切捨て）", 65_500, t.row("first", "⑨")?.c ?? null);
-cmp(rows, "消費税：合計税額 ㉖（地方 18,400）", 83_900, t.r.total);
+cmp(rows, "消費税：返還等対価に係る税額 ⑤（4,840 × 7.8/110）", 343, t.row("first", "⑤")?.c ?? null);
+cmp(rows, "消費税：特別控除税額 ④（(327,600 − 343) × 80%）", 261_805, t.row("first", "④")?.c ?? null);
+cmp(rows, "消費税：差引税額 ⑨（327,600 − (261,805 ＋ 343) = 65,452 → 百円未満切捨て）", 65_400, t.row("first", "⑨")?.c ?? null);
+cmp(rows, "消費税：合計税額 ㉖（地方 65,400 × 22/78 → 18,400）", 83_800, t.r.total);
 const tx = await taxXtxOf(db, twentyReturn(t.base, { businessClass: 5, interimNational: 0, interimLocal: 0, baseSales: 3_000_000, deduction: "individual" }, "一般用"));
 cmp(rows, "消費税 xtx：XSD に合う", "", tx.error || tx.invalid);
 

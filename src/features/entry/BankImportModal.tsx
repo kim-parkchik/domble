@@ -28,7 +28,9 @@ import * as repo from "../../db/repo";
 import { taxCodeDef } from "../../lib/tax";
 import { DepartmentSelect } from "../../components/DepartmentSelect";
 import { departmentName } from "../../lib/departments";
-import { paymentCandidates, paymentEntryLines, remainingOf, savedTotals, type OpenInvoice } from "../../lib/salesDoc";
+import {
+  FEE_TREATMENTS, paymentCandidates, paymentEntryLines, paymentProblem, remainingOf, savedTotals, type DocTotals, type FeeTreatment, type OpenInvoice,
+} from "../../lib/salesDoc";
 
 type View = "pending" | "read" | "skipped" | "rules";
 
@@ -59,13 +61,14 @@ interface Draft {
   source: "rule" | "history" | null;
   dupEntry: number | null;
   splits: SplitDraft[];
-  /** 請求書の入金にする（請求書の id）と、差し引かれた振込手数料 */
+  /** 請求書の入金にする（請求書の id）と、差し引かれた振込手数料・その扱い（売上の値引き・支払手数料） */
   docId: number | null;
   fee: number;
+  feeAs: FeeTreatment;
 }
 
-/** 入金の候補にする、入金の残っている請求書（取引先つき） */
-type OpenDoc = OpenInvoice & { counterparty_id: number | null };
+/** 入金の候補にする、入金の残っている請求書（取引先つき。売上の科目と税率ごとの額は、振込手数料を売上の値引きにするときに使う） */
+type OpenDoc = OpenInvoice & { counterparty_id: number | null; revenue_account_id: number | null; totals: Pick<DocTotals, "groups" | "exempt"> };
 
 const splitsFromRule = (splits: BankRuleSplit[]): SplitDraft[] =>
   splits.map((x) => ({ counterId: x.account_id, counterSubId: x.sub_account_id, tax: { ...NO_TAX, code: x.tax_code, invoice: x.invoice_kind }, amount: x.amount, memo: x.memo, dept: x.department_id ?? null }));
@@ -115,6 +118,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
           return {
             id: x.id, doc_no: x.doc_no, to_name: x.to_name, names: [x.to_name, cp?.name ?? "", cp?.kana ?? ""].filter(Boolean), due_date: x.due_date,
             remaining: remainingOf(savedTotals(x).billed, pays.filter((p) => p.doc_id === x.id)), counterparty_id: x.counterparty_id,
+            revenue_account_id: x.revenue_account_id, totals: savedTotals(x),
           };
         }).filter((x) => x.remaining > 0));
         setRows(r);
@@ -144,14 +148,15 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
       const usedDocs = new Set([...prev.values()].map((d) => d.docId).filter((v): v is number => v !== null));
       for (const r of pending) {
         const old = prev.get(r.id);
-        if (old) { next.set(r.id, old); continue; }
+        // 当てた請求書が入金済みになった（ほかの明細で入金にした）ら、請求書の入金をやめる（相手科目は残す）
+        if (old) { next.set(r.id, old.docId && !invoiceCandidates(r).some((x) => x.id === old.docId) ? { ...old, docId: null, fee: 0, feeAs: "discount" } : old); continue; }
         const g = guessLine(r, account, liveRules, history);
         const dup = findBookDuplicate(r, allLines, account.id, subId, used);
         if (dup) used.add(dup);
         const draft: Draft = {
           checked: !!g.counterId && !dup, counterId: g.counterId, counterSubId: g.counterSubId,
           tax: { ...NO_TAX, code: g.taxCode, invoice: g.invoice }, memo: g.memo, counterpartyId: g.counterpartyId, dept: activeDept(g.dept), source: g.source, dupEntry: dup,
-          splits: splitsFromRule(g.splits), docId: null, fee: 0,
+          splits: splitsFromRule(g.splits), docId: null, fee: 0, feeAs: "discount",
         };
         // 入金で、ルールに合わなければ、請求書の入金の候補（1つだけか、摘要に取引先の名前があるもの）を入れる
         const c = g.source !== "rule" ? invoiceCandidates(r).find((x) => !usedDocs.has(x.id)) : undefined;
@@ -186,7 +191,7 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
   const invoiceDraft = (docId: number, fee: number): Partial<Draft> => {
     const doc = openDocs.find((x) => x.id === docId)!;
     return {
-      docId, fee, counterId: receivableId, counterSubId: null, tax: NO_TAX, counterpartyId: doc.counterparty_id, memo: `請求書 ${doc.doc_no} の入金`, splits: [], checked: true,
+      docId, fee, feeAs: "discount", counterId: receivableId, counterSubId: null, tax: NO_TAX, counterpartyId: doc.counterparty_id, memo: `請求書 ${doc.doc_no} の入金`, splits: [], checked: true,
     };
   };
 
@@ -217,15 +222,27 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
     const items: { lineId: number; date: string; lines: JournalLine[]; counterpartyId: number | null; salesDocId?: number; applied?: number }[] = [];
     const years = [...new Set(checked.map((r) => Number(r.date.slice(0, 4))))];
     const rates = new Map<number, HomeUseRate[]>(await Promise.all(years.map(async (y) => [y, await repo.getHomeUseRates(db, y)] as const)));
+    // 請求書ごとに当てた額（同じ請求書に明細を2つ当てて、残りを超えないか）
+    const appliedTo = new Map<number, number>();
     for (const r of checked) {
       const d = drafts.get(r.id)!;
       const where = `${shortDate(r.date)} ${r.description}`;
       if (isDateClosed(r.date)) { problems.push(`${where}：締めた月の明細です`); continue; }
       // 請求書の入金：口座 ＋ 振込手数料 ／ 売掛金（相手科目を売掛金から変えたら、ふつうの仕訳にする）
       if (d.docId && d.counterId === receivableId && receivableId) {
-        if (d.fee > 0 && !feeAccountId) { problems.push(`${where}：支払手数料の科目がありません`); continue; }
-        const lines = paymentEntryLines({ amount: r.amount, fee: d.fee, memo: d.memo }, { bank: account.id, receivable: receivableId, fee: feeAccountId ?? 0 })
-          .map((l) => (l.account_id === account.id ? { ...l, sub_account_id: subId } : l));
+        const doc = openDocs.find((x) => x.id === d.docId);
+        if (!doc) { problems.push(`${where}：請求書が見つかりません`); continue; }
+        const before = appliedTo.get(doc.id) ?? 0;
+        const applied = before + r.amount + d.fee;
+        const over = paymentProblem(applied, doc.remaining);
+        if (over) { problems.push(`${where}：請求書 ${doc.doc_no}${before ? "（ほかの明細もこの請求書に当てています）" : ""}：${over}`); continue; }
+        appliedTo.set(doc.id, applied);
+        const revenueId = doc.revenue_account_id ?? accounts.find((a) => a.code === "401")?.id ?? null;
+        if (d.fee > 0 && d.feeAs !== "discount" && !feeAccountId) { problems.push(`${where}：支払手数料の科目がありません`); continue; }
+        if (d.fee > 0 && d.feeAs === "discount" && !revenueId) { problems.push(`${where}：売上高の科目がありません`); continue; }
+        const lines = paymentEntryLines(
+          { amount: r.amount, fee: d.fee, memo: d.memo, feeAs: d.feeAs }, { bank: account.id, receivable: receivableId, fee: feeAccountId ?? 0, revenue: revenueId ?? 0 }, doc.totals,
+        ).map((l) => (l.account_id === account.id ? { ...l, sub_account_id: subId } : l));
         items.push({ lineId: r.id, date: r.date, lines, counterpartyId: d.counterpartyId, salesDocId: d.docId, applied: r.amount + d.fee });
         continue;
       }
@@ -382,12 +399,18 @@ export const BankImportModal = ({ account, initialSub, onClose }: { account: Acc
                               <select className="input bank-invoice" value={d.docId ?? ""} aria-label="請求書の入金"
                                 onChange={(e) => {
                                   const v = Number(e.target.value) || null;
-                                  patch(r.id, v ? invoiceDraft(v, invoiceCandidates(r).find((x) => x.id === v)!.fee) : { docId: null, fee: 0 });
+                                  patch(r.id, v ? invoiceDraft(v, invoiceCandidates(r).find((x) => x.id === v)!.fee) : { docId: null, fee: 0, feeAs: "discount" });
                                 }}>
                                 <option value="">請求書の入金にしない</option>
                                 {invoiceCandidates(r).map((c) => (
                                   <option key={c.id} value={c.id}>請求書 {c.doc_no} {c.to_name}{c.fee ? `（振込手数料 ${yen(c.fee)}円）` : ""}</option>
                                 ))}
+                              </select>
+                            )}
+                            {d.docId && d.counterId === receivableId && d.fee > 0 && (
+                              <select className="input bank-invoice" value={d.feeAs} aria-label="振込手数料の扱い" title="差し引かれた振込手数料の扱い"
+                                onChange={(e) => patch(r.id, { feeAs: e.target.value as FeeTreatment })}>
+                                {FEE_TREATMENTS.map((x) => <option key={x.value} value={x.value}>手数料 {yen(d.fee)}円：{x.label}</option>)}
                               </select>
                             )}
                           </td>

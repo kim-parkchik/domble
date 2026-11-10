@@ -21,9 +21,9 @@ import { exportCsvFile } from "../../components/csvExport";
 import { inReduced1, taxYearOf } from "../../lib/tax";
 import { CODE } from "../../constants/accounts";
 import {
-  DOC_KIND_LABEL, DOC_STATE_LABEL, docState, docTotals, isReducedItem, issuerOf, ITEM_TAX_LABEL, ITEM_TAXES, itemTaxOn, nextDocNo, reducedItemNote, remainingOf, ROUNDING_LABEL,
-  SALES_DOC_CSV_HEADER, salesDate, salesDocCsvRow, savedTotals,
-  type DocItem, type DocKind, type DocState, type DocTotals, type ItemTax, type Rounding, type SalesDoc, type SalesPayment,
+  DOC_KIND_LABEL, DOC_STATE_LABEL, docState, docTotals, FEE_TREATMENTS, isReducedItem, issuerOf, ITEM_TAX_LABEL, ITEM_TAXES, itemTaxOn, nextDocNo, paymentProblem, reducedItemNote, remainingOf, ROUNDING_LABEL,
+  SALES_DOC_CSV_HEADER, salesDate, salesDocCsvRow, savedTotals, SMALL_RETURN_LIMIT,
+  type DocItem, type DocKind, type DocState, type DocTotals, type FeeTreatment, type ItemTax, type Rounding, type SalesDoc, type SalesPayment,
 } from "../../lib/salesDoc";
 import * as repo from "../../db/repo";
 
@@ -569,13 +569,16 @@ const PaymentModal = ({ doc: d, totals: t, payments, onClose, onChanged }: {
   const toast = useToast();
   const remaining = remainingOf(t.billed, payments);
   const banks = accounts.filter((a) => a.category === "asset" && a.is_active && Number(a.code) >= 101 && Number(a.code) <= 109);
-  const feeAccounts = accounts.filter((a) => (a.category === "expense" || a.category === "revenue") && a.is_active);
+  const feeAccounts = accounts.filter((a) => a.category === "expense" && a.is_active);
+  const revenueName = accounts.find((a) => a.id === d.revenue_account_id)?.name ?? accounts.find((a) => a.code === "401")?.name ?? "売上高";
   // 入金日の初めは、今日か売上の日の遅いほう
   const [paidOn, setPaidOn] = useState(todayIso() >= salesDate(d) ? todayIso() : salesDate(d));
   const [bankId, setBankId] = useState(banks.find((a) => a.code === CODE.BANK)?.id ?? banks[0]?.id ?? 0);
   const [amount, setAmount] = useState<number | null>(remaining > 0 ? remaining : null);
   const [fee, setFee] = useState<number | null>(0);
+  const [feeAs, setFeeAs] = useState<FeeTreatment>("discount");
   const [feeId, setFeeId] = useState(accounts.find((a) => a.code === CODE.FEES)?.id ?? 0);
+  const over = paymentProblem((amount ?? 0) + (fee ?? 0), remaining);
   const [error, setError] = useState("");
   const [candidates, setCandidates] = useState<{ entry_id: number; date: string; description: string; amount: number }[]>([]);
   useEffect(() => {
@@ -592,7 +595,7 @@ const PaymentModal = ({ doc: d, totals: t, payments, onClose, onChanged }: {
     }
   };
   const record = () => act(
-    () => repo.addSalesPayment(db, d.id, { paid_on: paidOn, amount: amount ?? 0, fee: fee ?? 0, bankAccountId: bankId, feeAccountId: feeId }),
+    () => repo.addSalesPayment(db, d.id, { paid_on: paidOn, amount: amount ?? 0, fee: fee ?? 0, feeAs, bankAccountId: bankId, feeAccountId: feeId }),
     "入金を記録し、仕訳を作りました",
   );
 
@@ -641,23 +644,41 @@ const PaymentModal = ({ doc: d, totals: t, payments, onClose, onChanged }: {
                 <span>振込手数料</span>
                 <AmountInput value={fee} onChange={setFee} aria-label="振込手数料" />
               </label>
-              <label className="field" style={{ maxWidth: 160 }}>
-                <span>手数料の科目</span>
-                <select className="input" value={feeId} onChange={(e) => setFeeId(Number(e.target.value))}>
-                  {feeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
             </div>
-            <p className="field-note">相手が振込手数料を差し引いて振り込んだときは、その額を振込手数料に入れます（「{accounts.find((a) => a.id === bankId)?.name ?? "預金"} ＋ 手数料 ／ 売掛金」）。</p>
+            {(fee ?? 0) > 0 && (
+              <div className="field-row wrap">
+                <label className="field" style={{ maxWidth: 330 }}>
+                  <span>振込手数料の扱い</span>
+                  <select className="input" value={feeAs} onChange={(e) => setFeeAs(e.target.value as FeeTreatment)} aria-label="振込手数料の扱い">
+                    {FEE_TREATMENTS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                  </select>
+                </label>
+                {feeAs !== "discount" && (
+                  <label className="field" style={{ maxWidth: 160 }}>
+                    <span>手数料の科目</span>
+                    <select className="input" value={feeId} onChange={(e) => setFeeId(Number(e.target.value))} aria-label="手数料の科目">
+                      {feeAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
+            <p className="field-note">
+              相手が振込手数料を差し引いて振り込んだときは、その額を振込手数料に入れます（「{accounts.find((a) => a.id === bankId)?.name ?? "預金"} ＋ 手数料 ／ 売掛金」）。
+              {(fee ?? 0) > 0 && (feeAs === "discount"
+                ? `売上の値引きは「${revenueName}」の借方に、請求書と同じ税率の売上の返還で入れます。${(fee ?? 0) >= SMALL_RETURN_LIMIT ? "税込1万円以上の値引きは、返還インボイス（適格返還請求書）を相手に渡す必要があります。" : "税込1万円未満なので、返還インボイスは要りません。"}`
+                : "支払手数料（課税仕入 10%）にするときは、金融機関のインボイスと、相手からの立替金精算書などを保存していれば「適格」、無ければ「控除しない」を選びます（相手は手数料のサービスを売った人ではないため）。")}
+            </p>
+            {over && <p className="notice" role="alert">{over}</p>}
             <div className="voucher-actions">
               <div className="spacer" />
-              <button className="btn primary" onClick={record} disabled={!amount || !bankId}><HandCoins size={15} /> 入金を記録する</button>
+              <button className="btn primary" onClick={record} disabled={!amount || !bankId || !!over}><HandCoins size={15} /> 入金を記録する</button>
             </div>
             {candidates.length > 0 && (
               <>
                 <h4 className="filing-h">帳簿にある仕訳を入金にする（明細の取り込みなどで作ったもの）</h4>
                 <table className="ledger">
-                  <thead><tr><th>日付</th><th>摘要</th><th className="num">売掛金を減らした額</th><th /></tr></thead>
+                  <thead><tr><th>日付</th><th>摘要</th><th className="num">売掛金を減らした額（入金にしていない分）</th><th /></tr></thead>
                   <tbody>
                     {candidates.map((c) => (
                       <tr key={c.entry_id}>
