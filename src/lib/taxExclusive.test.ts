@@ -29,6 +29,7 @@ describe("明細の消費税額", () => {
     expect(autoTaxAmount({ amount: 1_100, tax_code: "purchase10", invoice_kind: "transitional", date: d })).toBe(80);
     expect(autoTaxAmount({ amount: 1_100, tax_code: "purchase10", invoice_kind: "none", date: d })).toBe(0);
     expect(autoTaxAmount({ amount: 1_100, tax_code: "purchase10", invoice_kind: "book_transport", date: d })).toBe(100);
+    expect(autoTaxAmount({ amount: 3_300, tax_code: "purchase10", invoice_kind: "small", date: d })).toBe(300);
     expect(autoTaxAmount({ amount: 7_800, tax_code: "import10", invoice_kind: null, date: d })).toBe(7_800);
     expect(autoTaxAmount({ amount: 50_000, tax_code: "reverse10", invoice_kind: null, date: d })).toBe(0);
   });

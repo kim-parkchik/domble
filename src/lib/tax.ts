@@ -23,8 +23,8 @@ export const isTaxCode = (v: unknown): v is TaxCode => typeof v === "string" && 
 export const isInvoiceKind = (v: unknown): v is InvoiceKind => INVOICE_KINDS.some((k) => k.value === v);
 /** 帳簿のみ保存の特例（控除は適格と同じ） */
 export const isBookOnly = (v: InvoiceKind | null | undefined) => !!v && v.startsWith("book_");
-/** 控除が適格と同じインボイス区分（適格・帳簿のみ保存の特例） */
-export const isFullyDeductible = (v: InvoiceKind | null | undefined) => !v || v === "qualified" || isBookOnly(v);
+/** 控除が適格と同じインボイス区分（適格・少額特例・帳簿のみ保存の特例） */
+export const isFullyDeductible = (v: InvoiceKind | null | undefined) => !v || v === "qualified" || v === "small" || isBookOnly(v);
 const invoiceDef = (v: InvoiceKind) => INVOICE_KINDS.find((k) => k.value === v)!;
 
 export const taxCodeDef = (code: TaxCode) => TAX_CODES.find((t) => t.code === code)!;
@@ -236,6 +236,17 @@ export const transitionalRate = (date: string): number => {
   return 0;
 };
 
+// ────────────────────────────────────────────
+// 少額特例（一定規模以下の事業者に対する事務負担の軽減措置。平成28年改正法附則53条の2）
+// ────────────────────────────────────────────
+
+/** 1回の取引の税込の額がこれ未満 */
+export const SMALL_PURCHASE_LIMIT = 10_000;
+/** 使える期間（課税仕入れを行った日。令和11年10月1日以後は、課税期間の途中でも使えない） */
+export const SMALL_PURCHASE_FROM = "2023-10-01";
+export const SMALL_PURCHASE_TO = "2029-09-30";
+export const inSmallPurchasePeriod = (date: string) => date >= SMALL_PURCHASE_FROM && date <= SMALL_PURCHASE_TO;
+
 const CLASS_KANJI = ["", "一", "二", "三", "四", "五", "六"];
 /** 事業区分の短い名前（例：5種） */
 export const classShort = (cls: number) => `${cls}種`;
@@ -271,7 +282,7 @@ export const taxShortLabel = (
   const base = taxCodeDef(code).short;
   if (!takesPurchaseUse(code)) return base;
   if (!isPurchaseCode(code)) return use && (use !== "common" || showCommon) ? `${base} ${useShort(use)}` : base;
-  const inv = !invoice || invoice === "qualified" ? "" : invoice === "transitional" ? ` 経過${transitionalRate(date)}%` : isBookOnly(invoice) ? ` ${invoiceDef(invoice).short}` : " 控除なし";
+  const inv = !invoice || invoice === "qualified" ? "" : invoice === "transitional" ? ` 経過${transitionalRate(date)}%` : ` ${invoiceDef(invoice).short}`;
   const u = use && (use !== "common" || showCommon) ? ` ${useShort(use)}` : "";
   return `${base}${inv}${u}`;
 };
@@ -287,7 +298,7 @@ export const taxLongLabel = (
   if (!takesPurchaseUse(code)) return base;
   if (!isPurchaseCode(code)) return use ? `${base}（${useLabel(use)}）` : base;
   const notes = [
-    ...(!invoice || invoice === "qualified" ? [] : [invoice === "transitional" ? `${transitionalRate(date)}%控除対象` : isBookOnly(invoice) ? invoiceDef(invoice).label : "控除しない"]),
+    ...(!invoice || invoice === "qualified" ? [] : [invoice === "transitional" ? `${transitionalRate(date)}%控除対象` : invoiceDef(invoice).label]),
     ...(use ? [useLabel(use)] : []),
   ];
   return notes.length ? `${base}（${notes.join("・")}）` : base;

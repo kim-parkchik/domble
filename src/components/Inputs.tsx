@@ -294,7 +294,7 @@ export const MemoInput = ({ value, onChange, placeholder = "摘要", onCommit, .
 
 // ────────────────────────────────────────────
 // 税区分（免税事業者の期間は「対象外」で固定・グレー表示）
-//  課税仕入は、インボイス区分（適格・経過措置・控除しない）も同じ欄で選ぶ。本則課税の年は用途区分（課税対応・共通対応・非課税対応）も。
+//  課税仕入は、インボイス区分（適格・経過措置・控除しない）も同じ欄で選ぶ。本則課税の年は少額特例・帳簿のみ保存の特例と、用途区分（課税対応・共通対応・非課税対応）も。
 //  値が null のあいだは、科目・取引先から決まる初期値を出す（保存のときも同じ初期値になる。lib/tax.ts の resolveLineTax）。
 //  Enter での移動では飛ばす（初期値のままのことが多いため。変えるときはクリックか Tab）
 // ────────────────────────────────────────────
@@ -344,9 +344,9 @@ export const TaxSelect = ({ label, value, invoice, businessClass, purchaseUse, o
   );
   // 1%（軽減）は飲食料品の税率が 1% の期間だけ出す（期間外でも、入っていればそれは出す）
   const group = (g: "sales" | "purchase") => TAX_CODES.filter((t) => t.group === g && (!isReduced1(t.code) || inReduced1(date) || t.code === code));
-  // 帳簿のみ保存の特例は、本則課税の年だけ選べる（ほかの年は、入っているものだけ出す）
-  const BOOK_ONLY = INVOICE_KINDS.filter((k) => k.value.startsWith("book_")).map((k) => k.value);
-  const invoices: InvoiceKind[] = ["qualified", "transitional", "none", ...(standard ? BOOK_ONLY : inv && BOOK_ONLY.includes(inv) ? [inv] : [])];
+  // 少額特例・帳簿のみ保存の特例は、本則課税の年だけ選べる（ほかの年は仕入税額を実額で計算しないので、入っているものだけ出す）
+  const NO_INVOICE = INVOICE_KINDS.filter((k) => k.value === "small" || k.value.startsWith("book_")).map((k) => k.value);
+  const invoices: InvoiceKind[] = ["qualified", "transitional", "none", ...(standard ? NO_INVOICE : inv && NO_INVOICE.includes(inv) ? [inv] : [])];
   const purchases = (u: PurchaseUse | null) => group("purchase").filter((t) => takesPurchaseUse(t.code))
     .flatMap((t) => (isPurchaseCode(t.code) ? invoices.map((i) => opt(t.code, i, null, u)) : [opt(t.code, null, null, u)]));
   return (

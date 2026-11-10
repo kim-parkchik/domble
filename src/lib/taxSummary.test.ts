@@ -404,6 +404,72 @@ describe("帳簿の記載事項（本則課税）", () => {
   });
 });
 
+describe("少額特例（本則課税）", () => {
+  const standard: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }];
+  const ok = { year: 2026, base: 30_000_000, source: "books" as const, fromBooks: null, specific: null };
+  const exemptShop: Counterparty = { id: 9, name: "免税の店", kana: "", invoice_no: "", not_registered: 1 } as Counterparty;
+  const run = (ls: FlatLine[], baseSales: typeof ok | { year: number; base: number | null; source: "books" | "none"; fromBooks: null; specific: null } | null = ok, taxYears = standard) =>
+    noParty(taxChecks({ year: 2026, lines: ls, accounts, counterparties: [exemptShop], taxYears, ...REG, summary: buildTaxSummary(ls, accounts, taxYears), baseSales }));
+  const cp = { counterparty_id: 9 };
+
+  test("控除は適格と同じで、「適格請求書発行事業者ではない」取引先でも知らせない。帳簿の表示に少額特例と出る", () => {
+    const shop = line("2026-05-10", "debit", "消耗品費", 3300, "purchase10", "small", cp);
+    expect(run([shop])).toEqual([]);
+    expect(buildTaxSummary([shop], accounts, standard).rows[0]).toMatchObject({ invoice: "small", transitional: null });
+    expect(taxLongLabel("purchase10", "small", "2026-05-10")).toBe("課税仕入 10%（少額特例（税込1万円未満））");
+    expect(taxShortLabel("purchase10", "small", "2026-05-10")).toBe("課仕10% 少額特例");
+    // 「適格」のままだと、少額特例も案内する
+    const asQualified = run([line("2026-05-10", "debit", "消耗品費", 3300, "purchase10", "qualified", cp)]);
+    expect(asQualified.find((i) => i.title.includes("「適格」になっています"))!.detail).toContain("「少額特例」");
+  });
+
+  test("税込1万円以上・使える期間の外・使えない事業者は誤り。帳簿が無くて分からなければ注意", () => {
+    const big = line("2026-05-10", "debit", "消耗品費", 10_000, "purchase10", "small", cp);
+    expect(run([big]).map((i) => [i.level, i.title])).toEqual([["error", "税込1万円以上の仕入れが「少額特例」になっています"]]);
+    expect(run([line("2026-05-10", "debit", "消耗品費", 9_999, "purchase10", "small", cp)])).toEqual([]);
+    // 令和11年10月1日以後は使えない
+    const late = line("2029-10-01", "debit", "消耗品費", 3300, "purchase10", "small", cp);
+    const y2029: TaxYear[] = [{ ...standard[0], from_year: 2029 }];
+    const lateIssues = noParty(taxChecks({ year: 2029, lines: [late], accounts, counterparties: [exemptShop], taxYears: y2029, ...REG, summary: buildTaxSummary([late], accounts, y2029), baseSales: { ...ok, year: 2029 } }));
+    expect(lateIssues.map((i) => i.title)).toEqual(["少額特例を使えない日の仕入れが「少額特例」になっています"]);
+    const shop = line("2026-05-10", "debit", "消耗品費", 3300, "purchase10", "small", cp);
+    const no = run([shop], { year: 2026, base: 120_000_000, source: "books", fromBooks: null, specific: null });
+    // 特定期間の帳簿が無ければ分からない（注意）
+    expect(no.map((i) => [i.level, i.title, i.fix])).toEqual([["warn", "少額特例を使えるか確かめられません", "settings"]]);
+    const noSpec = noParty(taxChecks({
+      year: 2026, lines: [shop], accounts, counterparties: [exemptShop], taxYears: standard, ...REG, summary: buildTaxSummary([shop], accounts, standard),
+      baseSales: { year: 2026, base: 120_000_000, source: "books", fromBooks: null, specific: { sales: { taxable: 60_000_000, exemptPeriod: 0, exportSales: 0, total: 60_000_000 }, salaries: 0 } },
+    }));
+    expect(noSpec.map((i) => [i.level, i.title, i.entryIds])).toEqual([["error", "少額特例は使えません", [shop.entry_id]]]);
+    // 読み込み中（baseSales が null）は確かめない
+    expect(run([shop], null)).toEqual([]);
+  });
+
+  test("1回の取引の合計で判定する：1つの仕訳のインボイスの無い課税仕入の合計が1万円以上なら注意", () => {
+    const a = line("2026-05-10", "debit", "消耗品費", 5_000, "purchase10", "small", cp);
+    const b = { ...line("2026-05-10", "debit", "消耗品費", 7_000, "purchase10", "transitional", cp), entry_id: a.entry_id, row_no: 2 };
+    const issues = run([a, b]);
+    expect(issues.map((i) => [i.level, i.title, i.entryIds])).toEqual([["warn", "1つの仕訳の少額特例の仕入れが、合わせて税込1万円以上です", [a.entry_id]]]);
+    // 別々の仕訳なら1万円未満どうしで知らせない（経過措置のほうは少額特例を案内する）
+    const c = line("2026-05-11", "debit", "消耗品費", 7_000, "purchase10", "transitional", cp);
+    expect(run([a, c]).map((i) => [i.level, i.title, i.entryIds])).toEqual([["info", "少額特例なら全額控除できる「経過措置」の仕入れ", [c.entry_id]]]);
+  });
+
+  test("経過措置で、仕訳の合計が1万円未満のものを案内する（使えない事業者・期間の外・1万円以上・ほかの年は除く）", () => {
+    const small = line("2026-05-10", "debit", "消耗品費", 9_999, "purchase10", "transitional", cp);
+    const big = line("2026-05-11", "debit", "消耗品費", 10_000, "purchase10", "transitional", cp);
+    const issues = run([small, big]);
+    expect(issues.map((i) => [i.title, i.entryIds])).toEqual([["少額特例なら全額控除できる「経過措置」の仕入れ", [small.entry_id]]]);
+    expect(issues[0].detail).toContain("相手が免税事業者でも帳簿だけで全額控除できます");
+    expect(run([small], {
+      year: 2026, base: 120_000_000, source: "books", fromBooks: null, specific: { sales: { taxable: 60_000_000, exemptPeriod: 0, exportSales: 0, total: 60_000_000 }, salaries: 0 },
+    } as never)).toEqual([]);
+    const simplified: TaxYear[] = [{ ...standard[0], status: "simplified" }];
+    expect(run([small], ok, simplified).some((i) => i.title.includes("少額特例"))).toBe(false);
+    expect(run([small], ok, twenty).some((i) => i.title.includes("少額特例"))).toBe(false);
+  });
+});
+
 describe("月次推移（税区分 × 期間）", () => {
   test("行は期間全体の集計表と同じ。月ごとの税込金額と消費税等、決算整理は 13。合計は集計表の行", () => {
     const lines = [

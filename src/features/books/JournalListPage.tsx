@@ -121,8 +121,9 @@ export const JournalListPage = ({ notesFocus = 0 }: { notesFocus?: number }) => 
       if (taxFilter && !ls.some((l) =>
         taxFilter === "unset" ? !l.tax_code && isTaxActive(l.date)
           : taxFilter === "transitional" ? l.invoice_kind === "transitional"
-            : taxFilter === "nodeduct" ? l.invoice_kind === "none"
-              : l.tax_code === taxFilter)) continue;
+            : taxFilter === "small" ? l.invoice_kind === "small"
+              : taxFilter === "nodeduct" ? l.invoice_kind === "none"
+                : l.tax_code === taxFilter)) continue;
       const counterparty = ls[0].counterparty_id ? cpMap.get(ls[0].counterparty_id)?.name ?? "" : "";
       const createdAt = ls[0].created_at ?? "";
       const late = inputPeriod != null && isLateInput(ls[0].date, createdAt, inputPeriod, daysOff);
@@ -211,7 +212,7 @@ export const JournalListPage = ({ notesFocus = 0 }: { notesFocus?: number }) => 
       accountId ? `科目 ${accountMap.get(accountId)?.name ?? ""}` : "",
       cpId ? `取引先 ${cpMap.get(cpId)?.name ?? ""}` : "",
       deptFilter !== "all" ? `部門 ${departmentName(departments, deptFilter || null)}` : "",
-      taxFilter ? `税区分 ${taxFilter === "unset" ? "未設定" : taxFilter === "transitional" ? "経過措置の仕入れ" : taxFilter === "nodeduct" ? "控除しない仕入れ" : TAX_CODES.find((t) => t.code === taxFilter)?.label ?? ""}` : "",
+      taxFilter ? `税区分 ${taxFilter === "unset" ? "未設定" : taxFilter === "transitional" ? "経過措置の仕入れ" : taxFilter === "small" ? "少額特例の仕入れ" : taxFilter === "nodeduct" ? "控除しない仕入れ" : TAX_CODES.find((t) => t.code === taxFilter)?.label ?? ""}` : "",
       q.trim() ? `「${q.trim()}」を含む` : "",
       minAmt || maxAmt ? `金額 ${minAmt || ""}〜${maxAmt || ""}` : "",
       lateOnly ? "入力期間を過ぎて登録したもの" : "",
@@ -270,6 +271,7 @@ export const JournalListPage = ({ notesFocus = 0 }: { notesFocus?: number }) => 
             <option value="">すべての税区分</option>
             <option value="unset">税区分が未設定</option>
             <option value="transitional">経過措置の仕入れ</option>
+            <option value="small">少額特例の仕入れ</option>
             <option value="nodeduct">控除しない仕入れ</option>
             {TAX_CODES.filter((t) => t.code !== "none").map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
           </select>

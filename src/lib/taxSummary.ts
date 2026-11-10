@@ -12,8 +12,11 @@
 import type { Account, Counterparty, InvoiceKind, PurchaseUse, TaxCode, TaxStatus, TaxYear } from "./types";
 import { periodOfLine, type FlatLine } from "./accounting";
 import { INVOICE_KINDS, TAX_CODES, TAX_STATUS_OPTIONS } from "../constants/tax";
-import { deductionProblem, inReduced1, isBadDebtCode, isImportCode, isPurchaseCode, isReduced1, isSalesCode, statusProblem, takesPurchaseUse, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate } from "./tax";
-import { mandatoryReason, methodProblem, type BaseSalesInfo } from "./baseSales";
+import {
+  deductionProblem, inReduced1, inSmallPurchasePeriod, isBadDebtCode, isImportCode, isPurchaseCode, isReduced1, isSalesCode, SMALL_PURCHASE_LIMIT, statusProblem,
+  takesPurchaseUse, taxActiveOn, taxCodeDef, taxYearOf, transitionalRate,
+} from "./tax";
+import { mandatoryReason, methodProblem, smallPurchaseEligibility, type BaseSalesInfo } from "./baseSales";
 import { INTERIM_KIND_LABEL, type InterimPlan } from "./taxInterim";
 import type { InventoryAdjust } from "./taxReturn";
 import { businessRateIn, type FixedAsset } from "./depreciation";
@@ -352,6 +355,73 @@ const reduced1Issues = (scoped: FlatLine[]): TaxIssue[] => {
 const yenText = (n: number) => `${n.toLocaleString()}円`;
 
 /** 中間納付税額が中間申告の予定と合っているか */
+/**
+ * 少額特例（平成28年改正法附則53条の2。本則課税の年の課税仕入の借方）
+ *  - 使える日（令和5年10月1日〜令和11年9月30日）でない・明細が税込1万円以上 → 誤り
+ *  - 使える事業者でない（基準期間 1億円超、かつ特定期間 5,000万円超）→ 誤り。帳簿が無くて分からない → 注意
+ *  - 1回の取引の税込の合計で判定するので、1つの仕訳のインボイスの無い課税仕入（少額特例・経過措置）の合計が1万円以上なら注意
+ *    （別々の取引をまとめて入れた仕訳なら、そのままでよい）
+ *  - 「経過措置」の課税仕入で、仕訳のインボイスの無い課税仕入の合計が1万円未満のもの → 少額特例なら全額控除できると知らせる
+ */
+const smallPurchaseIssues = (x: TaxCheckInput, purchases: FlatLine[]): TaxIssue[] => {
+  const out: TaxIssue[] = [];
+  const small = purchases.filter((l) => l.invoice_kind === "small");
+  const eligibility = x.baseSales ? smallPurchaseEligibility(x.baseSales) : null;
+  // 仕訳ごとの、インボイスの無い課税仕入（少額特例・経過措置）の税込の合計
+  const noInvoiceSum = new Map<number, number>();
+  for (const l of purchases) {
+    if (l.invoice_kind === "small" || l.invoice_kind === "transitional") noInvoiceSum.set(l.entry_id, (noInvoiceSum.get(l.entry_id) ?? 0) + l.amount);
+  }
+  const fixText = "インボイスがあれば「適格」、無ければ「経過措置」にしてください。";
+  const outOfPeriod = small.filter((l) => !inSmallPurchasePeriod(l.date));
+  if (outOfPeriod.length) {
+    out.push({
+      level: "error", title: "少額特例を使えない日の仕入れが「少額特例」になっています", fix: "entries", entryIds: entryIdsOf(outOfPeriod),
+      detail: `少額特例は令和5年10月1日から令和11年9月30日までの課税仕入れだけです（令和11年10月1日以後は、年の途中でも使えません）。${fixText}`,
+    });
+  }
+  const tooLarge = small.filter((l) => l.amount >= SMALL_PURCHASE_LIMIT);
+  if (tooLarge.length) {
+    out.push({
+      level: "error", title: "税込1万円以上の仕入れが「少額特例」になっています", fix: "entries", entryIds: entryIdsOf(tooLarge),
+      detail: `少額特例は、1回の取引が税込1万円未満のときだけです。${fixText}`,
+    });
+  }
+  const large = new Set(tooLarge.map((l) => l.entry_id));
+  const together = small.filter((l) => !large.has(l.entry_id) && (noInvoiceSum.get(l.entry_id) ?? 0) >= SMALL_PURCHASE_LIMIT);
+  if (together.length) {
+    out.push({
+      level: "warn", title: "1つの仕訳の少額特例の仕入れが、合わせて税込1万円以上です", fix: "entries", entryIds: entryIdsOf(together),
+      detail: "少額特例は、品物ごとではなく1回の取引の税込の合計で判定します（5,000円と7,000円の品を一緒に買えば、合計 12,000円で使えません）。"
+        + `1回の取引なら、${fixText}別々の取引をまとめて入れた仕訳なら、そのままでかまいません（経過措置の明細も合計に入れています）。`,
+    });
+  }
+  if (small.length && eligibility?.result === "no") {
+    out.push({
+      level: "error", title: "少額特例は使えません", fix: "entries", entryIds: entryIdsOf(small),
+      detail: `少額特例は、基準期間の課税売上高が 1億円以下か、特定期間の課税売上高が 5,000万円以下の事業者だけです。${eligibility.reason}。${fixText}`,
+    });
+  }
+  if (small.length && eligibility?.result === "unknown") {
+    out.push({
+      level: "warn", title: "少額特例を使えるか確かめられません", fix: "settings", entryIds: entryIdsOf(small),
+      detail: `少額特例は、基準期間の課税売上高が 1億円以下か、特定期間（前年1〜6月）の課税売上高が 5,000万円以下の事業者だけです（特定期間は給与等支払額では判定しません）。${eligibility.reason}。`
+        + "基準期間の課税売上高を事業者設定の「消費税」で入れてください。",
+    });
+  }
+  if (eligibility?.result !== "no") {
+    const canBeSmall = purchases.filter((l) => l.invoice_kind === "transitional" && inSmallPurchasePeriod(l.date) && (noInvoiceSum.get(l.entry_id) ?? 0) < SMALL_PURCHASE_LIMIT);
+    if (canBeSmall.length) {
+      out.push({
+        level: "info", title: "少額特例なら全額控除できる「経過措置」の仕入れ", fix: "entries", entryIds: entryIdsOf(canBeSmall),
+        detail: "インボイスの無い課税仕入のうち、1つの仕訳の合計が税込1万円未満のものです。経過措置では仕入税額の一部しか控除できませんが、"
+          + "少額特例（基準期間の課税売上高が 1億円以下など）なら、相手が免税事業者でも帳簿だけで全額控除できます。1回の取引が税込1万円未満なら、インボイス区分を「少額特例」にしてください。",
+      });
+    }
+  }
+  return out;
+};
+
 const interimIssues = (year: number, i: NonNullable<TaxCheckInput["interim"]>): TaxIssue[] => {
   const { plan, entered } = i;
   const none = entered.national === 0 && entered.local === 0;
@@ -587,7 +657,7 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
     issues.push({
       level: "warn", title: "「適格請求書発行事業者ではない」取引先からの仕入れが「適格」になっています", fix: "entries",
       entryIds: entryIdsOf(qualifiedFromNonRegistered),
-      detail: "インボイス（適格請求書）が無ければ、インボイス区分を「経過措置」にしてください。",
+      detail: `インボイス（適格請求書）が無ければ、インボイス区分を「経過措置」${ty.status === "standard" ? "（1回の取引が税込1万円未満なら「少額特例」）" : ""}にしてください。`,
     });
   }
   const transitionalFromRegistered = purchases.filter((l) => l.invoice_kind === "transitional" && cpMap.get(l.counterparty_id ?? 0)?.invoice_no);
@@ -609,6 +679,9 @@ export const taxChecks = (x: TaxCheckInput): TaxIssue[] => {
       detail: `${names.slice(0, 5).join("、")}${names.length > 5 ? ` ほか${names.length - 5}件` : ""}。受け取ったインボイスの登録番号を取引先に入れるか、登録していない相手なら取引先を「適格請求書発行事業者ではない」にしてください。`,
     });
   }
+
+  // 少額特例（本則課税の年だけ。ほかの年はインボイス区分で仕入税額が変わらない）
+  if (ty.status === "standard") issues.push(...smallPurchaseIssues(x, purchases));
 
   // 本則課税：帳簿に課税仕入の相手方の氏名又は名称を書く（消法30⑦⑧）。取引先も補助科目も無い課税仕入は、摘要に書いてあるか念のため
   if (ty.status === "standard") {

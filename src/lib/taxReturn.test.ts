@@ -330,4 +330,13 @@ describe("帳簿のみ保存の特例（本則課税）", () => {
     });
     expect(buildTaxBase([l("book_transport"), l("book_vending")], years).purchase[10]).toBe(22_000);
   });
+  test("少額特例も控除は適格と同じ（経過措置の割合にしない）", () => {
+    const years: TaxYear[] = [{ from_year: 2026, status: "standard", method: "inclusive", business_class: 5, taxable_from: "", deduction: "individual", voluntary_interim: 0 }];
+    const l = (invoice_kind: FlatLine["invoice_kind"]): FlatLine => ({
+      entry_id: 1, date: "2026-05-01", description: "", row_no: 1, side: "debit", account_id: 1, sub_account_id: null, amount: 3_300, memo: "", tax_code: "purchase10", invoice_kind, purchase_use: null,
+    });
+    const b = buildTaxBase([l("small"), l("transitional")], years);
+    expect(b.purchase[10]).toBe(3_300);
+    expect(b.transitional).toEqual([expect.objectContaining({ pct: 80 })]);
+  });
 });

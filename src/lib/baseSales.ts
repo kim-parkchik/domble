@@ -8,6 +8,7 @@
  *      免税事業者になれない：基準期間の課税売上高 1,000万円超、または特定期間の課税売上高と給与等支払額がどちらも 1,000万円超
  *      2割特例・3割特例が使えない：上の理由で課税事業者になる年（登録と関係なく課税事業者）
  *      簡易課税が使えない：基準期間の課税売上高 5,000万円超
+ *      少額特例が使えない：基準期間の課税売上高 1億円超、かつ特定期間の課税売上高 5,000万円超（特定期間は給与等支払額で判定しない）
  */
 import type { Account, TaxCode, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
@@ -117,4 +118,21 @@ export const methodProblem = (method: "standard" | "simplified" | "twenty" | "th
     return `基準期間（${info.year - 2}年）の課税売上高が 5,000万円を超えているため使えません`;
   }
   return null;
+};
+
+/** 少額特例（平成28年改正法附則53条の2）を使える事業者の基準 */
+export const SMALL_PURCHASE_BASE_LIMIT = 100_000_000;
+export const SMALL_PURCHASE_SPECIFIC_LIMIT = 50_000_000;
+
+/**
+ * 少額特例を使える事業者か：基準期間の課税売上高が 1億円以下、または特定期間（前年1〜6月）の課税売上高が 5,000万円以下。
+ * 特定期間は給与等支払額では判定しない。ok = 使える、no = 使えない、unknown = 帳簿が無くて分からない（reason はその理由）
+ */
+export const smallPurchaseEligibility = (info: BaseSalesInfo): { result: "ok" | "no" | "unknown"; reason: string } => {
+  const { base, specific } = info;
+  if (base !== null && base <= SMALL_PURCHASE_BASE_LIMIT) return { result: "ok", reason: "" };
+  if (specific && specific.sales.total <= SMALL_PURCHASE_SPECIFIC_LIMIT) return { result: "ok", reason: "" };
+  const b = `基準期間（${info.year - 2}年）の課税売上高${base === null ? "が分からず" : `が 1億円を超え（${base.toLocaleString()}円）`}`;
+  const s = `特定期間（${info.year - 1}年1〜6月）${specific === null ? "の帳簿も domble にありません" : `の課税売上高も 5,000万円を超えています（${specific.sales.total.toLocaleString()}円）`}`;
+  return { result: base !== null && specific !== null ? "no" : "unknown", reason: `${b}、${s}` };
 };

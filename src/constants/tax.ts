@@ -80,6 +80,9 @@ export const INVOICE_KINDS: { value: InvoiceKind; label: string; short: string }
   { value: "qualified", label: "適格（インボイスあり）", short: "適格" },
   { value: "transitional", label: "経過措置（インボイスなし）", short: "経過措置" },
   { value: "none", label: "控除しない", short: "控除なし" },
+  // 少額特例（平成28年改正法附則53条の2）：基準期間の課税売上高 1億円以下（または特定期間 5,000万円以下）の事業者の、
+  // 令和5年10月1日〜令和11年9月30日の税込1万円未満の課税仕入れ。インボイスが無くても帳簿だけで控除できる（相手が免税事業者でもよい。控除は適格と同じ）
+  { value: "small", label: "少額特例（税込1万円未満）", short: "少額特例" },
   // 帳簿のみ保存の特例（消費税法施行令49①・規則15の4）：請求書等が無くても、帳簿に特例の旨を書けば控除できる（控除は適格と同じ）
   { value: "book_transport", label: "帳簿のみ保存の特例（3万円未満の公共交通機関の運賃）", short: "帳簿のみ交通" },
   { value: "book_vending", label: "帳簿のみ保存の特例（3万円未満の自動販売機・自動サービス機）", short: "帳簿のみ自販機" },

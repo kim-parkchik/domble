@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ACCOUNT_SEEDS } from "../constants/accounts";
 import type { Account, TaxYear } from "./types";
 import type { FlatLine } from "./accounting";
-import { baseSalesInfo, mandatoryReason, methodProblem, periodSales } from "./baseSales";
+import { baseSalesInfo, mandatoryReason, methodProblem, periodSales, smallPurchaseEligibility } from "./baseSales";
 
 const accounts: Account[] = ACCOUNT_SEEDS.map((s, i) => ({ ...s, id: i + 1, sort_order: i, is_active: 1, is_system: 1, default_tax_code: null }));
 const id = (name: string) => accounts.find((a) => a.name === name)!.id;
@@ -61,5 +61,23 @@ describe("基準期間の課税売上高", () => {
     expect(methodProblem("twenty", at(null))).toBeNull();
     // 特定期間は、給与等支払額が 1,000万円以下なら課税事業者にならない
     expect(mandatoryReason({ ...at(0), specific: { sales: { taxable: 0, exemptPeriod: 20_000_000, exportSales: 0, total: 20_000_000 }, salaries: 3_000_000 } })).toBeNull();
+  });
+});
+
+describe("少額特例を使える事業者", () => {
+  const sales = (total: number) => ({ taxable: total, exemptPeriod: 0, exportSales: 0, total });
+  const at = (base: number | null, specific: number | null, salaries = 0) =>
+    ({ year: 2026, base, source: base === null ? "none" as const : "books" as const, fromBooks: null, specific: specific === null ? null : { sales: sales(specific), salaries } });
+  test("基準期間 1億円以下、または特定期間 5,000万円以下なら使える", () => {
+    expect(smallPurchaseEligibility(at(100_000_000, null)).result).toBe("ok");
+    expect(smallPurchaseEligibility(at(150_000_000, 50_000_000)).result).toBe("ok");
+    expect(smallPurchaseEligibility(at(null, 30_000_000)).result).toBe("ok");
+  });
+  test("どちらも超えれば使えない（特定期間は給与等支払額で判定しない）。帳簿が無ければ分からない", () => {
+    const no = smallPurchaseEligibility(at(100_000_001, 50_000_001, 0));
+    expect(no).toEqual({ result: "no", reason: "基準期間（2024年）の課税売上高が 1億円を超え（100,000,001円）、特定期間（2025年1〜6月）の課税売上高も 5,000万円を超えています（50,000,001円）" });
+    expect(smallPurchaseEligibility(at(120_000_000, null))).toEqual({ result: "unknown", reason: "基準期間（2024年）の課税売上高が 1億円を超え（120,000,000円）、特定期間（2025年1〜6月）の帳簿も domble にありません" });
+    expect(smallPurchaseEligibility(at(null, null)).result).toBe("unknown");
+    expect(smallPurchaseEligibility(at(null, 60_000_000)).result).toBe("unknown");
   });
 });
