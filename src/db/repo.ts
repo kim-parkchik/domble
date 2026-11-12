@@ -3406,10 +3406,11 @@ const voidEvidence_ = async (db: Database, id: number, reason = "") => {
 
 /**
  * 本当に削除する（通常モードだけ）。ファイル・ひも付け・履歴を消し、削除したこと（日時・理由・最後の内容・消した履歴の件数）を evidence_deletions に残す。
- * 厳密モードでは削除できない（無効にする）
+ * 厳密モードでは削除できない（無効にする）。電子取引データは保存期間のあいだ保存する義務があるので、理由は必須
  */
 const deleteEvidence_ = async (db: Database, id: number, reason = "") => {
   if (await isStrict(db)) throw new Error("電子帳簿保存法に対応した帳簿では、証憑を削除できません。無効にしてください");
+  if (!reason.trim()) throw new Error("削除する理由を入れてください");
   const before = await getEvidence(db, id);
   if (!before) return;
   const n = (await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM evidence_history WHERE evidence_id = ?", [id]))[0].n;

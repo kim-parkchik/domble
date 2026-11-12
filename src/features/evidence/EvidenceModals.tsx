@@ -24,6 +24,11 @@ export const evidenceActionBadge = (a: EvidenceAction) => (a === "void" || a ===
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 
+/** 通常モードで証憑を削除するときの注意（電子帳簿保存法7条。取り消しは「無効にする」とする事務処理規程のひな形に合わせる） */
+const EVIDENCE_KEEP_DUTY =
+  "メールやウェブで受け取った請求書・領収書などの電子取引データは、保存期間（原則7年）のあいだデータのまま保存する義務があります（電子帳簿保存法7条）。" +
+  "取り消すときは「無効にする」を使い、削除は、二重に取り込んだもの・取引の書類ではないもの・紙の原本を保存している書類の写しなどに限ってください。";
+
 // ────────────────────────────────────────────
 // 新しく取り込む
 // ────────────────────────────────────────────
@@ -154,12 +159,20 @@ export const EvidenceModal = ({ evidenceId, onClose, onOpenEntry }: {
   // 無効にする（どちらの保存方式でも）／本当に削除する（通常モードだけ）の入力を開いているか
   const [voiding, setVoiding] = useState<"void" | "delete" | null>(null);
   const [voidReason, setVoidReason] = useState("");
+  // 同じファイル（SHA-256 が同じ）で無効にしていない、ほかの証憑の番号（通常モードで削除するときに、ファイルが残るかを知らせる）
+  const [sameFile, setSameFile] = useState<number[]>([]);
 
   useEffect(() => {
     repo.getEvidence(db, evidenceId).then(setEv).catch(console.error);
     // 証憑の履歴は、どちらの保存方式でも残る（電子取引データの保存は帳簿の保存方式によらない義務のため）
     repo.getEvidenceHistory(db, evidenceId).then(setHistory).catch(console.error);
   }, [db, evidenceId, dataVersion]);
+
+  const sha256 = ev?.sha256;
+  useEffect(() => {
+    if (strict || !sha256) return setSameFile([]);
+    repo.findEvidenceByHash(db, sha256).then((ids) => setSameFile(ids.filter((id) => id !== evidenceId))).catch(console.error);
+  }, [db, strict, sha256, evidenceId, dataVersion]);
 
   if (!ev) return <Modal title={`証憑 No.${evidenceId}`} onClose={onClose}><p className="muted">読み込んでいます…</p></Modal>;
   const isVoid = ev.is_void === 1;
@@ -186,9 +199,16 @@ export const EvidenceModal = ({ evidenceId, onClose, onOpenEntry }: {
     }
   };
 
-  /** 本当に削除する（通常モードだけ。削除したことは「削除した証憑」に残る） */
+  /**
+   * 本当に削除する（通常モードだけ。削除したことは「削除した証憑」に残る）
+   * 電子取引データは保存期間のあいだ保存する義務があるので（電子帳簿保存法7条）、理由を必須にし、同じファイルが残るかを確認に出す
+   */
   const doDelete = async () => {
-    const ok = await ask("この証憑を削除します。ファイル・ひも付け・履歴が消え、元に戻せません。", { title: "証憑の削除", kind: "warning", okLabel: "削除", cancelLabel: "やめる" });
+    if (!voidReason.trim()) return toast("削除する理由を入れてください", "error");
+    const msg = sameFile.length
+      ? `この証憑を削除します。ひも付け・履歴が消え、元に戻せません（同じファイルの証憑 No.${sameFile.join("・No.")} は残ります）。`
+      : `この証憑を削除します。ファイル・ひも付け・履歴が消え、元に戻せません。同じファイルの証憑はほかに無いため、ファイルは帳簿に残りません。\n\n${EVIDENCE_KEEP_DUTY}`;
+    const ok = await ask(msg, { title: "証憑の削除", kind: "warning", okLabel: "削除", cancelLabel: "やめる" });
     if (!ok) return;
     try {
       await repo.deleteEvidence(db, ev.id, voidReason);
@@ -297,10 +317,13 @@ export const EvidenceModal = ({ evidenceId, onClose, onOpenEntry }: {
             <form className="void-form" onSubmit={(e) => { e.preventDefault(); doDelete(); }}>
               <p className="prose">
                 削除すると、ファイル・ひも付け・履歴が消え、元に戻せません。削除したこと（日時・理由・最後の内容）は、証憑の画面の「削除した証憑」に残ります。
-                電子取引データは保存期間のあいだ消さず、取り消すときは「無効にする」を使ってください（事務処理規程）。
               </p>
-              <input className="input" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} placeholder="削除する理由（任意）" autoFocus maxLength={200} />
-              <button className="btn danger-ghost" type="submit"><Trash2 size={16} /> 削除する</button>
+              <p className="prose warn-text">
+                {EVIDENCE_KEEP_DUTY}
+                {sameFile.length ? `同じファイルの証憑（No.${sameFile.join("・No.")}）が残っています。` : "同じファイルの証憑はほかにありません。"}
+              </p>
+              <input className="input" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} placeholder="削除する理由（必須。例：二重に取り込んだため）" autoFocus maxLength={200} />
+              <button className="btn danger-ghost" type="submit" disabled={!voidReason.trim()}><Trash2 size={16} /> 削除する</button>
             </form>
           )}
 

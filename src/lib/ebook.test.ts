@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FlatLine } from "./accounting";
 import {
-  electronicRule, filingDeadline, filingFormName, inputTimeliness, isBeforeStrict, isYearCompliant, percentOf, processingManual, scanStorageRule, timelinessCaution,
+  electronicRule, filingDeadline, filingFormName, inputTimeliness, isBeforeStrict, isYearCompliant, MANUAL_ITEMS, percentOf, processingManual, scanStorageRule, timelinessCaution,
 } from "./ebook";
 
 describe("年ごとの電子帳簿保存法への対応", () => {
@@ -25,10 +25,10 @@ describe("届出", () => {
     expect(filingFormName(true, 2026)).toContain("65万円の青色申告特別控除");
     expect(filingFormName(true, 2027)).toContain("75万円の青色申告特別控除");
     expect(filingFormName(false, 2027)).not.toContain("万円");
-    const m = processingManual({ businessName: "テスト商店", ownerName: "山田 太郎", year: 2027, inputPeriod: { kind: "days", days: 70 }, fileName: "a.dmbl" });
+    const m = processingManual({ businessName: "テスト商店", ownerName: "山田 太郎", year: 2027, inputPeriod: { kind: "days", days: 70 }, fileName: "a.dmbl", compliant: true });
     expect(m).toContain("テスト商店");
     expect(m).toContain("取引日から 70 日以内に入力する");
-    expect(processingManual({ businessName: "", ownerName: "", year: 2027, inputPeriod: { kind: "monthEnd", months: 1, extra: 0 }, fileName: "" })).toContain("取引の月の翌月末までに入力する");
+    expect(processingManual({ businessName: "", ownerName: "", year: 2027, inputPeriod: { kind: "monthEnd", months: 1, extra: 0 }, fileName: "", compliant: true })).toContain("取引の月の翌月末までに入力する");
     expect(m).toContain("2027年1月1日");
     // タイムスタンプを付けないので、読み取った書類も紙の原本を保存する
     expect(m).toContain("紙の原本を保存する");
@@ -36,6 +36,27 @@ describe("届出", () => {
     expect(m).toContain("7. 税理士との帳簿の受け渡し");
     expect(m).toContain("帳簿の正本は1つとする");
     expect(m).toContain("CSV で書き出して別の帳簿に取り込む方法は使わない");
+    // 厳密モードの年：訂正・削除の履歴、改ざんの確認、確認コード
+    expect(m).toContain("電子帳簿保存法に対応した保存方式");
+    expect(m).toContain("「削除済み」として履歴に残り、消えない");
+    expect(m).toContain("(2) 年に一度以上、「訂正・削除履歴」の「改ざんの確認」");
+    expect(m).toContain("(4) domble の操作説明書とシステム概要書");
+  });
+
+  test("通常の保存の年（B-03）：訂正・削除の履歴が残らない手順にし、改ざんの確認・確認コードは書かない", () => {
+    const m = processingManual({ businessName: "テスト商店", ownerName: "山田 太郎", year: 2026, inputPeriod: { kind: "days", days: 70 }, fileName: "a.dmbl", compliant: false });
+    expect(m).toContain("通常の保存方式。訂正・削除の履歴を残さないため、優良な電子帳簿の要件は満たさない");
+    expect(m).toContain("通常の保存方式のため、訂正前の内容は残らない");
+    expect(m).toContain("削除した仕訳は帳簿から消え、削除したことも残らない");
+    expect(m).toContain("管理者が締めを解除し");
+    for (const x of ["電子帳簿保存法に対応した保存方式", "履歴に残り、消えない", "自動で履歴に残る", "改ざんの確認", "確認コード", "訂正の履歴・", "税理士の名前で記録される"]) expect(m).not.toContain(x);
+    // 説明書の備付けは番号を詰めて残す。入力の手順・税理士との受け渡し・税務調査への対応はそのまま
+    expect(m).toContain("(2) domble の操作説明書とシステム概要書");
+    expect(m).toContain("取引日から 70 日以内に入力する");
+    expect(m).toContain("帳簿の正本は1つとする");
+    expect(m).toContain("8. 税務調査などへの対応");
+    // 自分で行うことのうち、通常の保存の年にも要るのは説明書の備付けと機器だけ（届出書・帳簿をすべて domble では優遇措置のため）
+    expect(MANUAL_ITEMS.filter((x) => !x.goodOnly).map((x) => x.key)).toEqual(["documents", "display"]);
   });
 });
 

@@ -243,7 +243,7 @@ describe("証憑（repo）", () => {
     expect((await repo.verifyEvidences(db))[0].detail).toMatch(/履歴/);
   });
 
-  test("通常モード：仕訳を削除してもひも付けだけ外れる。証憑の履歴は残り、無効にも本当の削除もできる（削除したことは記録に残る）", async () => {
+  test("通常モード：仕訳を削除してもひも付けだけ外れる。証憑の履歴は残り、無効にも本当の削除（理由は必須）もできる（削除したことは記録に残る）", async () => {
     const { db, raw } = makeDb("standard");
     const accts = await repo.getAccounts(db, 2026);
     const ls = lines.map((l) => ({ ...l, account_id: accts[l.account_id - 1]?.id ?? l.account_id }));
@@ -260,7 +260,10 @@ describe("証憑（repo）", () => {
     expect((await repo.getEvidence(db, b))!.is_void).toBe(1);
     expect((await repo.getEvidenceHistory(db, b)).map((h) => [h.action, h.reason])).toEqual([["void", "二重に取り込んだ"], ["update", ""], ["create", ""]]);
     expect(raw.query("SELECT COUNT(*) AS n FROM audit_chain").get()).toEqual({ n: 0 });
-    // 本当に削除：ファイル・ひも付け・履歴は消え、削除したことと最後の内容が残る
+    // 本当に削除：理由は必須（電子取引データの保存義務があるため）。ファイル・ひも付け・履歴は消え、削除したことと最後の内容が残る
+    await expect(repo.deleteEvidence(db, b)).rejects.toThrow(/理由/);
+    await expect(repo.deleteEvidence(db, b, "  ")).rejects.toThrow(/理由/);
+    expect(await repo.getEvidence(db, b)).not.toBeNull();
     await repo.deleteEvidence(db, b, "不要になった");
     expect(await repo.getEvidence(db, b)).toBeNull();
     expect(await repo.getEvidenceHistory(db, b)).toEqual([]);

@@ -4,6 +4,8 @@
  *  - 受けられる優遇措置（過少申告加算税の軽減・青色申告特別控除）とその条件
  *  - 要件のチェックリスト：domble が満たしているもの（自動）と、自分で行うこと（チェックを年度ごとに残す）
  *  - 届出書に書く内容（コピー用）と提出期限、事務処理マニュアルのひな形
+ *  - 通常の保存の年（優良でない「その他の電子帳簿」）は、どの保存方式でも要るもの（画面と書面・ダウンロード・システム関係書類）と、
+ *    満たさない優良な電子帳簿の要件を分けて出し、事務処理マニュアルのひな形は訂正・削除の履歴が残らない手順にする。届出書の欄は出さない
  *  - 電子取引データの保存（帳簿の保存方式によらない義務）：要件と、訂正及び削除の防止に関する事務処理規程のひな形
  * 内容は国税庁の案内（令和8年時点）に基づく。最新の様式・要件は国税庁の案内で確かめてもらう
  */
@@ -28,6 +30,11 @@ import pkg from "../../../package.json";
 
 /** 国税庁の電子帳簿等保存制度の案内 */
 const NTA_URL = "https://www.nta.go.jp/law/joho-zeikaishaku/sonota/jirei/index.htm";
+
+/** 通常の保存の年の説明：優良でなくても、データのまま保存する帳簿（その他の電子帳簿）には要件がある */
+const OTHER_BOOK =
+  "パソコンで作った帳簿をデータのまま保存するときは、優良な電子帳簿でなくても「その他の電子帳簿」として、システム関係書類（操作説明書・システム概要書・事務処理マニュアル）と、" +
+  "画面と書面に出せるパソコン・プリンタなどを備え付け、税務調査でのダウンロードの求めに応じることが要件です（電子帳簿保存法4条1項・施行規則2条2項。紙に印刷して保存するなら、この要件はかかりません）。";
 
 export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
   const { db, year, settings, filePath, dataVersion, isClosed, can, readOnly, filingTypeOf, daysOff } = useAppContext();
@@ -84,13 +91,15 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
   ];
   const formText = formRows.map(([k, v]) => `${k}：${v}`).join("\n");
 
-  const auto: { label: string; detail: string; page?: Page }[] = [
+  // domble が満たしているもの。all = 優良でない「その他の電子帳簿」にも要るもの（見読可能装置・ダウンロードの求め。電子帳簿保存法施行規則2条2項）。
+  // それ以外は優良な電子帳簿の要件（同5条5項）で、通常の保存の年は訂正・削除の履歴が残らないので満たさない
+  const auto: { label: string; detail: string; page?: Page; all?: boolean }[] = [
     { label: "訂正・削除の履歴が残る", detail: "仕訳・勘定科目・期首残高などの訂正前／訂正後と、削除した内容を「訂正・削除履歴」に残します（削除した仕訳も消えません）", page: "history" },
     { label: "通常の業務処理期間を過ぎた入力の履歴が残る", detail: `入力期間（${inputPeriodText(inputPeriod)}）を過ぎて登録した仕訳を「遅れて登録」として記録し、仕訳日記帳で絞り込めます（日数は事業者設定で変更）`, page: "journal" },
     { label: "帳簿間の相互関連性", detail: "仕訳帳（仕訳日記帳）と総勘定元帳・補助簿は、同じ伝票番号でつながっています", page: "ledger" },
     { label: "検索機能", detail: "取引年月日・取引金額・取引先で検索でき、日付と金額は範囲で、条件は組み合わせて指定できます", page: "journal" },
-    { label: "画面と書面に整然と出力できる", detail: "仕訳日記帳・総勘定元帳（補助元帳）・出納帳・残高試算表・固定資産台帳・訂正削除履歴を、ページ番号と見出しつきの A4 で印刷できます（印刷の画面から PDF にも保存できます）", page: "ledger" },
-    { label: "ダウンロードの求めに応じられる", detail: "仕訳日記帳・総勘定元帳・残高試算表・固定資産台帳・訂正削除履歴などを CSV で書き出せます。事業者設定の「帳簿をまとめて書き出す」で、年を選んで帳簿・履歴・証憑を1つのフォルダに書き出せます", page: "settings" },
+    { all: true, label: "画面と書面に整然と出力できる", detail: `仕訳日記帳・総勘定元帳（補助元帳）・出納帳・残高試算表・固定資産台帳${compliant ? "・訂正削除履歴" : ""}を、ページ番号と見出しつきの A4 で印刷できます（印刷の画面から PDF にも保存できます）`, page: "ledger" },
+    { all: true, label: "ダウンロードの求めに応じられる", detail: `仕訳日記帳・総勘定元帳・残高試算表・固定資産台帳${compliant ? "・訂正削除履歴" : ""}などを CSV で書き出せます。事業者設定の「帳簿をまとめて書き出す」で、年を選んで帳簿・${compliant ? "履歴・" : ""}証憑を1つのフォルダに書き出せます`, page: "settings" },
   ];
 
   // 電子取引データ：domble が満たしているもの（帳簿の保存方式によらない）
@@ -103,13 +112,16 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
 
   return (
     <div className="page">
-      <PageHeader title="電子帳簿保存法" note={`${year}年分の、優良な電子帳簿の要件と届出の確認です。内容は国税庁の案内（令和8年時点）に基づきます。`} />
+      <PageHeader
+        title="電子帳簿保存法"
+        note={`${year}年分の、${compliant ? "優良な電子帳簿の要件と届出" : "電子帳簿の要件"}の確認です。内容は国税庁の案内（令和8年時点）に基づきます。`}
+      />
 
       <section className={`sheet ebook-status ${caution ? "warn" : compliant ? "ok" : "off"}`}>
         {caution ? <ShieldAlert size={22} /> : compliant ? <ShieldCheck size={22} /> : <ShieldOff size={22} />}
         <div>
           <h2 className="sheet-h" style={{ margin: 0 }}>
-            {year}年：{compliant ? `${MODE_LABEL.strict}で保存しています${caution ? "（注意：まとめて入力した年のおそれ）" : ""}` : "電子帳簿保存法の対応外（通常の保存）"}
+            {year}年：{compliant ? `${MODE_LABEL.strict}で保存しています${caution ? "（注意：まとめて入力した年のおそれ）" : ""}` : "通常の保存（優良な電子帳簿ではありません）"}
           </h2>
           <p className="prose">
             {caution
@@ -117,8 +129,8 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
               : compliant
                 ? `${year}年の初めから、優良な電子帳簿の要件を満たす保存方式で記録しています。下のチェックリストと届出を済ませると、優遇措置を受けられます。`
                 : settings.e_book_mode === "strict" && settings.strict_from_year
-                  ? `${settings.strict_from_year}年から対応しています。${year}年は通常の保存で記録していたため、優遇措置は受けられません。`
-                  : "この帳簿は通常の保存方式です。優遇措置は受けられません。電子帳簿保存法に対応したい場合は、翌年への繰越のときに、翌年から切り替えられます（事業者設定）。"}
+                  ? `${settings.strict_from_year}年から対応しています。${year}年は通常の保存で記録していたため、訂正・削除の履歴が残っておらず、優遇措置は受けられません。${OTHER_BOOK}`
+                  : `この帳簿は通常の保存方式で、訂正・削除の履歴を残さないため、優遇措置は受けられません。${OTHER_BOOK}電子帳簿保存法に対応したい場合は、翌年への繰越のときに、翌年から切り替えられます（事業者設定）。`}
           </p>
           {compliant && timing.total > 0 && (
             <dl className="ebook-timing" aria-label="入力の時期">
@@ -169,22 +181,30 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
 
       <section className="sheet">
         <h2 className="sheet-h">要件のチェックリスト（{year}年）</h2>
-        <h3 className="st-h">domble が満たしているもの</h3>
-        <ul className="ebook-list">
-          {auto.map((x) => (
-            <li key={x.label} className={compliant ? "ok" : "off"}>
-              {compliant ? <CheckCircle2 size={16} /> : <CircleAlert size={16} />}
-              <div>
-                <b>{x.label}</b>
-                {x.page && <button className="link-btn" onClick={() => go(x.page!)}>画面を開く</button>}
-                <p>{compliant ? x.detail : "この年は通常の保存のため、満たしていません"}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {([
+          ["どの保存方式でも要るもの（domble の機能）", auto.filter((x) => x.all), true],
+          ["優良な電子帳簿の要件（domble の機能）", auto.filter((x) => !x.all), compliant],
+        ] as const).map(([h, items, ok]) => (
+          <div key={h}>
+            <h3 className="st-h">{h}</h3>
+            {!ok && <p className="prose">この年は通常の保存のため、訂正・削除の履歴が残らず、優良な電子帳簿の要件を満たしていません。</p>}
+            <ul className="ebook-list">
+              {items.map((x) => (
+                <li key={x.label} className={ok ? "ok" : "off"}>
+                  {ok ? <CheckCircle2 size={16} /> : <CircleAlert size={16} />}
+                  <div>
+                    <b>{x.label}</b>
+                    {x.page && <button className="link-btn" onClick={() => go(x.page!)}>画面を開く</button>}
+                    <p>{ok ? x.detail : "この年は通常の保存のため、満たしていません"}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
         <h3 className="st-h">ご自身で行うこと</h3>
         <ul className="ebook-list manual">
-          {MANUAL_ITEMS.map((x) => {
+          {MANUAL_ITEMS.filter((x) => compliant || !x.goodOnly).map((x) => {
             const done = notes[`ebook:${x.key}`];
             return (
               <li key={x.key}>
@@ -202,7 +222,8 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
         </ul>
       </section>
 
-      <section className="sheet">
+      {/* 届出書は優良な電子帳簿の優遇措置のためのもの。通常の保存の年には出さない */}
+      {compliant && <section className="sheet">
         <h2 className="sheet-h">届出書に書く内容</h2>
         <table className="ledger st-detail">
           <tbody>
@@ -224,17 +245,20 @@ export const EBookPage = ({ go }: { go: (p: Page) => void }) => {
           届出書の様式と書き方は、国税庁の案内で確かめてください（<a href={NTA_URL} target="_blank" rel="noreferrer">電子帳簿等保存制度の案内</a>）。
           domble は JIIMA の認証を受けていないため、届出書の「認証を受けたソフトウェアか」の欄は「いいえ」になります。その場合も、要件を満たしていれば優遇措置は受けられます。
         </p>
-      </section>
+      </section>}
 
       <section className="sheet">
         <h2 className="sheet-h">事務処理マニュアルのひな形</h2>
         <p className="prose">
-          システム関係書類として備え付ける事務処理マニュアルのひな形です。入力・訂正・保存の手順を、domble の使い方に合わせて書いてあります。自分の運用に合わせて直してから使ってください。
+          {compliant
+            ? "システム関係書類として備え付ける事務処理マニュアルのひな形です。入力・訂正・保存の手順を、domble の使い方に合わせて書いてあります。"
+            : `システム関係書類として備え付ける事務処理マニュアルのひな形です（優良な電子帳簿でなくても、データのまま保存する帳簿には要ります）。${year}年は通常の保存のため、訂正・削除の履歴が残らない手順で書いてあります。`}
+          自分の運用に合わせて直してから使ってください。
         </p>
         <button
           className="btn ghost"
           onClick={async () => {
-            const text = processingManual({ businessName: settings.business_name, ownerName: settings.owner_name, year, inputPeriod, fileName });
+            const text = processingManual({ businessName: settings.business_name, ownerName: settings.owner_name, year, inputPeriod, fileName, compliant });
             try {
               if (await saveAnchorFile(text, `事務処理マニュアル_${year}年.txt`)) toast("保存しました");
             } catch (e) {
