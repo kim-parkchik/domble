@@ -946,6 +946,23 @@ describe("決算書の書き込み（repo）", () => {
   });
 });
 
+describe("償却資産申告の設定（repo）", () => {
+  test("資産ごとに、入れた年からあとの年へ引き継ぐ。前の年は変わらない。締めた年は変えられない", async () => {
+    const { db } = makeDb("standard");
+    await repo.saveDepTaxSetting(db, 2025, 7, { kind: 1 });
+    await repo.saveDepTaxSetting(db, 2026, 8, { life: 4 });
+    expect([...(await repo.getDepTaxSettings(db, 2026)).entries()]).toEqual([[7, { kind: 1 }], [8, { life: 4 }]]);
+    // 2027年から対象外にしても、2026年までは構築物のまま
+    await repo.saveDepTaxSetting(db, 2027, 7, { kind: 0 });
+    expect((await repo.getDepTaxSettings(db, 2027)).get(7)).toEqual({ kind: 0 });
+    expect((await repo.getDepTaxSettings(db, 2026)).get(7)).toEqual({ kind: 1 });
+    expect((await repo.getDepTaxSettings(db, 2024)).size).toBe(0);
+    await expect(repo.saveDepTaxSetting(db, 2026, 8, { life: 1 })).rejects.toThrow(/2〜100/);
+    await repo.closeYear(db, 2025);
+    await expect(repo.saveDepTaxSetting(db, 2025, 7, { kind: 6 })).rejects.toThrow(/締め/);
+  });
+});
+
 describe("通常 → 厳密 の切り替え（repo）", () => {
   test("翌年の仕訳がまだ無いときだけ切り替えられ、戻せない。連鎖を始め、切り替えたことを履歴に残す", async () => {
     const { db, raw } = makeDb("standard");

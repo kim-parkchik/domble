@@ -8,6 +8,7 @@
  *  - 売却・除却した資産は、台帳の区分と売却額から売却・除却の仕訳を作る（lib/depreciation.ts の disposalLines）
  * 資産を買った仕訳（工具器具備品 / 普通預金 など）は、振替伝票でふつうに入れる
  * 台帳（その年に償却する資産）は印刷と CSV の書き出しができる。名称・備考・科目・取得日・取得価額で絞り込める（印刷・CSV も絞り込んだ資産）
+ * 「償却資産申告」のタブで、翌年1月1日現在の償却資産申告（固定資産税）の資料を作る（DepTaxView.tsx・lib/depTax.ts）
  */
 import { useEffect, useMemo, useState } from "react";
 import { Download, Pencil, Plus, Printer, Search, Trash2, Wand2 } from "lucide-react";
@@ -38,6 +39,8 @@ import { isBlue } from "../../lib/filing";
 import { closedMonthOf } from "../../lib/closing";
 import { fileLabel } from "../../lib/business";
 import { assetPrintLine } from "../../lib/bookExport";
+import { depTaxYearLabel } from "../../lib/depTax";
+import { DepTaxView } from "./DepTaxView";
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, "");
 const ymd = (iso: string) => iso.replace(/-/g, "/");
@@ -57,6 +60,8 @@ export const FixedAssetsPage = () => {
   const [editing, setEditing] = useState<FixedAsset | "new" | null>(null);
   const [viewing, setViewing] = useState<number | null>(null);
   const [printing, setPrinting] = useState(false);
+  // 表示：台帳（減価償却） ／ 償却資産申告
+  const [view, setView] = useState<"ledger" | "deptax">("ledger");
   // 台帳の絞り込み（名称・備考の文字、科目、取得日の範囲、取得価額の範囲）
   const [q, setQ] = useState("");
   const [filterAccount, setFilterAccount] = useState(0);
@@ -205,12 +210,23 @@ export const FixedAssetsPage = () => {
         title="固定資産台帳"
         note={`10万円以上の備品・車・建物などを登録すると、${year}年の減価償却費を計算します。資産を買った仕訳は振替伝票で入れてください。${strict ? "台帳の変更は履歴に記録されます。" : ""}${isExclusiveOn(taxYears, `${year}-12-31`) ? `${year}年は税抜経理なので、その年に取得した資産の取得価額は税抜で入れてください（少額減価償却資産・一括償却資産の判定も税抜の額です）。` : ""}`}
       >
-        <button className="btn ghost" onClick={exportCsv} disabled={shownActive.length === 0}><Download size={16} /> CSV 書き出し</button>
-        <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>
+        {view === "ledger" && <button className="btn ghost" onClick={exportCsv} disabled={shownActive.length === 0}><Download size={16} /> CSV 書き出し</button>}
+        {view === "ledger" && <button className="btn ghost" onClick={() => setPrinting(true)}><Printer size={16} /> 印刷</button>}
         <button className="btn primary" onClick={() => setEditing("new")} disabled={!can("master")}><Plus size={16} /> 資産を追加</button>
       </PageHeader>
 
-      {assets.length > 0 && (
+      <div className="filters">
+        <div className="seg" role="tablist">
+          <button role="tab" aria-selected={view === "ledger"} className={view === "ledger" ? "on" : ""} onClick={() => setView("ledger")}>{year}年の減価償却</button>
+          <button role="tab" aria-selected={view === "deptax"} className={view === "deptax" ? "on" : ""} onClick={() => setView("deptax")}>
+            償却資産申告（{depTaxYearLabel(year)}）
+          </button>
+        </div>
+      </div>
+
+      {view === "deptax" && <DepTaxView assets={assets} />}
+
+      {view === "ledger" && assets.length > 0 && (
         <div className="filters">
           <label className="search">
             <Search size={15} />
@@ -232,188 +248,193 @@ export const FixedAssetsPage = () => {
         </div>
       )}
 
-      <section className="sheet">
-        <h2 className="sheet-h">{year}年の減価償却</h2>
-        {active.length === 0 ? (
-          <p className="muted">{year}年に償却する資産はありません。「資産を追加」から登録してください。</p>
-        ) : shownActive.length === 0 ? (
-          <p className="muted">条件に合う資産はありません。</p>
-        ) : (
-          <div className="table-wrap">
-            <table className="ledger asset-table">
-              <thead>
-                <tr>
-                  <th>名称</th><th>科目</th><th>使用開始</th><th className="num">取得価額</th><th>償却方法</th><th className="num">耐用年数</th>
-                  <th className="num">償却率</th><th className="num">月数</th><th className="num">期首の<br />未償却残高</th><th className="num">本年分の<br />償却費</th>
-                  <th className="num">事業専用<br />割合</th><th className="num">必要経費に<br />入れる額</th><th className="num">期末の<br />未償却残高</th><th />
-                </tr>
-              </thead>
-              <tbody>
-                {shownActive.map(({ a, d }) => (
-                  <tr key={a.id}>
-                    <td>
-                      {a.name}
-                      {d!.disposed && <span className="hint">{ymd(a.disposed_on!)} 売却・除却</span>}
-                      {a.memo && <span className="hint">{a.memo}</span>}
-                    </td>
-                    <td>{accountName(a.account_id)}</td>
-                    <td>{ymd(a.used_on)}</td>
-                    <td className="num">{yen(a.cost)}</td>
-                    <td>{methodLabel(a)}</td>
-                    <td className="num">{lifeText(a)}</td>
-                    <td className="num">{d!.rate !== null ? d!.rate.toFixed(3) : "—"}</td>
-                    <td className="num">{d!.months}</td>
-                    <td className="num">{yen(d!.opening)}</td>
-                    <td className="num">{yen(d!.depreciation)}</td>
-                    <td className="num">{d!.businessRate}%</td>
-                    <td className="num">{yen(d!.business)}</td>
-                    <td className="num">{yen(d!.closing)}</td>
-                    <td>{editButtons(a)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={8} className="total-label">{filtering ? "絞り込んだ資産の合計" : "合計"}</td>
-                  <td className="num">{yen(sumOf(shownActive, "opening"))}</td>
-                  <td className="num">{yen(sumOf(shownActive, "depreciation"))}</td>
-                  <td />
-                  <td className="num">{yen(sumOf(shownActive, "business"))}</td>
-                  <td className="num">{yen(sumOf(shownActive, "closing"))}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-        {smallTotal > smallCap && (
-          <p className="notice">
-            {year}年に使い始めた少額減価償却資産の合計が {yen(smallTotal)} 円です。この特例で全額を経費にできるのは、1年で合計 {yen(smallCap)} 円までです
-            {smallCap < SMALL_YEAR_LIMIT ? "（開業・廃業の年は、300万円を業務を営んだ月数で割った額。所得税の入力の開業・廃業の日から）" : ""}。
-            上限を超える分の資産は、定額法・定率法（20万円未満なら一括償却資産）に直してください。
-          </p>
-        )}
-        {shownOthers.length > 0 && (
-          <details className="asset-others">
-            <summary>ほかの資産（{shownOthers.length}件：{year}年より後に使い始める・償却が終わった・売却や除却が済んだもの）</summary>
-            <table className="ledger">
-              <tbody>
-                {shownOthers.map(({ a }) => (
-                  <tr key={a.id}>
-                    <td>{a.name}</td>
-                    <td>{accountName(a.account_id)}</td>
-                    <td>{ymd(a.used_on)} 使用開始</td>
-                    <td className="num">{yen(a.cost)}</td>
-                    <td>{methodLabel(a)}</td>
-                    <td>{a.disposed_on ? `${ymd(a.disposed_on)} 売却・除却` : ""}</td>
-                    <td>{editButtons(a)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </details>
-        )}
-      </section>
+      {view === "ledger" && (
+        <>
+          <section className="sheet">
+            <h2 className="sheet-h">{year}年の減価償却</h2>
+            {active.length === 0 ? (
+              <p className="muted">{year}年に償却する資産はありません。「資産を追加」から登録してください。</p>
+            ) : shownActive.length === 0 ? (
+              <p className="muted">条件に合う資産はありません。</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="ledger asset-table">
+                  <thead>
+                    <tr>
+                      <th>名称</th><th>科目</th><th>使用開始</th><th className="num">取得価額</th><th>償却方法</th><th className="num">耐用年数</th>
+                      <th className="num">償却率</th><th className="num">月数</th><th className="num">期首の<br />未償却残高</th><th className="num">本年分の<br />償却費</th>
+                      <th className="num">事業専用<br />割合</th><th className="num">必要経費に<br />入れる額</th><th className="num">期末の<br />未償却残高</th><th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shownActive.map(({ a, d }) => (
+                      <tr key={a.id}>
+                        <td>
+                          {a.name}
+                          {d!.disposed && <span className="hint">{ymd(a.disposed_on!)} 売却・除却</span>}
+                          {a.memo && <span className="hint">{a.memo}</span>}
+                        </td>
+                        <td>{accountName(a.account_id)}</td>
+                        <td>{ymd(a.used_on)}</td>
+                        <td className="num">{yen(a.cost)}</td>
+                        <td>{methodLabel(a)}</td>
+                        <td className="num">{lifeText(a)}</td>
+                        <td className="num">{d!.rate !== null ? d!.rate.toFixed(3) : "—"}</td>
+                        <td className="num">{d!.months}</td>
+                        <td className="num">{yen(d!.opening)}</td>
+                        <td className="num">{yen(d!.depreciation)}</td>
+                        <td className="num">{d!.businessRate}%</td>
+                        <td className="num">{yen(d!.business)}</td>
+                        <td className="num">{yen(d!.closing)}</td>
+                        <td>{editButtons(a)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={8} className="total-label">{filtering ? "絞り込んだ資産の合計" : "合計"}</td>
+                      <td className="num">{yen(sumOf(shownActive, "opening"))}</td>
+                      <td className="num">{yen(sumOf(shownActive, "depreciation"))}</td>
+                      <td />
+                      <td className="num">{yen(sumOf(shownActive, "business"))}</td>
+                      <td className="num">{yen(sumOf(shownActive, "closing"))}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+            {smallTotal > smallCap && (
+              <p className="notice">
+                {year}年に使い始めた少額減価償却資産の合計が {yen(smallTotal)} 円です。この特例で全額を経費にできるのは、1年で合計 {yen(smallCap)} 円までです
+                {smallCap < SMALL_YEAR_LIMIT ? "（開業・廃業の年は、300万円を業務を営んだ月数で割った額。所得税の入力の開業・廃業の日から）" : ""}。
+                上限を超える分の資産は、定額法・定率法（20万円未満なら一括償却資産）に直してください。
+              </p>
+            )}
+            {shownOthers.length > 0 && (
+              <details className="asset-others">
+                <summary>ほかの資産（{shownOthers.length}件：{year}年より後に使い始める・償却が終わった・売却や除却が済んだもの）</summary>
+                <table className="ledger">
+                  <tbody>
+                    {shownOthers.map(({ a }) => (
+                      <tr key={a.id}>
+                        <td>{a.name}</td>
+                        <td>{accountName(a.account_id)}</td>
+                        <td>{ymd(a.used_on)} 使用開始</td>
+                        <td className="num">{yen(a.cost)}</td>
+                        <td>{methodLabel(a)}</td>
+                        <td>{a.disposed_on ? `${ymd(a.disposed_on)} 売却・除却` : ""}</td>
+                        <td>{editButtons(a)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            )}
+          </section>
 
-      <section className="sheet">
-        <div className="sheet-title">
-          <h2 className="sheet-h" style={{ margin: 0 }}>年末の減価償却の仕訳（{year}年）</h2>
-          {runId && <button className="link-btn" onClick={() => setViewing(runId)}>作成済みの仕訳（No.{runId}）を見る</button>}
-        </div>
-        <p className="field-note">
-          12月31日付の決算整理仕訳を1本作ります。資産ごとに「減価償却費（事業分） ／ 資産の科目（償却費の全額）」、家事分は「事業主貸」にします。
-          台帳を直したら「作り直す」を押すと、同じ仕訳が最新の金額に訂正されます。減価償却費を振替伝票で別に入れている場合は、二重にならないよう気をつけてください。
-        </p>
-        {outdated && <p className="notice">作成済みの仕訳と、いまの台帳の計算が違います。「作り直す」を押してください。</p>}
-        <div className="voucher-actions" style={{ marginTop: 8 }}>
-          <span className="muted">
-            {planned.length > 0 ? `減価償却費 ${yen(sum("business"))} 円・事業主貸 ${yen(sum("depreciation") - sum("business"))} 円` : "仕訳にする償却費はありません"}
-          </span>
-          <div className="spacer" />
-          <button className="btn primary" onClick={run} disabled={isClosed || !can("entry") || (planned.length === 0 && !runId)}>
-            <Wand2 size={16} /> {runId ? "仕訳を作り直す" : "仕訳を作成する"}
-          </button>
-        </div>
-      </section>
+          <section className="sheet">
+            <div className="sheet-title">
+              <h2 className="sheet-h" style={{ margin: 0 }}>年末の減価償却の仕訳（{year}年）</h2>
+              {runId && <button className="link-btn" onClick={() => setViewing(runId)}>作成済みの仕訳（No.{runId}）を見る</button>}
+            </div>
+            <p className="field-note">
+              12月31日付の決算整理仕訳を1本作ります。資産ごとに「減価償却費（事業分） ／ 資産の科目（償却費の全額）」、家事分は「事業主貸」にします。
+              台帳を直したら「作り直す」を押すと、同じ仕訳が最新の金額に訂正されます。減価償却費を振替伝票で別に入れている場合は、二重にならないよう気をつけてください。
+            </p>
+            {outdated && <p className="notice">作成済みの仕訳と、いまの台帳の計算が違います。「作り直す」を押してください。</p>}
+            <div className="voucher-actions" style={{ marginTop: 8 }}>
+              <span className="muted">
+                {planned.length > 0 ? `減価償却費 ${yen(sum("business"))} 円・事業主貸 ${yen(sum("depreciation") - sum("business"))} 円` : "仕訳にする償却費はありません"}
+              </span>
+              <div className="spacer" />
+              <button className="btn primary" onClick={run} disabled={isClosed || !can("entry") || (planned.length === 0 && !runId)}>
+                <Wand2 size={16} /> {runId ? "仕訳を作り直す" : "仕訳を作成する"}
+              </button>
+            </div>
+          </section>
 
-      {disposedThisYear.length > 0 && (
-        <section className="sheet">
-          <h2 className="sheet-h">売却・除却の仕訳（{year}年）</h2>
-          <p className="field-note">
-            売却・除却した日付で仕訳を1本作ります。売却は売却額を課税売上（簡易課税は第4種。家事と兼用する資産は事業用の部分だけ）にし、帳簿価額（その年の期末の未償却残高）との差は事業主貸・事業主借にします
-            （個人の事業用資産の売却損益は、事業所得ではなく譲渡所得のため）。除却は帳簿価額を固定資産除却損（家事分は事業主貸）にします。その年の減価償却費は、年末の減価償却の仕訳で売却・除却した月まで計算します。
-          </p>
-          {disposedThisYear.some((a) => a.disposal_kind === "sale") && (
-            <label className="field" style={{ maxWidth: 280 }}>
-              <span>売却額を受け取った科目</span>
-              <select className="input" value={receiveId ?? bankId ?? ""} onChange={(e) => setReceiveId(Number(e.target.value) || null)}>
-                {receiveChoices.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </label>
+          {disposedThisYear.length > 0 && (
+            <section className="sheet">
+              <h2 className="sheet-h">売却・除却の仕訳（{year}年）</h2>
+              <p className="field-note">
+                売却・除却した日付で仕訳を1本作ります。売却は売却額を課税売上（簡易課税は第4種。家事と兼用する資産は事業用の部分だけ）にし、帳簿価額（その年の期末の未償却残高）との差は事業主貸・事業主借にします
+                （個人の事業用資産の売却損益は、事業所得ではなく譲渡所得のため）。除却は帳簿価額を固定資産除却損（家事分は事業主貸）にします。その年の減価償却費は、年末の減価償却の仕訳で売却・除却した月まで計算します。
+              </p>
+              {disposedThisYear.some((a) => a.disposal_kind === "sale") && (
+                <label className="field" style={{ maxWidth: 280 }}>
+                  <span>売却額を受け取った科目</span>
+                  <select className="input" value={receiveId ?? bankId ?? ""} onChange={(e) => setReceiveId(Number(e.target.value) || null)}>
+                    {receiveChoices.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </label>
+              )}
+              <table className="ledger">
+                <thead>
+                  <tr><th>名称</th><th>日付</th><th>区分</th><th className="num">売却額</th><th className="num">帳簿価額</th><th>仕訳</th><th /></tr>
+                </thead>
+                <tbody>
+                  {disposedThisYear.map((a) => {
+                    const made = disposals.find((d) => d.asset_id === a.id);
+                    const planned = disposalLines(a, disposalIds(a.disposal_kind === "sale" ? receiveId ?? made?.receive_account_id ?? bankId : null), !!a.disposed_on && isExclusiveOn(taxYears, a.disposed_on));
+                    const book = depreciationFor(a, year)?.closing ?? 0;
+                    const state = !hasLife(a.method) ? "定額法・定率法の資産だけ作れます（振替伝票で入れてください）"
+                      : !a.disposal_kind ? "台帳の「編集」で、売却か除却かを選んでください"
+                        : !made ? "未作成"
+                          : planned && made.lines !== lineKey(planned) ? `作成済み（No.${made.entry_id}）：台帳の計算と違います。作り直してください`
+                            : `作成済み（No.${made.entry_id}）`;
+                    return (
+                      <tr key={a.id}>
+                        <td>{a.name}</td>
+                        <td>{ymd(a.disposed_on!)}</td>
+                        <td>{a.disposal_kind ? DISPOSAL_LABEL[a.disposal_kind] : "—"}</td>
+                        <td className="num">{a.disposal_kind === "sale" ? yen(a.sale_price ?? 0) : ""}</td>
+                        <td className="num">{hasLife(a.method) ? yen(book) : ""}</td>
+                        <td>
+                          {made ? <button className="link-btn" onClick={() => setViewing(made.entry_id)}>{state}</button> : <span className={state === "未作成" ? "" : "muted"}>{state}</span>}
+                        </td>
+                        <td className="row-actions">
+                          <button className="btn ghost sm" onClick={() => makeDisposal(a)} disabled={!can("entry") || !hasLife(a.method) || !a.disposal_kind}>
+                            <Wand2 size={14} /> {made ? "作り直す" : "仕訳を作る"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </section>
           )}
-          <table className="ledger">
-            <thead>
-              <tr><th>名称</th><th>日付</th><th>区分</th><th className="num">売却額</th><th className="num">帳簿価額</th><th>仕訳</th><th /></tr>
-            </thead>
-            <tbody>
-              {disposedThisYear.map((a) => {
-                const made = disposals.find((d) => d.asset_id === a.id);
-                const planned = disposalLines(a, disposalIds(a.disposal_kind === "sale" ? receiveId ?? made?.receive_account_id ?? bankId : null), !!a.disposed_on && isExclusiveOn(taxYears, a.disposed_on));
-                const book = depreciationFor(a, year)?.closing ?? 0;
-                const state = !hasLife(a.method) ? "定額法・定率法の資産だけ作れます（振替伝票で入れてください）"
-                  : !a.disposal_kind ? "台帳の「編集」で、売却か除却かを選んでください"
-                    : !made ? "未作成"
-                      : planned && made.lines !== lineKey(planned) ? `作成済み（No.${made.entry_id}）：台帳の計算と違います。作り直してください`
-                        : `作成済み（No.${made.entry_id}）`;
-                return (
-                  <tr key={a.id}>
-                    <td>{a.name}</td>
-                    <td>{ymd(a.disposed_on!)}</td>
-                    <td>{a.disposal_kind ? DISPOSAL_LABEL[a.disposal_kind] : "—"}</td>
-                    <td className="num">{a.disposal_kind === "sale" ? yen(a.sale_price ?? 0) : ""}</td>
-                    <td className="num">{hasLife(a.method) ? yen(book) : ""}</td>
-                    <td>
-                      {made ? <button className="link-btn" onClick={() => setViewing(made.entry_id)}>{state}</button> : <span className={state === "未作成" ? "" : "muted"}>{state}</span>}
-                    </td>
-                    <td className="row-actions">
-                      <button className="btn ghost sm" onClick={() => makeDisposal(a)} disabled={!can("entry") || !hasLife(a.method) || !a.disposal_kind}>
-                        <Wand2 size={14} /> {made ? "作り直す" : "仕訳を作る"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
-      )}
 
-      {checkAccounts.length > 0 && (
-        <section className="sheet">
-          <h2 className="sheet-h">帳簿の残高との照合（{year}年12月31日）</h2>
-          <table className="ledger">
-            <thead>
-              <tr><th>科目</th><th className="num">帳簿の残高</th><th className="num">台帳の未償却残高</th><th className="num">差額</th></tr>
-            </thead>
-            <tbody>
-              {checkAccounts.map((acc) => {
-                const book = balances.get(acc.id) ?? 0;
-                const ledger = ledgerByAccount.get(acc.id) ?? 0;
-                return (
-                  <tr key={acc.id}>
-                    <td>{acc.name}</td>
-                    <td className="num">{yen(book)}</td>
-                    <td className="num">{yen(ledger)}</td>
-                    <td className={`num${book !== ledger ? " balance-ng" : ""}`}>{book === ledger ? "一致" : yen(book - ledger)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="field-note">
-            差額があるときは、減価償却の仕訳を作ったか、資産を買った仕訳・売却や除却の仕訳・期首残高が台帳と合っているかを確かめてください。
-          </p>
-        </section>
+          {checkAccounts.length > 0 && (
+            <section className="sheet">
+              <h2 className="sheet-h">帳簿の残高との照合（{year}年12月31日）</h2>
+              <table className="ledger">
+                <thead>
+                  <tr><th>科目</th><th className="num">帳簿の残高</th><th className="num">台帳の未償却残高</th><th className="num">差額</th></tr>
+                </thead>
+                <tbody>
+                  {checkAccounts.map((acc) => {
+                    const book = balances.get(acc.id) ?? 0;
+                    const ledger = ledgerByAccount.get(acc.id) ?? 0;
+                    return (
+                      <tr key={acc.id}>
+                        <td>{acc.name}</td>
+                        <td className="num">{yen(book)}</td>
+                        <td className="num">{yen(ledger)}</td>
+                        <td className={`num${book !== ledger ? " balance-ng" : ""}`}>{book === ledger ? "一致" : yen(book - ledger)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="field-note">
+                差額があるときは、減価償却の仕訳を作ったか、資産を買った仕訳・売却や除却の仕訳・期首残高が台帳と合っているかを確かめてください。
+              </p>
+            </section>
+          )}
+
+        </>
       )}
 
       {editing && (

@@ -52,6 +52,7 @@ import { CATEGORY_CODE_RANGE, CODE, isBalanceSheet, LOCKED_CODES, MANUFACTURING_
 import {
   assetLockError, businessRateIn, canChoose250, DISPOSAL_LABEL, disposalLines, hasLife, methodLabel, smallYearLimit, validateAsset, type AssetRate, type FixedAsset,
 } from "../lib/depreciation";
+import { parseDepTaxSetting, type DepTaxSetting } from "../lib/depTax";
 import { refundDetailProblems, type TaxRefundDetailInput } from "../lib/taxRefundDetail";
 import { closingInventory, inventoryProblem, reversalLines, type InventoryCount } from "../lib/yearEnd";
 import type { InventoryAdjust } from "../lib/taxReturn";
@@ -3164,6 +3165,33 @@ const saveStatementNote_ = async (db: Database, year: number, key: string, value
 };
 
 // ────────────────────────────────────────────
+// 償却資産申告の資産ごとの設定（種類・対象外・耐用年数。考え方は lib/depTax.ts）
+// 決算書の書き込みと同じ statement_notes に「deptax:資産の番号」で入れる（帳簿の形式は変えない）。入れた年から、あとの年へ引き継ぐ
+// ────────────────────────────────────────────
+const DEP_TAX_KEY = "deptax:";
+
+/** その年までに入れた、資産ごとのいちばん新しい設定 */
+export const getDepTaxSettings = async (db: Database, year: number): Promise<Map<number, DepTaxSetting>> => {
+  const r = await db.select<{ note_key: string; value: string }[]>(
+    "SELECT note_key, value FROM statement_notes WHERE note_key LIKE 'deptax:%' AND fiscal_year <= ? ORDER BY fiscal_year",
+    [year],
+  );
+  const out = new Map<number, DepTaxSetting>();
+  for (const x of r) {
+    const id = Number(x.note_key.slice(DEP_TAX_KEY.length));
+    if (Number.isInteger(id) && id > 0) out.set(id, parseDepTaxSetting(x.value));
+  }
+  return out;
+};
+
+/** 資産の設定を、その年から変える（kind が無ければ初期値に戻す） */
+const saveDepTaxSetting_ = async (db: Database, year: number, assetId: number, s: DepTaxSetting) => {
+  const clean = parseDepTaxSetting(JSON.stringify(s));
+  if (s.life !== undefined && clean.life === undefined) throw new Error("耐用年数は 2〜100 年で入れてください");
+  await saveStatementNote_(db, year, `${DEP_TAX_KEY}${assetId}`, JSON.stringify(clean));
+};
+
+// ────────────────────────────────────────────
 // 証憑
 //  - ファイルの中身は登録後に変えられない（トリガーでも拒否）
 //  - 厳密モード：削除せず無効の印。登録・訂正・無効・ひも付けを evidence_history に残す
@@ -4151,6 +4179,7 @@ export const logAccess = inTx(logAccess_, (id, action) => `ユーザー #${id} �
 export const carryForward = inTx(carryForward_, (year) => `${year}年から${year + 1}年への繰越`, { perm: "settings" });
 export const switchToStrict = inTx(switchToStrict_, (year) => `${year}年からの電子帳簿保存法への切り替え`, { perm: "owner" });
 export const saveStatementNote = inTx(saveStatementNote_, (year) => `${year}年の決算書の書き込み`, { perm: "master" });
+export const saveDepTaxSetting = inTx(saveDepTaxSetting_, (year, id) => `${year}年の償却資産申告の設定（固定資産 #${id}）`, { perm: "master" });
 export const saveAsset = inTx(saveAsset_, (id) => (id === null ? "固定資産の追加" : `固定資産 #${id} の変更`), { perm: "master" });
 export const deleteAsset = inTx(deleteAsset_, (id) => `固定資産 #${id} の削除`, { perm: "master" });
 export const saveDepreciationRun = inTx(saveDepreciationRun_, (year) => `${year}年の減価償却`, { perm: "entry" });
